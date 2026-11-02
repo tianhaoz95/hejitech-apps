@@ -1,0 +1,23 @@
+1
+00:00:01,070 --> 00:00:02,150
+Hiii!
+
+2
+00:00:02,299 --> 00:00:03,769
+She's called my boss.
+
+3
+00:00:04,239 --> 00:00:05,000
+Twice.
+
+4
+00:00:05,000 --> 00:00:08,600
+TinyTouch turns every tap and swipe into gentle play.
+
+5
+00:00:08,600 --> 00:00:11,300
+Getting out takes a three-second hold.
+
+6
+00:00:11,550 --> 00:00:14,770
+TinyTouch. Gentle play. No surprise calls.

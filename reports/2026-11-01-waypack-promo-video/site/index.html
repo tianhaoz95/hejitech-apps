@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Waypack promo video kit (Google Flow)</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23d9694f'/%3E%3Cpath d='M6 11 L11 22 L16 13 L21 22 L26 11' fill='none' stroke='%23fffdf8' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+  <style>
+    .shot { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); padding: 16px 18px; margin: 18px 0; }
+    .shot h3 { margin: 0 0 4px; }
+    .shot .meta-line { color: var(--mut); font-size: 14px; margin: 0 0 10px; }
+    .swatches { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+    .swatches span { display: inline-flex; align-items: center; gap: 8px; font: 13px "JetBrains Mono", monospace; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--panel); }
+    .swatches i { width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line); display: inline-block; }
+    .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .02em; border-radius: 999px; padding: 2px 9px; margin-right: 6px; vertical-align: 2px; border: 1px solid transparent; white-space: nowrap; }
+    .tag.new { background: color-mix(in srgb, #2457d6 13%, transparent); color: #2457d6; border-color: color-mix(in srgb, #2457d6 35%, transparent); }
+    .tag.me { background: color-mix(in srgb, #d9694f 15%, transparent); color: #b4523a; border-color: color-mix(in srgb, #d9694f 40%, transparent); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.new { color: #8fb0ff; } :root:not([data-theme="light"]) .tag.me { color: #e88468; } }
+    :root[data-theme="dark"] .tag.new { color: #8fb0ff; }
+    :root[data-theme="dark"] .tag.me { color: #e88468; }
+    .worlds { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+    .worlds > div { border-radius: 14px; padding: 16px 18px; min-width: 0; }
+    .worlds .snow { background: linear-gradient(135deg, #e9eef2, #b9c7cf 50%, #6b4a33); color: #1c120a; }
+    .worlds .app { background: linear-gradient(135deg, #fffdf8, #f3eadb); color: #3c2814; border: 1px solid #c9b9a6; }
+    .worlds .app em { color: #d9694f; font-style: normal; font-weight: 700; }
+    .worlds b { display: block; margin-bottom: 4px; }
+    @media (max-width: 640px) { .worlds { grid-template-columns: 1fr; } }
+    .gallery { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); margin: 14px 0; }
+    .gallery figure { margin: 0; min-width: 0; }
+    .gallery figcaption { font-size: 13px; color: var(--mut); margin-top: 6px; overflow-wrap: anywhere; }
+    .gallery figcaption b { color: var(--ink); }
+    .gallery video, .gallery img { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; background: #1c120a; max-height: 420px; object-fit: contain; }
+    .gallery figure.tall video, .gallery figure.tall img { max-height: 520px; width: auto; max-width: 100%; margin: 0 auto; }
+    .gallery audio { width: 100%; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>Waypack promo video kit (Google Flow)</b><small>A 30 s winter road-trip comedy: zero bars, and Rosa doesn't care · story, characters, Flow prompts, music prompts</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <h1>Up in the mountains, there's no signal. Her trip doesn't need one.</h1>
+        <p class="lede">The plan for Waypack's promo: a <b>30-second comedy</b> plus 15-second cuts in 16:9 and 9:16, set on a winter family trip among giant snowy trees, in the spirit of the app's own example, "3 days in Sequoia over Christmas with a toddler". Rosa's AI agent planned the trip weeks ago, and she tapped Download at home. Now there are zero bars, and she has what's next, an offline map with her GPS dot, the cabin's check-in and the backup plan. Her running gag is her brother Gus, who was going to "just look it up when we get there" and spends the trip hunting for one bar of signal. You make the characters, the shots and the music in Google Flow from the prompts below; I make the screen recordings of the app and the live preview, the voiceover and the edit.</p>
+        <div class="status">
+          <div><b>Story + scripts</b><span class="ok">Used in the edit (small trims, §1)</span></div>
+          <div><b>Characters</b><span class="ok">Rosa and Gus made in Flow</span></div>
+          <div><b>Flow shots</b><span class="ok">All 7 in, all used</span></div>
+          <div><b>Recordings</b><span class="ok">5 iPhone, 1 web (§6)</span></div>
+          <div><b>Voiceover</b><span class="ok">af_heart + Gus's and Rosa's own Flow lines</span></div>
+          <div><b>Music</b><span class="ok">Take 1 of each, picked by measurement</span></div>
+          <div><b>Edit</b><span class="todo">Rendered: your review (§1)</span></div>
+          <div><b>YouTube</b><span class="todo">Kit ready (§9): titles, thumbnails, subtitles</span></div>
+        </div>
+        <div class="cards">
+          <div class="card"><h3>Grounded in the app</h3>
+            <ul>
+              <li>Every claim comes from <code>projects/waypack</code> (site, store listing, design): any MCP agent plans the trip "with Waypack", researches, geocodes and computes real routes, sends a live preview that fills in as it plans, and publishes a trip guide; the app downloads it while there's signal and then works in airplane mode: Today ("what's happening now and next"), day-by-day plans with the why, lodging and check-in, backup plans, and an offline map with trails, routes and the GPS dot.</li>
+              <li>The offline map is Pro (#54/#55), so the end card says so; the app itself never sells anything (#25), and the video doesn't show a price or a purchase.</li>
+              <li>Colours from the logo: terracotta on cream, with the map's warm paper and brown ink.</li>
+            </ul>
+          </div>
+          <div class="card"><h3>Built in from the last videos</h3>
+            <ul>
+              <li>Fast: a cut every 2–4 beats of the music, each Flow shot used for 1.5–3 s.</li>
+              <li>No green screens: every phone's back faces the camera (or it's in a car mount angled away) and the laptop's lid faces the camera. The product is shown in real recordings.</li>
+              <li>Not another commute: Headway and G2 Digest are trains; this is a snowy mountain road trip in daylight and warm cabin light, so the channel's videos don't look alike.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>Next for you:</b> watch and listen to the three cuts in §1, and check the calls I couldn't make by ear (the music takes and the narration voice, both easy to swap). Write what to change in <b>Your notes</b> and click <b>Copy summary</b>, or tell me. When you like a cut, upload it with §9 and send me the 30 s link for Waypack's home and docs pages.</div>
+      </section>
+
+      <section id="edit" data-toc="The edit · review">
+        <h2>The edit: three cuts to review</h2>
+        <p>Built in Remotion (<code>branding/promo-videos/src/waypack-launch</code>) from your seven Flow shots, the two music takes I measured as the best fit, six real recordings of the iPhone app and the live preview, and the <b>af_heart</b> narration. The jokes are in Gus's and Rosa's own Flow voices; the narration says what Waypack does.</p>
+        <div class="gallery">
+          <figure><video src="media/edit/waypack-launch-30.mp4" poster="media/edit/waypack-launch-30.jpg" controls playsinline preload="none"></video><figcaption><b>30 s · 16:9</b> · the main cut · 30.1 s<br><a class="dl" href="media/edit/waypack-launch-30.mp4" download>waypack-launch-30.mp4</a></figcaption></figure>
+          <figure><video src="media/edit/waypack-launch-15.mp4" poster="media/edit/waypack-launch-15.jpg" controls playsinline preload="none"></video><figcaption><b>15 s · 16:9</b> · no signal, the glance, Today, the offline map, the sledding hill, end card · 15.1 s<br><a class="dl" href="media/edit/waypack-launch-15.mp4" download>waypack-launch-15.mp4</a></figcaption></figure>
+          <figure class="tall"><video src="media/edit/waypack-launch-15-vertical.mp4" poster="media/edit/waypack-launch-15-vertical.jpg" controls playsinline preload="none"></video><figcaption><b>15 s · 9:16</b> · Shorts / Reels / TikTok<br><a class="dl" href="media/edit/waypack-launch-15-vertical.mp4" download>waypack-launch-15-vertical.mp4</a></figcaption></figure>
+        </div>
+        <h3 data-toc="My calls">Calls I made while you were away</h3>
+        <table class="grid">
+          <tr><th>Call</th><th>What I picked, and why</th><th>To change it</th></tr>
+          <tr><td>Music, 30 s</td><td><b>Take 1 ("lost on the mountain")</b>, 103.4 BPM, its last 30 s, no splice. That stretch follows the prompt's shape: a sparse searching intro under Gus's hunt, a near-silent stop (6.2–8.8 s) that Rosa's "Don't need one." lands in, a build, the groove kicking in at 11.3 s as the app appears, and a clean final chord on the end card. Take 2 is steady and busy all the way through, with no stop. Both takes are ~60–67 s long.</td><td>Say "take 2": I re-cut to its beats.</td></tr>
+          <tr><td>Music, 15 s</td><td><b>Take 1 ("road trip sting")</b>: 3.2 s of its searching intro, spliced inside its silent stop to the track's last 12 s, so the groove kicks in at 3.25 s as Rosa reaches for her phone and the track ends on its own final chord. Take 2 has no intro or stop to work with.</td><td>Same.</td></tr>
+          <tr><td>Narration voice</td><td><b>af_heart</b>: warm and unhurried, and the takes fit the beats best. Measured median pitch: Rosa's Flow line 186 Hz; af_sarah 195, af_heart 211, af_bella 207, bf_emma 184 (British), af_nicole 154. So by pitch alone af_sarah is the closest American voice (it's also FitLoop's narrator; af_heart is Headway's). All five are in §7.</td><td>Say the voice's name: the line lengths are within 0.2 s, so it's a swap and a re-render.</td></tr>
+          <tr><td>On-camera lines</td><td>Flow said the written lines well, so the edit uses them: Gus's "Does anyone have a single bar?", Rosa's "Don't need one." and Gus's "Okay. Where's the sledding hill?" The narration leaves Rosa's line to her. Flow's ad-libs are muted ("I just need one bar to load the map", "He's been searching for an hour", "I think we need to go this way", "Still no signal at all", the lockbox code, "I found five bars!").</td><td>—</td></tr>
+          <tr><td>Script trims</td><td>"…and tapped Download on the Wi-Fi" became "…and hit Download on the Wi-Fi" (Kokoro can't say "tapped") and "I planned it with my agent at home" became "I planned it at home with my agent". The 30 s cut has no room for the paper-map graphic, so it's left out; the live preview covers "planned by your agent".</td><td>Ask, and I add it.</td></tr>
+          <tr><td>Footage left out</td><td>Shot 4 after ≈3.5 s (the toddler is in the front passenger seat, not in a car seat); shot 6 after ≈2.5 s (the phone turns toward the camera); the rest of each shot by pace.</td><td>—</td></tr>
+          <tr><td>The map's GPS dot</td><td>The simulator's location prompt can't be answered from a test, so the recording feeds the map page positions along the trip's own day-2 route (lodge → snow play area). The map, route, dot and follow mode are the app's own; the location is simulated, as it would be in any simulator.</td><td>—</td></tr>
+        </table>
+        <table class="kv">
+          <tr><th>Pace</th><td>Cuts sit on the music's beats; Flow shots are on screen 1.1–5.2 s (shot 2 holds for both lines).</td></tr>
+          <tr><th>Transitions</th><td>Flow shot → its recording: a cross-zoom. Between story beats: a blurred slide. Into the end card: a dreamy zoom. Everything pushes in slowly.</td></tr>
+          <tr><th>Captions</th><td>Every spoken word, word by word, timed from a speech-recognition pass; the end card carries the tagline instead of a caption, and the caption band fades out under it.</td></tr>
+          <tr><th>Sound</th><td>The music ducks under every line; Gus's takes were 3 dB hotter than the rest and are turned down to match. Measured after the two-pass normalisation: 30 s −13.9 LUFS (true peak −1.4 dBTP), 15 s cuts −14.2 LUFS (−1.4 dBTP).</td></tr>
+          <tr><th>On screen</th><td>"Example trip" on every recording; on the end card: "Works with any MCP agent. Offline map with Waypack Pro. Example trip: check road and park conditions before you go. People and scenes are AI-generated." No price, no purchase.</td></tr>
+          <tr><th>Zero bars</th><td>The status bar shows Wi-Fi at home for the download and "searching" with no bars for everything in the mountains.</td></tr>
+          <tr><th>9:16</th><td>Flow shots are cropped around the speaker, the phone is larger and the end card is laid out for the tall frame.</td></tr>
+        </table>
+        <p class="note"><b>What I checked:</b> frames every second of each render, close-ups at the map, download and end card, lengths, loudness and speech levels per line. <b>What I couldn't:</b> listen. Please watch with sound: the mix of Flow's voices, the narration and the music, and the 15 s cut's music splice, need your ears. Known nits: Pip's hat changes between shots (white beanie, then a patterned one), and Gus wears a parka in the car but the windbreaker elsewhere; the lodge card on the phone shows the example's placeholder "Confirmation #REPLACE-ME" in small print for about a second.</p>
+        <p class="note">The renders are reproducible (<code>npx remotion render waypack-launch-30</code> etc. in <code>branding/promo-videos</code>, then the loudness pass; see <code>media.md</code>) and make this report ≈50 MB, so <code>media/edit/</code> stays out of git (this report's <code>.gitignore</code>).</p>
+      </section>
+
+      <section id="story" data-toc="Story">
+        <h2>The story: zero bars, and she doesn't care</h2>
+        <p>A snowy pullout high in the mountains, giant red-barked trees, a family car with skis on the roof. Gus, who planned nothing ("I'll just look it up when we get there"), wanders in circles in the snow, holding his phone up to the sky. "Does anyone have a single bar?" Rosa, her toddler Pip on her hip, turns to the camera: "Don't need one." A glance at her phone: Today says what's now and what's next. In the car on the snowy road, the offline map shows their route and their blue dot. At dusk, at the cabin, she reads the check-in details off her phone and opens the lockbox while Gus holds his phone up to the porch light. Flashback: weeks before, on the couch at home, she asked her agent to plan it, watched the trip take shape, and tapped Download on the Wi-Fi. Payoff: a sledding hill, Rosa and Pip flying past laughing; Gus, phone finally in his pocket, turns to the camera: "Okay. Where's the sledding hill?"</p>
+        <div data-block="arc"></div>
+        <div class="fields">
+          <div class="field" data-max="80"><b>Tagline (end card)</b><pre>Your trip, packed.</pre></div>
+          <div class="field" data-max="100"><b>Line under the tagline (end card)</b><pre>Your AI agent plans the trip. Waypack keeps it working offline.</pre></div>
+        </div>
+        <h3 data-toc="Voiceover scripts">Voiceover scripts (Rosa narrates, first person)</h3>
+        <div class="fields">
+          <div class="field" data-max="420"><b>Voiceover, 30-second cut</b><pre>Up in the mountains, there's no signal.
+
+Don't need one.
+
+My AI agent planned this trip. Waypack keeps it working offline.
+
+What's next, the map, my GPS dot. Zero bars.
+
+Lodging, check-in times, and a backup plan if the road closes.
+
+I planned it with my agent at home, and tapped Download on the Wi-Fi.
+
+Waypack. Your trip, packed.</pre></div>
+          <div class="field" data-max="260"><b>Voiceover, 15-second cut</b><pre>Up in the mountains, there's no signal.
+
+My agent planned the trip. Waypack keeps it working offline.
+
+What's next, the map, my GPS dot. Zero bars.
+
+Waypack. Your trip, packed.</pre></div>
+          <div class="field" data-max="160"><b>Small text on the end card</b><pre>Works with any MCP agent. Offline map with Waypack Pro. Example trip: check road and park conditions before you go.</pre></div>
+        </div>
+        <p class="note"><b>On camera vs narration.</b> Gus asks "Does anyone have a single bar?" and Rosa answers "Don't need one." on camera (shot 2), and Gus has the last laugh line, "Okay. Where's the sledding hill?" (shot 7), all in their Flow voices. If those takes sound good, the edit keeps Flow's audio there and the narration skips Rosa's line. For the narration I pick the Kokoro voice closest to her Flow voice (likely <code>af_heart</code> or <code>af_nicole</code>), so she sounds like one person. If the voices don't match well enough, the edit mutes Flow and the narration says her line too (Gus's lines stay his).</p>
+        <p class="note"><b>What it never says.</b> No park, road or brand names on screen (the recordings show the app's own example trip, which names real places; that's fine, it's labelled "Example trip"). "AI agent" stays generic: no assistant's name or logo, because Waypack works with any MCP client. It never promises the road will be open or the trip will be safe: the trip has a backup plan and the end card says to check conditions.</p>
+      </section>
+
+      <section id="character" data-toc="Characters">
+        <h2>The characters: Rosa, and Gus</h2>
+        <p>The same movie style as the Headway, FitLoop and G2 Digest promos, so the channel feels like one family: photoreal, expressive faces in cinematic light, a lead who plays to the camera, a comic foil who never does (until his last line). Both are new, original characters. Pip, the toddler, is written into the shot prompts only (no lines, no character card): Flow keeps a child consistent enough across a few shots, and the edit uses Pip for a second at a time.</p>
+        <article class="shot">
+          <h3 data-toc="Rosa">Rosa, the lead: portrait, body, character info, voice</h3>
+          <p class="meta-line">Flow → Characters → New · <b>1. Portrait:</b> paste into "Describe your character…", make 2–4, keep the face you like · <b>2. Create body:</b> with that portrait selected, <b>Create body</b>, paste into "What do you want to change?" · save as <b>Rosa</b> · <b>3. Character info:</b> on Rosa's page, "Describe how your character acts…" · <b>4. Voice:</b> Select a voice → pick, paste the sample dialogue and performance, Preview, <b>Add to character</b> (for her one line on camera, shot 2)</p>
+          <div class="fields">
+            <div class="field"><b>Rosa · 1 · Portrait prompt</b><pre>Rosa, a warm, unflappable mother in her mid-thirties who plans ahead so she can relax on holiday. Dry, quick and quietly confident: she talks to the camera like she's letting you in on a secret.
+
+Face: a Latina woman with olive skin, rosy cheeks from the cold, dark brown eyes, a wide easy smile, one eyebrow ready to rise.
+
+Hair: long dark wavy hair in a loose low braid, under a chunky cream knit beanie.
+
+Clothing in frame: a terracotta-orange puffer jacket zipped to the chin, a cream knit scarf, small gold hoop earrings. No logos, no text.
+
+Photorealistic with a soft cinematic glow, head-and-shoulders portrait facing the camera, bright soft winter daylight with snow bouncing light onto her face, softly blurred snowy forest of giant red-barked trees behind her, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Rosa · 2 · Body prompt (Create body)</b><pre>Keep her face, hair, beanie and expression exactly the same. Show her full length, head to toe, standing in the snow and facing the camera.
+
+Body: average height, strong and relaxed, weight on one hip, one hand in her jacket pocket, the other holding her phone loosely at her side with the back of the phone toward the camera.
+
+Outfit: the terracotta-orange puffer jacket; the cream knit scarf and beanie; dark navy snow pants; tan lace-up winter boots with a little snow on them; cream knit mittens tucked into a pocket. Small gold hoop earrings. No logos, no text, no brand marks.
+
+Same bright soft winter daylight, softly blurred snowy forest of giant red-barked trees behind her, 50mm, photorealistic with a soft cinematic glow.</pre></div>
+            <div class="field" data-max="1000"><b>Rosa · 3 · Character info ("Describe how your character acts…")</b><pre>Rosa is the only one on this family trip who isn't lost. Weeks ago her own AI agent planned the whole thing and she downloaded it to her phone at home, so up in the mountains with no signal she still knows what's next, where they are and how to get into the cabin. Warm, dry and a little smug, with a big laugh.
+
+How she acts on camera: she plays to the camera with knowing glances, a slow raised eyebrow and a small satisfied smile. Unhurried and practical, often with her toddler Pip on her hip. When chaos happens around her she gives a long deadpan look instead of reacting.
+
+Habits: glances at her phone for a second and puts it away, always holding it with the back toward the camera; bounces Pip; brushes snow off her mittens.
+
+On camera she speaks only the short lines written in a shot's prompt, dry and unhurried, straight to the camera; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Rosa · 4 · Voice to pick</b><pre>Sulafat</pre></div>
+            <div class="field" data-max="120"><b>Rosa · 4 · Sample dialogue</b><pre>Up in the mountains, there's no signal. Don't need one. Waypack. Your trip, packed.</pre></div>
+            <div class="field" data-max="400"><b>Rosa · 4 · Customize performance</b><pre>Warm, relaxed and dry, a little amused, like she's letting the audience in on a private joke. Mid pitch, unhurried, a smile you can hear, a hint of cold-air breathiness. Never salesy, never loud, never a travel-ad voice. A short pause before "Don't need one," delivered flat and confident.</pre></div>
+          </div>
+          <p class="note">Sulafat is my suggestion for a warm, mid-pitched female voice; if it sounds wrong in Preview, try Kore (firmer) or Achernar (softer, higher). FitLoop's Maya also uses Sulafat: if you'd rather the two leads don't sound alike, take Kore. Tell me which you kept: I match the narration's Kokoro voice to it.</p>
+        </article>
+        <article class="shot">
+          <h3 data-toc="Gus">Gus, the signal hunter: portrait, body, character info, voice</h3>
+          <p class="meta-line">Same four steps · save as <b>Gus</b> · he's in shots 1, 2, 5 and 7 · his voice is for his two lines (shots 2 and 7)</p>
+          <div class="fields">
+            <div class="field"><b>Gus · 1 · Portrait prompt</b><pre>Gus, Rosa's easy-going younger brother in his late twenties who never plans anything: he'll "just look it up when we get there". Sunny, overconfident and lovable, with a big hopeful grin.
+
+Face: a Latino man with olive skin, a scruffy short beard, warm brown eyes, cheeks red from the cold, a slightly lost look.
+
+Hair: shaggy dark curly hair sticking out from under a bright red trapper hat with the ear flaps up.
+
+Clothing in frame: a much-too-thin bright Hawaiian shirt with a palm-leaf print under an open lime-green windbreaker, plainly not dressed for the snow. No logos, no text.
+
+Photorealistic with a soft cinematic glow, head-and-shoulders portrait facing the camera, bright soft winter daylight with snow bouncing light onto his face, softly blurred snowy forest of giant red-barked trees behind him, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Gus · 2 · Body prompt (Create body)</b><pre>Keep his face, beard, hair, trapper hat and expression exactly the same. Show him full length, head to toe, standing in the snow and facing the camera.
+
+Body: tall and lanky, shivering a little, one long arm stretched high holding his phone up toward the sky with the back of the phone toward the camera, the other hand tucked into his armpit for warmth.
+
+Outfit: the bright red trapper hat; the palm-leaf Hawaiian shirt under the open lime-green windbreaker; grey sweatpants tucked into tall rubber rain boots; one fingerless glove. No logos, no text, no brand marks.
+
+Same bright soft winter daylight, softly blurred snowy forest of giant red-barked trees behind him, 50mm, photorealistic with a soft cinematic glow.</pre></div>
+            <div class="field" data-max="1000"><b>Gus · 3 · Character info ("Describe how your character acts…")</b><pre>Gus came on his sister Rosa's mountain trip without a plan, sure he could look everything up when he got there. There is no signal. He spends the whole trip hunting for one bar: phone held up to the sky, waved in circles, pressed against a car window, raised to a porch light. Rosa's comic opposite: she knows, he searches.
+
+How he acts on camera: big, earnest physical comedy: tiptoeing through deep snow, climbing a snowbank for height, triumphant gasps that turn into sighs, shivering in clothes too thin for the cold. Always cheerful and lovable, never cross. He holds his phone with the back toward the camera.
+
+He never looks at the camera except for his last line. On camera he only speaks the short lines written in a shot's prompt, bright and a little out of breath; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Gus · 4 · Voice to pick</b><pre>Puck</pre></div>
+            <div class="field" data-max="120"><b>Gus · 4 · Sample dialogue</b><pre>Does anyone have a single bar? … Okay. Where's the sledding hill?</pre></div>
+            <div class="field" data-max="400"><b>Gus · 4 · Customize performance</b><pre>Upbeat, hopeful and a little breathless from the cold, like a lovable sitcom little brother. Mid pitch, quick, voice rising hopefully on the question. On "Okay. Where's the sledding hill?" a defeated pause after "Okay.", then a cheerful, giving-up tone. Never whiny, never shouting.</pre></div>
+          </div>
+          <p class="note">Puck is my pick for an upbeat male voice; Fenrir (more excitable) is the alternative, though FitLoop's Theo uses it.</p>
+        </article>
+      </section>
+
+      <section id="style" data-toc="Look and feel">
+        <h2>Look and feel: a snowy mountain trip in Waypack's colours</h2>
+        <p>Bright winter daylight on snow, giant red-barked trees, and Waypack's terracotta carried by Rosa's jacket so the eye always finds her. The cabin scene is warm lamplight against blue dusk. The product's own world is the app's warm paper map with terracotta routes: each time it appears, it means Waypack.</p>
+        <div class="worlds">
+          <div class="snow"><b>The mountains</b>Bright snow, cold blue shadows, giant cinnamon-red trunks, a family car with skis on the roof, warm cabin windows at dusk. Everyone searching for signal except her.</div>
+          <div class="app"><b>Waypack</b><em>Now · Sledding &amp; snow play</em> — the app's cream paper, brown ink and terracotta routes; the end card on cream with the logo.</div>
+        </div>
+        <div class="swatches">
+          <span><i style="background:#d9694f"></i>#d9694f terracotta</span>
+          <span><i style="background:#fffdf8"></i>#fffdf8 cream</span>
+          <span><i style="background:#f3eadb"></i>#f3eadb paper</span>
+          <span><i style="background:#c9b9a6"></i>#c9b9a6 sand</span>
+          <span><i style="background:#3c2814"></i>#3c2814 brown ink</span>
+        </div>
+        <table class="kv">
+          <tr><th>Camera</th><td>35–50mm, shallow depth of field, slow push-ins on Rosa, centred and steady; Gus gets wider, slightly handheld frames, always moving. The contrast is the joke. Comic beats held a moment longer (Gus on the snowbank, her deadpan look).</td></tr>
+          <tr><th>Never on screen</th><td>Park or road signs, park-service logos or uniforms, car brand badges, logos on clothes or gear, readable phone or laptop screens, any AI assistant's name or logo, real people's faces.</td></tr>
+          <tr><th>Safety</th><td>Nobody drives while looking at a phone (in shot 4 the phone sits in a dash mount and the car is driven carefully, eyes on the road); chains or proper tyres in the snow scenes; the end card says to check road and park conditions. The trip in the recordings is the app's example trip, labelled "Example trip".</td></tr>
+        </table>
+      </section>
+
+      <section id="storyboard" data-toc="Storyboard + Flow">
+        <h2>Storyboard and Flow prompts</h2>
+        <p>Times are for the 30-second cut. <b>Flow</b> is the generated shot (the edit uses 1.5–3 s of each); <b>Recording</b> is the real app (made by me, see Screen recordings). Each prompt is one Copy: paste it into Flow with the characters it names added. The animatic of these beats is <code>waypack-launch-30</code> in Remotion Studio (<code>cd branding/promo-videos && npm run dev</code>).</p>
+        <div data-block="shots"></div>
+
+        <article class="shot">
+          <h3 data-toc="Flow settings (once)">Before the shots · Flow agent settings</h3>
+          <table class="kv">
+            <tr><th>Confirm before generating</th><td><b>Always</b>, so you see what's about to be generated (and whether the prompt was rewritten) before credits are spent.</td></tr>
+            <tr><th>Mode</th><td><b>Video · Ingredients</b>, with Rosa and/or Gus added as ingredients (Frames is for animating a still you already have).</td></tr>
+            <tr><th>Shape</th><td><b>16:9</b> for every shot; the 9:16 cut is made from the same footage.</td></tr>
+            <tr><th>Drafts</th><td>The fast model · <b>720p · 8s · x1</b>: cheap tries to check the joke, the faces and that no logos, signs or readable screens appear. Shots 3 and 4 (close-ups) can be 6s.</td></tr>
+            <tr><th>The take you keep</th><td>Re-run the prompt that worked on the best model in the dropdown, at the highest resolution it offers (1080p if available; the final video is 1080p), <b>x2</b> to pick from.</td></tr>
+          </table>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 1 · no signal"><span class="tag new">Flow</span> Shot 1 · No signal up here</h3>
+          <p class="meta-line">0:00–0:04 · Video · 16:9 · add Rosa and Gus</p>
+          <div class="fields"><div class="field"><b>Shot 1 prompt</b><pre>Video. A snowy roadside pullout high in the mountains on a bright winter morning, giant red-barked trees towering over a family car with skis on the roof (no badges, no plates visible). Gus, in his Hawaiian shirt and red trapper hat, wades through knee-deep snow in a slow circle with his phone held high toward the sky (the back of the phone toward the camera, the screen never visible), then climbs onto a snowbank on tiptoe for more height. In the foreground, Rosa leans calmly against the car with her toddler Pip, in a tiny red snowsuit, on her hip, watching him; she glances at the camera with a small knowing smile. Wide shot, slow push-in on Rosa, 35mm, shallow depth of field, crisp cinematic comedy. No logos, no text, no signs, the screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 2 · a single bar?"><span class="tag new">Flow</span> Shot 2 · "Does anyone have a single bar?"</h3>
+          <p class="meta-line">0:04–0:07 · Video · 16:9 · add Rosa and Gus · the comic beat: hold her deadpan look · make this one first</p>
+          <div class="fields"><div class="field"><b>Shot 2 prompt</b><pre>Video. A snowy mountain pullout under giant red-barked trees, bright winter daylight. Gus, on top of a snowbank, phone held up to the sky (the back of the phone toward the camera), shivering, calls down hopefully: "Does anyone have a single bar?" Below him, Rosa, with her toddler Pip in a tiny red snowsuit on her hip, slowly turns her head to the camera with a long deadpan look and one raised eyebrow, and says dryly: "Don't need one." Pip claps his mittens. Gus slips a little on the snowbank. Medium shot, 35mm, shallow depth of field, crisp cinematic grade, sitcom comedy timing. No logos, no text, no signs, the screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 3 · what's next"><span class="tag new">Flow</span> Shot 3 · A glance: what's next</h3>
+          <p class="meta-line">0:07–0:09, then the iPhone recording (Today: now and next) · Video · 16:9 · 6s · add Rosa</p>
+          <div class="fields"><div class="field"><b>Shot 3 prompt</b><pre>Video. Close-up of Rosa in her terracotta puffer jacket and cream beanie, standing in a snowy forest of giant red-barked trees, her toddler Pip's red snowsuit just in frame on her hip. She lifts her phone and glances at it for a second (the back of the phone toward the camera, the screen never visible), nods to herself, slips it back into her pocket and points off-frame with a confident little smile, as if to say "this way". Close-up from the front, slow push-in, 50mm, shallow depth of field, bright soft winter daylight with snow bouncing light onto her face. No logos, no text, the screen is never visible. 6 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 4 · the snowy road"><span class="tag new">Flow</span> Shot 4 · Zero bars, still on the map</h3>
+          <p class="meta-line">0:12–0:14, then the iPhone recording (offline map, routes, GPS dot) · Video · 16:9 · 6s · add Rosa and Gus</p>
+          <div class="fields"><div class="field"><b>Shot 4 prompt</b><pre>Video. Inside a family car driving slowly along a snowy mountain road through giant red-barked trees, bright winter light. Rosa drives calmly with both hands on the wheel and her eyes on the road; her phone sits in a dashboard mount angled toward her, its back toward the camera and the screen never visible. In the passenger seat, Gus presses his phone against the frosty side window, then holds it up to the sunroof, hopeful, then sighs. In the back, toddler Pip in his car seat waves a mitten. Medium shot from the back seat between the front seats, 35mm, shallow depth of field, snowy trees streaming past the windshield, crisp cinematic grade. No logos, no car badges, no text, no visible screens. 6 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 5 · the cabin"><span class="tag new">Flow</span> Shot 5 · The cabin, after dark</h3>
+          <p class="meta-line">0:16–0:18, then the iPhone recording (lodging, check-in, the backup plan) · Video · 16:9 · add Rosa and Gus · the slapstick beat</p>
+          <div class="fields"><div class="field"><b>Shot 5 prompt</b><pre>Video. A small wooden cabin in deep snow at blue dusk, warm golden light from the porch lamp and the windows. Rosa, with sleepy toddler Pip on her hip, glances at her phone (the back toward the camera, the screen never visible), then confidently punches a code into a small key lockbox by the door; it clicks open and she takes out the key. Behind her, Gus stands on tiptoe on the porch railing holding his phone right up to the porch lamp, as if the light might give him signal, wobbles, and drops into a soft snowdrift with a puff of snow, giving a thumbs-up from inside it. Medium-wide shot, 35mm, Rosa sharp in the foreground, Gus slightly soft behind, warm and cosy cinematic grade, gentle slapstick comedy. No logos, no text, no signs, the screens are never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 6 · weeks before"><span class="tag new">Flow</span> Shot 6 · Weeks before, at home</h3>
+          <p class="meta-line">0:20–0:22, then the web recording (the live preview filling in) and the iPhone recording (Download) · Video · 16:9 · add Rosa · the laptop's screen faces away</p>
+          <div class="fields"><div class="field"><b>Shot 6 prompt</b><pre>Video. A cosy living room in the evening, weeks earlier, warm lamp light, rain on the window, a toddler's toys on the rug. Rosa, in a soft oversized cream sweater, sits cross-legged on the sofa with a laptop on her knees whose lid faces the camera (the screen is never visible). She types a question, leans back and watches with growing delight as if something is filling in on the screen by itself, then picks up her phone (the back toward the camera), taps it once with a satisfied nod and sets it down. Medium shot, 35mm, shallow depth of field, warm cosy cinematic grade. No logos, no text, the screens are never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 7 · the sledding hill"><span class="tag new">Flow</span> Shot 7 · "Okay. Where's the sledding hill?"</h3>
+          <p class="meta-line">0:25–0:30 · Video · 16:9 · add Rosa and Gus · the end card goes over its last seconds</p>
+          <div class="fields"><div class="field"><b>Shot 7 prompt</b><pre>Video. A gentle snowy sledding hill among giant red-barked trees on a bright sunny winter afternoon. Rosa and her toddler Pip, in his tiny red snowsuit, laughing, slide past the camera together on a plain wooden sled, snow spraying. Standing at the bottom of the hill, Gus finally puts his phone in his pocket, watches them go by, then turns to the camera, a little defeated but cheerful, and says: "Okay. Where's the sledding hill?" Rosa, at the bottom, waves him over with a big grin. Medium-wide shot, slow push-in, 35mm, bright warm cinematic grade, joyful comic finale. No logos, no text, no signs, no visible screens. 8 seconds.</pre></div></div>
+        </article>
+        <article class="shot">
+          <h3 data-toc="Map graphic + end card"><span class="tag me">Me</span> The map graphic and the end card</h3>
+          <p class="meta-line">0:22–0:23 and 0:28–0:30 · made in Remotion, no Flow needed</p>
+          <p>Between the preview and the Download, a one-second motion graphic in the logo's style: a folded paper map unfolds, a terracotta route draws itself across it and a pin drops, with "planned by your agent" → "packed on your phone". The end card: the logo, "Waypack", "Your trip, packed.", the line under it and the small text, on cream with the paper texture.</p>
+        </article>
+      </section>
+
+      <section id="recordings" data-toc="Screen recordings">
+        <h2>Screen recordings (made)</h2>
+        <p>From the real apps on the local stack (Supabase + the Worker on <code>127.0.0.1:8787</code> with <code>MAP_EXTRACTS=device</code>) with a dev account seeded with the app's example trip (<code>seed-dev.mjs promo@waypack.test</code>, Pro, so the offline map is on), never production. <code>branding/promo-videos/scripts/waypack-launch-record.mjs</code> runs a Flutter integration test (<code>waypack-launch-driver/promo_test.dart</code>) in an iPhone 17 Pro simulator with the dev sign-in and the clock set to Christmas morning, 10:05, records the screen and cuts out each beat. The live preview is the real <code>push_preview</code> flow: the script pushes the trip one day at a time, as an agent does, while a browser shows the preview.</p>
+        <div class="gallery">
+          <figure class="tall"><video src="media/rec/rec-phone-download.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-phone-download</b> · Wi-Fi, Get → progress → available offline</figcaption></figure>
+          <figure class="tall"><video src="media/rec/rec-phone-today.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-phone-today</b> · zero bars, "Now · till 11:30 AM: Sledding &amp; snow play"</figcaption></figure>
+          <figure class="tall"><video src="media/rec/rec-phone-stay.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-phone-stay</b> · where you're staying, then "If something goes wrong"</figcaption></figure>
+          <figure class="tall"><video src="media/rec/rec-phone-plan.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-phone-plan</b> · day 2 with the why, then the guide's backup plans</figcaption></figure>
+          <figure class="tall"><video src="media/rec/rec-phone-map.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-phone-map</b> · offline map, day 2, the GPS dot following the route</figcaption></figure>
+          <figure><video src="media/rec/rec-web-preview.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-web-preview</b> · the live preview as days 2 and 3 arrive ("Updated: Added day 2")</figcaption></figure>
+        </div>
+        <p class="note">Two things the simulator can't do from a test, and what the recording does instead: grant notification permission (the notifications plugin is answered in the test, otherwise the trips list shows a "Couldn't refresh" banner) and answer the location prompt (the map page gets simulated positions along the day-2 route). Nothing else is faked. Every recording carries an "Example trip" tag.</p>
+      </section>
+
+      <section id="audio" data-toc="Voiceover + music">
+        <h2>Voiceover and music</h2>
+        <h3 data-toc="Voiceover takes">1 · Voiceover takes (Kokoro-82M, local)</h3>
+        <p>Every narration line in five voices (<code>branding/promo-videos/scripts/waypack-launch-vo.py</code>), read back by speech recognition: every word matches the script. The edit uses <b>af_heart</b>. Each player is the six 30 s lines back to back.</p>
+        <div class="gallery">
+          <figure><audio src="media/audio/vo-af_heart.m4a" controls preload="none"></audio><figcaption><b>af_heart</b> · used · 211 Hz</figcaption></figure>
+          <figure><audio src="media/audio/vo-af_sarah.m4a" controls preload="none"></audio><figcaption><b>af_sarah</b> · 195 Hz, closest to Rosa (186 Hz)</figcaption></figure>
+          <figure><audio src="media/audio/vo-af_bella.m4a" controls preload="none"></audio><figcaption><b>af_bella</b> · 207 Hz</figcaption></figure>
+          <figure><audio src="media/audio/vo-bf_emma.m4a" controls preload="none"></audio><figcaption><b>bf_emma</b> · 184 Hz, British</figcaption></figure>
+          <figure><audio src="media/audio/vo-af_nicole.m4a" controls preload="none"></audio><figcaption><b>af_nicole</b> · 154 Hz, whispery and slow</figcaption></figure>
+        </div>
+        <h3 data-toc="Music (Flow Music)">2 · Music in Flow Music (yours)</h3>
+        <p>Four takes came in, all a steady 103.4 BPM and 60–67 s long; the picks and the 15 s splice are in §1. The prompts, for a redo:</p>
+        <div class="fields">
+          <div class="field" data-max="900"><b>Music prompt, 30 seconds</b><pre>Instrumental only, no vocals, no lyrics. A 30-second playful comedy track for a short film about a family's winter mountain trip where only one person isn't lost. 104 BPM, 4/4, clear downbeats on every bar so a video can be cut to it. 0:00–0:04 a hesitant, searching intro: soft radio static, a lone plucked banjo that keeps stopping, a ticking woodblock. At 0:04 a sudden stop and one bar of near-silence with a single soft glockenspiel note. At 0:07 a warm, bouncy road-trip groove kicks in: stomps and handclaps, upright bass, strummed acoustic guitar, bright glockenspiel and sleigh-bell accents, building steadily. At 0:24 a one-bar drop to just stomps and bass, then a joyful, resolving final chord and a clean ending at exactly 0:30. Leave space in the mid frequencies for a voiceover.</pre></div>
+          <div class="field" data-max="600"><b>Music prompt, 15 seconds</b><pre>Instrumental only, no vocals. A 15-second playful road-trip sting, 104 BPM, 4/4, clear downbeats for cutting: two bars of a hesitant, searching banjo and radio static, a sudden stop at 0:03, then a warm bouncy groove with stomps, handclaps, upright bass, strummed acoustic guitar and glockenspiel, a joyful final chord at 0:13 and a clean ending at exactly 0:15. Leave room for a voiceover.</pre></div>
+        </div>
+      </section>
+
+      <section id="stills" data-toc="Stills (spare)">
+        <h2>Stills (spare)</h2>
+        <p>For posts and thumbnails, full resolution from the recordings.</p>
+        <div class="gallery">
+          <figure class="tall"><img src="media/stills/phone-today.png" alt="iPhone Today, Day 2: Now till 11:30 AM, Sledding and snow play at the Wolverton Snowplay Area, zero bars" loading="lazy"><figcaption><a class="dl" href="media/stills/phone-today.png" download>phone-today.png</a></figcaption></figure>
+          <figure class="tall"><img src="media/stills/phone-map.png" alt="iPhone offline map, Day 2, the blue route with the GPS dot on it" loading="lazy"><figcaption><a class="dl" href="media/stills/phone-map.png" download>phone-map.png</a></figcaption></figure>
+          <figure class="tall"><img src="media/stills/phone-stay.png" alt="iPhone Today: Where you're staying, Wuksachi Lodge, and If something goes wrong with emergency numbers" loading="lazy"><figcaption><a class="dl" href="media/stills/phone-stay.png" download>phone-stay.png</a></figcaption></figure>
+          <figure><img src="media/stills/web-preview.png" alt="The live preview in a browser: day 2, Christmas in the snow, with its route on the map" loading="lazy"><figcaption><a class="dl" href="media/stills/web-preview.png" download>web-preview.png</a></figcaption></figure>
+        </div>
+      </section>
+
+      <section id="youtube" data-toc="YouTube upload">
+        <h2>YouTube upload: what to fill in, for each cut</h2>
+        <p>Three uploads, field by field in the order YouTube Studio asks. The <b>30 s cut is the one Waypack's home page and docs page will embed</b>, so upload it first.</p>
+        <table class="grid">
+          <tr><th>Cut</th><th>Visibility</th></tr>
+          <tr><td><b>30 s · 16:9</b>, the main video</td><td>Public (or Unlisted until the pages are updated)</td></tr>
+          <tr><td><b>15 s · 16:9</b>, for ads and sharing</td><td>Unlisted: a link to share or use in an ad, without a near-copy of the 30 s on the channel</td></tr>
+          <tr><td><b>15 s · 9:16</b>, a Short</td><td>Public; vertical and under 3 minutes, so YouTube makes it a Short by itself</td></tr>
+        </table>
+
+        <h3>1 · The 30-second video</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Waypack: your AI agent plans the trip, Waypack keeps it working offline</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Up in the mountains, there's no signal. Rosa doesn't need any: her AI agent planned the trip, and Waypack keeps it working offline.
+
+Plan a trip with any MCP agent and Waypack: it researches, maps real routes and sends you a live preview as it plans. Tap Download on the Wi-Fi, and the trip works in airplane mode:
+• Today: what's happening now and what's next.
+• Day-by-day plans with the why, lodging and check-in, backup plans and emergency numbers.
+• An offline map with your routes and your GPS dot (offline maps with Waypack Pro).
+
+Waypack: https://waypack.hejitech.workers.dev
+How it works: https://tianhaoz95.github.io/hejitech-apps/waypack/
+
+The trip in this video is the app's example trip: check road and park conditions before you go. People and scenes in this video are AI-generated, and the narration is a synthetic voice.
+
+#Travel #RoadTrip</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/waypack-launch-30-thumbnail.jpg" alt="Thumbnail: the end card, the Waypack icon, the name and 'Your trip, packed.' in terracotta on cream, with the line and the disclaimer below" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, the end card (29.6 s)<br><a class="dl" href="media/youtube/waypack-launch-30-thumbnail.jpg" download>waypack-launch-30-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/waypack-launch-30.mp4" download>waypack-launch-30.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/waypack-launch-30.srt" download>waypack-launch-30.srt</a> (9 cues)</td></tr>
+          <tr><th>Playlist</th><td>Make a <b>Waypack</b> playlist and add all three.</td></tr>
+        </table>
+
+        <h3>2 · The 15-second video (16:9)</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Waypack in 15 seconds: zero bars, and your trip still works</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>No signal in the mountains. Her AI agent planned the trip, and Waypack keeps it working offline: what's next, the map and her GPS dot, with zero bars.
+
+Waypack: https://waypack.hejitech.workers.dev
+How it works: https://tianhaoz95.github.io/hejitech-apps/waypack/
+
+Example trip: check road and park conditions before you go. People and scenes are AI-generated; the narration is a synthetic voice.
+
+#Travel #RoadTrip</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/waypack-launch-15-thumbnail.jpg" alt="Thumbnail: the same end card, from the 15-second cut" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720 (14.8 s)<br><a class="dl" href="media/youtube/waypack-launch-15-thumbnail.jpg" download>waypack-launch-15-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/waypack-launch-15.mp4" download>waypack-launch-15.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/waypack-launch-15.srt" download>waypack-launch-15.srt</a> (4 cues)</td></tr>
+        </table>
+
+        <h3>3 · The Short (9:16)</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Up in the mountains, there's no signal. Her trip doesn't need one. #Shorts</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Her AI agent planned the trip; Waypack keeps it working offline. What's next, the map, her GPS dot. Zero bars.
+
+https://waypack.hejitech.workers.dev
+
+Example trip: check conditions before you go. People and scenes are AI-generated; synthetic voice.
+
+#Travel #RoadTrip</pre></div>
+        </div>
+        <div class="gallery">
+          <figure class="tall"><img src="media/youtube/waypack-launch-15-vertical-thumbnail.jpg" alt="Vertical end card: the Waypack icon, name, tagline and the line on two lines, centred on cream" loading="lazy"><figcaption><b>Cover</b> · 1080×1920 (14.8 s)<br><a class="dl" href="media/youtube/waypack-launch-15-vertical-thumbnail.jpg" download>waypack-launch-15-vertical-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Thumbnail</th><td>A Short's cover is a frame of the video, picked in the YouTube app (Edit → Thumbnail) after upload; Studio on the web may not take a file. Pick the end card. The JPG is for posts elsewhere.</td></tr>
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/waypack-launch-15-vertical.mp4" download>waypack-launch-15-vertical.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/waypack-launch-15-vertical.srt" download>waypack-launch-15-vertical.srt</a>. Add it in Studio → Content → the Short → <b>Subtitles</b> if the upload dialog doesn't show Video elements.</td></tr>
+        </table>
+
+        <h3>4 · The same for all three</h3>
+        <table class="kv">
+          <tr><th>Thumbnail</th><td><b>Upload file</b> → the cut's JPG. A custom thumbnail needs a phone-verified channel; if the button is greyed out, use <b>Select from video</b> and pick the end card.</td></tr>
+          <tr><th>Audience</th><td><b>No, it's not made for kids.</b> Age restriction: <b>No</b>.</td></tr>
+        </table>
+        <div class="fields">
+          <div class="field" data-max="500"><b>Tags (Show more)</b><pre>Waypack, offline trip planner, AI travel planner, AI agent, MCP, offline maps, road trip, family travel, national park trip, no signal, travel app, iPhone app, trip itinerary</pre></div>
+        </div>
+        <table class="kv">
+          <tr><th>Paid promotion</th><td><b>Leave unticked</b>: it's your own product.</td></tr>
+          <tr><th>Altered content</th><td><b>Yes.</b> Rosa, Gus, Pip and the places are realistic AI-generated people and scenes, and the narration is a synthetic voice.</td></tr>
+          <tr><th>Automatic chapters</th><td>Untick; featured places: untick if shown.</td></tr>
+          <tr><th>Language &amp; captions</th><td>Video language <b>English</b>. Caption certification: <b>This content has never aired on television in the U.S.</b></td></tr>
+          <tr><th>License</th><td><b>Standard YouTube License</b>.</td></tr>
+          <tr><th>Allow embedding</th><td><b>On. Required</b> for the 30 s cut: Waypack's home page and docs page embed it.</td></tr>
+          <tr><th>Category</th><td><b>Science &amp; Technology</b> (or Travel &amp; Events, if you'd rather reach travellers).</td></tr>
+          <tr><th>Comments</th><td>On, <b>Hold potentially inappropriate comments for review</b>.</td></tr>
+          <tr><th>Add subtitles</th><td>Video elements → <b>Add subtitles → Upload file → With timing</b>, English → the cut's SRT. The video already has captions burned in, so CC shows the words twice; the file still helps sound-off embeds, search and translation.</td></tr>
+          <tr><th>End screen, cards</th><td><b>Skip both.</b> An end screen covers the end card's name and disclaimer.</td></tr>
+          <tr><th>Checks</th><td>The music is yours from Flow Music, the footage is yours from Flow and the voice is Kokoro (Apache 2.0), so a copyright claim is unlikely. If one appears, tell me what it names.</td></tr>
+          <tr><th>Visibility</th><td>As in the table at the top. <b>Private</b> can't be embedded.</td></tr>
+          <tr><th>Then</th><td>Send me the 30 s link: I put it on Waypack's home page and docs page.</td></tr>
+        </table>
+        <h3>Elsewhere</h3>
+        <div class="fields">
+          <div class="field" data-max="280"><b>Short post (X / Threads)</b><pre>Up in the mountains, there's no signal. Her trip doesn't need one: her AI agent planned it, and Waypack keeps it working offline. What's next, the map, her GPS dot. Zero bars.</pre></div>
+        </div>
+        <p class="note">The subtitle files come from <code>branding/promo-videos/scripts/waypack-launch-srt.mjs</code>, which reads where each line sits in the composition, so a re-cut gets matching subtitles by running it again.</p>
+      </section>
+
+      <section id="steps">
+        <h2>What to do, in order</h2>
+        <ol class="do">
+          <li><b>Settle the story</b>: notes on the story and characters, then Copy summary and paste it back.</li>
+          <li><b>Make Rosa and Gus</b> in Flow (portrait, Create body, character info, voice); keep the ones you like.</li>
+          <li><b>Make shot 2 first</b> (both characters, both lines, Pip on her hip), then the other six. Keep takes with no logos, signs or badges and nothing readable on screens.</li>
+          <li><b>Make the music</b> in Flow Music, both lengths.</li>
+          <li><b>Drop the files</b> into <code>branding/promo-videos/public/waypack-launch/</code>, any names, saying which is which.</li>
+          <li><b>Ask for the edit.</b> Done: the recordings, the voiceover and the three cuts are in §1, with the YouTube kit in §9.</li>
+          <li><b>Review the cuts</b> with sound (§1), and send notes or approve.</li>
+          <li><b>Upload</b> the approved cuts to YouTube with §9, then send me the 30 s link for Waypack's home page and docs page.</li>
+        </ol>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="wp-story"><span><b>Story and voiceover script settled</b></span></li>
+          <li><input type="checkbox" id="wp-rosa"><span><b>Rosa made and saved in Flow</b><small>Portrait, Create body, character info, voice</small></span></li>
+          <li><input type="checkbox" id="wp-gus"><span><b>Gus made and saved in Flow</b><small>Same four steps</small></span></li>
+          <li><input type="checkbox" id="wp-s1"><span><b>Shot 1 · no signal up here</b><small>No badges, no plates, no signs</small></span></li>
+          <li><input type="checkbox" id="wp-s2"><span><b>Shot 2 · "Does anyone have a single bar?"</b><small>Both lines land; faces stay apart</small></span></li>
+          <li><input type="checkbox" id="wp-s3"><span><b>Shot 3 · the glance</b><small>Screen faces away</small></span></li>
+          <li><input type="checkbox" id="wp-s4"><span><b>Shot 4 · the snowy road</b><small>Eyes on the road, phone in the mount</small></span></li>
+          <li><input type="checkbox" id="wp-s5"><span><b>Shot 5 · the cabin lockbox</b></span></li>
+          <li><input type="checkbox" id="wp-s6"><span><b>Shot 6 · weeks before, laptop</b><small>Lid faces the camera</small></span></li>
+          <li><input type="checkbox" id="wp-s7"><span><b>Shot 7 · "Where's the sledding hill?"</b></span></li>
+          <li><input type="checkbox" id="wp-m30"><span><b>Music, 30 s</b></span></li>
+          <li><input type="checkbox" id="wp-m15"><span><b>Music, 15 s</b></span></li>
+          <li><input type="checkbox" id="wp-files"><span><b>Files dropped in the promo folder</b></span></li>
+          <li><input type="checkbox" id="wp-review"><span><b>Cuts reviewed with sound</b></span></li>
+          <li><input type="checkbox" id="wp-yt30"><span><b>30 s uploaded</b><small>Title, description, thumbnail, subtitles, embedding on</small></span></li>
+          <li><input type="checkbox" id="wp-yt15"><span><b>15 s uploaded</b><small>Unlisted</small></span></li>
+          <li><input type="checkbox" id="wp-ytshort"><span><b>Short uploaded</b><small>Cover picked in the YouTube app</small></span></li>
+        </ul>
+      </section>
+
+      <section id="risks">
+        <h2>What can go wrong</h2>
+        <table class="grid">
+          <tr><th>Problem</th><th>What to do</th></tr>
+          <tr><td>Flow draws park signs, a park-service logo or uniform, car badges or a licence plate</td><td>Regenerate with "no signs, no logos, no badges, no plates" again at the end, or use a take where it's out of focus or cropped.</td></tr>
+          <tr><td>A phone or the laptop turns toward the camera and shows a screen</td><td>Use the part before it does, or regenerate; every prompt says the screens face away.</td></tr>
+          <tr><td>Shot 4 looks like distracted driving (Rosa looking at the phone)</td><td>Use only takes where her eyes stay on the road; regenerate with "eyes on the road the whole time". If Flow insists, park the car and keep the phone in the mount.</td></tr>
+          <tr><td>Rosa and Gus blend into each other (siblings, similar colouring)</td><td>Make shot 2 first as the test. His red trapper hat and Hawaiian shirt keep them apart; if Flow still mixes them, make his part as its own shot and the edit cuts between them.</td></tr>
+          <tr><td>Pip changes between shots, or a child looks uncanny</td><td>Keep Pip small in frame and use him for a second at a time; if a take looks wrong, cut to Rosa alone.</td></tr>
+          <tr><td>Gus's falls look painful</td><td>Keep takes where he lands softly in snow and gives the thumbs-up; the joke is his optimism.</td></tr>
+          <tr><td>Flow ad-libs extra lines</td><td>The edit keeps only the written lines and mutes the rest; I transcribe every take first.</td></tr>
+        </table>
+        <div class="unknown"><b>Answered:</b> the device-map download recorded in one take (≈7 s, sped up in the edit), and Flow kept Rosa, Gus and Pip apart in shot 2. <b>Still open:</b> how the mix sounds, which only your ears can tell.</div>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-11-01-waypack-promo-video</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>

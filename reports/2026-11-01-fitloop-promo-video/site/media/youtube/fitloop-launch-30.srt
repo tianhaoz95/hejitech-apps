@@ -1,0 +1,35 @@
+1
+00:00:00,450 --> 00:00:02,220
+Everyone at my gym is guessing.
+
+2
+00:00:03,510 --> 00:00:05,490
+Wait, how many sets is this?
+
+3
+00:00:05,710 --> 00:00:07,160
+My agent wrote mine.
+
+4
+00:00:07,360 --> 00:00:11,970
+My own AI agent plans my workouts and meals. FitLoop puts them in my glasses.
+
+5
+00:00:11,970 --> 00:00:15,100
+Set done? One tap. The rest timer starts itself.
+
+6
+00:00:15,860 --> 00:00:18,340
+Something hurts? I tell my agent, mid-set.
+
+7
+00:00:21,450 --> 00:00:24,420
+It reads everything back, and adjusts tomorrow's plan.
+
+8
+00:00:25,300 --> 00:00:27,400
+Okay. I'm getting an agent.
+
+9
+00:00:27,400 --> 00:00:30,230
+Your agent coaches. FitLoop keeps you on the plan.

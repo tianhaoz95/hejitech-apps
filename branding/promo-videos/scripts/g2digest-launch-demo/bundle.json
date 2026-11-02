@@ -1,0 +1,66 @@
+{
+  "date": "DATE",
+  "guide_version": "",
+  "brief_version": 0,
+  "edition": {
+    "title": "Morning brief",
+    "intro": "Demo edition made for G2 Digest's promo video. The line, the places, the results and the numbers are all invented; none of it is news.",
+    "sections": [
+      {
+        "section_id": "my-line",
+        "title": "My line",
+        "body": "The Harbor Line runs 24h from Friday. After a summer trial, night trains return for good: late shifts, late shows and early flights all get a train, with the quietest hours served by shorter trains.",
+        "sources": [{ "title": "Demo source: Harbor Line timetable notice", "url": "https://example.org/demo/harbor-line" }]
+      },
+      {
+        "section_id": "ocean-science",
+        "title": "Ocean science",
+        "body": "A reef lab regrew coral 4x faster than untreated plots by playing the sound of a healthy reef over damaged ones. Separately, a seawater battery kept its charge 3x longer than the last design thanks to a new salt membrane.",
+        "methodology": "Reef playback: underwater speakers play recordings of a healthy reef at night; young coral larvae swim towards the sound and settle. Plots with playback were compared with silent plots over a season. Seawater battery: the cell uses sea salt as its electrolyte; a thin membrane keeps the salt from fouling the electrodes, so the cell loses far less charge while it waits.",
+        "sources": [
+          { "title": "Demo source: reef playback field trial", "url": "https://example.org/demo/reef-playback" },
+          { "title": "Demo source: seawater battery preprint", "url": "https://example.org/demo/seawater-battery" }
+        ]
+      },
+      {
+        "section_id": "weekend",
+        "title": "Weekend",
+        "body": "Saturday 21°C, Sunday 23°C, rain 5%. A high-pressure system parks over the coast.",
+        "sources": [{ "title": "Demo source: Harbor City forecast", "url": "https://example.org/demo/forecast" }]
+      }
+    ]
+  },
+  "cards": [
+    { "slug": "cover", "kind": "cover", "title": "Morning brief", "body": "Night trains return, a reef that heals, a sunny weekend." },
+    {
+      "slug": "tldr", "kind": "tldr", "title": "Your line goes 24h from Friday", "body": "No more last-train sprint.", "key_number": "24h",
+      "glance": { "script": "If you only hear one thing today: from Friday the Harbor Line keeps running through the night, so a late shift or a late show still ends with a train home. The card on your line has the details." }
+    },
+    {
+      "slug": "harbor-line-night", "kind": "section", "section_id": "my-line", "template": "status",
+      "title": "Harbor Line: night trains, 24h", "body": "The trial is over and it stays.", "key_number": "24h",
+      "glance": { "script": "This one is about your own ride. The summer trial of night trains is over, and it worked well enough to stay. The quietest hours get shorter trains, so expect fewer seats after midnight, but a train will come." }
+    },
+    {
+      "slug": "reef-playback", "kind": "section", "section_id": "ocean-science", "template": "discovery",
+      "title": "Reef lab regrows coral 4x faster", "body": "Damaged reefs could recover in years, not decades.", "key_number": "4x",
+      "method_keyword": "sound playback", "source_url": "https://example.org/demo/reef-playback",
+      "glance": { "script": "A surprisingly simple result. Young coral find a home by listening, and a damaged reef has gone quiet. Play them the sound of a healthy one and far more of them settle. Hold for the deep dive on how the trial was run." },
+      "deep_dive": { "script": "DEEP_REEF" }
+    },
+    {
+      "slug": "seawater-battery", "kind": "section", "section_id": "ocean-science", "template": "discovery",
+      "title": "Seawater battery holds charge 3x longer", "body": "Cheap storage for coastal towns gets closer.", "key_number": "3x",
+      "method_keyword": "salt membrane", "source_url": "https://example.org/demo/seawater-battery",
+      "glance": { "script": "This matters for small coastal towns that store solar power overnight. Batteries that run on sea salt are cheap but leak their charge while they wait. A new membrane fixes most of that. The deep dive explains what it does." },
+      "deep_dive": { "script": "DEEP_BATTERY" }
+    },
+    {
+      "slug": "weekend-weather", "kind": "section", "section_id": "weekend", "template": "metric",
+      "title": "Sunny weekend ahead", "body": "High pressure parks over the coast.",
+      "metrics": [{ "label": "Saturday", "value": "21°C" }, { "label": "Sunday", "value": "23°C" }, { "label": "Rain", "value": "5%" }],
+      "glance": { "script": "Good news for anything outdoors. A high sits over the coast all weekend, so expect clear skies, light wind and the warmest day on Sunday afternoon. Bring sunscreen rather than an umbrella." }
+    },
+    { "slug": "end", "kind": "end", "title": "That's the brief", "body": "See the full edition on the web." }
+  ]
+}

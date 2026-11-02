@@ -90,7 +90,9 @@ export const PhoneRecording: React.FC<{
   from: number;
   rate?: number;
   lead: number;
-}> = ({ src, from, rate = 1, lead }) => {
+  backdrop?: string; // CSS background behind the phone; the brand navy by default
+  label?: string; // the demo tag, "Demo data" by default
+}> = ({ src, from, rate = 1, lead, backdrop = BACKDROP, label }) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const vertical = height > width;
@@ -102,7 +104,7 @@ export const PhoneRecording: React.FC<{
   return (
     <AbsoluteFill
       style={{
-        background: BACKDROP,
+        background: backdrop,
         alignItems: "center",
         justifyContent: "center",
       }}
@@ -135,7 +137,7 @@ export const PhoneRecording: React.FC<{
           }}
         />
       </div>
-      <DemoLabel />
+      <DemoLabel text={label} />
     </AbsoluteFill>
   );
 };
@@ -147,7 +149,9 @@ export const FlowShot: React.FC<{
   from: number;
   lead: number;
   zoom?: number;
-}> = ({ src, from, lead, zoom = 1 }) => {
+  origin?: string; // transform-origin of the zoom, e.g. "50% 0%" to keep the top (crops the bottom)
+  focusX?: number; // 9:16: the footage's x (0–1) to centre in the narrower frame; 0.5 by default
+}> = ({ src, from, lead, zoom = 1, origin = "50% 50%", focusX = 0.5 }) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const push = zoom * (1 + frame * 0.0007);
@@ -163,9 +167,10 @@ export const FlowShot: React.FC<{
           position: "absolute",
           width: w,
           height: h,
-          left: (width - w) / 2,
+          left: Math.min(0, Math.max(width - w, width / 2 - focusX * w)),
           top: (height - h) / 2,
           transform: `scale(${push})`,
+          transformOrigin: origin,
         }}
       />
     </AbsoluteFill>

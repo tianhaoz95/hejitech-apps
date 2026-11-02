@@ -57,6 +57,14 @@ Backup: _(not set up yet)_
 
 ## YouTube
 
-The 30 s cut is on YouTube as `7zRrCZNjr8s` (uploaded from `out/final/tradeboard-launch-30.mp4`).
+The 30 s cut was first uploaded as `7zRrCZNjr8s`; the HEJI TECH channel copy below replaces it.
 Its captions file comes from the voiceover timings:
 `node --experimental-strip-types scripts/tradeboard-launch-srt.mjs > out/tradeboard-launch-30.srt`.
+
+## On YouTube (HEJI TECH channel, Public, verified 2026-11-02)
+
+- 30 s 16:9: https://youtu.be/oVojWDFUrkc (id `oVojWDFUrkc`)
+- 15 s 9:16 Short: https://youtube.com/shorts/kRgtz4iZ4Dc (id `kRgtz4iZ4Dc`)
+
+The 30 s cut is the embed: the project's landing page (click-to-play poster from its opening frame),
+its docs page ("See it in 30 seconds"), its README, the HEJI home card and `pages/videos.md`.

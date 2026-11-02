@@ -1,0 +1,23 @@
+1
+00:00:00,500 --> 00:00:02,900
+Huh? Did I feed her?
+
+2
+00:00:03,370 --> 00:00:04,570
+I fed her.
+
+3
+00:00:04,700 --> 00:00:06,400
+Bottle, ninety mils.
+
+4
+00:00:06,400 --> 00:00:09,700
+Now I just whisper to my watch, and Wee Hours logs it.
+
+5
+00:00:09,750 --> 00:00:12,450
+We both see it, and we both go back to sleep.
+
+6
+00:00:12,450 --> 00:00:15,370
+Wee Hours. A newborn log built for three a.m.

@@ -1,0 +1,15 @@
+1
+00:00:00,250 --> 00:00:02,270
+Up in the mountains, there's no signal.
+
+2
+00:00:03,400 --> 00:00:06,660
+My agent planned the trip. Waypack keeps it working offline.
+
+3
+00:00:07,050 --> 00:00:10,170
+What's next, the map, my GPS dot. Zero bars.
+
+4
+00:00:12,250 --> 00:00:13,890
+Waypack. Your trip, packed.

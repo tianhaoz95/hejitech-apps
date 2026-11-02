@@ -1,0 +1,19 @@
+1
+00:00:00,250 --> 00:00:02,390
+Underground, nothing loads.
+
+2
+00:00:03,268 --> 00:00:04,650
+Is anyone's news loading?
+
+3
+00:00:04,650 --> 00:00:08,850
+My brief was ready last night. Cards in my glasses, audio in my headphones.
+
+4
+00:00:08,850 --> 00:00:11,200
+Swipe to skim. Hold for the deep dive.
+
+5
+00:00:11,200 --> 00:00:14,433
+G2 Digest. Your brief, ready before the train.

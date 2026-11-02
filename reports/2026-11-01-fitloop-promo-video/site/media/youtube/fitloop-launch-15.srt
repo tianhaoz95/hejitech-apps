@@ -1,0 +1,23 @@
+1
+00:00:00,450 --> 00:00:02,220
+Everyone at my gym is guessing.
+
+2
+00:00:02,650 --> 00:00:04,630
+Wait, how many sets is this?
+
+3
+00:00:04,890 --> 00:00:06,340
+My agent wrote mine.
+
+4
+00:00:06,790 --> 00:00:08,800
+FitLoop puts my plan in my glasses.
+
+5
+00:00:09,660 --> 00:00:12,140
+Something hurts? I tell my agent, mid-set.
+
+6
+00:00:12,650 --> 00:00:15,300
+Your agent coaches. FitLoop keeps you on the plan.

@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TinyTouch promo video kit (Google Flow)</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235b2d8c'/%3E%3Ccircle cx='16' cy='16' r='8' fill='%235890c8'/%3E%3Cpath d='M16 10.5l1.6 3.4 3.7.4-2.8 2.5.8 3.7-3.3-1.9-3.3 1.9.8-3.7-2.8-2.5 3.7-.4z' fill='%23ffe45c'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+  <style>
+    .shot { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); padding: 16px 18px; margin: 18px 0; }
+    .shot h3 { margin: 0 0 4px; }
+    .shot .meta-line { color: var(--mut); font-size: 14px; margin: 0 0 10px; }
+    .swatches { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+    .swatches span { display: inline-flex; align-items: center; gap: 8px; font: 13px "JetBrains Mono", monospace; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--panel); }
+    .swatches i { width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line); display: inline-block; }
+    .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .02em; border-radius: 999px; padding: 2px 9px; margin-right: 6px; vertical-align: 2px; border: 1px solid transparent; white-space: nowrap; }
+    .tag.new { background: color-mix(in srgb, #7c4dff 13%, transparent); color: #6a3fe0; border-color: color-mix(in srgb, #7c4dff 35%, transparent); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.new { color: #b9a2ff; } }
+    :root[data-theme="dark"] .tag.new { color: #b9a2ff; }
+    .worlds { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+    .worlds > div { border-radius: 14px; padding: 16px 18px; min-width: 0; }
+    .worlds .day { background: linear-gradient(135deg, #fff8ef, #f6e3d2); color: #2a2233; border: 1px solid #ecdccb; }
+    .worlds .play { background: radial-gradient(circle at 75% 20%, #6a3a9a, #22184a 70%); color: #f1ecff; }
+    .worlds b { display: block; margin-bottom: 4px; }
+    @media (max-width: 640px) { .worlds { grid-template-columns: 1fr; } }
+    .gallery { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); margin: 14px 0; }
+    .gallery figure { margin: 0; min-width: 0; }
+    .gallery figcaption { font-size: 13px; color: var(--mut); margin-top: 6px; }
+    .gallery figcaption b { color: var(--ink); }
+    .gallery img, .gallery video { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; background: #000; max-height: 380px; object-fit: contain; }
+    .gallery.vids { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+    .gallery.vids video { max-height: 420px; }
+    .gallery figure.tall video, .gallery figure.tall img { max-height: 520px; width: auto; max-width: 100%; margin: 0 auto; }
+    .takes { display: grid; gap: 10px; margin: 12px 0; }
+    .takes div { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--panel); }
+    .takes b { min-width: 110px; }
+    .takes audio { flex: 1 1 240px; min-width: 0; max-width: 100%; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>TinyTouch promo video kit (Google Flow)</b><small>A 30 s home comedy: a two-year-old keeps calling Dad's boss from his watch · first cut for review, YouTube kit, the Flow prompts it was made from</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <p class="kicker">First cut · 2026-11-01</p>
+        <h1>"She's called my boss. Twice."</h1>
+        <p class="lede">TinyTouch's promo is cut: a <b>30-second home comedy</b>, plus 15-second cuts in 16:9 and 9:16, from your six Flow shots and music, eight recordings of the real Watch and iPhone apps, and a Kokoro narration as Leo. Pip mashes Leo's watch and calls someone ("Hiii!"); Leo, deadpan: "She's called my boss. Twice." Then TinyTouch: bubbles, the puppy, stardust swipes from every edge, the iPhone switching the game and starting the lullaby, the three-second hold, and Pip asleep: "Zero calls." The YouTube kit for all three cuts is in §9.</p>
+        <div class="status">
+          <div><b>Story + scripts</b><span class="ok">As planned; every line landed (§2)</span></div>
+          <div><b>Characters</b><span class="ok">Leo and Pip, made in Flow</span></div>
+          <div><b>Flow shots</b><span class="ok">All 6 in and used</span></div>
+          <div><b>Recordings</b><span class="ok">7 used, real taps by UI test (§6)</span></div>
+          <div><b>Voiceover</b><span class="ok">am_echo + Leo's and Pip's Flow lines (§7)</span></div>
+          <div><b>Music</b><span class="ok">30 s take 2, 15 s take 1, by measurement (§1)</span></div>
+          <div><b>Edit</b><span class="todo">Rendered: your review with sound (§1)</span></div>
+          <div><b>YouTube</b><span class="todo">Kit ready for all three cuts (§9)</span></div>
+        </div>
+        <div class="callout"><b>Next for you:</b> watch the three cuts in §1 <b>with sound</b> and check the calls I made without you (music takes, the narration voice, two shots I cropped). Write what to change in <b>Your notes</b> and click <b>Copy summary</b>, or just tell me. When a cut is right, upload it with §9 and send me the 30 s link: it goes on the TinyTouch site and docs page.</div>
+      </section>
+
+      <section id="edit" data-toc="The edit · review">
+        <h2>The edit: three cuts to review</h2>
+        <p>Built in Remotion (<code>branding/promo-videos/src/tinytouch-launch</code>) from your six Flow shots, two of your music takes, seven recordings of the real apps and the <b>am_echo</b> narration. The jokes are in Leo's and Pip's own Flow voices; the narration, as Leo, says what TinyTouch does.</p>
+        <div class="gallery vids">
+          <figure><video src="media/edit/tinytouch-launch-30.mp4?v=1" poster="media/edit/tinytouch-launch-30.jpg?v=1" controls playsinline preload="none"></video><figcaption><b>30 s · 16:9</b> · the main cut · 30.1 s<br><a class="dl" href="media/edit/tinytouch-launch-30.mp4?v=1" download>tinytouch-launch-30.mp4</a></figcaption></figure>
+          <figure><video src="media/edit/tinytouch-launch-15.mp4?v=1" poster="media/edit/tinytouch-launch-15.jpg?v=1" controls playsinline preload="none"></video><figcaption><b>15 s · 16:9</b> · "Hiii!", "She's called my boss. Twice.", bubbles, swipes, the hold, end card · 15.1 s<br><a class="dl" href="media/edit/tinytouch-launch-15.mp4?v=1" download>tinytouch-launch-15.mp4</a></figcaption></figure>
+          <figure class="tall"><video src="media/edit/tinytouch-launch-15-vertical.mp4?v=1" poster="media/edit/tinytouch-launch-15-vertical.jpg?v=1" controls playsinline preload="none"></video><figcaption><b>15 s · 9:16</b> · Shorts / Reels / TikTok<br><a class="dl" href="media/edit/tinytouch-launch-15-vertical.mp4?v=1" download>tinytouch-launch-15-vertical.mp4</a></figcaption></figure>
+        </div>
+        <h3 data-toc="My calls while you were away">Calls I made while you were away</h3>
+        <table class="grid">
+          <tr><th>Call</th><th>What I picked, and why</th><th>To change it</th></tr>
+          <tr><td>Music</td><td><b>30 s: take 2. 15 s: take 1.</b> Both are full 1–2 minute songs, not 30/15 s stings, so I picked by measuring them (librosa beat tracking and loudness every 0.5 s). Those two run at 104.1 BPM, the prompt's tempo, with a quiet opening that breaks into a groove; take 1 of the 30 s is at another tempo. Each cut opens on the quiet part, the groove comes in as Leo hands Pip the watch, then the edit jumps on a beat to the track's own ending: for the 30 s, the stop and final hit land on the end card; for the 15 s, the quiet outro plays under the tagline. I couldn't listen to the splices.</td><td>Say "other take", or where it sounds wrong.</td></tr>
+          <tr><td>Narration voice</td><td><b>am_echo</b>: Leo's Flow voice is low (median pitch 64–98 Hz) and am_echo is the lowest Kokoro voice (107 Hz), so the narration and his lines sound closest to one man. The other voices are in §7.</td><td>Name another voice.</td></tr>
+          <tr><td>Shot 2 ("Hiii!")</td><td>Flow burned the word "Hiii!" into the picture from 4.25 s, low in the middle. The shot runs 1.2× zoomed, anchored at the top, so it's out of frame. Flow also turned the watch into a little handset she holds to her ear; it still reads as the joke.</td><td>Regenerate shot 2 without on-screen text if the zoom bothers you.</td></tr>
+          <tr><td>Shot 6 ("Zero calls.")</td><td>Its first 2.3 s show a <b>pink</b> watch with a lit, half-readable screen. The cut uses it from 2.85 s, zoomed a little, so only a faint glow remains.</td><td>—</td></tr>
+          <tr><td>Shot 5</td><td>Flow added a line ("You like that, don't you? Yeah. It is pretty cool."). It's muted: the narration plays over it.</td><td>—</td></tr>
+          <tr><td>The Digital Crown</td><td>Recorded, but on the simulator turning it didn't visibly inflate a bubble, so it isn't in the cut. "Swipes and the crown are part of the game" plays over the swipes.</td><td>I can record it on your watch if you want the crown shown.</td></tr>
+        </table>
+        <table class="kv">
+          <tr><th>Pace</th><td>Cuts sit on the music's beat grid (0.5763 s). The Watch part (0:08–0:24) goes shot 4 → bubbles → the puppy → stardust swipes → shot 5 → the iPhone remote (tap on Sound Garden) → the watch switching, then the moon → the 3-second hold opening the parent menu.</td></tr>
+          <tr><th>Transitions</th><td>A shot into its recording: a cross-zoom. Between beats: a blurred slide. Screens of one watch: a quick fade. Into the end card: a dreamy zoom.</td></tr>
+          <tr><th>Captions</th><td>Every spoken word, word by word, timed from a speech-recognition pass with the script's words. The end card carries the tagline instead of a caption.</td></tr>
+          <tr><th>Sound</th><td>Music ducks under every line; Flow's own sound only plays for the written lines. Loudness after a two-pass normalise: <b>−14.5 LUFS</b> (30 s) and <b>−14.3 LUFS</b> (both 15 s), peaks −1.3 dBTP.</td></tr>
+          <tr><th>On screen</th><td>"Simulator recording" on every recording; the watch simulator's clock is blurred out. End card: "No ads. No account. Nothing leaves your devices." and the small print: screens from the simulator, AI-generated people, and the side-button SOS note.</td></tr>
+          <tr><th>9:16</th><td>Flow shots cropped to the middle, shot 2 and shot 4 framed on Pip; the watch smaller to fit; captions higher.</td></tr>
+        </table>
+        <p class="note"><b>What I checked:</b> a frame every second of each cut, close-ups of the transitions, the phone and the end card; every cut transcribed back by speech recognition (all lines, in order, nothing from Flow's ad-libs; "Hiii!" checked by loudness since recognition skips it); lengths and loudness. <b>What I couldn't:</b> listen. Please watch with sound: the music splices, the mix of Flow's voices with the narration, how loud "Hiii!" is.</p>
+        <p class="note">The renders are reproducible (<code>npx remotion render tinytouch-launch-30 --concurrency=2</code> etc. in <code>branding/promo-videos</code>, then the loudness pass) and make this report 28 MB, so <code>media/edit/</code> stays out of git.</p>
+      </section>
+
+      <section id="story" data-toc="Story">
+        <h2>The story: a toddler with a direct line to Dad's boss</h2>
+        <p>Every parent who wears a watch knows this one: you pick up a toddler, the toddler finds the glowing thing on your wrist, and seconds later you're in a call you didn't make, a playlist is blasting, or the screen is somewhere you've never seen. The joke is Leo's calm despair; the turn is that TinyTouch makes the watch <i>hers</i> to play with, safely. The claims stay to what the app does (<code>projects/tinytouch/docs/index.md</code>): full-screen touches and the Digital Crown become play, every exit sits behind a 3-second hold, the iPhone is the remote, nothing is collected.</p>
+        <div data-block="arc"></div>
+        <div class="fields">
+          <div class="field" data-max="80"><b>Tagline (end card)</b><pre>Gentle play. No surprise calls.</pre></div>
+          <div class="field" data-max="80"><b>End card second line</b><pre>No ads. No account. Nothing leaves your devices.</pre></div>
+        </div>
+        <h3 data-toc="On-camera lines">On-camera lines (in the shot prompts, spoken in Flow)</h3>
+        <table class="grid">
+          <tr><th>Shot</th><th>Who</th><th>Line</th></tr>
+          <tr><td>1</td><td>Leo, quietly pleading, as Pip mashes his watch</td><td>"Please don't call anyone."</td></tr>
+          <tr><td>2</td><td>Pip, holding his wrist to her ear like a phone</td><td>"Hiii!"</td></tr>
+          <tr><td>3</td><td>Leo, deadpan to camera</td><td>"She's called my boss. Twice."</td></tr>
+          <tr><td>6</td><td>Leo, whispering to camera, Pip asleep on his shoulder</td><td>"Zero calls."</td></tr>
+        </table>
+        <h3 data-toc="Voiceover scripts">Narration (Leo, first person; between the lines above)</h3>
+        <div class="fields">
+          <div class="field" data-max="420"><b>Narration, 30-second cut</b><pre>So now, I open TinyTouch first. Every tap is a bubble, an animal, a note.
+
+Swipes and the crown are part of the game. Nothing gets out.
+
+From my phone, I switch the game, or start the lullaby.
+
+Getting out takes a three-second hold. Little fingers can't.
+
+TinyTouch. Gentle play. No surprise calls.</pre></div>
+          <div class="field" data-max="260"><b>Narration, 15-second cut</b><pre>TinyTouch turns every tap and swipe into gentle play.
+
+Getting out takes a three-second hold.
+
+TinyTouch. Gentle play. No surprise calls.</pre></div>
+          <div class="field" data-max="200"><b>Small text on the end card</b><pre>Watch and iPhone screens recorded in the simulator. People and scenes are AI-generated. The side-button SOS is a watch setting: the app shows how to turn it off.</pre></div>
+        </div>
+        <p class="note"><b>On camera vs narration.</b> The jokes are Leo's and Pip's own lines in their Flow voices, lip-synced; the narration only explains the app. I pick the Kokoro voice closest to Leo's Flow voice so he sounds like one man; if they don't match, the edit mutes Flow and his lines become captions over the music. The 15-second cut opens on shot 2 ("Hiii!") and shot 3 ("She's called my boss. Twice."), then the app.</p>
+        <p class="note"><b>One claim I kept out on purpose.</b> TinyTouch captures every touch on the screen and the crown, but no app can stop the side button: holding it can still start Emergency SOS. That's why the app has a guide for turning it off, and why the script says "nothing gets out" over the game (true) and never "no emergency calls". The joke is a call to the boss, a normal contact, not 911. The end card's small text says it.</p>
+      </section>
+
+      <section id="characters" data-toc="Characters">
+        <h2>The characters: Leo and Pip</h2>
+        <p>Two people. Leo is the lead and the narrator; Pip is the force of nature. Original faces, a warm, real-looking home comedy. No reference image was given, so the look comes from TinyTouch itself: soft afternoon light at home, then the app's own purple night and bright bubbles.</p>
+        <table class="kv">
+          <tr><th>Leo's watch</th><td>Part of his saved character (body prompt), on his left wrist in every shot: a plain black smartwatch, face blank, no logos. It's the product, so it must look the same everywhere.</td></tr>
+          <tr><th>Pip</th><td>About two, so Flow's voices (all adult) can only manage a word: she says "Hiii!" and otherwise giggles. She doesn't wear a watch.</td></tr>
+          <tr><th>Children in AI video</th><td>Pip is fully AI-generated and never in danger or distress. YouTube's "altered or synthetic content" box is ticked at upload, and the description says it.</td></tr>
+        </table>
+
+        <article class="shot">
+          <h3 data-toc="Leo">Leo, the dad: portrait, body, character info, voice</h3>
+          <p class="meta-line">Flow → Characters → New · <b>1. Portrait:</b> paste into "Describe your character…", make 2–4 and keep one · <b>2. Create body:</b> with that portrait selected, <b>Create body</b>, paste into "What do you want to change?" · save as <b>Leo</b> · <b>3. Character info:</b> on Leo's page, "Describe how your character acts…" · <b>4. Voice:</b> Select a voice → pick, paste the sample dialogue and the performance, Preview, <b>Add to character</b> · he narrates too, so his Flow voice sets the narration's voice</p>
+          <div class="fields">
+            <div class="field"><b>Leo · 1 · Portrait prompt</b><pre>Leo, a kind, easygoing dad in his mid-thirties with a dry sense of humour: patient, a little worn out, and very expressive with his eyebrows.
+
+Face: a warm, friendly face, light stubble, laugh lines, slightly tired eyes.
+
+Hair: short dark-brown hair, a bit tousled, as if a toddler has been pulling on it.
+
+Clothing in frame: a soft heather-blue crew-neck sweatshirt with a small damp spot on the shoulder. No logos, no text.
+
+Photorealistic, natural skin texture, head-and-shoulders portrait facing the camera, soft warm afternoon window light, plain warm-cream background, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Leo · 2 · Body prompt (Create body)</b><pre>Keep his face, hair and expression exactly the same. Show him full length, head to toe, standing and facing the camera.
+
+Body: average height, relaxed dad posture with his weight on one hip, as if he usually has a toddler there; left arm slightly raised.
+
+Wrist: a plain black smartwatch with a black silicone band on his left wrist, its face blank and dark, no logos. He always wears it.
+
+Outfit: the soft heather-blue crew-neck sweatshirt, relaxed dark-grey chinos, white canvas sneakers. No logos, no text, no brand marks.
+
+Same soft warm afternoon window light, plain warm-cream background, 50mm, photorealistic, natural skin texture.</pre></div>
+            <div class="field" data-max="1000"><b>Leo · 3 · Character info ("Describe how your character acts…")</b><pre>Leo is a patient, funny stay-at-home dad whose two-year-old, Pip, is obsessed with the watch on his left wrist. His humour is dry: when things go wrong he doesn't panic, he turns to the camera with a flat, long-suffering face and says one short line.
+
+On camera: calm, unhurried, gentle with Pip, who is usually on his hip or his lap. Big eyebrows, small sighs, a slow look to camera on every punchline, then a small proud smile when something finally works.
+
+Habits: a plain black smartwatch on his left wrist that Pip grabs; he offers his wrist to her to play. His watch face and his phone's screen always face away from the camera.
+
+On camera he speaks only the short lines written in a shot's prompt; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Leo · 4 · Voice to pick</b><pre>Achird</pre></div>
+            <div class="field" data-max="120"><b>Leo · 4 · Sample dialogue</b><pre>Please don't call anyone. She's called my boss. Twice. Zero calls. So now, I open TinyTouch first.</pre></div>
+            <div class="field" data-max="400"><b>Leo · 4 · Customize performance</b><pre>Warm, friendly and dry, like a dad telling a funny story about his own week. Calm, unhurried pace with a deadpan pause before the punchline; a soft whisper when the baby sleeps. A smile you can hear. Never salesy, never loud.</pre></div>
+          </div>
+          <p class="note">Achird is labelled "male, friendly, mid pitch" in Flow's list; pick another if you prefer, and the Kokoro narration is matched to it.</p>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Pip">Pip, the toddler: portrait, body, character info, voice</h3>
+          <p class="meta-line">Same four steps · save as <b>Pip</b> · in every Flow shot</p>
+          <div class="fields">
+            <div class="field"><b>Pip · 1 · Portrait prompt</b><pre>Pip, a cheerful, curious two-year-old girl with total confidence and a mischievous grin. Adorable in the polished way of a child in a family TV commercial.
+
+Face: round rosy cheeks, big bright dark-brown eyes with clear catchlights, a tiny button nose, a wide gap-toothed baby grin.
+
+Hair: soft light-brown toddler curls with one small tuft tied up on top with a plain yellow hair tie.
+
+Clothing in frame: a mustard-yellow ribbed cotton top with a rounded collar. No logos, no text.
+
+Photorealistic, polished commercial portrait, soft flattering light with a warm glow, plain warm-cream background, head-and-shoulders portrait facing the camera, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Pip · 2 · Body prompt (Create body)</b><pre>Keep her face, hair and expression exactly the same. Show her full length, head to toe, standing and facing the camera.
+
+Body: a small two-year-old toddler, sturdy and wobbly, one hand reaching up and forward as if grabbing something, the other holding a soft knitted bunny by the ear.
+
+Outfit: the mustard-yellow ribbed cotton top, soft cream corduroy dungarees, white socks, small tan toddler shoes. No watch, nothing on her wrists. No logos, no text, no brand marks.
+
+Same soft warm light, plain warm-cream background, 50mm, photorealistic, natural skin texture.</pre></div>
+            <div class="field" data-max="1000"><b>Pip · 3 · Character info ("Describe how your character acts…")</b><pre>Pip is two and believes her dad Leo's watch belongs to her. Bright, bold and delighted with herself: she grabs his wrist with both hands, mashes the glowing watch face with her whole palm, and laughs when something happens.
+
+How she acts on camera: always on her dad's hip, his lap or his shoulder, never alone; quick, curious hands; big belly laughs and wide surprised eyes; when she is sleepy she rubs her eyes and melts onto his shoulder. She never cries or looks upset.
+
+Habits: a soft knitted bunny that she drops whenever she sees the watch; she holds his wrist to her ear like a phone.
+
+She speaks only one word, "Hiii!", when a shot's prompt says so; otherwise she giggles. The narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Pip · 4 · Voice to pick</b><pre>Leda</pre></div>
+            <div class="field" data-max="120"><b>Pip · 4 · Sample dialogue</b><pre>Hiii! Hiii! Ha ha!</pre></div>
+            <div class="field" data-max="400"><b>Pip · 4 · Customize performance</b><pre>A very small child, about two: high, bright, sing-song and delighted. "Hiii!" is long and rising, like a toddler answering a toy phone. Lots of giggles. Never crying, never whining, never adult-sounding.</pre></div>
+          </div>
+          <p class="note">Flow's voices are adult voices; pick the youngest-sounding one (Leda is labelled youthful). If none sounds like a toddler, mute her: "Hiii!" becomes a caption and the visual (watch to her ear) still sells the joke.</p>
+        </article>
+      </section>
+
+      <section id="style" data-toc="Look and feel">
+        <h2>Look and feel: a sunny living room, then the app's purple</h2>
+        <p>Two worlds. Home is bright, warm and real: afternoon sun, cream and wood, toys on the rug. The app is TinyTouch's own night purple with glowing bubbles (the icon and the watch screens), and the cross-zoom into each recording carries us from one to the other. The last shot meets in the middle: dusk, Pip asleep, a faint purple glow from the lullaby.</p>
+        <div class="worlds">
+          <div class="day"><b>Home</b>Soft afternoon window light, a lived-in living room, a cream sofa, a knitted bunny, toys on the rug.</div>
+          <div class="play"><b>TinyTouch</b>Deep purple to coral, glowing bubbles, a smiling star, the sleepy moon.</div>
+        </div>
+        <div class="swatches">
+          <span><i style="background:#2a1f5c"></i>#2a1f5c night indigo</span>
+          <span><i style="background:#5b2d8c"></i>#5b2d8c TinyTouch purple</span>
+          <span><i style="background:#d0606e"></i>#d0606e coral</span>
+          <span><i style="background:#ff4081"></i>#ff4081 bubble pink</span>
+          <span><i style="background:#ffe45c"></i>#ffe45c star yellow</span>
+          <span><i style="background:#fff8ef"></i>#fff8ef home cream</span>
+        </div>
+        <table class="kv">
+          <tr><th>Camera</th><td>Handheld-feel home comedy: close-ups on Pip's hands and the wrist, a slow push-in on Leo's deadpan look to camera, held a beat for the laugh.</td></tr>
+          <tr><th>End card</th><td>The TinyTouch icon on the icon's purple-to-coral gradient, the name, the tagline, the second line and the small text.</td></tr>
+          <tr><th>Never on screen</th><td>A readable watch or phone screen in Flow shots (they face away), logos on devices or clothes, a 911/SOS screen, a crying or unsafe child, any claim about development or screen-time benefits.</td></tr>
+        </table>
+      </section>
+
+      <section id="storyboard" data-toc="Storyboard + Flow">
+        <h2>Storyboard and Flow prompts</h2>
+        <p>Times are for the 30-second cut. <b>Flow</b> is the generated shot (the edit uses 1.5–3 s of each); <b>Recording</b> is the real app (§6). Each prompt is one Copy: paste it into Flow with the characters it names added. The times as cut are in the table; the prompt cards keep the planned times.</p>
+        <div data-block="shots"></div>
+
+        <article class="shot">
+          <h3 data-toc="Flow settings (once)">Before the shots · Flow settings</h3>
+          <table class="kv">
+            <tr><th>Confirm before generating</th><td><b>Always</b>, so you see what's about to be generated before credits are spent.</td></tr>
+            <tr><th>Mode</th><td><b>Video · Ingredients</b>, with the characters the shot names added (Frames is for animating a still).</td></tr>
+            <tr><th>Shape</th><td><b>16:9</b> for every shot; the 9:16 cut is made from the same footage.</td></tr>
+            <tr><th>Drafts</th><td>The fast model · <b>720p · 8s · x1</b> (shot 1 can be 6s): cheap tries to check the joke, the faces, the lines, and that no screen is readable.</td></tr>
+            <tr><th>The take you keep</th><td>Re-run the prompt that worked on the best model, at the highest resolution offered (1080p if available), <b>x2</b>.</td></tr>
+            <tr><th>Sound</th><td>Keep it: the lines are used. The edit uses only the written words and mutes the rest.</td></tr>
+          </table>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 1 · the grab"><span class="tag new">Flow</span> Shot 1 · The grab</h3>
+          <p class="meta-line">0:00–0:03 · add Leo and Pip · the watch faces away</p>
+          <div class="fields"><div class="field"><b>Shot 1 prompt</b><pre>Video. A sunny, lived-in living room in the afternoon. Leo stands holding his two-year-old daughter Pip on his right hip. Pip spots the black smartwatch on his left wrist, drops her knitted bunny, grabs his wrist with both hands and mashes the watch face with her whole palm, giggling. Leo looks down at her and says quietly, pleading: "Please don't call anyone." Close-up on the two of them and the wrist, slow push-in, 50mm, soft warm window light, realistic family comedy. No logos, no text, the watch screen is never visible: it faces away from the camera. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 2 · Hiii!"><span class="tag new">Flow</span> Shot 2 · "Hiii!"</h3>
+          <p class="meta-line">0:03–0:05 · add Leo and Pip · the 15 s cut opens here</p>
+          <div class="fields"><div class="field"><b>Shot 2 prompt</b><pre>Video. The same sunny living room. A faint ringing tone comes from the smartwatch on Leo's left wrist. Leo freezes, eyes wide. Pip, on his hip, pulls his wrist up to her ear with both hands like a toy phone and says, long and delighted: "Hiii!" Leo slowly closes his eyes. Medium close-up on both faces, 50mm, warm afternoon light, comedic timing, realistic family comedy. No logos, no text, the watch screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 3 · my boss"><span class="tag new">Flow</span> Shot 3 · "She's called my boss."</h3>
+          <p class="meta-line">0:05–0:08 · add Leo and Pip · the punchline: make 4 drafts</p>
+          <div class="fields"><div class="field"><b>Shot 3 prompt</b><pre>Video. The sunny living room. Leo, holding Pip on his hip while she happily chews her knitted bunny's ear, turns slowly to look straight into the camera with a flat, long-suffering face, like a sitcom character breaking the fourth wall, and says dryly: "She's called my boss. Twice." He holds the look for a beat. Medium shot, slow push-in, 50mm, warm afternoon window light, realistic family comedy. No logos, no text. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 4 · her turn"><span class="tag new">Flow</span> Shot 4 · Her turn</h3>
+          <p class="meta-line">0:08–0:10, then the Watch recordings (bubbles, animals, swipe, crown) · add Leo and Pip · the watch faces away</p>
+          <div class="fields"><div class="field"><b>Shot 4 prompt</b><pre>Video. Leo sits on a cream sofa with Pip on his lap. He taps his smartwatch once with his right finger, then offers his left wrist to Pip with a small, confident smile. A soft colourful glow from the watch lights up Pip's face; her eyes go wide with wonder, and she taps the watch gently with one finger and bursts into a belly laugh. Close-up, 50mm, warm soft light, joyful. No logos, no text, the watch screen is never visible: it faces Pip, away from the camera. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 5 · the remote"><span class="tag new">Flow</span> Shot 5 · The remote</h3>
+          <p class="meta-line">0:17–0:18, then the iPhone remote recording · add Leo and Pip · the phone faces away</p>
+          <div class="fields"><div class="field"><b>Shot 5 prompt</b><pre>Video. On the sofa, Pip sits on Leo's lap holding his left wrist with both hands, absorbed in the watch and giggling. Leo, relaxed, holds his phone in his right hand with its back toward the camera and taps it once with his thumb, without taking the watch away from her. Pip gasps happily at the watch. Medium close-up, 50mm, warm late-afternoon light, calm and content. No logos, no text, the phone and watch screens are never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 6 · zero calls"><span class="tag new">Flow</span> Shot 6 · Zero calls</h3>
+          <p class="meta-line">0:25–0:28, then the end card · add Leo and Pip · after the sleepy-moon recording</p>
+          <div class="fields"><div class="field"><b>Shot 6 prompt</b><pre>Video. Dusk in the living room, the lamps low. Pip is asleep on Leo's shoulder, her knitted bunny tucked under her arm, his left hand on her back. A faint soft purple glow comes from the watch on his wrist. Leo looks into the camera and whispers proudly, raising his eyebrows: "Zero calls." Then he gives a tiny, satisfied nod. Medium close-up, slow push-in, 50mm, warm amber lamp light with a faint purple glow, peaceful ending. No logos, no text, the watch screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+      </section>
+
+      <section id="recordings" data-toc="Screen recordings">
+        <h2>Screen recordings: the real apps, real taps</h2>
+        <p>The Debug build of the iPhone and Watch apps on a paired iPhone 17 Pro and Apple Watch Ultra 3 simulator (iOS and watchOS 26.5), recorded with <code>simctl io recordVideo</code>. The taps, swipes, the crown and the 3-second hold are real touches from a throwaway UI test (an XCUITest that drives the installed apps; a simulator has no fingers), and the iPhone's switch reaches the watch over WatchConnectivity as it would on your wrist. TinyTouch has no account and no backend, so there was nothing to stage; nothing called anyone. Script: <code>branding/promo-videos/scripts/tinytouch-launch-record.mjs</code>.</p>
+        <div class="gallery vids">
+          <figure><video src="media/rec/rec-watch-bubbles.mp4" controls playsinline preload="none" muted></video><figcaption><b>rec-watch-bubbles</b> · taps make and pop bubbles · 0:10</figcaption></figure>
+          <figure><video src="media/rec/rec-watch-animals.mp4" controls playsinline preload="none" muted></video><figcaption><b>rec-watch-animals</b> · the puppy bounces · 0:12</figcaption></figure>
+          <figure><video src="media/rec/rec-watch-swipe.mp4" controls playsinline preload="none" muted></video><figcaption><b>rec-watch-swipe</b> · swipes from every edge leave stardust; no Control Center, no Notification Center · 0:13</figcaption></figure>
+          <figure><video src="media/rec/rec-phone-remote.mp4" controls playsinline preload="none" muted></video><figcaption><b>rec-phone-remote</b> · tap Sound Garden, then Start Calming Lullaby Now · 0:19</figcaption></figure>
+          <figure><video src="media/rec/rec-watch-garden.mp4" controls playsinline preload="none" muted></video><figcaption><b>rec-watch-garden</b> · the watch, meanwhile: bubbles → Sound Garden → the sleepy moon · 0:20</figcaption></figure>
+          <figure><video src="media/rec/rec-watch-shield.mp4" controls playsinline preload="none" muted></video><figcaption><b>rec-watch-shield</b> · a quick tap on the lock does nothing; the 3 s hold fills the ring and opens the Parent Menu · 0:21</figcaption></figure>
+          <figure><video src="media/rec/rec-watch-crown.mp4" controls playsinline preload="none" muted></video><figcaption><b>rec-watch-crown</b> (not used) · turning the crown on the simulator only shows the scroll bar</figcaption></figure>
+        </div>
+        <p class="note">To re-record: build the app for the simulator, build the UI-test project once (<code>xcodebuild build-for-testing</code>), boot a paired iPhone and watch, then <code>node branding/promo-videos/scripts/tinytouch-launch-record.mjs install bubbles animals swipe shield remote</code> (its header has the details). The watch simulator's clock shows the Mac's time, so the edit blurs it.</p>
+      </section>
+
+      <section id="audio" data-toc="Voiceover + music">
+        <h2>Narration and music</h2>
+        <h3 data-toc="Narration">1 · Narration (I make it)</h3>
+        <p>Generated locally with Kokoro-82M (Apache 2.0) by <code>branding/promo-videos/scripts/tinytouch-launch-vo.py</code>, every line read back by speech recognition. <b>In the edit: am_echo</b>, the closest in pitch to Leo's Flow voice. Each player is the whole 30 s narration in one voice:</p>
+        <div class="takes">
+          <div><b>am_echo</b> <span class="tag new">in the edit</span><audio controls preload="none" src="media/voice/narration-am_echo.m4a"></audio></div>
+          <div><b>am_michael</b><audio controls preload="none" src="media/voice/narration-am_michael.m4a"></audio></div>
+          <div><b>am_puck</b><audio controls preload="none" src="media/voice/narration-am_puck.m4a"></audio></div>
+          <div><b>am_fenrir</b><audio controls preload="none" src="media/voice/narration-am_fenrir.m4a"></audio></div>
+          <div><b>bm_george</b> (British)<audio controls preload="none" src="media/voice/narration-bm_george.m4a"></audio></div>
+        </div>
+        <p class="note">To swap, name a voice: the edit takes its files, and the line timings and subtitles are redone from a new speech-recognition pass (the other voices are slower, so a few lines move).</p>
+        <h3 data-toc="Music (Flow Music)">2 · Music in Flow Music (you make it)</h3>
+        <p><b>Your takes:</b> four full songs, 1–2 minutes each. In the edit: <b>30 s take 2</b> and <b>15 s take 1</b> (§1). For reference, the prompts:</p>
+        <p>Instrumental: a scrambling comic start for the chaos, a one-beat stop on "She's called my boss", then a warm, bouncy groove built from the app's own sounds (pentatonic chimes, plucks), winding down to a music-box ending for the sleepy moon. <b>Make two takes of each length</b>; I pick by measuring them against the story's beats. It doesn't have to be exactly 30 or 15 s.</p>
+        <div class="fields">
+          <div class="field" data-max="900"><b>Music prompt, 30 seconds</b><pre>Instrumental only, no vocals, no lyrics. A 30-second comedy track for a short film about a toddler who keeps grabbing her dad's smartwatch. 104 BPM, 4/4, clear downbeats on every bar so a video can be cut to it. 0:00–0:07 a busy, scrambling pizzicato and toy-piano figure with comic woodblock hits, playful chaos. At 0:07 a full one-beat stop, silence. Then at 0:08 a warm, bouncy, happy groove: ukulele, soft hand claps, glockenspiel and bright pentatonic chimes, building gently. At 0:24 it thins out into a soft music-box lullaby melody and ends on a warm, gentle resolving chord at exactly 0:30. Leave space in the mid frequencies for a voiceover.</pre></div>
+          <div class="field" data-max="600"><b>Music prompt, 15 seconds</b><pre>Instrumental only, no vocals. A 15-second comedy sting, 104 BPM, 4/4, clear downbeats for cutting: two bars of scrambling pizzicato and toy piano, a one-beat stop at 0:04, then a warm ukulele, hand-clap and pentatonic glockenspiel groove, thinning into a soft music-box phrase at 0:12 and a gentle resolving chord with a clean ending at exactly 0:15. Leave room for a voiceover.</pre></div>
+        </div>
+      </section>
+
+      <section id="stills" data-toc="Stills (spare)">
+        <h2>Stills for posts and thumbnails</h2>
+        <p>Made with the recordings: the watch screens in a device frame on the purple gradient, 16:9 and 9:16, plus the best Flow frames (Pip with the watch to her ear is the thumbnail candidate). For now, the icon the end card uses:</p>
+        <div class="gallery">
+          <figure><img src="media/stills/icon.png" alt="The TinyTouch app icon: a smiling yellow star in a blue bubble among coloured bubbles on a purple-to-coral gradient" loading="lazy"><figcaption><b>App icon</b> · 1024×1024<br><a class="dl" href="media/stills/icon.png" download>icon.png</a></figcaption></figure>
+        </div>
+      </section>
+
+      <section id="youtube" data-toc="YouTube upload">
+        <h2>YouTube upload: what to fill in, for each cut</h2>
+        <p>Three uploads, field by field in the order YouTube Studio's upload dialog asks. Each cut has its own title, description, thumbnail and subtitle file; the settings that are the same for all three come after. The <b>30 s cut is the one TinyTouch's site and docs page will embed</b>, so upload it first and send me its link.</p>
+        <table class="grid">
+          <tr><th>Cut</th><th>Visibility</th></tr>
+          <tr><td><b>30 s · 16:9</b>, the main video</td><td>Public (or Unlisted until the pages are updated)</td></tr>
+          <tr><td><b>15 s · 16:9</b>, for ads and sharing</td><td>Unlisted: a link to share or use in an ad, without a near-copy of the 30 s on the channel</td></tr>
+          <tr><td><b>15 s · 9:16</b>, a Short</td><td>Public; vertical and under 3 minutes, so YouTube makes it a Short by itself</td></tr>
+        </table>
+
+        <h3>1 · The 30-second video</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>TinyTouch: hand your watch to a toddler, without the surprise calls</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Hold a toddler with a watch on, and every tap is a phone call. She's called my boss. Twice.
+
+TinyTouch turns your watch into gentle play for little hands:
+• Every tap is a bubble, an animal or a note, and swipes and the Digital Crown are part of the game, so nothing gets out to your apps, notifications or contacts.
+• Five low-stimulation games, ending in a sleepy-moon lullaby.
+• Your iPhone is the remote: switch the game, set a timer or start the lullaby without taking the watch back.
+• Getting out takes a three-second hold. Little fingers can't.
+• No ads, no account, no data collected.
+
+Get TinyTouch on the App Store: https://apps.apple.com/us/app/tinytouch-toddler-lock-play/id6809942800
+More about TinyTouch: https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/
+
+TinyTouch captures touches on the screen and the Digital Crown; the side button is a watch setting, and the app shows how to turn off its emergency auto-dial. Watch and iPhone screens in this video were recorded in the simulator. People and scenes in this video are AI-generated, and the narration is a synthetic voice.
+
+#Parenting #AppleWatch</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/tinytouch-launch-30-thumbnail.jpg" alt="Thumbnail: the end card, the TinyTouch icon, the name and 'Gentle play. No surprise calls.' on a purple-to-coral gradient, with the small print at the bottom" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, the end card (frame at 28.6 s)<br><a class="dl" href="media/youtube/tinytouch-launch-30-thumbnail.jpg" download>tinytouch-launch-30-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/tinytouch-launch-30.mp4?v=1" download>tinytouch-launch-30.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/tinytouch-launch-30.srt" download>tinytouch-launch-30.srt</a> (11 cues) (Video elements, below)</td></tr>
+          <tr><th>Playlist</th><td>Make a <b>TinyTouch</b> playlist and add all three.</td></tr>
+        </table>
+
+        <h3>2 · The 15-second video (16:9)</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>TinyTouch in 15 seconds: your watch, safe in little hands</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>"Hiii!" She's called my boss. Twice. TinyTouch turns every tap and swipe into gentle play, and getting out takes a three-second hold.
+
+Get TinyTouch on the App Store: https://apps.apple.com/us/app/tinytouch-toddler-lock-play/id6809942800
+More about TinyTouch: https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/
+
+TinyTouch captures touches on the screen and the Digital Crown; the side button is a watch setting, and the app shows how to turn off its emergency auto-dial. Watch and iPhone screens in this video were recorded in the simulator. People and scenes in this video are AI-generated, and the narration is a synthetic voice.
+
+#Parenting #AppleWatch</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/tinytouch-launch-15-thumbnail.jpg" alt="Thumbnail: the same end card, from the 15-second cut" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, the end card (frame at 13.6 s)<br><a class="dl" href="media/youtube/tinytouch-launch-15-thumbnail.jpg" download>tinytouch-launch-15-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/tinytouch-launch-15.mp4?v=1" download>tinytouch-launch-15.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/tinytouch-launch-15.srt" download>tinytouch-launch-15.srt</a> (6 cues)</td></tr>
+        </table>
+
+        <h3>3 · The Short (9:16)</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>My toddler keeps calling my boss from my watch #Shorts</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>TinyTouch turns every tap and swipe into gentle play, and getting out takes a three-second hold.
+
+Get TinyTouch on the App Store: https://apps.apple.com/us/app/tinytouch-toddler-lock-play/id6809942800
+More about TinyTouch: https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/
+
+TinyTouch captures touches on the screen and the Digital Crown; the side button is a watch setting, and the app shows how to turn off its emergency auto-dial. Watch and iPhone screens in this video were recorded in the simulator. People and scenes in this video are AI-generated, and the narration is a synthetic voice.
+
+#Parenting #Shorts</pre></div>
+        </div>
+        <div class="gallery">
+          <figure class="tall"><img src="media/youtube/tinytouch-launch-15-vertical-thumbnail.jpg" alt="Thumbnail: the end card laid out for a tall frame" loading="lazy"><figcaption><b>Cover</b> · 1080×1920, the end card. In the YouTube app, pick the cover from the video's end; Studio on the web doesn't take a custom Short thumbnail.<br><a class="dl" href="media/youtube/tinytouch-launch-15-vertical-thumbnail.jpg" download>tinytouch-launch-15-vertical-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/tinytouch-launch-15-vertical.mp4?v=1" download>tinytouch-launch-15-vertical.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/tinytouch-launch-15-vertical.srt" download>tinytouch-launch-15-vertical.srt</a> (same timings as the 15 s cut). Add it in Studio → Content → the Short → <b>Subtitles</b> if the upload dialog doesn't show Video elements.</td></tr>
+        </table>
+
+        <h3>4 · The same for all three</h3>
+        <table class="kv">
+          <tr><th>Thumbnail</th><td><b>Upload file</b> → the cut's JPG. A custom thumbnail needs a phone-verified channel; if the button is greyed out, use <b>Select from video</b> and pick the end card.</td></tr>
+          <tr><th>Audience</th><td><b>No, it's not made for kids.</b> It's for parents, though a child appears in it. Age restriction: <b>No</b>.</td></tr>
+        </table>
+        <div class="fields">
+          <div class="field" data-max="500"><b>Tags (Show more)</b><pre>TinyTouch, toddler, toddler watch, Apple Watch app, kids app, toddler lock, accidental calls, parenting, parenting hacks, toddler games, sensory play, baby lullaby, iPhone app, parents</pre></div>
+        </div>
+        <table class="kv">
+          <tr><th>Paid promotion</th><td><b>Leave unticked</b>: it's your own product.</td></tr>
+          <tr><th>Altered content</th><td><b>Yes.</b> Leo, Pip and the rooms are realistic AI-generated people and scenes, and the narration is a synthetic voice. YouTube adds a small "Altered or synthetic content" label.</td></tr>
+          <tr><th>Automatic chapters</th><td>Untick; featured places: untick if shown.</td></tr>
+          <tr><th>Language &amp; captions</th><td>Video language <b>English</b>. Caption certification: <b>This content has never aired on television in the U.S.</b></td></tr>
+          <tr><th>License</th><td><b>Standard YouTube License</b>.</td></tr>
+          <tr><th>Allow embedding</th><td><b>On. Required</b> for the 30 s cut: TinyTouch's site and docs page will embed it.</td></tr>
+          <tr><th>Category</th><td><b>Science &amp; Technology</b> (or People &amp; Blogs).</td></tr>
+          <tr><th>Comments</th><td>On, <b>Hold potentially inappropriate comments for review</b>.</td></tr>
+          <tr><th>Add subtitles</th><td>Video elements → <b>Add subtitles → Upload file → With timing</b>, English → the cut's SRT. The words are the script's (Leo's and Pip's lines, the narration and the closing tagline), timed from the same speech pass as the captions in the video. The captions are already burned in, so a viewer who turns on CC sees the words twice; the file still helps search, translation and muted embeds.</td></tr>
+          <tr><th>End screen, cards</th><td><b>Skip both.</b> An end screen covers the end card's name and small print.</td></tr>
+          <tr><th>Checks</th><td>The music is yours from Flow Music, the footage is yours from Flow and the voice is Kokoro (Apache 2.0), so a copyright claim is unlikely. If one appears, tell me what it names.</td></tr>
+          <tr><th>Visibility</th><td>As in the table at the top. <b>Private</b> can't be embedded (the embed shows "Video unavailable").</td></tr>
+          <tr><th>Then</th><td>Send me the 30 s link: I put it on TinyTouch's site (a click-to-play poster; nothing loads from YouTube before the click, and the privacy page says so) and its docs page.</td></tr>
+        </table>
+
+        <h3>Elsewhere</h3>
+        <div class="fields">
+          <div class="field" data-max="280"><b>Short post (X / Threads)</b><pre>My toddler has called my boss from my watch. Twice. TinyTouch turns your watch into gentle play for little hands: every tap is a bubble, nothing gets out, and leaving takes a three-second hold.</pre></div>
+        </div>
+        <p class="note">The subtitle files come from <code>branding/promo-videos/scripts/tinytouch-launch-srt.mjs</code>, which reads where each line sits in the composition, so a re-cut gets matching subtitles by running it again.</p>
+      </section>
+
+      <section id="steps">
+        <h2>What to do, in order</h2>
+        <ol class="do">
+          <li><s>Settle the story; make Leo and Pip, the six shots and the music; drop the files.</s> <b>Done.</b></li>
+          <li><s>The recordings, the narration and the edit.</s> <b>Done (§1).</b></li>
+          <li><b>Review the three cuts</b> in §1 <b>with sound</b>; tell me what to change (Your notes, or just say it).</li>
+          <li><b>Upload</b> with §9, and send me the 30 s link for the site and docs page.</li>
+        </ol>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="tt-story"><span><b>Story, lines and narration settled</b></span></li>
+          <li><input type="checkbox" id="tt-leo"><span><b>Leo made and saved</b><small>Portrait, body (with his watch), character info, voice</small></span></li>
+          <li><input type="checkbox" id="tt-pip"><span><b>Pip made and saved</b><small>Same four steps</small></span></li>
+          <li><input type="checkbox" id="tt-s1"><span><b>Shot 1 · the grab</b><small>"Please don't call anyone."</small></span></li>
+          <li><input type="checkbox" id="tt-s2"><span><b>Shot 2 · "Hiii!"</b><small>Watch to her ear, screen away</small></span></li>
+          <li><input type="checkbox" id="tt-s3"><span><b>Shot 3 · "She's called my boss. Twice."</b><small>Make it first</small></span></li>
+          <li><input type="checkbox" id="tt-s4"><span><b>Shot 4 · her turn</b><small>The glow on her face, screen away</small></span></li>
+          <li><input type="checkbox" id="tt-s5"><span><b>Shot 5 · the remote</b><small>Phone back to camera</small></span></li>
+          <li><input type="checkbox" id="tt-s6"><span><b>Shot 6 · zero calls</b></span></li>
+          <li><input type="checkbox" id="tt-m30"><span><b>Music, 30 s</b><small>Two takes</small></span></li>
+          <li><input type="checkbox" id="tt-m15"><span><b>Music, 15 s</b><small>Two takes</small></span></li>
+          <li><input type="checkbox" id="tt-files"><span><b>Files dropped in the promo folder</b></span></li>
+          <li><input type="checkbox" id="tt-review"><span><b>Cuts reviewed with sound</b><small>§1: the music splices, the voices, "Hiii!"</small></span></li>
+          <li><input type="checkbox" id="tt-yt30"><span><b>30 s uploaded</b><small>Link sent for the site and docs</small></span></li>
+          <li><input type="checkbox" id="tt-yt15"><span><b>15 s uploaded</b><small>Unlisted</small></span></li>
+          <li><input type="checkbox" id="tt-ytshort"><span><b>Short uploaded</b></span></li>
+        </ul>
+      </section>
+
+      <section id="risks">
+        <h2>What can go wrong</h2>
+        <table class="grid">
+          <tr><th>Problem</th><th>What to do</th></tr>
+          <tr><td>Pip looks different between shots, or older than two</td><td>Always add the saved Pip; keep her on Leo's hip or lap as the prompts say. Regenerate takes where she drifts.</td></tr>
+          <tr><td>Pip sounds like an adult</td><td>Try the youngest voices with the performance text; otherwise mute her and "Hiii!" becomes a caption.</td></tr>
+          <tr><td>The watch screen shows something readable (or a call screen)</td><td>Use the part before it turns; regenerate with "the watch face turned toward Pip, away from the camera". The recording replaces what's on it.</td></tr>
+          <tr><td>In shot 2 she talks into his hand, not the watch</td><td>Regenerate with "his wrist, with the watch, pressed to her ear"; make 2–4 drafts.</td></tr>
+          <tr><td>It reads as "blocks emergency calls"</td><td>It doesn't, and the script never says so: the side button is outside any app. The end card's small text points to the app's guide.</td></tr>
+          <tr><td>It reads as screen time for babies</td><td>No development or learning claims; the shots show short, shared play on a parent's lap, ending in sleep.</td></tr>
+          <tr><td>The crown or the 3 s hold can't be driven on the simulator</td><td>XCUITest covers taps and long presses; if the crown can't be turned there, the edit drops <code>rec-watch-crown</code> and holds <code>rec-watch-swipe</code> longer.</td></tr>
+        </table>
+        <div class="unknown"><b>Settled by the takes and the recordings:</b> Flow kept Pip and Leo consistent across all six shots; the UI test drives taps, swipes and the 3-second hold on the watch simulator, but turning the crown there doesn't visibly inflate a bubble, so the crown isn't shown (§1). <b>Still open:</b> how the cuts sound; I measured, I didn't listen.</div>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-10-31-tinytouch-promo-video</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>

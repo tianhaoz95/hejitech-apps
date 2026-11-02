@@ -1,0 +1,39 @@
+1
+00:00:00,250 --> 00:00:02,390
+Underground, nothing loads.
+
+2
+00:00:03,268 --> 00:00:04,907
+Is anyone's news loading?
+
+3
+00:00:04,907 --> 00:00:06,507
+Mine was ready last night.
+
+4
+00:00:06,600 --> 00:00:10,800
+Overnight, my own AI agent turns my brief into cards for my glasses.
+
+5
+00:00:10,800 --> 00:00:14,060
+Swipe the ring to skim. One card, one glance.
+
+6
+00:00:14,600 --> 00:00:18,050
+Want more? Hold the ring, and the deep dive plays in my headphones.
+
+7
+00:00:18,050 --> 00:00:22,230
+I write the brief. My agent researches, writes, and checks every card.
+
+8
+00:00:23,584 --> 00:00:24,583
+It loaded!
+
+9
+00:00:24,583 --> 00:00:26,243
+Oh, this is my stop.
+
+10
+00:00:26,400 --> 00:00:29,840
+G2 Digest. Your brief, ready before the train.

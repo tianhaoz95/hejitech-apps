@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wee Hours promo video kit (Google Flow)</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23d9783b'/%3E%3Crect x='9' y='9' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='15' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='21' width='9' height='2.5' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+  <style>
+    .shot { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); padding: 16px 18px; margin: 18px 0; }
+    .shot h3 { margin: 0 0 4px; }
+    .shot .meta-line { color: var(--mut); font-size: 14px; margin: 0 0 10px; }
+    .swatches { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+    .swatches span { display: inline-flex; align-items: center; gap: 8px; font: 13px "JetBrains Mono", monospace; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--panel); }
+    .swatches i { width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line); display: inline-block; }
+    .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .02em; border-radius: 999px; padding: 2px 9px; margin-right: 6px; vertical-align: 2px; border: 1px solid transparent; white-space: nowrap; }
+    .tag.new { background: color-mix(in srgb, #2457d6 13%, transparent); color: #2457d6; border-color: color-mix(in srgb, #2457d6 35%, transparent); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.new { color: #8fb0ff; } }
+    :root[data-theme="dark"] .tag.new { color: #8fb0ff; }
+    .worlds { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+    .worlds > div { border-radius: 14px; padding: 16px 18px; color: #fff; min-width: 0; }
+    .worlds .night { background: radial-gradient(circle at 75% 20%, #3a2f6e, #0f0d1f 70%); color: #ece9ff; }
+    .worlds .day { background: linear-gradient(135deg, #fbf8f4, #f3e2cf); color: #1d1a2e; border: 1px solid #e6dfd6; }
+    .worlds b { display: block; margin-bottom: 4px; }
+    @media (max-width: 640px) { .worlds { grid-template-columns: 1fr; } }
+    .gallery { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); margin: 14px 0; }
+    .gallery figure { margin: 0; min-width: 0; }
+    .gallery figcaption { font-size: 13px; color: var(--mut); margin-top: 6px; }
+    .gallery figcaption b { color: var(--ink); }
+    .gallery video, .gallery img { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; background: #0a0818; max-height: 420px; object-fit: contain; }
+    .gallery figure.tall video, .gallery figure.tall img { max-height: 520px; width: auto; max-width: 100%; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>Wee Hours promo video kit (Google Flow)</b><small>A 30 s family sitcom: at 3am nobody remembers who fed the baby, except the four-year-old · story, characters and Flow prompts</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <!-- Filled from the sections' <h2>s by report.js; data-toc="Short label" on a section overrides. -->
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <h1>Who fed the baby? Ask the four-year-old.</h1>
+        <p class="lede">The plan for Wee Hours' promo: a <b>30-second family sitcom</b>, plus 15-second cuts in 16:9 and 9:16. At 3am Jun and Mei meet at the fridge, each holding an empty bottle, each sure they fed her. In the morning their four-year-old Doudou settles it to the minute. Then Wee Hours, on his wrist: with the baby in both arms and the lights off, Jun whispers the feed to his watch and it's logged; Mei sees it on her phone and goes back to sleep; when the baby's asleep, he logs without a word, with a tilt of his wrist. And Doudou copies him. The look comes from your reference: a bright, real-looking family sitcom with an earnest dad and a deadpan little girl. You make the characters, shots and music in Google Flow from the prompts below; I make the recordings of the iPhone, Watch and glasses apps, the narration and the edit.</p>
+        <div class="status">
+          <div><b>Story + scripts</b><span class="ok">Settled; two narration lines trimmed in the edit (§1)</span></div>
+          <div><b>Characters</b><span class="ok">Jun, Mei and Doudou made in Flow</span></div>
+          <div><b>Flow shots</b><span class="ok">All 7 in and used; shot 5 regenerated with Mei</span></div>
+          <div><b>Recordings</b><span class="ok">8 made: Watch voice, iPhone log, Mei's phone, tilt mode (§6)</span></div>
+          <div><b>Voiceover</b><span class="ok">am_fenrir narration + the family's own Flow lines</span></div>
+          <div><b>Music</b><span class="ok">Take 2 of each picked (§1)</span></div>
+          <div><b>Edit</b><span class="todo">Rendered: your review (§1)</span></div>
+          <div><b>YouTube</b><span class="todo">Kit ready for all three cuts (§8)</span></div>
+        </div>
+        <h3 data-toc="What changed">What changed from the first plan</h3>
+        <p>The promo-video workflow learned a lot making Headway's video. This plan follows it now:</p>
+        <table class="grid">
+          <tr><th>Change</th><th>Why</th></tr>
+          <tr><td><b>The story is set in Wee Hours' own world</b> (3am nursery, the fridge, the bedroom, a Saturday-morning living room). The first plan's shot 3 rebuilt your reference's kitchen-table scene, fruit tarts and all; it's gone.</td><td>Your reference sets the look (faces, wardrobe, light, sitcom grade), not the setting or plot.</td></tr>
+          <tr><td><b>Each character is four Flow fields</b>: portrait, body, character info, voice, instead of one block.</td><td>That's how Flow's character maker works; you can redo one step without the others.</td></tr>
+          <tr><td><b>Jun wears his watch in his saved character</b>, from the first shot.</td><td>A worn product must look the same in every shot; it's how he logs with full hands.</td></tr>
+          <tr><td><b>The jokes are spoken on camera</b> in the characters' Flow voices ("Did I feed her?", "I fed her.", Doudou's "Two-ten. Left side. You were snoring."); the narration explains the app.</td><td>Flow lip-syncs lines written into a shot prompt; funny lines land better from the character.</td></tr>
+          <tr><td><b>The Watch is the hero</b>: at 3am, baby in both arms, Jun whispers the feed to his watch (shot 4); later, with the baby asleep, he logs without a word by tilting his wrist (shot 6). Doudou's payoff copies the whisper.</td><td>Voice on the wrist is the selling point: no phone, no screen, no lights, hands stay on the baby. The audio goes to the iPhone, which understands it on the device, and the status comes back to the watch. Tilt mode logs with only the watch arm.</td></tr>
+          <tr><td><b>A Flow settings card</b> (Video · Ingredients, 16:9, drafts, keepers), <b>two music takes per length</b>, and the promo folder with an animatic, ready for your files.</td><td>Fewer wasted credits; I pick the music take by measuring it against the story.</td></tr>
+        </table>
+        <div class="callout"><b>Shot 5 is regenerated and re-cut:</b> Mei, not a child, reads her phone under "My wife sees it on hers" and goes back to sleep. <b>Next for you:</b> watch and listen to the three cuts in §1, and check the calls I made without you: the music takes, the narration voice and two narration lines I changed. Write what to change in <b>Your notes</b> and click <b>Copy summary</b>, or tell me. When a cut is right, upload it with §8 and send me the link: the 30 s goes on Wee Hours' home page and docs page.</div>
+      </section>
+
+      <section id="edit" data-toc="The edit · review">
+        <h2>The edit: three cuts to review</h2>
+        <p>Built in Remotion (<code>branding/promo-videos/src/weehours-launch</code>) from your seven Flow shots, take 2 of each music track, eight recordings of the real iPhone and Watch apps, and the <b>am_fenrir</b> narration. The jokes are in the family's own Flow voices; the narration, as Jun, says what Wee Hours does.</p>
+        <div class="gallery">
+          <figure><video src="media/edit/weehours-launch-30.mp4?v=5" poster="media/edit/weehours-launch-30.jpg?v=5" controls playsinline preload="none"></video><figcaption><b>30 s · 16:9</b> · the main cut · 30.4 s<br><a class="dl" href="media/edit/weehours-launch-30.mp4?v=5" download>weehours-launch-30.mp4</a></figcaption></figure>
+          <figure><video src="media/edit/weehours-launch-15.mp4?v=5" poster="media/edit/weehours-launch-15.jpg?v=5" controls playsinline preload="none"></video><figcaption><b>15 s · 16:9</b> · "Did I feed her?", "I fed her.", the watch, Mei's phone, end card · 15.5 s<br><a class="dl" href="media/edit/weehours-launch-15.mp4?v=5" download>weehours-launch-15.mp4</a></figcaption></figure>
+          <figure class="tall"><video src="media/edit/weehours-launch-15-vertical.mp4?v=5" poster="media/edit/weehours-launch-15-vertical.jpg?v=5" controls playsinline preload="none"></video><figcaption><b>15 s · 9:16</b> · Shorts / Reels / TikTok<br><a class="dl" href="media/edit/weehours-launch-15-vertical.mp4?v=5" download>weehours-launch-15-vertical.mp4</a></figcaption></figure>
+        </div>
+        <h3 data-toc="My calls while you were away">Calls I made while you were away</h3>
+        <table class="grid">
+          <tr><th>Call</th><th>What I picked, and why</th><th>To change it</th></tr>
+          <tr><td>Music</td><td><b>Take 2</b> of both lengths (≈103 BPM). Each cut opens on the take's tiptoeing intro, then jumps a whole number of bars ahead, so the groove stops as the end card comes in (30 s) and the track's final hit lands on the tagline (15 s).</td><td>Say "take 1".</td></tr>
+          <tr><td>Narration voice</td><td><b>am_fenrir</b>, the Kokoro voice closest to Jun's Flow voice, so the narration and his on-camera lines sound like one man. Takes in am_michael, am_puck, am_echo and bm_george are ready.</td><td>Name another voice.</td></tr>
+          <tr><td>"Except our four-year-old."</td><td><b>Cut</b> from the first narration line: the shot-3 reveal follows straight on, and Doudou says it better herself.</td><td>—</td></tr>
+          <tr><td>"Mei sees it on hers"</td><td>Now <b>"My wife sees it on hers"</b>. Kokoro says "Mei" so that it's heard as "They", and the name has no meaning to a viewer anyway.</td><td>—</td></tr>
+          <tr><td>Tilt mode</td><td>Shows a silent <b>diaper</b> log (tilt, lock, pinch), not a feed: the feed was just whispered, and a second feed minutes later would look wrong.</td><td>—</td></tr>
+        </table>
+        <table class="kv">
+          <tr><th>Pace</th><td>Cuts sit on the music's beats (each planned cut moves to the nearest beat within 0.25 s). The Watch beat (0:11–0:18) goes shot 4 → the watch listening → the iPhone logs the bottle → the watch's status says "Fed just now".</td></tr>
+          <tr><th>Transitions</th><td>A shot into its recording: a cross-zoom. Between beats: a blurred slide. Screens of one device: a quick fade. Into the end card: a dreamy zoom.</td></tr>
+          <tr><th>Captions</th><td>Every spoken word, word by word, timed from a speech-recognition pass; a line now leaves before the next one comes in. The end card carries the tagline instead of a caption.</td></tr>
+          <tr><th>Sound</th><td>Music ducks under every line. Loudness after a two-pass normalise: −14.5 LUFS for all three (peaks −0.4 dBFS on the 30 s, −1.2 on the 15 s); platforms target about −14.</td></tr>
+          <tr><th>On screen</th><td>"Demo data" on every recording. End card: "A log, not medical advice. Times shown are demo data. People and scenes are AI-generated." The simulator's clock is covered on the watch.</td></tr>
+          <tr><th>9:16</th><td>Flow shots centre-cropped; the watch and phone are scaled up for the tall frame; captions sit higher.</td></tr>
+        </table>
+        <p class="note"><b>What I checked:</b> frames every second of each cut and close-ups at the caption changes; the subtitle text against the script; lengths and loudness. <b>What I couldn't:</b> listen. Please watch with sound: the mix of Flow's voices with the narration and the music. <b>One honest note on the Watch beat:</b> the watch really opens recording, but a simulator can't whisper, so the phone was handed the words as Whisper writes them ("Bottle, 90 mils.") and ran its normal pipeline from there. That turned up a real bug: "mils" lost its amount. It's fixed in the app, with a test and a What's New line.</p>
+        <p class="note">The renders are reproducible (<code>npx remotion render weehours-launch-30 --concurrency=2</code> etc. in <code>branding/promo-videos</code>, then the loudness pass) and make this report 28 MB, so <code>media/edit/</code> stays out of git.</p>
+      </section>
+
+      <section id="story" data-toc="Story">
+        <h2>The story: 3am, two empty bottles, one witness</h2>
+        <p>Every new parent knows the 3am question: <i>did anyone feed her?</i> Jun, swaying in the dark nursery, can't remember. At the fridge he meets Mei, each holding an empty bottle, each sure: "I fed her." On Saturday morning, collapsed on the sofa, they're still arguing, until four-year-old Doudou walks past with her juice box and settles it: "Two-ten. Left side. You were snoring." Then Wee Hours, on his wrist: the next night, baby in both arms and the lights off, Jun raises his watch and whispers "Bottle, ninety mils." His phone understands it and logs it, and the watch shows the new status. Mei sees it on her phone and goes back to sleep. When the baby is finally asleep on his chest, he doesn't say a word: a tilt of the wrist and a pinch, and it's logged. The payoff belongs to Doudou, who has been watching: she whispers into her bare wrist.</p>
+        <div data-block="arc"></div>
+        <div class="fields">
+          <div class="field" data-max="80"><b>Tagline (end card)</b><pre>A newborn log built for 3am.</pre></div>
+        </div>
+        <h3 data-toc="On-camera lines">On-camera lines (in the shot prompts, spoken in Flow)</h3>
+        <table class="grid">
+          <tr><th>Shot</th><th>Who</th><th>Line</th></tr>
+          <tr><td>1</td><td>Jun, half-asleep, eyes snapping open</td><td>"Did I feed her?"</td></tr>
+          <tr><td>2</td><td>Jun and Mei, at the same time</td><td>"I fed her."</td></tr>
+          <tr><td>3</td><td>Doudou, deadpan, not stopping</td><td>"Two-ten. Left side. You were snoring."</td></tr>
+          <tr><td>4</td><td>Jun, whispering into his watch</td><td>"Bottle, ninety mils."</td></tr>
+          <tr><td>7</td><td>Doudou, into her bare wrist, copying shot 4</td><td>"Two cookies. Logged."</td></tr>
+        </table>
+        <h3 data-toc="Voiceover scripts">Narration (Jun, first person; between the lines above)</h3>
+        <div class="fields">
+          <div class="field" data-max="420"><b>Narration, 30-second cut</b><pre>At three a.m., nobody remembers anything.
+
+Now I just whisper to my watch. My phone understands it, right there.
+
+My wife sees it on hers, and goes back to sleep.
+
+Baby asleep? Not a word. I just tilt my wrist.
+
+Wee Hours. A newborn log built for three a.m.</pre></div>
+          <div class="field" data-max="260"><b>Narration, 15-second cut</b><pre>Now I just whisper to my watch, and Wee Hours logs it.
+
+We both see it, and we both go back to sleep.
+
+Wee Hours. A newborn log built for three a.m.</pre></div>
+          <div class="field" data-max="160"><b>Small text on the end card</b><pre>A log, not medical advice. Times shown are demo data. People and scenes are AI-generated.</pre></div>
+        </div>
+        <p class="note"><b>On camera vs narration.</b> The 15-second cut keeps shots 1 and 2 with their lines ("Did I feed her?", "I fed her."), then shot 4 and the Watch, then the narration. If the Flow takes sound good, the edit keeps Flow's audio for the lines and the narration skips them. For the narration I pick the Kokoro voice closest to Jun's Flow voice, so he sounds like one person; if they don't match well enough, the edit mutes Flow and Jun's lines become captions over the music.</p>
+      </section>
+
+      <section id="characters" data-toc="Characters">
+        <h2>The characters: the Chen family</h2>
+        <p>Made in the style of your reference, not as copies of anyone in it: a photoreal East Asian family in a bright, modern home, comedy carried by faces (his earnest pleading, her slow side-eye). New, original faces.</p>
+        <table class="kv">
+          <tr><th>Keep from the reference</th><td>The look of a polished short-drama sitcom: natural skin, soft warm light, casual clothes in red plaid and gingham, expressive faces held a beat longer for the laugh.</td></tr>
+          <tr><th>Not from the reference</th><td>Its setting and plot: no kitchen-table scene with tarts, no mom cooking in the background. The story happens where Wee Hours is used: the nursery at night, the fridge, the bedroom, the living room the morning after.</td></tr>
+          <tr><th>Don't</th><td>Upload the reference screenshot into Flow as an ingredient: it's another creator's frame, and it would pull Flow towards those exact faces. The prompts carry the style instead.</td></tr>
+          <tr><th>The newborn</th><td>Not a saved character: always a sleeping or fussing baby swaddled in a cream blanket, face mostly turned towards a parent's chest, which keeps it consistent across shots.</td></tr>
+        </table>
+
+        <article class="shot">
+          <h3 data-toc="Jun">Jun, the dad: portrait, body, character info, voice</h3>
+          <p class="meta-line">Flow → Characters → New · <b>1. Portrait:</b> paste into "Describe your character…", make 2–4 and keep the face you like · <b>2. Create body:</b> with that portrait selected, click <b>Create body</b> and paste into "What do you want to change?" · save as <b>Jun</b> · <b>3. Character info:</b> on Jun's page, "Describe how your character acts…" · <b>4. Voice:</b> Select a voice → pick, paste the sample dialogue and the performance, Preview, <b>Add to character</b> · he narrates too, so his Flow voice sets the narration's voice</p>
+          <div class="fields">
+            <div class="field"><b>Jun · 1 · Portrait prompt</b><pre>Jun, a loving, earnest new dad in his early thirties, sleep-deprived and very expressive: wide pleading eyes when he explains himself, a proud grin when something finally works.
+
+Face: East Asian man, warm friendly features, light stubble, faint tired shadows under his eyes.
+
+Hair: short black hair, slightly messy and flattened on one side as if he just got up.
+
+Clothing in frame: an unbuttoned red-and-cream plaid short-sleeve shirt over a plain white T-shirt. No logos, no text.
+
+Photorealistic, natural skin texture, head-and-shoulders portrait facing the camera, soft warm indoor light, plain light-beige background, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Jun · 2 · Body prompt (Create body)</b><pre>Keep his face, hair and expression exactly the same. Show him full length, head to toe, standing and facing the camera.
+
+Body: average build, a little slouched from tiredness, a white burp cloth over his left shoulder, one hand rubbing the back of his neck.
+
+Wrist: a plain black smartwatch with a black band on his left wrist, its face blank, worn high enough to raise to his mouth. He always wears it.
+
+Outfit: the unbuttoned red-and-cream plaid short-sleeve shirt over a plain white T-shirt, loose grey cotton lounge trousers, simple grey slippers. No logos, no text, no brand marks.
+
+Same soft warm indoor light, plain light-beige background, 50mm, photorealistic, natural skin texture.</pre></div>
+            <div class="field" data-max="1000"><b>Jun · 3 · Character info ("Describe how your character acts…")</b><pre>Jun is a devoted, frazzled new dad who is sure he remembers everything and never does. Earnest, warm, a little dramatic: caught out, he pleads with open hands; when something works, a small, proud, ridiculous grin.
+
+On camera: sleepy and swaying at night, eyes drifting shut and snapping open; big honest reactions by day. Always gentle with the baby, usually asleep on his chest. His daughter Doudou outsmarts him: he answers her with a sheepish face or a facepalm.
+
+Habits: a burp cloth on his shoulder; a plain black smartwatch on his left wrist that he logs everything on without letting go of the baby: he raises his wrist to his mouth and whispers to it, or, when the baby is asleep, tilts his wrist and pinches his fingers. The watch face and his phone's screen always face away from the camera.
+
+On camera he speaks only the short lines written in a shot's prompt; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Jun · 4 · Voice to pick</b><pre>Achird</pre></div>
+            <div class="field" data-max="120"><b>Jun · 4 · Sample dialogue</b><pre>Did I feed her? I fed her. Bottle, ninety mils. Now I just whisper to my watch.</pre></div>
+            <div class="field" data-max="400"><b>Jun · 4 · Customize performance</b><pre>Warm, friendly and a bit sleepy, like a tired dad telling a funny story about his own night. Natural pace, a little self-deprecating, with a smile you can hear. Whispers softly when the baby is asleep. Never salesy, never loud.</pre></div>
+          </div>
+          <p class="note">Achird is labelled "male, friendly, mid pitch" in Flow's list; pick another if you prefer. Then the narration's Kokoro voice is matched to it by pitch.</p>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Mei">Mei, the mom: portrait, body, character info, voice</h3>
+          <p class="meta-line">Same four steps · save as <b>Mei</b> · she's in shots 2, 3 and 5, mostly half-asleep</p>
+          <div class="fields">
+            <div class="field"><b>Mei · 1 · Portrait prompt</b><pre>Mei, a warm, quick-witted new mom in her early thirties, usually half-asleep and unimpressed, with a sleepy, knowing smile.
+
+Face: East Asian woman, natural look with no makeup, gentle features, slightly puffy tired eyes.
+
+Hair: long dark hair loosely tied back in a low ponytail, a few strands loose around her face.
+
+Clothing in frame: a loose white knit cardigan over a cream camisole. No logos, no text.
+
+Photorealistic, natural skin texture, head-and-shoulders portrait facing the camera, soft warm indoor light, plain light-beige background, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Mei · 2 · Body prompt (Create body)</b><pre>Keep her face, hair and expression exactly the same. Show her full length, head to toe, standing and facing the camera.
+
+Body: slim, relaxed, a little sleepy posture, one hand stifling a yawn.
+
+Outfit: the loose white knit cardigan over a cream camisole, red-and-white gingham lounge trousers, soft cream slippers. No logos, no text, no brand marks.
+
+Same soft warm indoor light, plain light-beige background, 50mm, photorealistic, natural skin texture.</pre></div>
+            <div class="field" data-max="1000"><b>Mei · 3 · Character info ("Describe how your character acts…")</b><pre>Mei is a loving, dry-humoured new mom who is just as sure as her husband Jun that she did the last feed. Calm, sleepy and quietly funny: her weapon is a slow, suspicious squint, a raised eyebrow or a sleepy smile, never shouting.
+
+How she acts on camera: half-asleep at night, moving slowly, blinking at bright light; in the morning she slumps on the sofa with a mug of tea. When she knows the baby has been fed, she relaxes completely and goes straight back to sleep, pulling the duvet over her head.
+
+Habits: a mug of tea; when she checks her phone in bed she holds it with the back toward the camera and reads it with one eye half-open.
+
+On camera she speaks only the short lines written in a shot's prompt; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Mei · 4 · Voice to pick</b><pre>Sulafat</pre></div>
+            <div class="field" data-max="120"><b>Mei · 4 · Sample dialogue</b><pre>I fed her. No, I fed her. Mm, she's fed. Good night.</pre></div>
+            <div class="field" data-max="400"><b>Mei · 4 · Customize performance</b><pre>Soft, warm and sleepy, dry and quietly amused. Slow, low-energy delivery, as if just woken up, with a hint of a smile. Never loud, never sharp.</pre></div>
+          </div>
+          <p class="note">Pick any soft, warm female voice in the list if Sulafat isn't there or doesn't fit; check the label (gender, quality, pitch) before choosing.</p>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Doudou">Doudou, the big sister: portrait, body, character info, voice</h3>
+          <p class="meta-line">Same four steps · save as <b>Doudou</b> (a common Chinese nickname, "little bean") · shots 3 and 7: the punchlines</p>
+          <div class="fields">
+            <div class="field"><b>Doudou · 1 · Portrait prompt</b><pre>Doudou, a four-year-old girl who is the calm, unimpressed judge of her family: slow side-eyes, a tiny pout, then a sudden mischievous grin. Adorable in the polished way of a child actor in a family TV commercial.
+
+Face: East Asian little girl with a sweet, photogenic face: large bright sparkling dark eyes with long lashes and clear catchlights, soft rosy cheeks, a small button nose, a tiny cheeky closed-mouth smile with one corner raised. Smooth, glowing skin.
+
+Hair: glossy black hair with neat, soft, rounded bangs, in two small tidy pigtails tied with plain hair ties, a small pink plastic hair clip on one side. No flyaways.
+
+Clothing in frame: the ruffled straps of a red-and-white gingham dress over a white cotton top. No logos, no text.
+
+Photorealistic, polished commercial portrait: soft flattering beauty light from the front with a warm glow, gentle rim light on her hair, plain light-beige background, head-and-shoulders portrait facing the camera, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Doudou · 2 · Body prompt (Create body)</b><pre>Keep her face, hair and expression exactly the same. Show her full length, head to toe, standing and facing the camera with her arms crossed.
+
+Body: a small four-year-old, standing very straight like a tiny judge, chin slightly raised.
+
+Outfit: a sleeveless red-and-white gingham dress with small ruffled straps over a white cotton top, white socks, small pink house slippers. No watch, nothing on her wrists. No logos, no text, no brand marks.
+
+Same soft warm indoor light, plain light-beige background, 50mm, photorealistic, natural skin texture.</pre></div>
+            <div class="field" data-max="1000"><b>Doudou · 3 · Character info ("Describe how your character acts…")</b><pre>Doudou is four and remembers everything her sleep-deprived parents forget. Deadpan, serious and secretly delighted with herself: she delivers facts like a tiny judge, then breaks into a mischievous grin when she gets away with something.
+
+How she acts on camera: unhurried and unimpressed; she doesn't stop walking to settle an argument; she gives a long, slow side-eye; she copies her dad's habits exactly, very seriously. Always gentle with the baby.
+
+Habits: a juice box or a cookie in hand; she imitates her dad by lifting her bare wrist to her mouth as if it were a watch (she doesn't wear one).
+
+On camera she speaks only the short lines written in a shot's prompt, clearly and matter-of-factly; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Doudou · 4 · Voice to pick</b><pre>Leda</pre></div>
+            <div class="field" data-max="120"><b>Doudou · 4 · Sample dialogue</b><pre>Two-ten. Left side. You were snoring. Two cookies. Logged.</pre></div>
+            <div class="field" data-max="400"><b>Doudou · 4 · Customize performance</b><pre>A small child's voice: high, clear and very matter-of-fact, like a tiny news anchor. Slow, precise, deadpan, with a short pause between each fact. A tiny smug lift on "Logged." Never whiny, never shouting.</pre></div>
+          </div>
+          <p class="note">Flow's voices are adult voices; pick the youngest-sounding one (Leda is labelled youthful) and let the performance make it a child's. If none sounds right, keep her lines as captions over the music.</p>
+        </article>
+      </section>
+
+      <section id="style" data-toc="Look and feel">
+        <h2>Look and feel: 3am and morning</h2>
+        <p>Two lights, like the app's two themes. The 3am scenes are dark blue-indigo with one warm lamp or the fridge light; the morning is bright and warm, sunlight across a lived-in living room. The app recordings appear in both, in its own light and dark themes.</p>
+        <div class="worlds">
+          <div class="night"><b>3am</b>Deep indigo shadows, a single warm night-light or the fridge's glow, sleepy faces, a swaddled baby.</div>
+          <div class="day"><b>Morning</b>Soft Saturday sunlight, a sofa with blankets and baby things everywhere, warm cream and orange.</div>
+        </div>
+        <div class="swatches">
+          <span><i style="background:#0f0d1f"></i>#0f0d1f 3am indigo</span>
+          <span><i style="background:#6a5ed6"></i>#6a5ed6 sleep violet</span>
+          <span><i style="background:#fbf8f4"></i>#fbf8f4 morning cream</span>
+          <span><i style="background:#d9783b"></i>#d9783b Wee Hours orange</span>
+          <span><i style="background:#2f8fcf"></i>#2f8fcf diaper blue</span>
+        </div>
+        <table class="kv">
+          <tr><th>Camera</th><td>Sitcom framing: two-shots, quick push-ins on reactions, a held beat on every punchline (the squint at the fridge, Doudou's line, the facepalm).</td></tr>
+          <tr><th>Never on screen</th><td>Readable phone or watch screens (they face away), brand logos on devices, the fridge or clothes, any real family's faces from the reference, feeding advice or medical claims.</td></tr>
+        </table>
+      </section>
+
+      <section id="storyboard" data-toc="Storyboard + Flow">
+        <h2>Storyboard and Flow prompts</h2>
+        <p>Times are for the 30-second cut. <b>Flow</b> is the generated shot (the edit uses 1.5–3 s of each); <b>Recording</b> is the real app (§6). Each prompt is one Copy: paste it into Flow with the characters it names added.</p>
+        <div data-block="shots"></div>
+
+        <article class="shot">
+          <h3 data-toc="Flow settings (once)">Before the shots · Flow settings</h3>
+          <table class="kv">
+            <tr><th>Confirm before generating</th><td><b>Always</b>, so you see what's about to be generated (and whether the prompt was rewritten) before credits are spent.</td></tr>
+            <tr><th>Mode</th><td><b>Video · Ingredients</b>, with the characters the shot names added as ingredients (Frames is for animating a still you already have).</td></tr>
+            <tr><th>Shape</th><td><b>16:9</b> for every shot; the 9:16 cut is made from the same footage.</td></tr>
+            <tr><th>Drafts</th><td>The fast model · <b>720p · 8s · x1</b>: cheap tries to check the joke, the faces, the lines and that no logos or readable screens appear.</td></tr>
+            <tr><th>The take you keep</th><td>Re-run the prompt that worked on the best model in the dropdown, at the highest resolution it offers (1080p if available; the final video is 1080p), <b>x2</b> to pick from.</td></tr>
+            <tr><th>Sound</th><td>Keep it: the lines are used. Flow sometimes adds words of its own; the edit uses only the written lines and mutes the rest.</td></tr>
+          </table>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 1 · 3am"><span class="tag new">Flow</span> Shot 1 · 3am</h3>
+          <p class="meta-line">0:00–0:03 · Video · 16:9 · add Jun</p>
+          <div class="fields"><div class="field"><b>Shot 1 prompt</b><pre>Video. 3am in a dark nursery lit only by a small warm night-light. Jun, half-asleep with messy hair and a burp cloth on his shoulder, sways slowly while holding a swaddled newborn in a cream blanket, the baby's face turned toward his chest. His eyes drift shut, then snap open in sudden panic and he whispers to himself: "Did I feed her?" Medium close-up, slow push-in, 35mm, deep indigo shadows with one warm pool of light on his face, cinematic sitcom comedy. No text, no logos. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 2 · the fridge"><span class="tag new">Flow</span> Shot 2 · Two empty bottles</h3>
+          <p class="meta-line">0:03–0:06 · Video · 16:9 · add Jun and Mei · hold the squint</p>
+          <div class="fields"><div class="field"><b>Shot 2 prompt</b><pre>Video. A dark modern kitchen at 3am. Jun and Mei, both half-asleep, each open one door of a double-door fridge at the same moment; the fridge light floods their faces. Each is holding an empty baby bottle. They look at each other's bottle and say at exactly the same time: "I fed her." Then a long, slow, suspicious squint at each other. Medium two-shot, 35mm, cool indigo darkness with the warm white fridge glow, comedic timing, cinematic sitcom look. No text, no logos, no brand names on the fridge. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 3 · the witness"><span class="tag new">Flow</span> Shot 3 · The witness</h3>
+          <p class="meta-line">0:06–0:11 · Video · 16:9 · add Jun, Mei and Doudou · make it first: three characters in one frame</p>
+          <div class="fields"><div class="field"><b>Shot 3 prompt</b><pre>Video. Saturday morning in a sunlit, lived-in living room full of baby things. Jun and Mei slump on the sofa under a blanket, bleary-eyed, Mei holding a mug of tea, Jun holding the sleeping swaddled baby, both pointing at each other mid-argument. Their four-year-old daughter Doudou walks slowly past in front of the sofa holding a juice box, doesn't stop, gives them a long deadpan side-eye and says matter-of-factly: "Two-ten. Left side. You were snoring." Jun and Mei freeze and slowly look at each other. Medium-wide shot, 35mm, soft warm morning light, realistic family sitcom look. No text, no logos. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 4 · tell the watch"><span class="tag new">Flow</span> Shot 4 · He tells his watch</h3>
+          <p class="meta-line">0:11–0:13, then the Watch voice recording · Video · 16:9 · add Jun · the watch faces away · the video's selling point: make 4 takes</p>
+          <div class="fields"><div class="field"><b>Shot 4 prompt</b><pre>Video. 3am in the dark nursery, the main light off, only a small warm night-light. Jun holds the swaddled newborn with both arms against his chest, an empty bottle in one hand. Without letting go, he slowly raises his left wrist toward his mouth, the watch face turned away from the camera, and whispers to his smartwatch: "Bottle, ninety mils." A soft warm glow from the watch lights his chin for a moment. He lowers his wrist, glances down at the sleeping baby and gives a small, satisfied nod, calm for the first time. Medium close-up, slow push-in, 50mm, warm night-light against deep indigo shadows, cinematic. No logos, no text, the watch screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 5 · Mom sleeps"><span class="tag new">Flow · v2</span> Shot 5 · Mei goes back to sleep</h3>
+          <p class="meta-line">0:18–0:21, around the partner's-phone recording · Video · 16:9 · add <b>Mei only</b> (not Doudou) · the phone faces away</p>
+          <p class="callout"><b>Regenerated (shot-5-remake), in the edit now.</b> The first take showed a young girl with bangs, who reads as Doudou, while the narration says "My wife sees it on hers". The old prompt never said she's an adult, and its tight close-up under a duvet let Veo draw a child. The new prompt fixes her age, hair and the parents' bed, and puts the beats where the edit cuts: phone up at about 2 s, back to sleep from about 4.5 s. Keep a take where she's clearly the Mei of shot 2 (hair in a loose bun, early thirties).</p>
+          <div class="fields"><div class="field"><b>Shot 5 prompt</b><pre>Video. Night, the parents' bedroom lit by a faint blue glow and one warm bedside lamp. Mei, the adult mom from the fridge scene, a woman in her early thirties with her black hair in a loose, messy bun and a cream long-sleeved pyjama top, lies on her side in a queen-size bed under a white duvet; next to her, her husband's side of the bed is empty, the pillow dented. 0–2 s: she is asleep. At 2 s her phone buzzes softly on the duvet; she lifts it with its back toward the camera (the screen is never visible) and reads it with one eye half-open. Around 3 s she smiles, relieved. At 4.5 s she puts the phone face-down on the bedside table, rolls over and pulls the duvet up to her chin, already asleep again. No dialogue. Medium close-up from the side of the bed, so her face and the empty half of the bed are both in frame, 50mm, deep indigo night with soft warm lamp light on her face, realistic family sitcom look, gentle comedy. She is a grown woman, not a child; no children in the shot. No logos, no text, the screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 6 · not a word"><span class="tag new">Flow</span> Shot 6 · Not a word</h3>
+          <p class="meta-line">0:19–0:20, then the Watch tilt-mode recording · Video · 16:9 · add Jun · the watch faces away</p>
+          <div class="fields"><div class="field"><b>Shot 6 prompt</b><pre>Video. Early morning in the living room. Jun sits on the sofa with the swaddled baby finally asleep on his chest, both arms wrapped around her, a burp cloth on his shoulder. He doesn't dare make a sound. Without letting go, he slowly tilts his left wrist outward, then pinches his thumb and finger together once, and raises his eyebrows at the camera with a proud, ridiculous grin. The watch face is turned away from the camera. No dialogue. Medium close-up, 50mm, warm soft window light, sitcom comedy. No logos, no text, the watch screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 7 · Doudou logs"><span class="tag new">Flow</span> Shot 7 · Doudou has the last word</h3>
+          <p class="meta-line">0:23–0:30 · Video · 16:9 · add Doudou and Jun · the end card goes over its end</p>
+          <div class="fields"><div class="field"><b>Shot 7 prompt</b><pre>Video. The sunlit living room. Doudou stands by the coffee table next to a plate of cookies. She looks straight at the camera, raises her bare wrist to her mouth exactly the way her dad talks to his smartwatch (she isn't wearing one) and whispers seriously: "Two cookies. Logged." Then she grabs two cookies and grins mischievously. Behind her, Jun, holding the sleeping baby, notices and facepalms. Medium shot, slow push-in, 50mm, warm natural daylight, realistic family sitcom look, joyful ending. No text, no logos. 8 seconds.</pre></div></div>
+        </article>
+      </section>
+
+      <section id="recordings" data-toc="Screen recordings">
+        <h2>Screen recordings: what I recorded</h2>
+        <p>Made by me once the story is settled, from the real apps on the local stack with the seeded demo household (<code>parent1</code> and <code>parent2@example.com</code>), never a real family's log, and restored afterwards. The script will be <code>branding/promo-videos/scripts/weehours-launch-record.mjs</code>. The iPhone and Watch recordings sit in device frames with a "Demo data" tag.</p>
+        <table class="grid">
+          <tr><th>Recording</th><th>What it shows</th><th>Used at</th></tr>
+          <tr><td><code>rec-watch-listen</code></td><td>The watch opens already recording, as from its complication: Stop and the status line on top</td><td>0:13 (30 s), 0:06 (15 s)</td></tr>
+          <tr><td><code>rec-phone-log</code></td><td>The iPhone's timeline: the 90 ml bottle appears at the top</td><td>0:15 / 0:07</td></tr>
+          <tr><td><code>rec-watch-logged</code></td><td>Back on the watch: "Fed just now", sent from the phone</td><td>0:16 / 0:08</td></tr>
+          <tr><td><code>rec-partner</code></td><td>Mei's phone, signed in as the second parent: "Fed just now" already there</td><td>0:18 / 0:10</td></tr>
+          <tr><td><code>rec-watch-tilt-aim</code>, <code>-confirm</code>, <code>-done</code></td><td>Tilt mode: aim at Diaper, lock, pinch, logged</td><td>0:21–0:23 (30 s only)</td></tr>
+          <tr><td><code>rec-watch-home</code> (spare)</td><td>The watch's home screen</td><td>—</td></tr>
+        </table>
+        <p class="note">Made by <code>branding/promo-videos/scripts/weehours-launch-record.mjs</code> on a paired iPhone and Watch simulator, against the local stack with the seeded demo household (its parents renamed Jun and Mei for the film, a believable night staged on top), never a real family's log. Restored afterwards. Tilt mode came from the watch app's debug stages, since a simulator has no wrist. The glasses and timeline spares weren't needed.</p>
+      </section>
+
+      <section id="audio" data-toc="Voiceover + music">
+        <h2>Narration and music</h2>
+        <h3 data-toc="Narration">1 · Narration (I make it)</h3>
+        <p>Generated locally with Kokoro-82M (Apache 2.0, free for commercial use) once the script in §2 is settled: takes in male voices (<code>am_michael</code>, <code>am_puck</code>, <code>am_fenrir</code>, <code>am_echo</code>, <code>bm_george</code>), each checked word for word by speech recognition. I pick the one closest in pitch to Jun's Flow voice, so the narration and his lines sound like one person; you can swap it. <b>Picked: am_fenrir</b> (§1).</p>
+        <h3 data-toc="Music (Flow Music)">2 · Music in Flow Music (you make it)</h3>
+        <p>Instrumental: a tiptoeing, sleepy-comedy start that turns into a bright, bouncy family-sitcom groove. <b>Make two takes of each length</b> and drop both; I pick by measuring each against the story's beats (where the stop and the groove land) and say how to swap. It doesn't need to be exactly 30 or 15 s: the edit ends on the track's own ending.</p>
+        <div class="fields">
+          <div class="field" data-max="900"><b>Music prompt, 30 seconds</b><pre>Instrumental only, no vocals, no lyrics. A 30-second comedy track for a short film about sleep-deprived new parents. 104 BPM, 4/4, clear downbeats on every bar so a video can be cut to it. 0:00–0:06 a sneaky, tiptoeing pizzicato and soft music-box melody, like a lullaby trying not to wake anyone, with a comic bassoon on the off-beats. At 0:06 a one-beat pause, then a bright, bouncy family-sitcom groove kicks in: ukulele, hand claps, glockenspiel and a light drum beat, building steadily and confidently. At 0:23 a cheeky little glockenspiel run and a warm resolving chord with a clean ending at exactly 0:30. Leave space in the mid frequencies for a voiceover.</pre></div>
+          <div class="field" data-max="600"><b>Music prompt, 15 seconds</b><pre>Instrumental only, no vocals. A 15-second comedy sting, 104 BPM, 4/4, clear downbeats for cutting: two bars of sneaky tiptoeing pizzicato and music box, a one-beat pause at 0:04, then a bright ukulele, hand-clap and glockenspiel groove, a cheeky glockenspiel run at 0:12 and a warm resolving chord with a clean ending at exactly 0:15. Leave room for a voiceover.</pre></div>
+        </div>
+      </section>
+
+      <section id="youtube" data-toc="YouTube upload">
+        <h2>YouTube upload: what to fill in, for each cut</h2>
+        <p>Three uploads, field by field in the order YouTube Studio's upload dialog asks. Each cut has its own title, description, thumbnail and subtitle file; the settings that are the same for all three come after. The <b>30 s cut is the one Wee Hours' site and docs page will embed</b>, so upload it first and send me its link.</p>
+        <table class="grid">
+          <tr><th>Cut</th><th>Visibility</th></tr>
+          <tr><td><b>30 s · 16:9</b>, the main video</td><td>Public (or Unlisted until the pages are updated)</td></tr>
+          <tr><td><b>15 s · 16:9</b>, for ads and sharing</td><td>Unlisted: a link to share or use in an ad, without a near-copy of the 30 s on the channel</td></tr>
+          <tr><td><b>15 s · 9:16</b>, a Short</td><td>Public; vertical and under 3 minutes, so YouTube makes it a Short by itself</td></tr>
+        </table>
+
+        <h3>1 · The 30-second video</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Wee Hours: whisper the 3am feed to your watch, and both parents know</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>At 3am nobody remembers who fed the baby. Except the four-year-old.
+
+Wee Hours is a newborn log built for 3am:
+• Whisper it to your watch: "bottle, ninety mils". Your iPhone understands it on the device and logs it, and your watch shows the new status.
+• Both parents see it: your partner's phone has it right away, so they can go back to sleep.
+• Not a word: when the baby's finally asleep, tilt your wrist and pinch to log.
+• Also on Even G2 glasses.
+
+Open Wee Hours: https://weehours.hejitech.workers.dev
+How it works: https://tianhaoz95.github.io/hejitech-apps/weehours/
+
+Wee Hours is a log, not medical advice. Times and amounts in this video are demo data. People and scenes in this video are AI-generated, and the narration is a synthetic voice.
+
+#NewParents #AppleWatch</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/weehours-launch-30-thumbnail.jpg" alt="Thumbnail: the end card, the Wee Hours moon icon, the name and 'A newborn log built for 3am.' on night purple, with the disclaimer at the bottom" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, the end card (frame at 29.0 s)<br><a class="dl" href="media/youtube/weehours-launch-30-thumbnail.jpg" download>weehours-launch-30-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/weehours-launch-30.mp4?v=5" download>weehours-launch-30.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/weehours-launch-30.srt" download>weehours-launch-30.srt</a> (11 cues) (Video elements, below)</td></tr>
+          <tr><th>Playlist</th><td>Make a <b>Wee Hours</b> playlist and add all three.</td></tr>
+        </table>
+
+        <h3>2 · The 15-second video (16:9)</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Wee Hours in 15 seconds: the 3am feed, logged from your watch</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>"Did I feed her?" "I fed her." Now Jun just whispers it to his watch, Wee Hours logs it, and both parents go back to sleep.
+
+Open Wee Hours: https://weehours.hejitech.workers.dev
+How it works: https://tianhaoz95.github.io/hejitech-apps/weehours/
+
+Wee Hours is a log, not medical advice. Times and amounts in this video are demo data. People and scenes in this video are AI-generated, and the narration is a synthetic voice.
+
+#NewParents #AppleWatch</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/weehours-launch-15-thumbnail.jpg" alt="Thumbnail: the same end card, from the 15-second cut" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, the end card (frame at 14.6 s)<br><a class="dl" href="media/youtube/weehours-launch-15-thumbnail.jpg" download>weehours-launch-15-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/weehours-launch-15.mp4?v=5" download>weehours-launch-15.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/weehours-launch-15.srt" download>weehours-launch-15.srt</a> (6 cues)</td></tr>
+        </table>
+
+        <h3>3 · The Short (9:16)</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Who fed the baby at 3am? Ask the watch. #Shorts</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Whisper the 3am feed to your watch. Wee Hours logs it, and both parents go back to sleep.
+
+Open Wee Hours: https://weehours.hejitech.workers.dev
+How it works: https://tianhaoz95.github.io/hejitech-apps/weehours/
+
+Wee Hours is a log, not medical advice. Times and amounts in this video are demo data. People and scenes in this video are AI-generated, and the narration is a synthetic voice.
+
+#NewParents #Shorts</pre></div>
+        </div>
+        <div class="gallery">
+          <figure class="tall"><img src="media/youtube/weehours-launch-15-vertical-thumbnail.jpg" alt="Thumbnail: the end card laid out for a tall frame" loading="lazy"><figcaption><b>Cover</b> · 1080×1920, the end card. In the YouTube app, pick the cover from the video's end; Studio on the web doesn't take a custom Short thumbnail.<br><a class="dl" href="media/youtube/weehours-launch-15-vertical-thumbnail.jpg" download>weehours-launch-15-vertical-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/weehours-launch-15-vertical.mp4?v=5" download>weehours-launch-15-vertical.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/weehours-launch-15-vertical.srt" download>weehours-launch-15-vertical.srt</a> (same timings as the 15 s cut). Add it in Studio → Content → the Short → <b>Subtitles</b> if the upload dialog doesn't show Video elements.</td></tr>
+        </table>
+
+        <h3>4 · The same for all three</h3>
+        <table class="kv">
+          <tr><th>Thumbnail</th><td><b>Upload file</b> → the cut's JPG. A custom thumbnail needs a phone-verified channel; if the button is greyed out, use <b>Select from video</b> and pick the end card.</td></tr>
+          <tr><th>Audience</th><td><b>No, it's not made for kids.</b> It's for parents, though children appear in it. Age restriction: <b>No</b>.</td></tr>
+        </table>
+        <div class="fields">
+          <div class="field" data-max="500"><b>Tags (Show more)</b><pre>Wee Hours, newborn log, baby tracker, feeding log, new parents, newborn, night feeds, 3am feed, Apple Watch app, voice logging, iPhone app, Even G2, smart glasses, parenting app, baby feeding tracker</pre></div>
+        </div>
+        <table class="kv">
+          <tr><th>Paid promotion</th><td><b>Leave unticked</b>: it's your own product.</td></tr>
+          <tr><th>Altered content</th><td><b>Yes.</b> Jun, Mei, Doudou, the baby and the rooms are realistic AI-generated people and scenes, and the narration is a synthetic voice. YouTube adds a small "Altered or synthetic content" label.</td></tr>
+          <tr><th>Automatic chapters</th><td>Untick; featured places: untick if shown.</td></tr>
+          <tr><th>Language &amp; captions</th><td>Video language <b>English</b>. Caption certification: <b>This content has never aired on television in the U.S.</b></td></tr>
+          <tr><th>License</th><td><b>Standard YouTube License</b>.</td></tr>
+          <tr><th>Allow embedding</th><td><b>On. Required</b> for the 30 s cut: Wee Hours' site and docs page will embed it.</td></tr>
+          <tr><th>Category</th><td><b>Science &amp; Technology</b> (or People &amp; Blogs).</td></tr>
+          <tr><th>Comments</th><td>On, <b>Hold potentially inappropriate comments for review</b>.</td></tr>
+          <tr><th>Add subtitles</th><td>Video elements → <b>Add subtitles → Upload file → With timing</b>, English → the cut's SRT. The words are the script's (the family's lines, the narration and the closing tagline), timed from the same speech pass as the captions in the video. The captions are already burned in, so a viewer who turns on CC sees the words twice; the file still helps search, translation and muted embeds.</td></tr>
+          <tr><th>End screen, cards</th><td><b>Skip both.</b> An end screen covers the end card's name and disclaimer.</td></tr>
+          <tr><th>Checks</th><td>The music is yours from Flow Music, the footage is yours from Flow and the voice is Kokoro (Apache 2.0), so a copyright claim is unlikely. If one appears, tell me what it names.</td></tr>
+          <tr><th>Visibility</th><td>As in the table at the top. <b>Private</b> can't be embedded (the embed shows "Video unavailable").</td></tr>
+          <tr><th>Then</th><td>Send me the 30 s link: I put it on Wee Hours' home page (a click-to-play poster; nothing loads from YouTube before the click) and its docs page.</td></tr>
+        </table>
+
+        <h3>Elsewhere</h3>
+        <div class="fields">
+          <div class="field" data-max="280"><b>Short post (X / Threads)</b><pre>At 3am nobody remembers who fed the baby. Except the four-year-old. Wee Hours: whisper the feed to your watch, your iPhone logs it, and your partner goes back to sleep.</pre></div>
+        </div>
+        <p class="note">The subtitle files come from <code>branding/promo-videos/scripts/weehours-launch-srt.mjs</code>, which reads where each line sits in the composition, so a re-cut gets matching subtitles by running it again.</p>
+      </section>
+
+      <section id="steps">
+        <h2>What to do, in order</h2>
+        <ol class="do">
+          <li><b>Settle the story</b>: notes on §2 and §3, then Copy summary and paste it back.</li>
+          <li><b>Make Jun, Mei and Doudou</b> in Flow from §3: portrait, Create body, character info, voice.</li>
+          <li><b>Make the seven shots</b> from §5 with the named characters added; shot 3 first. Keep takes where the lines are clear, no screen is readable and there are no logos.</li>
+          <li><b>Make the music</b> in Flow Music: two takes of each length (§7).</li>
+          <li><b>Drop the files</b> into <code>branding/promo-videos/public/weehours-launch/</code>, any names, saying which is which.</li>
+          <li><b>Ask for the edit.</b> Meanwhile I make the recordings and the narration; the cuts come back here for review, with the YouTube kit. <b>Done (§1).</b></li>
+          <li><b>Review the three cuts</b> in §1 with sound; tell me what to change.</li>
+          <li><b>Upload</b> with §8, and send me the 30 s link for the home page and docs page.</li>
+        </ol>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="wh2-story"><span><b>Story, lines and narration settled</b></span></li>
+          <li><input type="checkbox" id="wh2-jun"><span><b>Jun made and saved</b><small>Portrait, body (with his watch), character info, voice</small></span></li>
+          <li><input type="checkbox" id="wh2-mei"><span><b>Mei made and saved</b><small>Same four steps</small></span></li>
+          <li><input type="checkbox" id="wh2-doudou"><span><b>Doudou made and saved</b><small>Same four steps</small></span></li>
+          <li><input type="checkbox" id="wh2-s1"><span><b>Shot 1 · 3am</b><small>"Did I feed her?"</small></span></li>
+          <li><input type="checkbox" id="wh2-s2"><span><b>Shot 2 · two empty bottles</b><small>No brand on the fridge</small></span></li>
+          <li><input type="checkbox" id="wh2-s3"><span><b>Shot 3 · the witness</b><small>Three characters in one frame: make it first</small></span></li>
+          <li><input type="checkbox" id="wh2-s4"><span><b>Shot 4 · he tells his watch</b><small>Wrist to mouth, watch face away, baby in both arms</small></span></li>
+          <li><input type="checkbox" id="wh2-s5b"><span><b>Shot 5 · Mei goes back to sleep (regenerated)</b><small>Mei only, clearly the adult of shot 2; phone faces away</small></span></li>
+          <li><input type="checkbox" id="wh2-s6"><span><b>Shot 6 · not a word</b><small>Watch faces away</small></span></li>
+          <li><input type="checkbox" id="wh2-s7"><span><b>Shot 7 · Doudou has the last word</b></span></li>
+          <li><input type="checkbox" id="wh2-m30"><span><b>Music, 30 s</b><small>Two takes</small></span></li>
+          <li><input type="checkbox" id="wh2-m15"><span><b>Music, 15 s</b><small>Two takes</small></span></li>
+          <li><input type="checkbox" id="wh2-files"><span><b>Files dropped in the promo folder</b></span></li>
+          <li><input type="checkbox" id="wh2-review"><span><b>Cuts reviewed with sound</b><small>§1</small></span></li>
+          <li><input type="checkbox" id="wh2-yt30"><span><b>30 s uploaded</b><small>Link sent for the site and docs</small></span></li>
+          <li><input type="checkbox" id="wh2-yt15"><span><b>15 s uploaded</b><small>Unlisted</small></span></li>
+          <li><input type="checkbox" id="wh2-ytshort"><span><b>Short uploaded</b></span></li>
+        </ul>
+      </section>
+
+      <section id="risks">
+        <h2>What can go wrong</h2>
+        <table class="grid">
+          <tr><th>Problem</th><th>What to do</th></tr>
+          <tr><td>The baby looks odd or changes between shots</td><td>Keep it swaddled with its face toward a parent's chest, as the prompts say; regenerate takes where the face is prominent.</td></tr>
+          <tr><td>Three characters in shot 3 blend into each other</td><td>Make it first, with all three added; keep a take where each matches their card. If Flow keeps mixing them, make Doudou's walk-past as its own shot and the edit cuts between them.</td></tr>
+          <tr><td>Doudou's voice sounds like an adult</td><td>Try the youngest-sounding voices with the performance text; if none works, mute her and her lines become captions (the joke still reads).</td></tr>
+          <tr><td>Flow changes or adds words to a line</td><td>Regenerate, or keep the take if the written line is in it: the edit uses only the written words.</td></tr>
+          <tr><td>In shot 4 he talks to his phone or his hand instead of the watch, or lets go of the baby</td><td>Make 4 takes; keep one where the wrist with the watch comes to his mouth and both arms stay around the baby. Regenerate with "the watch on his left wrist close to his lips".</td></tr>
+          <tr><td>The wrist tilt (shot 6) comes out as a wave or nothing</td><td>Regenerate with "a small, slow outward tilt of the wrist"; the recording that follows carries the meaning.</td></tr>
+          <tr><td>Flow shows something readable on a phone or watch</td><td>Use the part before it turns; the recording replaces what's on it.</td></tr>
+          <tr><td>The 3am scenes are too dark to read on a phone</td><td>The edit lifts the shadows a little; the prompts ask for one warm pool of light on faces.</td></tr>
+          <tr><td>It reads as advice about feeding</td><td>The script only says it logs; the end card says "A log, not medical advice."</td></tr>
+        </table>
+        <div class="unknown"><b>Settled by the takes:</b> Flow kept all three characters and the baby steady in shot 3; Doudou's lines came through clearly in a speech-recognition pass (how young she sounds is for your ears); the Watch simulator drives tilt mode through the app's debug stages. It can't take a real whisper, so the phone was given the words (§1, note).</div>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-10-30-weehours-promo-video</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- Order: design blocks → this report's config → the engine. -->
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>

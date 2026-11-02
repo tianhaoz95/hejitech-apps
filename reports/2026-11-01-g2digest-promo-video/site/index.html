@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>G2 Digest promo video kit (Google Flow)</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2307140b'/%3E%3Crect x='5' y='9' width='22' height='14' rx='3.5' fill='none' stroke='%233dff7a' stroke-width='2'/%3E%3Crect x='9' y='12.5' width='10' height='2' rx='1' fill='%233dff7a'/%3E%3Crect x='9' y='15.5' width='7' height='2' rx='1' fill='%233dff7a'/%3E%3Crect x='9' y='18.5' width='12' height='2' rx='1' fill='%233dff7a'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+  <style>
+    .shot { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); padding: 16px 18px; margin: 18px 0; }
+    .shot h3 { margin: 0 0 4px; }
+    .shot .meta-line { color: var(--mut); font-size: 14px; margin: 0 0 10px; }
+    .swatches { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+    .swatches span { display: inline-flex; align-items: center; gap: 8px; font: 13px "JetBrains Mono", monospace; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--panel); }
+    .swatches i { width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line); display: inline-block; }
+    .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .02em; border-radius: 999px; padding: 2px 9px; margin-right: 6px; vertical-align: 2px; border: 1px solid transparent; white-space: nowrap; }
+    .tag.new { background: color-mix(in srgb, #2457d6 13%, transparent); color: #2457d6; border-color: color-mix(in srgb, #2457d6 35%, transparent); }
+    .tag.me { background: color-mix(in srgb, #1f8a4c 15%, transparent); color: #1f8a4c; border-color: color-mix(in srgb, #1f8a4c 40%, transparent); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.new { color: #8fb0ff; } :root:not([data-theme="light"]) .tag.me { color: #6fe3a0; } }
+    :root[data-theme="dark"] .tag.new { color: #8fb0ff; }
+    :root[data-theme="dark"] .tag.me { color: #6fe3a0; }
+    .worlds { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+    .worlds > div { border-radius: 14px; padding: 16px 18px; color: #fff; min-width: 0; }
+    .worlds .metro { background: linear-gradient(135deg, #030805, #0f2a1a 55%, #c9a14e); text-shadow: 0 1px 2px rgb(0 0 0 / .4); }
+    .worlds .hud { background: radial-gradient(circle at 30% 20%, #0d2416, #03100a); color: #3dff7a; font-family: "JetBrains Mono", monospace; font-size: 14px; }
+    .worlds b { display: block; margin-bottom: 4px; }
+    @media (max-width: 640px) { .worlds { grid-template-columns: 1fr; } }
+    .gallery { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); margin: 14px 0; }
+    .gallery figure { margin: 0; min-width: 0; }
+    .gallery figcaption { font-size: 13px; color: var(--mut); margin-top: 6px; overflow-wrap: anywhere; }
+    .gallery figcaption b { color: var(--ink); }
+    .gallery video, .gallery img { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; background: #03100a; max-height: 420px; }
+    .gallery figure.tall video, .gallery figure.tall img { max-height: 520px; width: auto; max-width: 100%; margin: 0 auto; }
+    .gallery audio { width: 100%; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>G2 Digest promo video kit (Google Flow)</b><small>A 30 s metro comedy: underground nothing loads, except Sam's brief · first cut rendered: review with sound, then upload</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <h1>Underground, nothing loads. His brief was ready last night.</h1>
+        <p class="lede">The plan for G2 Digest's promo: a <b>30-second comedy</b> plus 15-second cuts in 16:9 and 9:16, set on a morning metro. The train dives into a tunnel and every phone in the carriage stalls. Sam doesn't notice: his own AI agent built his brief overnight, so it's already in his glasses as cards, and the deep dives are already in his headphones. He swipes the ring to skim and holds it to listen. His running gag is Bea, who spends the whole ride hunting for one bar of signal, until the train comes out of the tunnel and her news finally loads, just as the doors open at her stop. You make the characters, the shots and the music in Google Flow from the prompts below; I make the screen recordings of the glasses plugin and the web app, the voiceover and the edit.</p>
+        <div class="status">
+          <div><b>Story + scripts</b><span class="ok">Shot as written</span></div>
+          <div><b>Characters</b><span class="ok">Sam and Bea, from your Flow takes</span></div>
+          <div><b>Flow shots</b><span class="ok">7 of 7 in, all used</span></div>
+          <div><b>Recordings</b><span class="ok">5, local stack, demo edition</span></div>
+          <div><b>Voiceover</b><span class="ok">am_echo, picked by pitch</span></div>
+          <div><b>Music</b><span class="ok">15 s take 1, re-cut on its bars</span></div>
+          <div><b>Edit</b><span class="todo">3 cuts rendered: your review</span></div>
+          <div><b>YouTube</b><span class="todo">Kit ready (§YouTube): you upload</span></div>
+        </div>
+        <div class="cards">
+          <div class="card"><h3>Grounded in the app</h3>
+            <ul>
+              <li>Every claim comes from <code>projects/g2digest</code>: the user writes a brief in the web app; their own agent (any MCP client that can make audio) researches it, writes the cards and the audio, and checks every card with the validator before publishing; the glasses plugin opens on the list of editions, the R1 ring swipes card to card (dots show where you are), tap for the glance, hold for the deep dive; the latest edition is kept on the phone, so it plays offline.</li>
+              <li>The joke is the docs' own promise: "Nothing loads or generates while you ride."</li>
+              <li>Colours from the app icon: HUD green on deep green.</li>
+            </ul>
+          </div>
+          <div class="card"><h3>Built in from the last videos</h3>
+            <ul>
+              <li>Fast: a cut every 2–4 beats of the music, each Flow shot used for 1.5–3 s.</li>
+              <li>No green screens: the glasses' display can't be seen from outside, every phone faces away and the laptop's lid faces the camera. The product is shown in real recordings.</li>
+              <li>Not Headway again: Headway was a sunny Caltrain sprint with a woman lead; this is an underground metro, a man lead and an older foil, so the channel's two commute videos don't look alike.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>Next for you:</b> watch the three cuts in <a href="#edit">The edit</a> <b>with sound</b> (I can't listen: the mix, the voice and the music pick need your ears). Then either write notes and click <b>Copy summary</b>, or upload with the <a href="#youtube">YouTube section</a> and send me the 30 s link for G2 Digest's home and docs pages.</div>
+        <table class="grid">
+          <tr><th>If you want to redo</th><th>What to do</th></tr>
+          <tr><td>A Flow shot</td><td>Drop the new take in <code>branding/promo-videos/public/g2digest-launch/</code> and say which shot: I re-cut, re-render and recopy.</td></tr>
+          <tr><td>The narration voice</td><td>Say the voice (takes for five are in §Voiceover): the edit swaps one constant.</td></tr>
+          <tr><td>The music</td><td>Say "30 s take 1" etc.: I re-cut to that track's bars (all four takes are 103.4 BPM).</td></tr>
+          <tr><td>A line of the script</td><td>Change it in your notes: I regenerate that line, re-time captions and subtitles.</td></tr>
+        </table>
+      </section>
+
+      <section id="edit" data-toc="The edit · review">
+        <h2>The edit: three cuts to review</h2>
+        <p>Built in Remotion (<code>branding/promo-videos/src/g2digest-launch</code>) from your seven Flow shots, one of your music tracks, five real recordings of G2 Digest on the local stack and Sam's narration in Kokoro's <b>am_echo</b>. Bea's two lines and Sam's "Mine was ready last night." are the characters' own Flow voices; the narration says what G2 Digest does.</p>
+        <div class="gallery">
+          <figure><video src="media/edit/g2digest-launch-30.mp4" poster="media/edit/g2digest-launch-30.jpg" controls playsinline preload="none"></video><figcaption><b>30 s · 16:9</b> · the main cut · 30.7 s<br><a class="dl" href="media/edit/g2digest-launch-30.mp4" download>g2digest-launch-30.mp4</a></figcaption></figure>
+          <figure><video src="media/edit/g2digest-launch-15.mp4" poster="media/edit/g2digest-launch-15.jpg" controls playsinline preload="none"></video><figcaption><b>15 s · 16:9</b> · tunnel, Bea's question, glasses, ring, deep dive, end card · 14.5 s (fits a 15 s ad slot)<br><a class="dl" href="media/edit/g2digest-launch-15.mp4" download>g2digest-launch-15.mp4</a></figcaption></figure>
+          <figure class="tall"><video src="media/edit/g2digest-launch-15-vertical.mp4" poster="media/edit/g2digest-launch-15-vertical.jpg" controls playsinline preload="none"></video><figcaption><b>15 s · 9:16</b> · Shorts / Reels / TikTok · 14.5 s<br><a class="dl" href="media/edit/g2digest-launch-15-vertical.mp4" download>g2digest-launch-15-vertical.mp4</a></figcaption></figure>
+        </div>
+        <h3 data-toc="Calls I made">Calls I made while you were away</h3>
+        <table class="grid">
+          <tr><th>Call</th><th>What I picked, and why</th><th>To change it</th></tr>
+          <tr><td>Music</td><td><b>"15 s take 1"</b> for all three cuts. Flow Music made every take about a minute long, all at 103.4 BPM. Only this one has what the prompt asked for at its start: two stuttering "buffering" bars and a bar that stops dead. Its last 20 s is a steady groove into a clean ending. The 30 s cut uses its 2 buffering bars, its stop bar (under Sam's "Mine was ready last night."), then the groove from bar 17 to the track's own ending. The 15 s cuts skip the stop and join the groove at bar 23. Every splice is on a bar line, with a 3-frame crossfade. I picked by measurement (beat tracking and loudness every half second), not by ear.</td><td>Say which take: I re-cut on its bars.</td></tr>
+          <tr><td>Narration voice</td><td><b>am_echo</b>, the Kokoro voice closest to Sam's Flow voice: median pitch 105 Hz against his 99 Hz. am_michael (112 Hz) is the runner-up and is a little slower. am_fenrir, am_puck and bm_george sit at 122–150 Hz.</td><td>Say "am_michael" (takes for all five are below).</td></tr>
+          <tr><td>On-camera lines</td><td>Kept from Flow: Bea's "Is anyone's news loading?" and "It loaded! Oh, this is my stop.", and Sam's "Mine was ready last night." Flow's ad-libs in the other shots are muted: "Still works perfectly down here", "Yeah, that is actually pretty funny", "It was a dark and stormy night on the train", and a hum.</td><td>—</td></tr>
+          <tr><td>Glasses on screen</td><td>The glasses' own display (from the Even Hub simulator, green on black as the lenses draw it) floats over the carriage from shot 1, out of focus, as if seen through Sam's glasses.</td><td>—</td></tr>
+          <tr><td>Deep dive sound</td><td>Not layered under the deep-dive shot: the narration speaks there, and two voices at once muddied it. The deep dive's own audio exists if you want it (the demo edition's reef deep dive, Kokoro bf_emma).</td><td>Say so: I put a second of it after the line.</td></tr>
+          <tr><td>The 15 s</td><td>Bea's payoff ("It loaded!") doesn't fit under 15 s with the tagline. The 15 s ends on the deep dive and the end card instead.</td><td>A 16.5 s version with the payoff is one bar longer; it wouldn't fit a 15 s ad.</td></tr>
+        </table>
+        <table class="kv">
+          <tr><th>Pace</th><td>Every cut sits on a beat of the edited music bed (one beat is 0.58 s). Flow shots are on screen for 1.2–2.3 s and recordings for 1.7–2.9 s.</td></tr>
+          <tr><th>Transitions</th><td>From a Flow shot into its recording: a cross-zoom ("into his view"). Between story beats: a blurred slide. Into the end card: a dreamy zoom in the 30 s, and a plain fade in the 15 s cuts (from the glasses view the dreamy zoom flashed white). Everything pushes in slowly.</td></tr>
+          <tr><th>Captions</th><td>Every spoken word appears word by word, the narration and the characters' lines both, timed from a speech-recognition pass. Each caption clears before the next one. The end card carries the tagline instead of a caption.</td></tr>
+          <tr><th>Sound</th><td>The music ducks under every line, and the Flow lines are matched to the narration's level. Normalised in two passes: 30 s −14.2 LUFS, 15 s −14.4 LUFS, true peak −1.4 dB.</td></tr>
+          <tr><th>On screen</th><td>"Demo data" on every recording. The end card says "For Even G2 glasses + R1 ring · Works with any MCP agent" and "Not affiliated with Even Realities. Editions shown are demo data. People and scenes are AI-generated."</td></tr>
+          <tr><th>9:16</th><td>The Flow shots are cropped to the frame's height around the people, the glasses display widens to the frame, and the end card is laid out for the tall frame.</td></tr>
+        </table>
+        <p class="note"><b>What I checked:</b> a frame every second of each render (framing, captions, labels), the loudness level over time (on-camera lines against narration) and the two-pass loudness, the lengths, and that the subtitle files list every line in order with no overlaps. <b>What I couldn't:</b> listen. Please watch with sound, especially the stutter-to-stop-to-groove splices at 2.3 s, 4.6 s and 7.0 s in the 30 s cut.</p>
+        <p class="note">The renders can be rebuilt: run <code>npx remotion render g2digest-launch-30</code> (and the 15 s ids) in <code>branding/promo-videos</code>, then the loudness pass. They make this report 33 MB, so <code>media/edit/</code> stays out of git.</p>
+      </section>
+
+      <section id="story" data-toc="Story">
+        <h2>The story: the only person underground who isn't waiting</h2>
+        <p>A morning metro carriage, packed and sleepy. The train dives into the tunnel, the lights flicker, and every phone in the carriage stalls at once: people shake them, tilt them, hold them up. Sam, in his everyday-looking glasses and earbuds, keeps reading. Bea, standing next to him, holds her phone up to the ceiling on tiptoe and asks the carriage: "Is anyone's news loading?" Sam turns to the camera: "Mine was ready last night." He glances to the corner of his view: today's edition is there. A swipe of his thumb across the ring moves card to card; a hold, and the deep dive plays in his earbuds while Bea presses her phone flat against the window. Flashback to the night before: Sam types his brief on his laptop, closes it and switches off the lamp; his agent does the rest while he sleeps. Back on the train, it bursts out of the tunnel into daylight, every phone in the carriage buzzes at once, and Bea beams: "It loaded!" The doors open. "Oh, this is my stop." Sam, already done, gives the camera a nod and steps off.</p>
+        <div data-block="arc"></div>
+        <div class="fields">
+          <div class="field" data-max="80"><b>Tagline (end card)</b><pre>Your brief, ready before the train.</pre></div>
+        </div>
+        <h3 data-toc="Voiceover scripts">Voiceover scripts (Sam narrates, first person)</h3>
+        <div class="fields">
+          <div class="field" data-max="420"><b>Voiceover, 30-second cut</b><pre>Underground, nothing loads.
+
+Mine was ready last night.
+
+Overnight, my own AI agent turns my brief into cards for my glasses.
+
+Swipe the ring to skim. One card, one glance.
+
+Want more? Hold the ring, and the deep dive plays in my headphones.
+
+I write the brief. My agent researches, writes, and checks every card.
+
+G2 Digest. Your brief, ready before the train.</pre></div>
+          <div class="field" data-max="260"><b>Voiceover, 15-second cut</b><pre>Underground, nothing loads.
+
+My brief was ready last night: cards in my glasses, audio in my headphones.
+
+Swipe to skim. Hold for the deep dive.
+
+G2 Digest. Your brief, ready before the train.</pre></div>
+          <div class="field" data-max="160"><b>Small text on the end card</b><pre>For Even G2 glasses + R1 ring. Works with any MCP agent. Editions shown are demo data.</pre></div>
+        </div>
+        <p class="note"><b>On camera vs narration.</b> Bea asks "Is anyone's news loading?" and Sam answers "Mine was ready last night." on camera (shot 2), and Bea has the last laugh line, "It loaded! Oh, this is my stop." (shot 7), all in their Flow voices. If those takes sound good, the edit keeps Flow's audio there and the narration skips Sam's line. For the narration I pick the Kokoro voice closest to his Flow voice (likely <code>am_michael</code>), so he sounds like one person. If the voices don't match well enough, the edit mutes Flow and the narration says his line too (Bea's lines stay hers).</p>
+        <p class="note"><b>What it never says.</b> No real headlines, companies or sources on screen (the app's own rule: topics live only in users' briefs), and "AI agent" stays generic: no assistant's name or logo, because G2 Digest works with any MCP client. It never says the news is "better" or "faster" than the phone; it says when it was made (last night) and that nothing loads on the ride.</p>
+      </section>
+
+      <section id="character" data-toc="Characters">
+        <h2>The characters: Sam, and Bea</h2>
+        <p>The same movie style as the Headway and FitLoop promos, so the channel feels like one family: photoreal, expressive faces in cinematic light, a lead who plays to the camera, a comic foil who never does (until her last line). Both are new, original characters. Sam's glasses, ring and earbuds are part of his character from the first frame, so they look the same in every shot.</p>
+        <article class="shot">
+          <h3 data-toc="Sam">Sam, the lead: portrait, body, character info, voice</h3>
+          <p class="meta-line">Flow → Characters → New · <b>1. Portrait:</b> paste into "Describe your character…", make 2–4, keep the face you like (and the glasses that look most like ordinary glasses) · <b>2. Create body:</b> with that portrait selected, <b>Create body</b>, paste into "What do you want to change?" · save as <b>Sam</b> · <b>3. Character info:</b> on Sam's page, "Describe how your character acts…" · <b>4. Voice:</b> Select a voice → pick, paste the sample dialogue and performance, Preview, <b>Add to character</b> (for his one line on camera, shot 2)</p>
+          <div class="fields">
+            <div class="field"><b>Sam · 1 · Portrait prompt</b><pre>Sam, a calm, dry-humoured man in his late thirties who rides the metro to work every morning. Unflappable and quietly amused: he talks to the camera like he's sharing an inside joke.
+
+Face: a South Asian man with warm brown skin, a neatly trimmed short black beard with a few flecks of grey, kind dark eyes, a slow knowing half-smile.
+
+Hair: short dark hair, neatly combed back.
+
+Glasses: he always wears slim, lightweight smart glasses that look like ordinary everyday glasses: thin matte black rectangular frames, clear lenses, slim temples. Nothing visible on the lenses.
+
+Earbuds: small plain matte black wireless earbuds in both ears.
+
+Clothing in frame: a charcoal wool overcoat over a forest-green crewneck sweater, a soft grey scarf. No logos, no text.
+
+Photorealistic with a soft cinematic glow, head-and-shoulders portrait facing the camera, cool green-tinted light from above like a metro carriage at dawn and a warm amber rim light from behind, softly blurred metro carriage background, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Sam · 2 · Body prompt (Create body)</b><pre>Keep his face, beard, hair, glasses, earbuds and expression exactly the same. Show him full length, head to toe, standing and facing the camera.
+
+Body: lean, average height, relaxed upright posture, one hand lightly holding a vertical metal grab pole, the other hand relaxed at his side. A thin matte black ring on his right index finger. No phone in his hands.
+
+Outfit: the charcoal wool overcoat, open, over the forest-green crewneck sweater; the soft grey scarf; dark grey wool trousers; brown leather lace-up shoes; a slim olive canvas messenger bag across his body. His slim everyday glasses with thin matte black frames, small plain black earbuds. No logos, no text, no brand marks.
+
+Same cool green-tinted overhead light and warm amber rim light from behind, softly blurred metro carriage background, 50mm, photorealistic with a soft cinematic glow.</pre></div>
+            <div class="field" data-max="1000"><b>Sam · 3 · Character info ("Describe how your character acts…")</b><pre>Sam is the only calm person on his morning metro. His own AI agent built his news brief overnight, so it is already in his glasses and his earbuds before he leaves home; when the train goes underground and every phone stalls, he just keeps reading. Calm, dry and a little smug, with a warm sense of humour.
+
+How he acts on camera: he plays to the camera with knowing glances, a slow raised eyebrow and a small satisfied smile. He moves slowly and economically. When chaos happens around him he gives a long deadpan look instead of reacting.
+
+Habits: always wears his slim everyday glasses and glances at the upper corner of his view instead of at a phone; brushes his thumb across the thin matte black ring on his right index finger, or holds it; touches an earbud when he listens. His phone stays in his pocket.
+
+On camera he speaks only the short lines written in a shot's prompt, dry and unhurried, straight to the camera; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Sam · 4 · Voice to pick</b><pre>Umbriel</pre></div>
+            <div class="field" data-max="120"><b>Sam · 4 · Sample dialogue</b><pre>Underground, nothing loads. Mine was ready last night. Swipe the ring to skim.</pre></div>
+            <div class="field" data-max="400"><b>Sam · 4 · Customize performance</b><pre>Warm, relaxed and dry, quietly amused, like he's letting the audience in on a private joke. Mid-to-low pitch, unhurried, close to the microphone as if speaking softly on a quiet train. A small smile you can hear. Never salesy, never loud, never an announcer voice. A short pause before "Mine was ready last night."</pre></div>
+          </div>
+          <p class="note">Umbriel is my suggestion for an easy-going male voice; if it sounds wrong in Preview, try Achird (friendlier) or Charon (lower, more measured). Tell me which you kept: I match the narration's Kokoro voice to it (likely <code>am_michael</code>, or <code>bm_george</code> if you'd like a British accent).</p>
+        </article>
+        <article class="shot">
+          <h3 data-toc="Bea">Bea, the signal hunter: portrait, body, character info, voice</h3>
+          <p class="meta-line">Same four steps · save as <b>Bea</b> · she's in shots 1, 2, 5 and 7 · her voice is for her two lines (shots 2 and 7)</p>
+          <div class="fields">
+            <div class="field"><b>Bea · 1 · Portrait prompt</b><pre>Bea, an energetic, chatty woman in her late fifties who refuses to start her day without the morning news. Determined, theatrical and lovable, with wide hopeful eyes and very expressive eyebrows.
+
+Face: a woman with pale rosy skin, laugh lines, bright blue eyes, a silver-blonde chin-length bob, chunky colourful wooden bead earrings. She wears no glasses.
+
+Clothing in frame: a bright mustard-yellow raincoat with the hood down, a silk scarf with an abstract coral and teal pattern. No logos, no text.
+
+Photorealistic with a soft cinematic glow, head-and-shoulders portrait facing the camera, cool green-tinted light from above like a metro carriage at dawn and a warm amber rim light from behind, softly blurred metro carriage background, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Bea · 2 · Body prompt (Create body)</b><pre>Keep her face, hair, earrings and expression exactly the same. Show her full length, head to toe, standing on tiptoe and facing the camera.
+
+Body: petite and sprightly, one arm stretched high holding her phone up toward the ceiling with the back of the phone toward the camera, the other hand gripping an overhead strap, an exasperated hopeful look upward.
+
+Outfit: the bright mustard-yellow raincoat, belted; the coral and teal abstract silk scarf; navy cropped trousers; clean white sneakers; a big canvas tote bag on her shoulder with a baguette sticking out of it. No glasses, no ring, no watch. No logos, no text, no brand marks.
+
+Same cool green-tinted overhead light and warm amber rim light from behind, softly blurred metro carriage background, 50mm, photorealistic with a soft cinematic glow.</pre></div>
+            <div class="field" data-max="1000"><b>Bea · 3 · Character info ("Describe how your character acts…")</b><pre>Bea needs her morning news, and every morning the metro tunnel takes it away. She spends the whole ride hunting for one bar of signal: phone held up to the ceiling on tiptoe, pressed flat against the window, shaken, tilted, waved. Sam's comic opposite: his brief is already there, hers is always loading.
+
+How she acts on camera: big, earnest physical comedy: stretching, squinting, triumphant little gasps that turn into sighs, a hopeful look around the carriage. Always lovable, never angry. She holds her phone with the back toward the camera. She wears no glasses, no ring and no watch.
+
+She never looks at the camera except for her last line. On camera she only speaks the short lines written in a shot's prompt, bright and a little breathless; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Bea · 4 · Voice to pick</b><pre>Laomedeia</pre></div>
+            <div class="field" data-max="120"><b>Bea · 4 · Sample dialogue</b><pre>Is anyone's news loading? … It loaded! Oh, this is my stop.</pre></div>
+            <div class="field" data-max="400"><b>Bea · 4 · Customize performance</b><pre>Bright, chatty and theatrical, a lovable sitcom neighbour. Mid-to-high pitch, quick, voice rising hopefully on the question. On "It loaded!" a delighted gasp; then a beat of realisation and a deflated, comic "Oh, this is my stop." Never shrill, never angry.</pre></div>
+          </div>
+          <p class="note">Laomedeia is my pick for an upbeat female voice; Zephyr (brighter) or Aoede (breezier) are the alternatives.</p>
+        </article>
+      </section>
+
+      <section id="style" data-toc="Look and feel">
+        <h2>Look and feel: a metro in G2 Digest's colours</h2>
+        <p>The carriage carries the app's palette: cool green-tinted fluorescent light, deep green-black tunnel walls rushing past the windows, chrome poles. The only warm light is the morning daylight waiting at the tunnel's end, and it floods in for the payoff. The product's own world is the glasses' green-on-black display: each time it appears, it means G2 Digest.</p>
+        <div class="worlds">
+          <div class="metro"><b>The metro</b>Green-tinted carriage light, dark tunnel streaking past, flickering lights at the tunnel mouth, then warm amber daylight on the way out. Everyone waiting on a phone except him.</div>
+          <div class="hud"><b>G2 Digest</b>A bordered card, three short lines, dots on the right · DEEP DIVE ▶ — green on black, as the G2 draws it; HUD green on deep green for the end card.</div>
+        </div>
+        <div class="swatches">
+          <span><i style="background:#07140b"></i>#07140b deep green</span>
+          <span><i style="background:#030805"></i>#030805 tunnel</span>
+          <span><i style="background:#3dff7a"></i>#3dff7a G2 green</span>
+          <span><i style="background:#e3f2e6"></i>#e3f2e6 mint</span>
+          <span><i style="background:#f2c46b"></i>#f2c46b daylight</span>
+        </div>
+        <table class="kv">
+          <tr><th>Camera</th><td>35–50mm, shallow depth of field, slow push-ins on Sam, centred and still; Bea gets wider, slightly handheld frames, always moving. The contrast is the joke. Comic beats held a moment longer (Bea on tiptoe, his deadpan look).</td></tr>
+          <tr><th>Never on screen</th><td>Metro line names, maps, station signs or any real city's transit branding; logos on clothes, bags or devices; readable phone or laptop screens; anything on the lenses; any AI assistant's name or logo; real headlines, companies or people.</td></tr>
+          <tr><th>Data</th><td>The edition on the glasses and in the web app is demo data written for the video (made-up topics, no real companies), and every recording carries a "Demo data" tag.</td></tr>
+        </table>
+      </section>
+
+      <section id="storyboard" data-toc="Storyboard + Flow">
+        <h2>Storyboard and Flow prompts</h2>
+        <p>Times are for the 30-second cut. <b>Flow</b> is the generated shot (the edit uses 1.5–3 s of each); <b>Recording</b> is the real app (made by me, see Screen recordings). Each prompt is one Copy: paste it into Flow with the characters it names added. The animatic of these beats is <code>g2digest-launch-30</code> in Remotion Studio (<code>cd branding/promo-videos && npm run dev</code>).</p>
+        <div data-block="shots"></div>
+
+        <article class="shot">
+          <h3 data-toc="Flow settings (once)">Before the shots · Flow agent settings</h3>
+          <table class="kv">
+            <tr><th>Confirm before generating</th><td><b>Always</b>, so you see what's about to be generated (and whether the prompt was rewritten) before credits are spent.</td></tr>
+            <tr><th>Mode</th><td><b>Video · Ingredients</b>, with Sam and/or Bea added as ingredients (Frames is for animating a still you already have).</td></tr>
+            <tr><th>Shape</th><td><b>16:9</b> for every shot; the 9:16 cut is made from the same footage.</td></tr>
+            <tr><th>Drafts</th><td>The fast model · <b>720p · 8s · x1</b>: cheap tries to check the joke, the faces and that no logos, signs or readable screens appear. Shots 3 and 4 (close-ups) can be 6s.</td></tr>
+            <tr><th>The take you keep</th><td>Re-run the prompt that worked on the best model in the dropdown, at the highest resolution it offers (1080p if available; the final video is 1080p), <b>x2</b> to pick from.</td></tr>
+          </table>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 1 · into the tunnel"><span class="tag new">Flow</span> Shot 1 · Into the tunnel, every phone stalls</h3>
+          <p class="meta-line">0:00–0:04 · Video · 16:9 · add Sam and Bea</p>
+          <div class="fields"><div class="field"><b>Shot 1 prompt</b><pre>Video. A packed morning metro carriage, cool green-tinted fluorescent light, chrome poles. The train plunges into a dark tunnel; the lights flicker and the windows go black with streaks of tunnel lights rushing past. All at once every passenger's phone seems to freeze: a man shakes his phone, a student tilts hers toward the window, someone sighs and taps the same spot again and again (every phone screen faces away from the camera and is never visible). In the middle of it all, Sam sits calmly, wearing his slim everyday glasses and small black earbuds, eyes on the upper corner of his view, perfectly content. Standing next to him, Bea holds her phone up toward the ceiling on tiptoe. Sam glances at the camera with a small knowing smile. Medium-wide shot, slow push-in on Sam, 35mm, shallow depth of field, cinematic comedy. No logos, no text, no signs, no maps, the screens are never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 2 · anyone's news loading?"><span class="tag new">Flow</span> Shot 2 · "Is anyone's news loading?"</h3>
+          <p class="meta-line">0:04–0:07 · Video · 16:9 · add Sam and Bea · the comic beat: hold his deadpan look · make this one first</p>
+          <div class="fields"><div class="field"><b>Shot 2 prompt</b><pre>Video. Inside a morning metro carriage in a dark tunnel, cool green-tinted light. Bea, standing, stretches on tiptoe with her phone held up to the ceiling (the back of the phone toward the camera), gives up, and asks the carriage hopefully: "Is anyone's news loading?" Sam, seated right below her in his slim everyday glasses and small black earbuds, slowly turns his head to the camera with a long deadpan look and one raised eyebrow, and says dryly: "Mine was ready last night." Bea looks down at him, puzzled. Medium shot, 35mm, shallow depth of field, cinematic grade, sitcom comedy timing. No logos, no text, no signs, the screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 3 · the glance"><span class="tag new">Flow</span> Shot 3 · A glance, not a phone</h3>
+          <p class="meta-line">0:07–0:09, then the glasses recording (today's edition opens), as if through his eyes · Video · 16:9 · 6s · add Sam</p>
+          <div class="fields"><div class="field"><b>Shot 3 prompt</b><pre>Video. Close-up of Sam, wearing his slim everyday glasses with thin matte black frames and small black earbuds, seated in a metro carriage in a dark tunnel. Behind him, softly out of focus, passengers stare down at frozen phones. He lifts his eyes and glances toward the upper corner of his view, as if reading something only he can see; a faint green glow reflects on his cheek and he smiles slightly. Close-up from the front, slow push-in, 50mm, shallow depth of field, cool green-tinted overhead light, tunnel lights streaking across the window behind him. Nothing readable on the lenses, no logos, no text. 6 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 4 · the ring swipe"><span class="tag new">Flow</span> Shot 4 · Swipe to skim</h3>
+          <p class="meta-line">0:12–0:14, then the glasses recording (card to card, the dots move) · Video · 16:9 · 6s · add Sam</p>
+          <div class="fields"><div class="field"><b>Shot 4 prompt</b><pre>Video. Extreme close-up of Sam's right hand resting on his knee in a metro carriage: his thumb brushes upward across the thin matte black ring on his index finger, pauses, and brushes again, unhurried. Tunnel lights streak past in the soft background. Then a quick tilt up to his face: behind his slim everyday glasses his eyes move as if reading, and he gives a small amused nod. 85mm macro look, shallow depth of field, cool green-tinted light with streaks of passing tunnel lights. No logos, no text, no visible screens. 6 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 5 · the deep dive"><span class="tag new">Flow</span> Shot 5 · Hold for the deep dive; Bea tries the window</h3>
+          <p class="meta-line">0:16–0:18, then the glasses recording (the deep dive plays) · Video · 16:9 · add Sam and Bea · the slapstick beat</p>
+          <div class="fields"><div class="field"><b>Shot 5 prompt</b><pre>Video. Inside a metro carriage in a dark tunnel, cool green-tinted light. Sam, wearing his slim everyday glasses and small black earbuds, holds his thumb on the thin matte black ring on his index finger for a moment, then touches one earbud, leans back, closes his eyes and listens with a contented little nod, as if to a good story. Behind him, Bea presses her phone flat against the dark window, then holds it out at arm's length and turns slowly in a circle, the baguette in her tote bag bumping a passenger, who gives her a look. Medium-wide shot, 35mm, Sam sharp in the foreground, Bea slightly soft behind, cinematic grade, gentle slapstick comedy. No logos, no text, no signs, the screens are never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 6 · the night before"><span class="tag new">Flow</span> Shot 6 · The night before: he writes his brief</h3>
+          <p class="meta-line">0:20–0:22, then the loop graphic and the web recording (the edition his agent built) · Video · 16:9 · add Sam · the laptop's screen faces away</p>
+          <div class="fields"><div class="field"><b>Shot 6 prompt</b><pre>Video. Late evening in a cosy modern apartment, a single warm desk lamp, deep blue night outside the window with city lights. Sam, wearing his slim everyday glasses and a soft grey hoodie, types a few last words on a laptop whose lid faces the camera (the screen is never visible), reads it back, nods, and closes the laptop. He switches off the lamp and walks out of frame; in the dark room, a tiny green light on the closed laptop keeps glowing softly, as if something is still working while he sleeps. Medium shot, 35mm, shallow depth of field, cosy warm cinematic grade turning to deep blue. No logos, no text, the screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 7 · it loaded!"><span class="tag new">Flow</span> Shot 7 · "It loaded! Oh, this is my stop."</h3>
+          <p class="meta-line">0:25–0:30 · Video · 16:9 · add Sam and Bea · the end card goes over its last seconds</p>
+          <div class="fields"><div class="field"><b>Shot 7 prompt</b><pre>Video. The metro train bursts out of the tunnel onto an elevated track into warm golden morning sunlight that floods the carriage. Every passenger's phone buzzes at the same moment (screens face away and are never visible). Bea looks at her phone, beams and says, delighted: "It loaded!" The doors slide open behind her; she glances at them, her face falls, and she says to the camera: "Oh, this is my stop." Sam, in his slim everyday glasses and small black earbuds, already standing by the doors, gives the camera a relaxed nod and steps out onto the bright platform. Medium-wide shot, slow push-in, 35mm, warm golden cinematic grade, joyful comic finale. No logos, no text, no signs, no station names, no visible screens. 8 seconds.</pre></div></div>
+        </article>
+        <article class="shot">
+          <h3 data-toc="Loop graphic + end card"><span class="tag me">Me</span> The loop graphic and the end card</h3>
+          <p class="meta-line">0:22–0:23 and 0:28–0:30 · made in Remotion, no Flow needed</p>
+          <p>Between shot 6 and the web recording, a one-second motion graphic of the overnight build, drawn in the icon's style (a card frame with lines filling in): <b>your brief</b> → <b>your agent</b> researches, writes, records → <b>every card checked</b> → <b>glasses + headphones</b>. The end card: the icon, "G2 Digest", the tagline and the small text, on deep green with the HUD-green glow.</p>
+        </article>
+      </section>
+
+      <section id="recordings" data-toc="Screen recordings">
+        <h2>Screen recordings (I make them)</h2>
+        <p>From the real app on the local stack (<code>supabase start</code>, the Worker on <code>127.0.0.1:8790</code>) with the seed reader, never production. The edition is a <b>demo edition written for the video</b>: made-up topics, no real companies, people or sources, with Kokoro audio for its glances and deep dives. It is published the real way: a script calls G2 Digest's MCP tools on the local stack with the seed's local agent token (<code>validate_cards</code>, then <code>publish_cards</code>), so what's shown is exactly what an agent's edition looks like. The script will be <code>branding/promo-videos/scripts/g2digest-launch-record.mjs</code>, modelled on Headway's.</p>
+        <table class="grid">
+          <tr><th>Recording</th><th>What it shows</th><th>From</th></tr>
+          <tr><td><code>rec-glasses-open</code></td><td>The list of editions, today's picked, its first card in the frame with the dots on the right</td><td>Even Hub simulator, paired to the seed reader</td></tr>
+          <tr><td><code>rec-glasses-swipe</code></td><td>Three swipes: card to card, the filled dot moving down</td><td>same</td></tr>
+          <tr><td><code>rec-glasses-deepdive</code></td><td>A hold: DEEP DIVE playing (the edit lays a second of the deep dive's own Kokoro audio under it)</td><td>same</td></tr>
+          <tr><td><code>rec-web-edition</code></td><td>The web app's edition page: the cards with their sources, and the G2 preview stepping through them</td><td>web app, Playwright, desktop</td></tr>
+          <tr><td><code>rec-web-brief</code></td><td>The brief editor: the sections he wants (for shot 6's "I write the brief" and the 15 s cut)</td><td>same</td></tr>
+        </table>
+        <p><b>Made.</b> The demo edition is "Morning brief": a made-up "Harbor Line" going 24 hours, a reef lab that regrows coral 4x faster with sound, a seawater battery, and a sunny weekend. Its intro says it's invented. Kokoro (bf_emma) read the glances and two deep dives of about 2.5 minutes. The MCP validator passed it on the first try. It was published for Oct 31 and Nov 1 so the list has two editions. The seed was restored afterwards (brief back to v1, no editions, the demo audio deleted). Typing in the brief editor was never saved.</p>
+        <div class="gallery">
+          <figure><video src="media/rec/rec-glasses-open.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-glasses-open</b> · the list, then today's cover card</figcaption></figure>
+          <figure><video src="media/rec/rec-glasses-swipe.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-glasses-swipe</b> · TL;DR, my line, the reef card</figcaption></figure>
+          <figure><video src="media/rec/rec-glasses-deepdive.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-glasses-deepdive</b> · a hold: DEEP DIVE PLAYING</figcaption></figure>
+          <figure><video src="media/rec/rec-web-brief.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-web-brief</b> · the Ocean science instructions being typed</figcaption></figure>
+          <figure><video src="media/rec/rec-web-edition.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-web-edition</b> · the G2 preview stepped with "Swipe up", the full edition beside it</figcaption></figure>
+        </div>
+        <p class="note">Re-record: start the local stack and run <code>branding/promo-videos/scripts/g2digest-launch-record.mjs stage | glasses | web | restore</code>. The demo brief and edition are in <code>scripts/g2digest-launch-demo/</code>. Every recording carries a "Demo data" tag, and the end card says "Editions shown are demo data."</p>
+      </section>
+
+      <section id="audio" data-toc="Voiceover + music">
+        <h2>Voiceover and music</h2>
+        <h3 data-toc="Voiceover">1 · Voiceover (I make it)</h3>
+        <p>Generated locally with Kokoro-82M (Apache 2.0, free for commercial use) by <code>scripts/g2digest-launch-vo.py</code>, one file per line, and checked word for word by speech recognition. Each player has the six 30 s lines in a row. The edit uses <b>am_echo</b>, the closest in pitch to Sam's Flow voice (105 Hz against his 99 Hz).</p>
+        <div class="gallery">
+          <figure><audio src="media/vo/vo-am_echo-30.m4a" controls preload="none"></audio><figcaption><b>am_echo</b> · in the edit · 105 Hz</figcaption></figure>
+          <figure><audio src="media/vo/vo-am_michael-30.m4a" controls preload="none"></audio><figcaption><b>am_michael</b> · runner-up · 112 Hz</figcaption></figure>
+          <figure><audio src="media/vo/vo-am_puck-30.m4a" controls preload="none"></audio><figcaption><b>am_puck</b> · 122 Hz</figcaption></figure>
+          <figure><audio src="media/vo/vo-bm_george-30.m4a" controls preload="none"></audio><figcaption><b>bm_george</b> · British · 142 Hz</figcaption></figure>
+          <figure><audio src="media/vo/vo-am_fenrir-30.m4a" controls preload="none"></audio><figcaption><b>am_fenrir</b> · 150 Hz</figcaption></figure>
+        </div>
+        <h3 data-toc="Music (Flow Music)">2 · Music in Flow Music (you make it)</h3>
+        <p>Instrumental: a stuttering, "buffering" opening for the stalled carriage, a stop for Bea's question, then a smooth, confident groove once the cards appear, opening up into something bright when the train comes out into daylight. Make 2–4 versions of each and keep the ones whose beat lands clearly; download the best quality offered. It doesn't need to be exactly 30 or 15 s: the edit ends on the track's own ending.</p>
+        <div class="fields">
+          <div class="field" data-max="900"><b>Music prompt, 30 seconds</b><pre>Instrumental only, no vocals, no lyrics. A 30-second playful comedy track for a short film about the only calm person on a metro train whose news is already loaded. 104 BPM, 4/4, clear downbeats on every bar so a video can be cut to it. 0:00–0:04 a stuttering, hesitant groove: glitchy clicks, a muted bass that keeps stalling and restarting, like something buffering. At 0:04 a sudden stop and one bar of near-silence with a single soft synth note. At 0:07 a smooth, confident groove kicks in: crisp brushed drums, a warm round bass, mellow electric piano chords and a light plucked synth line, building gently. At 0:24 a one-bar drop to just kick and bass, then at 0:25 a bright, sunny lift with open chords and a final resolving chord, clean ending at exactly 0:30. Leave space in the mid frequencies for a voiceover.</pre></div>
+          <div class="field" data-max="600"><b>Music prompt, 15 seconds</b><pre>Instrumental only, no vocals. A 15-second playful sting, 104 BPM, 4/4, clear downbeats for cutting: two bars of a stuttering, glitchy "buffering" groove, a sudden stop at 0:03, then a smooth confident groove with brushed drums, warm round bass and mellow electric piano, a bright sunny final chord at 0:13 and a clean ending at exactly 0:15. Leave room for a voiceover.</pre></div>
+        </div>
+      </section>
+
+      <section id="stills" data-toc="Stills (spare)">
+        <h2>Stills (spare)</h2>
+        <p>The end-card thumbnails are in the YouTube section. For posts, any frame of the recordings above works: the glasses frames are lit pixels on black in HUD green. Full-resolution web stills (<code>still-web-*.png</code>) are in <code>branding/promo-videos/public/g2digest-launch/</code>.</p>
+      </section>
+
+      <section id="youtube" data-toc="YouTube upload">
+        <h2>YouTube upload: what to fill in, for each cut</h2>
+        <p>There are three uploads. The fields below are in the order YouTube Studio's upload dialog asks for them. Each cut has its own title, description, thumbnail and subtitle file, and the settings shared by all three come after. G2 Digest's home page and docs page will embed <b>the 30 s cut</b>, so upload it first.</p>
+        <table class="grid">
+          <tr><th>Cut</th><th>Visibility</th></tr>
+          <tr><td><b>30 s · 16:9</b>, the main video</td><td>Public (or Unlisted until the pages are updated)</td></tr>
+          <tr><td><b>15 s · 16:9</b>, for ads and sharing</td><td>Unlisted: a link for ads and sharing, without a near-copy of the 30 s on the channel</td></tr>
+          <tr><td><b>15 s · 9:16</b>, a Short</td><td>Public. It's vertical and under 3 minutes, so YouTube makes it a Short by itself</td></tr>
+        </table>
+
+        <h3>1 · The 30-second video</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>G2 Digest: your brief, ready before the train, on Even G2 glasses</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Underground, nothing loads. Sam's brief was ready last night.
+
+G2 Digest turns a brief you write into glanceable cards for Even G2 glasses and audio for your headphones, built ahead of time by your own AI agent:
+• You write the brief: the sections you want, how to rank them, what a quiet day looks like.
+• Overnight, your agent (any MCP client) researches, writes the cards and the audio, and checks every card before it publishes.
+• On the glasses: swipe the R1 ring to skim, one card per glance; hold for the deep dive in your headphones. The latest edition is kept on your phone, so it plays offline.
+
+Open G2 Digest: https://g2digest.hejitech.workers.dev
+How it works: https://tianhaoz95.github.io/hejitech-apps/g2digest/
+
+G2 Digest is not affiliated with Even Realities. The editions shown in this video are demo data: the line, places, results and numbers are invented. People and scenes in this video are AI-generated, and the narration is a synthetic voice.
+
+#SmartGlasses #EvenG2</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/g2digest-launch-30-thumbnail.jpg" alt="Thumbnail: the end card, the G2 Digest icon, name and 'Your brief, ready before the train.' in green on deep green, with the disclaimer at the bottom" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, the end card (frame at 29.2 s)<br><a class="dl" href="media/youtube/g2digest-launch-30-thumbnail.jpg" download>g2digest-launch-30-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/g2digest-launch-30.mp4" download>g2digest-launch-30.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/g2digest-launch-30.srt" download>g2digest-launch-30.srt</a> (10 cues; see Video elements below)</td></tr>
+          <tr><th>Playlist</th><td>Make a <b>G2 Digest</b> playlist and add all three.</td></tr>
+        </table>
+
+        <h3>2 · The 15-second video (16:9)</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>G2 Digest in 15 seconds: your brief, ready before the train</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Underground, nothing loads. Sam's brief was ready last night: his own AI agent turned it into cards for his Even G2 glasses and audio for his headphones. Swipe to skim, hold for the deep dive.
+
+Open G2 Digest: https://g2digest.hejitech.workers.dev
+How it works: https://tianhaoz95.github.io/hejitech-apps/g2digest/
+
+Not affiliated with Even Realities. Editions shown are demo data. People and scenes are AI-generated, and the narration is a synthetic voice.
+
+#SmartGlasses #EvenG2</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/g2digest-launch-15-thumbnail.jpg" alt="Thumbnail: the same end card, from the 15-second cut" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, the end card (frame at 13.8 s)<br><a class="dl" href="media/youtube/g2digest-launch-15-thumbnail.jpg" download>g2digest-launch-15-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/g2digest-launch-15.mp4" download>g2digest-launch-15.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/g2digest-launch-15.srt" download>g2digest-launch-15.srt</a> (5 cues)</td></tr>
+        </table>
+
+        <h3>3 · The Short (9:16)</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Underground, nothing loads. His brief was ready last night. #Shorts</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>G2 Digest: a brief you write, built overnight by your own AI agent into cards for Even G2 glasses and audio for your headphones. Swipe the ring to skim, hold for the deep dive.
+
+https://g2digest.hejitech.workers.dev
+
+Not affiliated with Even Realities. Demo data. People and scenes are AI-generated; synthetic voice.
+
+#SmartGlasses #EvenG2</pre></div>
+        </div>
+        <div class="gallery">
+          <figure class="tall"><img src="media/youtube/g2digest-launch-15-vertical-thumbnail.jpg" alt="Vertical end card: the G2 Digest icon, name and tagline centred on deep green" loading="lazy"><figcaption><b>Cover</b> · 1080×1920, the end card (frame at 13.8 s)<br><a class="dl" href="media/youtube/g2digest-launch-15-vertical-thumbnail.jpg" download>g2digest-launch-15-vertical-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Thumbnail</th><td>A Short's cover is a frame of the video, which you pick in the YouTube app after upload (Edit → Thumbnail). Studio on the web may not take a file for Shorts. Pick the end card; the JPG is for posts elsewhere.</td></tr>
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/g2digest-launch-15-vertical.mp4" download>g2digest-launch-15-vertical.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/g2digest-launch-15-vertical.srt" download>g2digest-launch-15-vertical.srt</a> (same timings as the 15 s cut). If the upload dialog doesn't show Video elements, add it later in Studio → Content → the Short → <b>Subtitles</b>.</td></tr>
+        </table>
+
+        <h3>4 · The same for all three</h3>
+        <table class="kv">
+          <tr><th>Thumbnail</th><td><b>Upload file</b> → the cut's JPG. Custom thumbnails need a phone-verified channel; if the button is greyed out, use <b>Select from video</b> and pick the end card.</td></tr>
+          <tr><th>Audience</th><td><b>No, it's not made for kids.</b> Age restriction: <b>No</b>.</td></tr>
+        </table>
+        <div class="fields">
+          <div class="field" data-max="500"><b>Tags (Show more)</b><pre>G2 Digest, Even G2, Even Realities, smart glasses, R1 ring, AI agent, MCP, daily brief, news brief, morning brief, audio briefing, commute, offline, heads-up display, glanceable</pre></div>
+        </div>
+        <table class="kv">
+          <tr><th>Paid promotion</th><td><b>Leave unticked</b>: it's your own product.</td></tr>
+          <tr><th>Altered content</th><td><b>Yes.</b> Sam, Bea and the metro are realistic AI-generated people and scenes, and the narration is a synthetic voice. YouTube adds a small "Altered or synthetic content" label.</td></tr>
+          <tr><th>Automatic chapters</th><td>Untick. Untick featured places too if it's shown.</td></tr>
+          <tr><th>Language &amp; captions</th><td>Video language <b>English</b>. Caption certification: <b>This content has never aired on television in the U.S.</b></td></tr>
+          <tr><th>License</th><td><b>Standard YouTube License</b>.</td></tr>
+          <tr><th>Allow embedding</th><td><b>On.</b> This is <b>required</b> for the 30 s cut, because G2 Digest's home page and docs page embed it.</td></tr>
+          <tr><th>Category</th><td><b>Science &amp; Technology</b>.</td></tr>
+          <tr><th>Comments</th><td>On, with <b>Hold potentially inappropriate comments for review</b>.</td></tr>
+          <tr><th>Add subtitles</th><td>Video elements → <b>Add subtitles → Upload file → With timing</b>, English → the cut's SRT. It has the narration and the characters' lines, including the closing tagline. The video already has captions burned in, so a viewer who turns on CC sees the words twice. The file still helps viewers with the sound off on embeds, and it helps search and translation.</td></tr>
+          <tr><th>End screen, cards</th><td><b>Skip both.</b> An end screen would cover the end card's name and disclaimer.</td></tr>
+          <tr><th>Checks</th><td>The footage and music are yours from Flow and the voice is Kokoro (Apache 2.0), so a copyright claim is unlikely. If one appears, tell me what it names.</td></tr>
+          <tr><th>Visibility</th><td>As in the table at the top. A <b>Private</b> video can't be embedded (the embed shows "Video unavailable").</td></tr>
+          <tr><th>Then</th><td>Send me the 30 s link: I check that it embeds and put it on the home page and the docs page.</td></tr>
+        </table>
+
+        <h3>Elsewhere</h3>
+        <div class="fields">
+          <div class="field" data-max="280"><b>Short post (X / Threads)</b><pre>Underground, nothing loads. His brief was ready last night. G2 Digest: your own AI agent builds your brief overnight into cards for Even G2 glasses and audio for your headphones. Swipe to skim, hold for the deep dive.</pre></div>
+        </div>
+        <p class="note">The subtitle files come from <code>branding/promo-videos/scripts/g2digest-launch-srt.mjs</code>, which reads where each line sits in the composition. After a re-cut, run it again and recopy.</p>
+      </section>
+
+      <section id="steps">
+        <h2>What to do, in order</h2>
+        <ol class="do">
+          <li><b>Watch the three cuts with sound</b> (<a href="#edit">The edit</a>). Send notes (Copy summary) or approve.</li>
+          <li><b>Upload</b> with the <a href="#youtube">YouTube section</a>: the 30 s first, the 15 s Unlisted, and the 9:16 as a Short.</li>
+          <li><b>Send me the 30 s link.</b> I check that it embeds and put it on G2 Digest's home page and docs page.</li>
+        </ol>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="g2-story"><span><b>Story and voiceover script settled</b></span></li>
+          <li><input type="checkbox" id="g2-sam"><span><b>Sam made and saved in Flow</b><small>Portrait, Create body, character info, voice</small></span></li>
+          <li><input type="checkbox" id="g2-bea"><span><b>Bea made and saved in Flow</b><small>Same four steps</small></span></li>
+          <li><input type="checkbox" id="g2-s1"><span><b>Shot 1 · into the tunnel</b><small>Screens face away, no signs</small></span></li>
+          <li><input type="checkbox" id="g2-s2"><span><b>Shot 2 · "Is anyone's news loading?"</b><small>Both lines land; faces stay apart</small></span></li>
+          <li><input type="checkbox" id="g2-s3"><span><b>Shot 3 · the glance</b><small>Nothing readable on the lenses</small></span></li>
+          <li><input type="checkbox" id="g2-s4"><span><b>Shot 4 · ring swipe</b></span></li>
+          <li><input type="checkbox" id="g2-s5"><span><b>Shot 5 · deep dive, Bea at the window</b></span></li>
+          <li><input type="checkbox" id="g2-s6"><span><b>Shot 6 · the night before, laptop</b><small>Lid faces the camera</small></span></li>
+          <li><input type="checkbox" id="g2-s7"><span><b>Shot 7 · "It loaded! Oh, this is my stop."</b><small>No station names</small></span></li>
+          <li><input type="checkbox" id="g2-m30"><span><b>Music, 30 s</b></span></li>
+          <li><input type="checkbox" id="g2-m15"><span><b>Music, 15 s</b></span></li>
+          <li><input type="checkbox" id="g2-files"><span><b>Files dropped in the promo folder</b></span></li>
+          <li><input type="checkbox" id="g2-edit"><span><b>Edit rendered</b><small>30 s, 15 s, 9:16 · loudness −14 LUFS · subtitles and thumbnails</small></span></li>
+          <li><input type="checkbox" id="g2-review"><span><b>Cuts reviewed with sound</b></span></li>
+          <li><input type="checkbox" id="g2-yt30"><span><b>30 s uploaded</b><small>Title, description, thumbnail, subtitles, embedding on</small></span></li>
+          <li><input type="checkbox" id="g2-yt15"><span><b>15 s uploaded</b><small>Unlisted</small></span></li>
+          <li><input type="checkbox" id="g2-ytshort"><span><b>Short uploaded</b><small>Cover picked in the YouTube app</small></span></li>
+        </ul>
+      </section>
+
+      <section id="risks">
+        <h2>What can go wrong</h2>
+        <table class="grid">
+          <tr><th>Problem</th><th>What to do</th></tr>
+          <tr><td>Flow draws a real city's metro: line colours, maps, station names, a transit logo</td><td>Regenerate with "no signs, no maps, no station names" again at the end, or use a take where it's out of focus or cropped.</td></tr>
+          <tr><td>A phone or the laptop turns toward the camera and shows a screen</td><td>Use the part before it does, or regenerate; every prompt says the screens face away.</td></tr>
+          <tr><td>Sam's glasses come out bulky, like goggles, or change between shots</td><td>Always add Sam; pick the portrait whose glasses look most like ordinary glasses; regenerate with "ordinary everyday glasses, thin frames".</td></tr>
+          <tr><td>Sam and Bea blend into each other in shots 1, 2, 5, 7</td><td>Make shot 2 first as the test. If Flow keeps mixing them, make Bea's part as its own shot and the edit cuts between them.</td></tr>
+          <tr><td>Bea comes across as annoying or mocked</td><td>Keep takes where she's hopeful and funny, not cross; her last line gets the laugh, so she wins the ending too.</td></tr>
+          <tr><td>The tunnel looks too dark for faces</td><td>The prompts keep the carriage lit; if a take is murky, regenerate with "the carriage brightly lit, only the windows dark".</td></tr>
+          <tr><td>Flow ad-libs extra lines</td><td>The edit keeps only the written lines and mutes the rest; I transcribe every take first.</td></tr>
+        </table>
+        <div class="unknown"><b>Not known yet:</b> how the cuts sound. The music pick, the voice match and the splices were all chosen by measurement, not by ear.</div>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-11-01-g2digest-promo-video</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>

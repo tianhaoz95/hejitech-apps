@@ -51,8 +51,14 @@ npm run lint                                  # eslint + tsc
 
 1. Follow `heji-promo-video`: plan it in a report (`heji-report`): story, shots, prompts, screenshots.
 2. `mkdir -p branding/promo-videos/src/<project>-<promo> branding/promo-videos/public/<project>-<promo>`,
-   add `Composition.tsx` (id `<project>-<promo>`) and `media.md`, register it in `src/Root.tsx`.
+   add `Composition.tsx` and `media.md`, register it in `src/Root.tsx`. Do it as soon as the plan
+   exists: until the footage arrives, `Composition.tsx` is the storyboard as an animatic (id
+   `<project>-<promo>-30`), replaced by the edit later.
 3. Put the footage in `public/<project>-<promo>/`, list it in `media.md`, back it up.
 4. Show the product as real screen recordings (scripted, local stack, demo data), not green
    screens; have generated shots hide the screen. Cut to the voiceover and the music's beats.
 5. Render, then normalise loudness to −14 LUFS with ffmpeg `loudnorm` before publishing.
+6. With the renders, make the YouTube kit: one SRT per cut from the composition's exported `SPEECH`
+   table (`scripts/<project>-<promo>-srt.mjs`, like `headway-launch-srt.mjs`) and an end-card
+   thumbnail per cut, in the report's upload section. YouTube is where promos are hosted; the pages
+   embed them from there.

@@ -17,14 +17,19 @@ type Word = [text: string, start: number, end: number];
 
 // One voiceover line as a kinetic caption: each word rises in as it is spoken, the spoken word is
 // bright and the rest dimmed, and the line lifts away just after it ends. Times are seconds from the
-// start of the voiceover, which plays from `offset`.
-export const KineticCaption: React.FC<{ words: Word[]; offset: number }> = ({
-  words,
-  offset,
-}) => {
+// start of the voiceover, which plays from `offset`. `before` (seconds) makes the line leave by then,
+// so it never overlaps the next caption.
+export const KineticCaption: React.FC<{
+  words: Word[];
+  offset: number;
+  before?: number;
+}> = ({ words, offset, before }) => {
   const { fps } = useVideoConfig();
   const from = Math.round((offset + words[0][1]) * fps) - 3;
-  const until = Math.round((offset + words[words.length - 1][2]) * fps) + 10;
+  const until = Math.min(
+    Math.round((offset + words[words.length - 1][2]) * fps) + 10,
+    before === undefined ? Infinity : Math.round(before * fps) - 3,
+  );
   return (
     <Sequence
       from={from}
@@ -125,8 +130,9 @@ export const CaptionBand: React.FC = () => {
   );
 };
 
-// Small tag on product footage so prices aren't read as real.
-export const DemoLabel: React.FC = () => {
+// Small tag on product footage so prices aren't read as real ("Demo footage" where the camera feed
+// is staged).
+export const DemoLabel: React.FC<{ text?: string }> = ({ text = "Demo data" }) => {
   const { width, height } = useVideoConfig();
   const vertical = height > width;
   return (
@@ -144,7 +150,7 @@ export const DemoLabel: React.FC = () => {
         background: "rgba(14, 27, 43, 0.6)",
       }}
     >
-      Demo data
+      {text}
     </div>
   );
 };

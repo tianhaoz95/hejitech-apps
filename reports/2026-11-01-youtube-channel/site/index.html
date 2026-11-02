@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HEJI TECH YouTube channel setup</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8603A'/%3E%3Crect x='9' y='9' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='15' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='21' width='9' height='2.5' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+  <style>
+    figure.wide { margin: 12px 0; } figure.wide img { width: 100%; border-radius: 14px; border: 1px solid var(--line); display: block; }
+    .shots figure.wide2 { flex: 2 1 420px; max-width: none; }
+    .shots figure.small { flex: 0 1 220px; }
+    .kv ol { margin: 6px 0; padding-left: 20px; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>HEJI TECH YouTube channel setup</b><small>Banner, picture, watermark and every Profile field ready to upload or paste, then the Home tab and settings</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <!-- Filled from the sections' <h2>s by report.js; data-toc="Short label" on a section overrides. -->
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <p class="kicker">How-to · 2026-11-01</p>
+        <h1>Setting up the HEJI TECH YouTube channel</h1>
+        <p class="lede">Everything on the Profile tab is ready to paste or upload: a <b>banner</b>, a <b>picture</b> (the HEJI logo in place of the orange letter YouTube made up) and a <b>watermark</b>, all drawn from the HEJI logo on the apps site, plus the <b>description</b>, <b>links</b>, <b>contact email</b> and <b>keywords</b>. The Home tab plan comes after that: a trailer, a featured video and one playlist per app. It takes about 20 minutes.</p>
+
+        <div class="status">
+          <div><b>Banner, picture, watermark</b><span class="ok">Made, ready to upload (§1)</span></div>
+          <div><b>Description, links, email</b><span class="ok">Written, ready to paste (§2)</span></div>
+          <div><b>Name and handle</b><span class="ok">Keep as they are (§2)</span></div>
+          <div><b>Home tab</b><span class="todo">Needs the videos uploaded and playlists made (§3)</span></div>
+          <div><b>Settings</b><span class="todo">Keywords, audience, upload defaults (§4)</span></div>
+        </div>
+
+        <div class="cards">
+          <div class="card good">
+            <h3>Checked</h3>
+            <ul>
+              <li><b>Image sizes and file sizes</b> meet the limits shown on your Studio screenshots (measured with ImageMagick <code>identify</code>).</li>
+              <li><b>The crops</b>: the banner was cut to YouTube's desktop strip and phone safe area, and the picture to a circle (§1). Name and tagline fit inside the safe area.</li>
+              <li><b>Text lengths</b>: the description is under YouTube's 1,000-character limit (counter on each field).</li>
+              <li><b>Links and email</b> come from the repo: the apps site, the two App Store listings and the Worker sites named in <code>pages/.vitepress/theme/apps.ts</code>, and the <code>info@hejitech.com</code> address the apps already list.</li>
+            </ul>
+          </div>
+          <div class="card warn">
+            <h3>Not checked</h3>
+            <ul>
+              <li><b>How it looks on YouTube itself.</b> The crop previews follow YouTube's published safe area. Studio shows its own preview when you upload: check it there.</li>
+              <li><b>Which promo videos are uploaded.</b> The Home tab steps assume the cuts from the promo reports are on the channel.</li>
+              <li><b>Whether <code>@hejitech</code> is free</b> as a handle (optional, §2).</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>Recommendation:</b> do the Profile tab now: it's all ready. Then upload the promo cuts, make one playlist per app and set up the Home tab. Use <b>TinyTouch's 30 s cut</b> as the trailer: TinyTouch is on the App Store and the trailer has the strongest opening joke.</div>
+        <div data-block="order"></div>
+      </section>
+
+      <section id="images" data-toc="Banner, picture, watermark">
+        <h2>Banner, picture and watermark: download and upload</h2>
+        <p>All three use the HEJI logo from the apps site (<code>pages/public/heji.svg</code>: blue <code>#2f5bea</code>, white H, yellow dot) and its dark-blue glow background, so the channel looks like the site it links to. The banner also shows the icons of the six apps with promo videos.</p>
+        <div data-block="sizes"></div>
+
+        <h3>Banner</h3>
+        <figure class="wide"><img src="media/preview-tv.jpg" alt="The full banner, 2560 by 1440: a dark navy background with blue glows and a faint grid; in the middle the blue HEJI logo, 'HEJI TECH' in large white letters and 'Small apps, carefully made' below it; on the left the Wee Hours, TinyTouch and ToddlerCam icons, on the right Headway, FitLoop and Trading Plan Board" loading="lazy"><figcaption><b>Full image</b> · what a TV shows. <a class="dl" href="media/heji-youtube-banner.png" download>heji-youtube-banner.png</a></figcaption></figure>
+        <div class="shots">
+          <figure class="wide2"><img src="media/preview-desktop.jpg" alt="The banner cut to the desktop strip: the logo, name and tagline in the middle with three app icons on each side" loading="lazy"><figcaption><b>Computer</b> · the 2560 × 423 strip across the middle: name in the middle, app icons on both sides.</figcaption></figure>
+          <figure><img src="media/preview-mobile.jpg" alt="The banner cut to the phone safe area: only the logo, 'HEJI TECH' and the tagline, with no app icons" loading="lazy"><figcaption><b>Phone</b> · the 1546 × 423 safe area: logo, name and tagline only. The app icons drop off, which is expected.</figcaption></figure>
+        </div>
+        <p class="note">In Studio, <b>Upload</b> opens a crop box that already frames the safe area. Leave it as it is and click <b>Done</b>.</p>
+
+        <h3>Picture</h3>
+        <div class="shots">
+          <figure class="small"><img src="media/preview-picture.png" alt="The profile picture cropped to a circle: the white H with the yellow dot on blue, filling the circle" loading="lazy"><figcaption><b>As a circle</b> · 800 × 800. <a class="dl" href="media/heji-youtube-picture.png" download>heji-youtube-picture.png</a></figcaption></figure>
+          <figure class="small"><img src="media/heji-youtube-watermark.png" alt="The watermark: the HEJI logo as a rounded blue square with a thin white edge, H and yellow dot, on a transparent background" loading="lazy" style="max-width:150px;background:repeating-conic-gradient(#ccc 0 25%,#fff 0 50%) 0 0/16px 16px"><figcaption><b>Watermark</b> · 150 × 150, transparent corners; the thin white edge keeps it visible on dark shots. <a class="dl" href="media/heji-youtube-watermark.png" download>heji-youtube-watermark.png</a></figcaption></figure>
+        </div>
+        <p>The picture fills the whole square with blue, so YouTube's circle crop cuts nothing off. It replaces the orange "H" YouTube generates for new channels, which matches nothing else HEJI makes.</p>
+        <p><b>Watermark timing:</b> when Studio asks, pick <b>Entire video</b>. The promos are 15 to 30 seconds, so "End of video" would only show it for a moment. On desktop, viewers can click the watermark to subscribe.</p>
+      </section>
+
+      <section id="profile" data-toc="Profile text">
+        <h2>Profile tab: what to type in each field</h2>
+        <p>In the order the Profile tab shows them. Each value has a <b>Copy</b> button that copies it exactly.</p>
+
+        <h3>Name and handle: keep them</h3>
+        <table class="kv">
+          <tr><th>Name</th><td><b>HEJI TECH</b>: keep. It matches the handle, and YouTube only lets you change the name twice in 14 days.</td></tr>
+          <tr><th>Handle</th><td><b>@HEJI-TECH</b>: keep. Handles aren't case-sensitive, so people can type <code>@heji-tech</code>. <span class="note">Optional: if <code>@hejitech</code> is free (type it in the field and Studio says whether it is available) it's shorter and matches the <code>hejitech</code> email and web addresses. YouTube keeps the old handle for you for 14 days, but links in video descriptions that use the old handle would break after that.</span></td></tr>
+          <tr><th>Pronouns</th><td>Leave empty: this is a company channel.</td></tr>
+        </table>
+
+        <h3>Description</h3>
+        <div class="fields">
+          <div class="field" data-max="1000"><b>Description</b><pre>HEJI TECH makes small apps, carefully made. Each one does one job well, keeps working when the network doesn't, and lets the AI assistant you already use help out, with your permission, through MCP.
+
+Here you'll find short launch videos and how-tos for our apps:
+
+• Wee Hours: a newborn log built for 3am. Log a feed from your watch, and both parents know.
+• TinyTouch: calm play for your watch, safe in little hands.
+• ToddlerCam: a camera for little hands, and a remote on your watch.
+• Headway: your next Caltrain, at a glance, on Even G2 glasses.
+• FitLoop: your AI agent coaches, FitLoop keeps you on the plan.
+• Trading Plan Board: agents debate the trade, you approve it, your machine places it.
+
+Every app, with links to download or open it:
+https://tianhaoz95.github.io/hejitech-apps/
+
+Business inquiries: info@hejitech.com</pre></div>
+        </div>
+        <p class="note">The first sentence or two are what YouTube shows in search results and in the channel header. <b>Add language</b> isn't needed: the videos are in English.</p>
+
+        <h3>Links</h3>
+        <p>Click <b>Add link</b> once per row. The <b>first link</b> is the one the channel header shows ("…and 5 more links"), so the apps site goes first.</p>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Link 1 · title</b><pre>HEJI Apps: all our apps</pre></div>
+          <div class="field"><b>Link 1 · URL</b><pre>https://tianhaoz95.github.io/hejitech-apps/</pre></div>
+          <div class="field" data-max="100"><b>Link 2 · title</b><pre>TinyTouch on the App Store</pre></div>
+          <div class="field"><b>Link 2 · URL</b><pre>https://apps.apple.com/us/app/tinytouch-toddler-lock-play/id6809942800</pre></div>
+          <div class="field" data-max="100"><b>Link 3 · title</b><pre>ToddlerCam on the App Store</pre></div>
+          <div class="field"><b>Link 3 · URL</b><pre>https://apps.apple.com/us/app/toddlercam-dual-baby-camera/id6810526172</pre></div>
+          <div class="field" data-max="100"><b>Link 4 · title</b><pre>Wee Hours</pre></div>
+          <div class="field"><b>Link 4 · URL</b><pre>https://weehours.hejitech.workers.dev</pre></div>
+          <div class="field" data-max="100"><b>Link 5 · title</b><pre>Headway</pre></div>
+          <div class="field"><b>Link 5 · URL</b><pre>https://headway.hejitech.workers.dev</pre></div>
+          <div class="field" data-max="100"><b>Link 6 · title</b><pre>Trading Plan Board</pre></div>
+          <div class="field"><b>Link 6 · URL</b><pre>https://tradeboard.hejitech.workers.dev</pre></div>
+        </div>
+        <p class="note">When Wee Hours, Headway or FitLoop reach the App Store, swap their link for the App Store listing (that's where a viewer can install it). YouTube allows up to 14 links.</p>
+
+        <h3>Contact info</h3>
+        <div class="fields">
+          <div class="field"><b>Email</b><pre>info@hejitech.com</pre></div>
+        </div>
+        <p>This is the address the apps' own pages already list, so it's public already. Don't use a personal address here: viewers can see it on the About page.</p>
+
+        <h3>Then click Publish</h3>
+        <p>The Profile tab saves nothing until you click <b>Publish</b> (top right). The new picture and banner can take a few minutes to show everywhere.</p>
+      </section>
+
+      <section id="home" data-toc="Home tab">
+        <h2>Home tab: trailer, featured video and sections</h2>
+        <p>The Home tab decides what a visitor sees first. It can only show videos and playlists that are already on the channel, so <b>first</b> upload the cuts and make the playlists.</p>
+
+        <h3>Playlists first (Content → Playlists → New playlist)</h3>
+        <p>One playlist per app, public, each holding that app's 30 s, 15 s and Short cuts. The upload kits in the promo reports already say to add each cut to its app's playlist.</p>
+        <table class="grid">
+          <tr><th>Playlist</th><th>Holds</th><th>Description (one line)</th></tr>
+          <tr><td><b>Wee Hours</b></td><td>wee hours launch 30 s, 15 s, Short</td><td>A newborn log built for 3am.</td></tr>
+          <tr><td><b>TinyTouch</b></td><td>tinytouch launch 30 s, 15 s, Short</td><td>Calm play for your watch, safe in little hands.</td></tr>
+          <tr><td><b>ToddlerCam</b></td><td>toddlercam launch 30 s, 15 s, Short</td><td>A camera for little hands, and a remote on your watch.</td></tr>
+          <tr><td><b>Headway</b></td><td>headway launch 30 s, 15 s, Short</td><td>Your next Caltrain, at a glance.</td></tr>
+          <tr><td><b>Trading Plan Board</b></td><td>tradeboard launch 30 s</td><td>Agents debate the trade. You approve it. Your machine places it.</td></tr>
+        </table>
+
+        <h3>Customization → Home tab</h3>
+        <table class="kv">
+          <tr><th>Channel trailer</th><td><b>TinyTouch 30 s</b> ("TinyTouch: hand your watch to a toddler, without the surprise calls"). This is what people who haven't subscribed see. It opens with a joke, and TinyTouch is on the App Store, so a viewer can act on it right away. <span class="note">Swap it later for a 30 s "all the apps" reel if you make one.</span></td></tr>
+          <tr><th>Featured video</th><td><b>The newest upload</b>, for people who have subscribed. Pick the latest promo, and change it with each launch.</td></tr>
+          <tr><th>Sections</th><td>Add them with <b>Add section</b>, in this order:
+            <ol>
+              <li><b>Videos</b> (latest uploads)</li>
+              <li><b>Shorts</b>: the vertical 15 s cuts</li>
+              <li>One <b>Single playlist</b> section per app: TinyTouch, ToddlerCam, Wee Hours, Headway, Trading Plan Board (apps on the App Store first)</li>
+            </ol>
+            YouTube allows up to 12 sections. A section whose playlist is empty doesn't show, so you can add all five now.</td></tr>
+        </table>
+      </section>
+
+      <section id="settings" data-toc="Settings">
+        <h2>Settings outside the Customization page</h2>
+        <p>Three more settings, in Studio's <b>Settings</b> (bottom of the left menu, as on your third screenshot).</p>
+        <h3>Channel → Basic info</h3>
+        <table class="kv">
+          <tr><th>Country</th><td><b>United States</b>.</td></tr>
+        </table>
+        <div class="fields">
+          <div class="field" data-max="500"><b>Keywords</b><pre>HEJI TECH, HEJI Apps, app demo, iPhone apps, Apple Watch apps, Even G2, smart glasses apps, MCP, AI assistant, parenting apps, toddler apps, baby tracker, Caltrain</pre></div>
+        </div>
+        <h3>Channel → Advanced settings</h3>
+        <table class="kv">
+          <tr><th>Audience</th><td><b>No, set this channel as not made for kids.</b> TinyTouch and ToddlerCam are for children, but their videos are made for the parents who choose the apps. That's also what each promo's upload kit says. A channel marked "made for kids" loses comments, the mini-player and notifications on every video.</td></tr>
+        </table>
+        <h3>Upload defaults</h3>
+        <p>So every future upload starts with the settings the promo kits ask for, and you only fill in the title, the description's first lines and the thumbnail.</p>
+        <table class="kv">
+          <tr><th>Visibility</th><td>Private (switch to Public when the video is ready).</td></tr>
+          <tr><th>Category</th><td><b>Science &amp; Technology</b></td></tr>
+          <tr><th>Video language</th><td>English. Caption certification: <b>This content has never aired on television in the U.S.</b></td></tr>
+          <tr><th>License</th><td>Standard YouTube License</td></tr>
+        </table>
+        <div class="fields">
+          <div class="field" data-max="5000"><b>Description (default, add the video's own lines above it)</b><pre>
+—
+HEJI TECH: small apps, carefully made.
+Every app: https://tianhaoz95.github.io/hejitech-apps/</pre></div>
+        </div>
+        <p class="note">"Altered or synthetic content" is a per-video question, not a default. Answer it on each upload as that video's kit says (the promos with AI-generated people and synthetic voiceover: <b>Yes</b>).</p>
+      </section>
+
+      <section id="todo">
+        <h2>Checklist</h2>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="c-banner"><span><b>Upload the banner</b><small>heji-youtube-banner.png; keep the crop Studio suggests</small></span></li>
+          <li><input type="checkbox" id="c-picture"><span><b>Upload the picture</b><small>heji-youtube-picture.png; the orange H is gone</small></span></li>
+          <li><input type="checkbox" id="c-handle"><span><b>Decide on the handle</b><small>keep @HEJI-TECH, or switch to @hejitech if it's free</small></span></li>
+          <li><input type="checkbox" id="c-desc"><span><b>Paste the description</b></span></li>
+          <li><input type="checkbox" id="c-links"><span><b>Add the six links</b><small>apps site first</small></span></li>
+          <li><input type="checkbox" id="c-email"><span><b>Add info@hejitech.com</b></span></li>
+          <li><input type="checkbox" id="c-watermark"><span><b>Upload the watermark</b><small>display time: Entire video</small></span></li>
+          <li><input type="checkbox" id="c-publish"><span><b>Click Publish on the Profile tab</b></span></li>
+          <li><input type="checkbox" id="c-playlists"><span><b>Make one playlist per app</b><small>after the cuts are uploaded</small></span></li>
+          <li><input type="checkbox" id="c-hometab"><span><b>Home tab: trailer, featured video, sections; Publish</b></span></li>
+          <li><input type="checkbox" id="c-settings"><span><b>Settings: keywords, not made for kids, upload defaults</b></span></li>
+          <li><input type="checkbox" id="c-look"><span><b>Look at the channel signed out</b><small>on a phone and a computer: banner text not clipped, picture centred, links work</small></span></li>
+        </ul>
+      </section>
+
+      <section id="edge">
+        <h2>If something goes wrong</h2>
+        <table class="grid">
+          <tr><th>What you see</th><th>Why, and what to do</th></tr>
+          <tr><td>The banner text is cut off on a phone</td><td>The crop box was moved. Upload again and leave the crop where Studio puts it.</td></tr>
+          <tr><td>The old orange H still shows</td><td>The new picture takes a few minutes to spread, and longer in comments. If it's still old after an hour, check that Profile was published.</td></tr>
+          <tr><td>"Handle not available"</td><td>Someone has <code>@hejitech</code>. Keep <code>@HEJI-TECH</code>; nothing else needs to change.</td></tr>
+          <tr><td>The TinyTouch cut isn't offered as the trailer</td><td>The trailer must be a video viewers can watch: set the cut to Public (or Unlisted) first.</td></tr>
+          <tr><td>Watermark missing on Shorts</td><td>That's expected: YouTube doesn't show watermarks on Shorts.</td></tr>
+          <tr><td>You want a different look</td><td>Write it in Your notes below. The image sources (<code>script/assets/</code> in this report's folder) re-render in a minute.</td></tr>
+        </table>
+        <div class="unknown"><b>Not known:</b> whether <code>info@hejitech.com</code> is checked regularly (it's the address the apps list for support, so YouTube business mail will land in the same inbox), and whether there's a <code>hejitech.com</code> website to link instead of the GitHub Pages apps site. If there is, make it Link 1.</div>
+      </section>
+
+<section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-11-01-youtube-channel</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- Order: design blocks → this report's config → the engine. -->
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>

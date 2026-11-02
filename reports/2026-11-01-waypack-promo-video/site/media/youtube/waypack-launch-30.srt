@@ -1,0 +1,35 @@
+1
+00:00:00,300 --> 00:00:02,320
+Up in the mountains, there's no signal.
+
+2
+00:00:03,410 --> 00:00:05,610
+Does anyone have a single bar?
+
+3
+00:00:06,730 --> 00:00:07,930
+Don't need one.
+
+4
+00:00:08,450 --> 00:00:12,210
+My AI agent planned this trip. Waypack keeps it working offline.
+
+5
+00:00:13,300 --> 00:00:16,420
+What's next, the map, my GPS dot. Zero bars.
+
+6
+00:00:16,750 --> 00:00:20,430
+Lodging, check-in times, and a backup plan if the road closes.
+
+7
+00:00:20,600 --> 00:00:24,200
+I planned it at home with my agent, and hit Download on the Wi-Fi.
+
+8
+00:00:25,430 --> 00:00:28,300
+Okay. Where's the sledding hill?
+
+9
+00:00:28,300 --> 00:00:29,940
+Waypack. Your trip, packed.

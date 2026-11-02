@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ToddlerCam promo video kit (Google Flow)</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff6b6b'/%3E%3Crect x='7' y='11' width='18' height='13' rx='3' fill='%23fff'/%3E%3Crect x='12' y='8' width='8' height='4' rx='1.5' fill='%23fff'/%3E%3Ccircle cx='16' cy='17.5' r='3.6' fill='%23ff6b6b'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+  <style>
+    .shot { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); padding: 16px 18px; margin: 18px 0; }
+    .shot h3 { margin: 0 0 4px; }
+    .shot .meta-line { color: var(--mut); font-size: 14px; margin: 0 0 10px; }
+    .swatches { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+    .swatches span { display: inline-flex; align-items: center; gap: 8px; font: 13px "JetBrains Mono", monospace; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--panel); }
+    .swatches i { width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line); display: inline-block; }
+    .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .02em; border-radius: 999px; padding: 2px 9px; margin-right: 6px; vertical-align: 2px; border: 1px solid transparent; white-space: nowrap; }
+    .tag.new { background: color-mix(in srgb, #2457d6 13%, transparent); color: #2457d6; border-color: color-mix(in srgb, #2457d6 35%, transparent); }
+    .tag.feed { background: color-mix(in srgb, #e0712c 14%, transparent); color: #b5531a; border-color: color-mix(in srgb, #e0712c 40%, transparent); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.new { color: #8fb0ff; } :root:not([data-theme="light"]) .tag.feed { color: #ffb27a; } }
+    :root[data-theme="dark"] .tag.new { color: #8fb0ff; }
+    :root[data-theme="dark"] .tag.feed { color: #ffb27a; }
+    .worlds { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+    .worlds > div { border-radius: 14px; padding: 16px 18px; min-width: 0; }
+    .worlds .day { background: linear-gradient(135deg, #fffaf2, #ffe3b8); color: #26324a; border: 1px solid #eee2d0; }
+    .worlds .eve { background: linear-gradient(135deg, #2e3a50, #1c2536); color: #fff4e6; }
+    .worlds b { display: block; margin-bottom: 4px; }
+    @media (max-width: 640px) { .worlds { grid-template-columns: 1fr; } }
+    .gallery { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); margin: 14px 0; }
+    .gallery figure { margin: 0; min-width: 0; }
+    .gallery figcaption { font-size: 13px; color: var(--mut); margin-top: 6px; }
+    .gallery figcaption b { color: var(--ink); }
+    .gallery video, .gallery img { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; background: #1c2536; max-height: 420px; object-fit: contain; }
+    .gallery figure.tall video, .gallery figure.tall img { max-height: 520px; width: auto; max-width: 100%; margin: 0 auto; }
+    audio { width: 100%; max-width: 360px; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>ToddlerCam promo video kit (Google Flow)</b><small>A 30 s family comedy: four hundred photos of the back of his head, until he gets his own camera · the cuts, the Flow prompts, the YouTube kit</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <h1>Four hundred photos of the back of his head.</h1>
+        <p class="lede">ToddlerCam's promo is cut: a <b>30-second family comedy</b>, plus 15-second cuts in 16:9 and 9:16, made from your seven Flow shots and music, recordings of the real iPhone and Watch apps, and a Kokoro narration as Nora. Nora can't get Milo to look at her camera; he grabs the phone ("Mine!"), so he gets his own. ToddlerCam shows what he sees and his face at once, Nora's watch quacks so he looks up and takes the photo, his taps only make bubbles, and nothing leaves the phone. It ends on "Mommy!" and Nora's "Quack." The in-app footage is the same Milo and Nora: I fed frames of your shots into the app's simulator camera. Watch and listen in §1; the YouTube kit is in §10.</p>
+        <div class="status">
+          <div><b>Story + scripts</b><span class="ok">As planned; one beat cut (§1)</span></div>
+          <div><b>Characters</b><span class="ok">Nora and Milo, on-model in all 7 shots</span></div>
+          <div><b>Flow shots</b><span class="ok">All 7 used; every written line landed</span></div>
+          <div><b>Feed clips</b><span class="ok">Not needed: cut from your shots (§7)</span></div>
+          <div><b>Recordings</b><span class="ok">5 made on paired simulators (§7)</span></div>
+          <div><b>Voiceover</b><span class="ok">af_heart; 4 more voices to compare (§8)</span></div>
+          <div><b>Music</b><span class="ok">30 s take 2 and the 15 s take, picked by measurement (§1)</span></div>
+          <div><b>Edit</b><span class="todo">Rendered: your review with sound (§1)</span></div>
+          <div><b>YouTube</b><span class="todo">Kit ready for all three cuts (§10)</span></div>
+        </div>
+        <div class="callout"><b>Next for you:</b> watch and listen to the three cuts in §1, and check the calls I made without you (the table under the videos). Write what to change in <b>Your notes</b> and click <b>Copy summary</b>, or just tell me. When a cut is right, upload it with §10 and send me the 30 s link: it goes on ToddlerCam's site and docs page. <b>Also:</b> Xcode updated itself to 27.2 during the session, and the simulators need <code>sudo xcodebuild -runFirstLaunch</code> before they work again (§12).</div>
+      </section>
+
+      <section id="edit" data-toc="The edit · review">
+        <h2>The edit: three cuts to review</h2>
+        <p>Built in Remotion (<code>branding/promo-videos/src/toddlercam-launch</code>) from your seven Flow shots, take 2 of the 30 s music and the 15 s track, five recordings of the real iPhone and Watch apps, and the <b>af_heart</b> narration. The jokes are in Nora's and Milo's own Flow voices; the narration, as Nora, says what ToddlerCam does. The quack and the shutter are the app's own sounds.</p>
+        <div class="gallery">
+          <figure><video src="media/edit/toddlercam-launch-30.mp4" poster="media/edit/toddlercam-launch-30.jpg" controls playsinline preload="none"></video><figcaption><b>30 s · 16:9</b> · the main cut · 30.4 s<br><a class="dl" href="media/edit/toddlercam-launch-30.mp4" download>toddlercam-launch-30.mp4</a></figcaption></figure>
+          <figure><video src="media/edit/toddlercam-launch-15.mp4" poster="media/edit/toddlercam-launch-15.jpg" controls playsinline preload="none"></video><figcaption><b>15 s · 16:9</b> · "Milo! Look at Mommy!", "Mine!", both cameras, the quack, Nora's duck face, end card · 16.0 s<br><a class="dl" href="media/edit/toddlercam-launch-15.mp4" download>toddlercam-launch-15.mp4</a></figcaption></figure>
+          <figure class="tall"><video src="media/edit/toddlercam-launch-15-vertical.mp4" poster="media/edit/toddlercam-launch-15-vertical.jpg" controls playsinline preload="none"></video><figcaption><b>15 s · 9:16</b> · Shorts / Reels / TikTok<br><a class="dl" href="media/edit/toddlercam-launch-15-vertical.mp4" download>toddlercam-launch-15-vertical.mp4</a></figcaption></figure>
+        </div>
+        <h3 data-toc="My calls">Calls I made while you were away</h3>
+        <table class="grid">
+          <tr><th>Call</th><th>What I did, and why</th><th>To change it</th></tr>
+          <tr><td>Music, 30 s</td><td><b>Take 2</b> (≈112 BPM): it's the only take with the full stop the prompt asked for (take 1 is ≈99 BPM and never stops). The cut opens on its toy-piano intro, the groove hits on "Mine!", a jump of 20 beats puts the stop under the quack, and a second jump of 20 beats puts the track's last little break under "Quack." and its final hit on the end card. Picked by beat tracking and loudness, not by ear.</td><td>Say "take 1".</td></tr>
+          <tr><td>Music, 15 s</td><td>The one take you made (≈103 BPM): intro under the first two lines, the groove from "Mine!", its short stop on the quack, its ending under the tagline.</td><td>—</td></tr>
+          <tr><td>Narration voice</td><td><b>af_heart</b>, the clearest of Kokoro's female voices. Nora's Flow lines are sing-song and shouted, so their pitch couldn't tell me which voice is closest (af_bella and af_heart measure about the same). Four more are in §8.</td><td>Name another voice.</td></tr>
+          <tr><td>Feed clips</td><td>You didn't make the two "feed clips" (§6), so I cut the app's camera feeds from your story shots: Milo laughing (shot 7), his surprised look and giggles (shot 5), Nora in the garden (shot 7) and the living room (shot 2).</td><td>Make them and I re-record.</td></tr>
+          <tr><td>The keepsake beat</td><td><b>Cut.</b> The gallery shot (the dual keepsake photo) didn't work out: the take that reached the gallery had caught the back of Milo's head, and before I could redo it Xcode updated itself and the simulators stopped working. "No account, no ads. It all stays on the phone." now plays over shot 6 (the sofa) for its full length, which carries it well.</td><td>After the simulator fix (§12), say "add the keepsake".</td></tr>
+          <tr><td>The watch review</td><td><b>Cut.</b> The simulated watch never received the photo ("No Photo Yet"), so the beat shows the photo landing on the phone instead, with its shutter flash.</td><td>—</td></tr>
+          <tr><td>The quack</td><td>The watch simulator doesn't show a button press, so a small tap ripple marks Quack where the test tapped it; then the app's own quack sound plays.</td><td>—</td></tr>
+          <tr><td>"Mommy! Look!"</td><td>Flow said only "Mommy!" (checked with speech recognition), so the caption says that.</td><td>—</td></tr>
+        </table>
+        <table class="kv">
+          <tr><th>Pace</th><td>Cuts sit on the music's beats (each planned cut moves to the nearest beat within 0.25 s). The quack beat (0:11–0:16) goes Nora's grin → the watch, Quack tapped → the music stops, the quack → Milo looks up → the shutter flash.</td></tr>
+          <tr><th>Transitions</th><td>A shot into its recording: a cross-zoom. Between beats: a blurred slide. Two moments of one recording: a quick fade. Into the end card: a dreamy zoom.</td></tr>
+          <tr><th>Captions</th><td>Every spoken word, word by word, timed from a speech-recognition pass. The end card carries the tagline instead of a caption.</td></tr>
+          <tr><th>Sound</th><td>Music ducks under every line; Flow's ad-libs (shots 3, 4, 6) are muted. The characters' lines were about 7 dB above the narration in the first render; they're now level with it. Loudness after a two-pass normalise: about −14 LUFS for all three, peaks below −1.4 dBFS.</td></tr>
+          <tr><th>On screen</th><td>"Demo footage" on every recording. End card: "People and scenes are AI-generated. In-app footage is demo footage." The watch simulator's clock is covered.</td></tr>
+          <tr><th>9:16</th><td>Flow shots centre-cropped (in shot 2, Milo's grab is at the left edge of the crop); the phone and watch are scaled up for the tall frame.</td></tr>
+        </table>
+        <p class="note"><b>What I checked:</b> frames every second of each render and closer looks at the quack and shutter; the subtitle text against the script; lengths and loudness; the level of each line in the mix. <b>What I couldn't:</b> listen. Please watch with sound, above all the balance between Flow's voices, the narration and the music, and whether af_heart sounds like the same woman as Nora on screen.</p>
+        <p class="note">The renders are reproducible (<code>npx remotion render toddlercam-launch-30 --concurrency=2</code> etc. in <code>branding/promo-videos</code>, then the loudness pass) and add tens of MB to this report, so <code>media/edit/</code> stays out of git.</p>
+      </section>
+
+      <section id="story" data-toc="Story">
+        <h2>The story: the toddler who never looks at the camera</h2>
+        <p>Every parent of a toddler has the same camera roll: the back of a head, a blur, a hand over the lens. Nora crouches in the living room, phone up, "Milo! Look at Mommy!", and Milo stares out of the window. When he finally turns round, it's to grab the phone: "Mine!" So he gets his own camera. Out in the yard he films everything; ToddlerCam records both cameras at once, so the photo has what he saw and his face when he saw it, with a lion mask that follows his head. Nora is a few steps behind, phone-free: one tap on her watch and the phone in his hands quacks, Milo looks up laughing, and she takes the photo from her wrist. When he discovers the screen and slaps it with both hands, it only makes bubbles. That evening on the sofa they look at the day's photos, which never left the phone. The payoff turns the opening around: Milo points the phone at his mom, "Mommy! Look!", and she gives him the best duck face of her life: "Quack."</p>
+        <div data-block="arc"></div>
+        <div class="fields">
+          <div class="field" data-max="80"><b>Tagline (end card)</b><pre>A camera for little hands, and a remote on yours.</pre></div>
+        </div>
+        <h3 data-toc="On-camera lines">On-camera lines (in the shot prompts, spoken in Flow)</h3>
+        <table class="grid">
+          <tr><th>Shot</th><th>Who</th><th>Line</th></tr>
+          <tr><td>1</td><td>Nora, sing-song, phone up</td><td>"Milo! Look at Mommy!"</td></tr>
+          <tr><td>2</td><td>Milo, grabbing the phone</td><td>"Mine!"</td></tr>
+          <tr><td>7</td><td>Milo, pointing the phone at her</td><td>"Mommy! Look!"</td></tr>
+          <tr><td>7</td><td>Nora, duck face</td><td>"Quack."</td></tr>
+        </table>
+        <h3 data-toc="Voiceover scripts">Narration (Nora, first person; between the lines above)</h3>
+        <div class="fields">
+          <div class="field" data-max="420"><b>Narration, 30-second cut</b><pre>Four hundred photos of the back of his head.
+
+So we gave him his own camera.
+
+Both cameras at once: what he sees, and his face.
+
+My watch is the remote. One tap, it quacks, he looks. Snap.
+
+He can tap all he likes. It only makes bubbles.
+
+No account, no ads. It all stays on the phone.
+
+ToddlerCam. A camera for little hands, and a remote on yours.</pre></div>
+          <div class="field" data-max="260"><b>Narration, 15-second cut</b><pre>So we gave him his own camera. Both sides at once.
+
+My watch is the remote. One tap, it quacks, he looks. Snap.
+
+ToddlerCam. A camera for little hands, and a remote on yours.</pre></div>
+          <div class="field" data-max="160"><b>Small text on the end card</b><pre>Free on iPhone, with a watch remote. People and scenes are AI-generated. In-app footage is demo footage.</pre></div>
+        </div>
+        <p class="note"><b>Timing.</b> At Kokoro's pace (about 2.8 words a second) the 30 s narration is about 22 s, plus 4 s of on-camera lines and the quack: 26–27 s of sound, as planned. The 15 s cut keeps "Milo! Look at Mommy!" and "Mine!" (shots 1 and 2), then the yard, the watch and the end card.</p>
+        <p class="note"><b>On camera vs narration.</b> The lines above come from Flow in the characters' voices, lip-synced; the narration skips them. I pick the Kokoro voice closest to Nora's Flow voice (af_heart or af_bella for a warm, bright one) so she sounds like one person; if they don't match, the edit mutes Flow and her lines become captions. Milo's two lines are the risk (Flow's voices are adult voices): if no take sounds like a two-year-old, his lines become captions over a giggle.</p>
+      </section>
+
+      <section id="style" data-toc="Look and feel">
+        <h2>Look and feel: a sunny Saturday at toddler height</h2>
+        <p>ToddlerCam's own colours: warm paper, coral, sunny yellow and mint, from <code>projects/toddlercam/site/styles.css</code>. Bright, soft daylight, a real-looking modern family home with a small lawn, toys everywhere. The camera often sits low, at Milo's eye level. The evening scene (shot 6) goes warm and dim, like the site's navy.</p>
+        <div class="worlds">
+          <div class="day"><b>Day (shots 1–5, 7)</b>Soft Saturday sun, a living room with a play mat and a window onto the yard, a lawn with a red ball. Paper, coral, yellow, mint.</div>
+          <div class="eve"><b>Evening (shot 6)</b>A sofa under one warm lamp, a blanket, a sleepy toddler. Navy with amber light.</div>
+        </div>
+        <div class="swatches">
+          <span><i style="background:#fffaf2"></i>#fffaf2 paper</span>
+          <span><i style="background:#ff6b6b"></i>#ff6b6b coral</span>
+          <span><i style="background:#ffa53e"></i>#ffa53e orange</span>
+          <span><i style="background:#ffd84d"></i>#ffd84d yellow</span>
+          <span><i style="background:#5fd4a0"></i>#5fd4a0 mint</span>
+          <span><i style="background:#4fc3e8"></i>#4fc3e8 sky</span>
+          <span><i style="background:#2e3a50"></i>#2e3a50 navy</span>
+        </div>
+        <table class="kv">
+          <tr><th>Camera</th><td>Family-comedy framing: low angles at toddler height, quick push-ins on reactions, a held beat on every punchline (Nora's face after "Mine!", Milo's laugh after the quack, the duck face).</td></tr>
+          <tr><th>Wardrobe</th><td>In the brand colours: Milo in yellow dungarees over a mint-and-navy striped shirt; Nora in a sky-blue chambray shirt; her watch on a coral band; the phone in a plain coral case.</td></tr>
+          <tr><th>Never on screen</th><td>A readable phone or watch screen (the phone's back faces our camera, the watch face turns towards Nora), brand logos on devices, toys, car seats or clothes, real children's faces from anywhere, or a toddler alone with the phone near water, stairs or roads.</td></tr>
+        </table>
+        <h3 data-toc="The app today">The app as it looks today</h3>
+        <p>For reference: the site's screenshots of the real app (the in-app footage in the film comes from your feed clips instead of this demo child).</p>
+        <div class="gallery">
+          <figure><img src="media/ref/screenshot-dual-camera.jpg" alt="ToddlerCam on iPhone: a smiling AI-generated toddler full screen, the rear camera in a yellow-framed bubble, a lion mask, Photo/Video switch and a big coral shutter" loading="lazy"><figcaption><b>Dual camera</b> · the toddler screen</figcaption></figure>
+          <figure><img src="media/ref/screenshot-watch.jpg" alt="The Watch remote: a big coral shutter, Quack, Woof and Unlock buttons, Flip View, PiP Mode and Face Masks" loading="lazy"><figcaption><b>Watch remote</b> · shutter, sounds, lock</figcaption></figure>
+          <figure><img src="media/ref/screenshot-lock.jpg" alt="Toddler lock: the camera keeps running while taps make bubbles and stars" loading="lazy"><figcaption><b>Toddler lock</b> · taps make bubbles</figcaption></figure>
+        </div>
+      </section>
+
+      <section id="characters" data-toc="Characters">
+        <h2>The characters: Nora and Milo</h2>
+        <p>Two characters, made once and added to every shot. Original faces, nobody real. Milo is two: Flow can make children, but keep him in ordinary, wholesome play (fully dressed, with his mom nearby in every scene).</p>
+
+        <article class="shot">
+          <h3 data-toc="Nora">Nora, the mom: portrait, body, character info, voice</h3>
+          <p class="meta-line">Flow → Characters → New · <b>1. Portrait:</b> paste into "Describe your character…", make 2–4 and keep one · <b>2. Create body:</b> with that portrait selected, click <b>Create body</b> and paste into "What do you want to change?" · save as <b>Nora</b> · <b>3. Character info:</b> on her page, "Describe how your character acts…" · <b>4. Voice:</b> Select a voice → pick, paste the sample dialogue and the performance, Preview, <b>Add to character</b> · she narrates too, so her Flow voice sets the narration's voice</p>
+          <div class="fields">
+            <div class="field"><b>Nora · 1 · Portrait prompt</b><pre>Nora, a warm, playful mom in her early thirties, endlessly patient with her toddler and a little bit of a clown: big expressive eyebrows, a wide laugh, happy to look silly.
+
+Face: woman with olive skin, warm brown eyes, a few freckles, natural look with little makeup, an easy open smile.
+
+Hair: thick dark-brown curly hair piled in a loose messy bun, a few curls falling around her face.
+
+Clothing in frame: a soft sky-blue chambray shirt with the sleeves rolled up, open over a plain white T-shirt. No logos, no text.
+
+Photorealistic, natural skin texture, head-and-shoulders portrait facing the camera, soft bright daylight, plain warm off-white background, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Nora · 2 · Body prompt (Create body)</b><pre>Keep her face, hair and expression exactly the same. Show her full length, head to toe, standing and facing the camera.
+
+Body: average height, relaxed and energetic posture, ready to crouch down to a toddler's level; one hand on her hip, the other holding a phone in a plain coral case with its back toward the camera.
+
+Wrist: a plain smartwatch with a soft coral sport band on her left wrist, its face dark and blank. She always wears it.
+
+Outfit: the sky-blue chambray shirt with rolled-up sleeves, open over a plain white T-shirt, light-wash straight jeans, white canvas sneakers. No logos, no text, no brand marks.
+
+Same soft bright daylight, plain warm off-white background, 50mm, photorealistic, natural skin texture.</pre></div>
+            <div class="field" data-max="1000"><b>Nora · 3 · Character info ("Describe how your character acts…")</b><pre>Nora is a loving, funny mom whose camera roll is four hundred photos of the back of her two-year-old's head. Patient, warm and a little goofy: she will crouch, wave, sing-song and pull any face to get her son Milo to look at her.
+
+On camera: lively and expressive, often down on her knees at Milo's height; big reactions (a defeated slump, a delighted grin, a proud little shoulder shimmy when a plan works). Always gentle and close to Milo.
+
+Habits: a plain smartwatch on a coral band on her left wrist that she taps to control the phone Milo is holding, turning her wrist toward herself so the watch face is never shown to the camera; her phone in a plain coral case, always held with its back to the camera.
+
+On camera she speaks only the short lines written in a shot's prompt; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Nora · 4 · Voice to pick</b><pre>Aoede</pre></div>
+            <div class="field" data-max="120"><b>Nora · 4 · Sample dialogue</b><pre>Milo! Look at Mommy! Quack. My watch is the remote. One tap, it quacks, he looks.</pre></div>
+            <div class="field" data-max="400"><b>Nora · 4 · Customize performance</b><pre>Warm, bright and playful, like a mom telling a friend a funny story about her toddler. Natural pace, a smile you can hear, a little self-deprecating. Sing-song when she calls Milo, deadpan on "Quack." Never salesy, never shouty.</pre></div>
+          </div>
+          <p class="note">Aoede is one of Flow's female voices (check its label: gender, quality, pitch); any warm, bright, mid-pitch female voice works. The narration's Kokoro voice is then matched to it.</p>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Milo">Milo, the toddler: portrait, body, character info, voice</h3>
+          <p class="meta-line">Same four steps · save as <b>Milo</b> · in every shot but 6's close-ups; he holds the phone in shots 2, 3, 5 and 7</p>
+          <div class="fields">
+            <div class="field"><b>Milo · 1 · Portrait prompt</b><pre>Milo, a two-year-old boy who is busy, curious and very sure that everything is his: wide-eyed wonder, a determined little frown, then a huge belly-laugh grin.
+
+Face: toddler with round rosy cheeks, big bright hazel eyes with long lashes and clear catchlights, a small button nose, a few baby teeth showing when he laughs. Smooth, glowing skin.
+
+Hair: soft light-brown curls, a little tousled.
+
+Clothing in frame: a mint-green and navy striped long-sleeve shirt under the shoulder straps of mustard-yellow dungarees. No logos, no text.
+
+Photorealistic, polished family-commercial portrait: soft flattering daylight from the front, gentle rim light on his curls, plain warm off-white background, head-and-shoulders portrait facing the camera, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Milo · 2 · Body prompt (Create body)</b><pre>Keep his face, hair and expression exactly the same. Show him full length, head to toe, standing and facing the camera.
+
+Body: a small, sturdy two-year-old standing with his feet wide apart, holding a phone in a plain coral case up in front of him with both hands, its back toward the camera, peering over the top of it.
+
+Outfit: mustard-yellow dungarees over a mint-green and navy striped long-sleeve shirt, white socks, small navy sneakers with velcro straps. Nothing on his wrists. No logos, no text, no brand marks.
+
+Same soft bright daylight, plain warm off-white background, 50mm, photorealistic, natural skin texture.</pre></div>
+            <div class="field" data-max="1000"><b>Milo · 3 · Character info ("Describe how your character acts…")</b><pre>Milo is two and never looks at his mom's camera, because there is always something more interesting: a window, a bird, a ball. What he really wants is the phone. Curious, busy and stubborn, with sudden explosions of giggles.
+
+On camera: toddles with wobbly, determined steps; holds the phone up with both hands like a treasure; points it at everything; stares in wonder, then bursts out laughing at silly sounds. Slaps things with both palms when excited. Always safe and close to his mom, at home or on a lawn.
+
+Habits: holds the phone in a plain coral case with both hands, its back toward the camera, so the screen is never visible; looks up wide-eyed when he hears a quack.
+
+On camera he speaks only the one- or two-word lines written in a shot's prompt, in a small toddler voice; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Milo · 4 · Voice to pick</b><pre>Leda</pre></div>
+            <div class="field" data-max="120"><b>Milo · 4 · Sample dialogue</b><pre>Mine! Mommy! Look! Mine!</pre></div>
+            <div class="field" data-max="400"><b>Milo · 4 · Customize performance</b><pre>A two-year-old toddler: a tiny, high, babyish voice, short bursts, a little lisp. Bossy and delighted on "Mine!", excited and squeaky on "Mommy! Look!". Breathy giggles between words. Never an adult voice, never whiny or crying.</pre></div>
+          </div>
+          <p class="note">Flow's voices are adult voices; Leda is labelled youthful. If no take sounds like a toddler, keep his lines as captions and mute him: "Mine!" still reads on his face.</p>
+        </article>
+      </section>
+
+      <section id="storyboard" data-toc="Storyboard + Flow">
+        <h2>Storyboard and Flow prompts</h2>
+        <p>Times are for the 30-second cut. <b>Flow</b> is the generated shot (the edit uses 1.5–3 s of each); <b>Recording</b> is the real app (§7). Each prompt is one Copy: paste it into Flow with the characters it names added.</p>
+        <div data-block="shots"></div>
+
+        <article class="shot">
+          <h3 data-toc="Flow settings (once)">Before the shots · Flow settings</h3>
+          <table class="kv">
+            <tr><th>Confirm before generating</th><td><b>Always</b>, so you see what's about to be generated (and whether the prompt was rewritten) before credits are spent.</td></tr>
+            <tr><th>Mode</th><td><b>Video · Ingredients</b>, with the characters the shot names added as ingredients (Frames is for animating a still you already have).</td></tr>
+            <tr><th>Shape</th><td><b>16:9</b> for every story shot; the 9:16 cut is made from the same footage. The two feed clips (§6) are the exception: 9:16 if Flow offers it.</td></tr>
+            <tr><th>Drafts</th><td>The fast model · <b>720p · 8s · x1</b> (close-ups can be 6s): cheap tries to check the joke, the faces, the lines and that no logos or readable screens appear.</td></tr>
+            <tr><th>The take you keep</th><td>Re-run the prompt that worked on the best model, at the highest resolution offered (1080p if available; the final video is 1080p), <b>x2</b> to pick from.</td></tr>
+            <tr><th>Sound</th><td>Keep it: the lines are used. Flow sometimes adds words of its own; the edit uses only the written lines and mutes the rest.</td></tr>
+          </table>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 1 · look at Mommy"><span class="tag new">Flow</span> Shot 1 · "Look at Mommy!"</h3>
+          <p class="meta-line">0:00–0:03 · Video · 16:9 · add Nora and Milo · the back of his head is the joke</p>
+          <div class="fields"><div class="field"><b>Shot 1 prompt</b><pre>Video. A bright, modern family living room on a sunny Saturday morning, toys on a play mat, a big window onto a small garden. Milo, two years old, sits on the play mat with his back to the camera, staring out of the window, completely still. Nora kneels in front of him and a little to the side, holding up her phone in a plain coral case with its back toward the camera, and calls in a sing-song voice: "Milo! Look at Mommy!" Milo doesn't turn; we only see the back of his curly head. Nora's shoulders slump and she gives the camera a tired, defeated look. Low angle at toddler height, medium shot, 35mm, soft warm daylight, playful family-comedy look. No text, no logos, the phone screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 2 · mine!"><span class="tag new">Flow</span> Shot 2 · "Mine!"</h3>
+          <p class="meta-line">0:03–0:06 · Video · 16:9 · add Nora and Milo · hold Nora's face after the grab</p>
+          <div class="fields"><div class="field"><b>Shot 2 prompt</b><pre>Video. The same sunny living room. Milo, two years old, finally turns around on the play mat, sees Nora's phone in its plain coral case, reaches up and grabs it with both hands, hugs it to his chest and announces in a tiny toddler voice: "Mine!" Nora, kneeling, freezes with her empty hand still in the air, then slowly looks at the camera with raised eyebrows and a small resigned smile. Medium close-up two-shot at toddler height, 50mm, soft warm daylight, family-comedy timing. No text, no logos, the phone screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 3 · his own camera"><span class="tag new">Flow</span> Shot 3 · His own camera</h3>
+          <p class="meta-line">0:06–0:08, then rec-dual · Video · 16:9 · add Milo and Nora · the phone's back faces us</p>
+          <div class="fields"><div class="field"><b>Shot 3 prompt</b><pre>Video. A small, sunny back garden with soft green grass, a red ball and a few toys. Milo, two years old, toddles toward the camera with wobbly, determined steps, holding the phone in its plain coral case up in front of his face with both hands like a treasure, the back of the phone and its camera lenses pointing at us, the screen facing him so it is never visible. He stops, peeks over the top of the phone with wide, delighted eyes, then hides behind it again. Nora follows a few steps behind him, smiling, hands free. Low angle at toddler height, slow push-in, 35mm, bright warm sunlight, joyful family-comedy look. No text, no logos, the phone screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 4 · the watch"><span class="tag new">Flow</span> Shot 4 · Nora taps her watch</h3>
+          <p class="meta-line">0:11–0:12.5, then the watch, phone and watch recordings · Video · 16:9 · add Nora (Milo in the background) · the watch faces her · the film's selling point: make 4 takes</p>
+          <div class="fields"><div class="field"><b>Shot 4 prompt</b><pre>Video. The sunny back garden. In the foreground, Nora crouches on the grass, hands free, and raises her left wrist, the smartwatch on its coral band turned toward her face so its screen is hidden from the camera. With a sly, mischievous grin she glances over at Milo, then taps the watch once with one finger, like pressing a secret button. In the soft-focus background, Milo, two years old, holds the phone in its coral case up in both hands. Close-up on Nora's face and wrist, 50mm, shallow depth of field, bright warm sunlight, playful comedy. No dialogue. No text, no logos, the watch screen and the phone screen are never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 5 · bubbles"><span class="tag new">Flow</span> Shot 5 · Little hands</h3>
+          <p class="meta-line">0:16–0:17.5, then rec-lock · Video · 16:9 · add Milo · the phone lies flat, screen away from us</p>
+          <div class="fields"><div class="field"><b>Shot 5 prompt</b><pre>Video. The sunny living room. Milo, two years old, sits cross-legged on the play mat with the phone in its plain coral case lying flat in his lap, the screen facing up toward him. Seen from the side at floor level so the screen can't be seen, he pats and slaps it excitedly with both little palms, then gasps, looks up at the camera and bursts into delighted giggles, as if something magical just happened. Close-up at floor level, 50mm, soft warm daylight with a few colourful soft bokeh lights, joyful. No dialogue. No text, no logos, the phone screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 6 · the evening"><span class="tag new">Flow</span> Shot 6 · The day's photos</h3>
+          <p class="meta-line">0:20–0:21.5, then rec-keepsake · Video · 16:9 · add Nora and Milo · the phone faces them</p>
+          <div class="fields"><div class="field"><b>Shot 6 prompt</b><pre>Video. Evening in the living room, one warm lamp, a soft blanket on the sofa. Nora sits on the sofa with Milo, two years old, sleepy in his pyjamas on her lap. She holds the phone in its plain coral case in front of them, its back toward the camera, and slowly swipes through photos; the soft glow of the screen lights their faces. Milo points at the phone and smiles sleepily; Nora laughs quietly and kisses the top of his head. Medium close-up, 50mm, warm amber lamp light against deep navy shadows, cosy and tender. No dialogue. No text, no logos, the phone screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 7 · Quack"><span class="tag new">Flow</span> Shot 7 · "Mommy! Look!"</h3>
+          <p class="meta-line">0:24–0:30 · Video · 16:9 · add Milo and Nora · the end card goes over its end</p>
+          <div class="fields"><div class="field"><b>Shot 7 prompt</b><pre>Video. The sunny back garden. Milo, two years old, stands on the grass holding the phone in its plain coral case up in both hands, its back and camera lenses pointing at Nora, and shouts in a tiny toddler voice: "Mommy! Look!" Nora, kneeling on the grass in front of him, looks straight into his phone, puffs out her lips into a huge, ridiculous duck face, flaps her elbows like wings and says, deadpan: "Quack." Milo collapses into belly laughs. Over-the-shoulder from behind Milo's curly head toward Nora, then a reaction on Milo laughing, 35mm, bright warm sunlight, joyful family-comedy ending. No text, no logos, the phone screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+      </section>
+
+      <section id="feeds" data-toc="Feed clips">
+        <h2>The two feed clips: Milo as the app sees him (not made; cut from the shots instead, §1)</h2>
+        <p>These aren't in the story directly: they are what ToddlerCam's two cameras "see" in the recordings. On the simulator the app reads its camera frames from a local stream (<code>projects/toddlercam/KidsCam/Camera/SimulatorCameraStreamer.swift</code>, <code>127.0.0.1:8089/front</code> and <code>/rear</code>), and runs its face tracking on the front one. I serve these two clips there, so the real app shows the same Milo, the lion mask follows his real head, and he looks up on the quack. The app crops them to a tall frame: keep the subject in the centre.</p>
+        <article class="shot">
+          <h3 data-toc="Feed A · his face"><span class="tag feed">Feed</span> Feed A · His face (front camera)</h3>
+          <p class="meta-line">Video · 9:16 if offered, else 16:9 with his face centred · add Milo · used in rec-dual, rec-phone-snap, rec-lock</p>
+          <div class="fields"><div class="field"><b>Feed A prompt</b><pre>Video. Seen exactly as a phone's front selfie camera sees it, held at arm's length by a two-year-old: Milo's face fills the centre of the frame, seen slightly from below, the image gently wobbling as his little hands move. Behind him, a bright blue sky and green leaves of a sunny garden. For the first few seconds he stares into the screen in fascination, tilts his head from side to side and sticks out his tongue. Then he hears a funny sound off to one side, looks up with big surprised eyes, and bursts into a huge belly laugh, then looks back into the camera grinning. Handheld selfie point of view, 24mm, bright natural daylight. No dialogue. No text, no logos, no other people. 8 seconds.</pre></div></div>
+        </article>
+        <article class="shot">
+          <h3 data-toc="Feed B · what he sees"><span class="tag feed">Feed</span> Feed B · What he sees (rear camera)</h3>
+          <p class="meta-line">Video · 9:16 if offered, else 16:9 with the action centred · add Nora · used in rec-dual and rec-keepsake</p>
+          <div class="fields"><div class="field"><b>Feed B prompt</b><pre>Video. Point of view of a phone's rear camera held up by a two-year-old at waist height, wobbling and tilting playfully as he toddles across a sunny back garden: soft green grass, a bright red ball rolling past, then Nora kneeling on the grass a few steps ahead, laughing, waving both hands and pulling a silly face straight into the lens, the coral band of her smartwatch on her left wrist. Handheld toddler point of view, low angle, 24mm, bright warm sunlight, joyful. No dialogue. No text, no logos, the watch screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+        <p class="note">If the lion mask doesn't follow Milo well (the face detector likes a clear, frontal face), I'll say which part of Feed A to regenerate; the bundled demo footage is the fallback, but it's a different child.</p>
+      </section>
+
+      <section id="recordings" data-toc="Screen recordings">
+        <h2>Screen recordings: the real app, fed with your shots</h2>
+        <p>Made with <code>branding/promo-videos/scripts/toddlercam-launch-record.mjs</code>: the Debug build of ToddlerCam on a paired iPhone 17 Pro and Watch Series 11 simulator, never the real cameras. On a simulator the app reads its two cameras from <code>127.0.0.1:8089/front</code> and <code>/rear</code> (<code>SimulatorCameraStreamer.swift</code>) and runs its face tracking on the front one, so the script serves frames cut from your Flow shots there. Taps come from a small XCUITest driver (<code>scripts/toddlercam-launch-driver</code>), the way a finger would: the bubble, Lock and taps on the phone; Face Masks → Lion, then Quack and the shutter on the watch.</p>
+        <table class="grid">
+          <tr><th>Recording</th><th>What it shows</th><th>Used at (30 s)</th></tr>
+          <tr><td><code>rec-dual</code></td><td>Nora full screen (rear), Milo laughing in the bubble (front); a tap on the bubble swaps them, the lion circling his face</td><td>0:08.5</td></tr>
+          <tr><td><code>rec-watch-snap</code></td><td>The watch remote, "Connected": Quack, then the shutter</td><td>0:12.3</td></tr>
+          <tr><td><code>rec-phone-snap</code></td><td>The phone at the same time: Milo looks up surprised, the shutter flash, the photo in the corner</td><td>0:13.4, 0:13.9</td></tr>
+          <tr><td><code>rec-lock</code></td><td>Toddler lock on: taps pop little emoji while the camera keeps running</td><td>0:17.2</td></tr>
+          <tr><td><code>rec-keepsake</code></td><td>The grown-ups gate, then the gallery's dual keepsake: not used (§1)</td><td>—</td></tr>
+        </table>
+        <p class="note"><b>Two things about the app the recordings showed:</b> the face "mask" is an emoji that circles Milo's face rather than covering it (as the app's test <code>testFlyingEmojiOrbitsOutsideFaceAndNeverCoversFace</code> intends), so the story's "lion mask on him" became a lion that flies around him; and the toddler-lock "bubbles" are small emoji pops. Both are the app as it is.</p>
+      </section>
+
+      <section id="audio" data-toc="Voiceover + music">
+        <h2>Narration and music</h2>
+        <h3 data-toc="Narration">1 · Narration (made)</h3>
+        <p>Kokoro-82M (Apache 2.0, free for commercial use), generated locally with <code>branding/promo-videos/scripts/toddlercam-launch-vo.py</code> and read back by speech recognition for the word timings. Each sample is the whole 30 s narration in one voice. <b>af_heart is in the edit</b>; name another and I swap it.</p>
+        <table class="grid">
+          <tr><th>Voice</th><th>Listen</th></tr>
+          <tr><td><b>af_heart</b> (in the edit)</td><td><audio controls preload="none" src="media/voice/narration-af_heart.m4a"></audio></td></tr>
+          <tr><td>af_bella</td><td><audio controls preload="none" src="media/voice/narration-af_bella.m4a"></audio></td></tr>
+          <tr><td>af_sarah</td><td><audio controls preload="none" src="media/voice/narration-af_sarah.m4a"></audio></td></tr>
+          <tr><td>af_nicole (slow, breathy)</td><td><audio controls preload="none" src="media/voice/narration-af_nicole.m4a"></audio></td></tr>
+          <tr><td>bf_emma (British)</td><td><audio controls preload="none" src="media/voice/narration-bf_emma.m4a"></audio></td></tr>
+        </table>
+        <h3 data-toc="Music (Flow Music)">2 · Music (yours, from Flow Music)</h3>
+        <p>Every Flow Music track came out about 61 s long, which is fine: the edit uses the parts it needs and ends on the track's own ending. The prompts are kept here for a remake.</p>
+        <div class="fields">
+          <div class="field" data-max="900"><b>Music prompt, 30 seconds</b><pre>Instrumental only, no vocals, no lyrics, no animal sounds. A 30-second playful comedy track for a short film about a mom and her toddler. 104 BPM, 4/4, clear downbeats on every bar so a video can be cut to it. 0:00–0:05 a slightly deflated, wobbly toy piano and a sad little tuba, like a joke falling flat. At 0:05 a bright, bouncy groove kicks in: ukulele, xylophone, hand claps, a light shaker and a playful bass, sunny and curious. At 0:11 a one-beat full stop (silence), then the groove comes back even happier. At 0:24 a cheeky xylophone run, then a warm, resolving major chord with a clean ending at exactly 0:30. Leave space in the mid frequencies for a voiceover.</pre></div>
+          <div class="field" data-max="600"><b>Music prompt, 15 seconds</b><pre>Instrumental only, no vocals, no animal sounds. A 15-second playful comedy sting, 104 BPM, 4/4, clear downbeats for cutting: two bars of wobbly toy piano, then a bright ukulele, xylophone and hand-clap groove from 0:04, a one-beat stop at 0:08, the groove again, and a warm resolving chord with a clean ending at exactly 0:15. Leave room for a voiceover.</pre></div>
+        </div>
+      </section>
+
+      <section id="stills" data-toc="Stills (spare)">
+        <h2>Stills: the app, from the recordings</h2>
+        <p>Frames of the real app for posts and thumbnails. They show the AI-generated Milo and Nora, so they carry the same "demo footage" caveat.</p>
+        <div class="gallery">
+          <figure><img src="media/stills/app-dual-nora.jpg" alt="ToddlerCam on iPhone: Nora in the garden full screen, Milo laughing in the yellow bubble" loading="lazy"><figcaption><b>Both cameras</b> · what he sees, and him<br><a class="dl" href="media/stills/app-dual-nora.jpg" download>app-dual-nora.jpg</a></figcaption></figure>
+          <figure><img src="media/stills/app-dual-milo.jpg" alt="After the swap: Milo full screen, laughing, Nora in the bubble" loading="lazy"><figcaption><b>Swapped</b> · Milo full screen<br><a class="dl" href="media/stills/app-dual-milo.jpg" download>app-dual-milo.jpg</a></figcaption></figure>
+          <figure><img src="media/stills/app-snap.jpg" alt="Milo looking up surprised, the lion emoji below his chin" loading="lazy"><figcaption><b>The quack</b> · he looks up<br><a class="dl" href="media/stills/app-snap.jpg" download>app-snap.jpg</a></figcaption></figure>
+          <figure><img src="media/stills/app-lock.jpg" alt="Toddler lock on: Locked at the top, a unicorn pop by his eye, the lion, and the hint 'Tap anywhere for magic bubbles'" loading="lazy"><figcaption><b>Toddler lock</b> · taps make pops<br><a class="dl" href="media/stills/app-lock.jpg" download>app-lock.jpg</a></figcaption></figure>
+          <figure><img src="media/stills/watch-remote.jpg" alt="The watch remote: Connected, Photo and Video, the big coral shutter, Quack, Woof and Lock" loading="lazy"><figcaption><b>Watch remote</b><br><a class="dl" href="media/stills/watch-remote.jpg" download>watch-remote.jpg</a></figcaption></figure>
+        </div>
+      </section>
+
+            <section id="youtube" data-toc="YouTube upload">
+        <h2>YouTube upload: what to fill in, for each cut</h2>
+        <p>Three uploads, field by field in the order YouTube Studio's upload dialog asks. Each cut has its own title, description, thumbnail and subtitle file; the settings that are the same for all three come after. The <b>30 s cut is the one ToddlerCam's site and docs page will embed</b>, so upload it first and send me its link.</p>
+        <table class="grid">
+          <tr><th>Cut</th><th>Visibility</th></tr>
+          <tr><td><b>30 s · 16:9</b>, the main video</td><td>Public (or Unlisted until the pages are updated)</td></tr>
+          <tr><td><b>15 s · 16:9</b>, for ads and sharing</td><td>Unlisted: a link to share or use in an ad, without a near-copy of the 30 s on the channel</td></tr>
+          <tr><td><b>15 s · 9:16</b>, a Short</td><td>Public; vertical and under 3 minutes, so YouTube makes it a Short by itself</td></tr>
+        </table>
+
+        <h3>1 · The 30-second video</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>ToddlerCam: a camera for little hands, and a remote on your watch</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Four hundred photos of the back of his head. So we gave him his own camera.
+
+ToddlerCam is a dual camera made for toddlers, with the parent's watch as the remote:
+• Both cameras at once: what your toddler sees, and their face when they see it, in one keepsake photo.
+• Your watch is the remote: take the photo, switch cameras, or play a quack or a woof so they look up.
+• Toddler lock: taps on the screen only make bubbles, while the camera keeps running.
+• No account, no ads, no tracking. Photos stay on the phone.
+
+Get ToddlerCam (free): https://apps.apple.com/us/app/toddlercam-dual-baby-camera/id6810526172
+More: https://tianhaoz95.github.io/hejitech-apps/toddlercam/site/
+
+The people and scenes in this video are AI-generated, the in-app camera footage is demo footage cut from the same AI scenes, and the narration is a synthetic voice.
+
+#Toddler #Parenting</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/toddlercam-launch-30-thumbnail.jpg" alt="Thumbnail: the end card, the ToddlerCam icon, the name and 'A camera for little hands, and a remote on yours.' on warm cream, with the disclaimer at the bottom" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, the end card<br><a class="dl" href="media/youtube/toddlercam-launch-30-thumbnail.jpg" download>toddlercam-launch-30-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/toddlercam-launch-30.mp4" download>toddlercam-launch-30.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/toddlercam-launch-30.srt" download>toddlercam-launch-30.srt</a> (Video elements, below)</td></tr>
+          <tr><th>Playlist</th><td>Make a <b>ToddlerCam</b> playlist and add all three.</td></tr>
+        </table>
+
+        <h3>2 · The 15-second video (16:9)</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>ToddlerCam in 15 seconds: his own camera, your watch as the remote</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>"Milo! Look at Mommy!" "Mine!" So we gave him his own camera: both sides at once, and a watch remote that quacks so he looks up.
+
+Get ToddlerCam (free): https://apps.apple.com/us/app/toddlercam-dual-baby-camera/id6810526172
+More: https://tianhaoz95.github.io/hejitech-apps/toddlercam/site/
+
+People and scenes in this video are AI-generated, the in-app footage is demo footage, and the narration is a synthetic voice.
+
+#Toddler #Parenting</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/toddlercam-launch-15-thumbnail.jpg" alt="Thumbnail: the same end card, from the 15-second cut" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720<br><a class="dl" href="media/youtube/toddlercam-launch-15-thumbnail.jpg" download>toddlercam-launch-15-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/toddlercam-launch-15.mp4" download>toddlercam-launch-15.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/toddlercam-launch-15.srt" download>toddlercam-launch-15.srt</a></td></tr>
+        </table>
+
+        <h3>3 · The Short (9:16)</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Four hundred photos of the back of his head #Shorts</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>So we gave him his own camera, and the remote is on my watch. One tap, it quacks, he looks. Snap.
+
+Get ToddlerCam (free): https://apps.apple.com/us/app/toddlercam-dual-baby-camera/id6810526172
+
+People and scenes in this video are AI-generated, the in-app footage is demo footage, and the narration is a synthetic voice.
+
+#Toddler #Shorts</pre></div>
+        </div>
+        <div class="gallery">
+          <figure class="tall"><img src="media/youtube/toddlercam-launch-15-vertical-thumbnail.jpg" alt="Thumbnail: the end card laid out for a tall frame" loading="lazy"><figcaption><b>Cover</b> · 1080×1920, the end card. In the YouTube app, pick the cover from the video's end; Studio on the web doesn't take a custom Short thumbnail.<br><a class="dl" href="media/youtube/toddlercam-launch-15-vertical-thumbnail.jpg" download>toddlercam-launch-15-vertical-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/toddlercam-launch-15-vertical.mp4" download>toddlercam-launch-15-vertical.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/toddlercam-launch-15-vertical.srt" download>toddlercam-launch-15-vertical.srt</a> (same timings as the 15 s cut). Add it in Studio → Content → the Short → <b>Subtitles</b> if the upload dialog doesn't show Video elements.</td></tr>
+        </table>
+
+        <h3>4 · The same for all three</h3>
+        <table class="kv">
+          <tr><th>Thumbnail</th><td><b>Upload file</b> → the cut's JPG. A custom thumbnail needs a phone-verified channel; if the button is greyed out, use <b>Select from video</b> and pick the end card.</td></tr>
+          <tr><th>Audience</th><td><b>No, it's not made for kids.</b> It's an ad for parents, although a child is in it and the app is in the App Store's Kids category. Age restriction: <b>No</b>.</td></tr>
+        </table>
+        <div class="fields">
+          <div class="field" data-max="500"><b>Tags (Show more)</b><pre>ToddlerCam, toddler camera, kids camera, baby camera, dual camera, front and back camera, watch remote, smartwatch app, toddler photos, parenting app, iPhone app, toddler, parenting</pre></div>
+        </div>
+        <table class="kv">
+          <tr><th>Paid promotion</th><td><b>Leave unticked</b>: it's your own product.</td></tr>
+          <tr><th>Altered content</th><td><b>Yes.</b> Nora, Milo and the home are realistic AI-generated people and scenes, and the narration is a synthetic voice. YouTube adds a small "Altered or synthetic content" label.</td></tr>
+          <tr><th>Automatic chapters</th><td>Untick; featured places: untick if shown.</td></tr>
+          <tr><th>Language &amp; captions</th><td>Video language <b>English</b>. Caption certification: <b>This content has never aired on television in the U.S.</b></td></tr>
+          <tr><th>License</th><td><b>Standard YouTube License</b>.</td></tr>
+          <tr><th>Allow embedding</th><td><b>On. Required</b> for the 30 s cut: ToddlerCam's site and docs page will embed it.</td></tr>
+          <tr><th>Category</th><td><b>Science &amp; Technology</b> (or People &amp; Blogs).</td></tr>
+          <tr><th>Comments</th><td>On, <b>Hold potentially inappropriate comments for review</b>.</td></tr>
+          <tr><th>Add subtitles</th><td>Video elements → <b>Add subtitles → Upload file → With timing</b>, English → the cut's SRT. The words are the script's (Nora's and Milo's lines, the narration and the closing tagline), timed from the same speech pass as the captions in the video. The captions are already burned in, so a viewer who turns on CC sees the words twice; the file still helps search, translation and muted embeds.</td></tr>
+          <tr><th>End screen, cards</th><td><b>Skip both.</b> An end screen covers the end card's name and disclaimer.</td></tr>
+          <tr><th>Checks</th><td>The music is yours from Flow Music, the footage is yours from Flow, the voice is Kokoro (Apache 2.0) and the quack and shutter are the app's own sounds, so a copyright claim is unlikely. If one appears, tell me what it names.</td></tr>
+          <tr><th>Visibility</th><td>As in the table at the top. <b>Private</b> can't be embedded (the embed shows "Video unavailable").</td></tr>
+          <tr><th>Then</th><td>Send me the 30 s link: I put it on ToddlerCam's site (a click-to-play poster; nothing loads from YouTube before the click) and its docs page.</td></tr>
+        </table>
+
+        <h3>Elsewhere</h3>
+        <div class="fields">
+          <div class="field" data-max="280"><b>Short post (X / Threads)</b><pre>Four hundred photos of the back of his head. So we gave him his own camera. ToddlerCam films both sides at once, and my watch is the remote: one tap, it quacks, he looks. Snap.</pre></div>
+        </div>
+        <p class="note">The subtitle files come from <code>branding/promo-videos/scripts/toddlercam-launch-srt.mjs</code>, which reads where each line sits in the composition, so a re-cut gets matching subtitles by running it again.</p>
+      </section>
+
+      <section id="steps">
+        <h2>What to do, in order</h2>
+        <ol class="do">
+          <li><b>Review the three cuts</b> in §1 with sound; tell me what to change (Your notes → Copy summary, or just say it).</li>
+          <li><b>Fix the simulators</b> when convenient: <code>sudo xcodebuild -runFirstLaunch</code> (§12). Only needed for a re-record, such as the keepsake beat.</li>
+          <li><b>Upload</b> with §10: the 30 s first.</li>
+          <li><b>Send me the 30 s link</b>: I put it on ToddlerCam's site and docs page.</li>
+        </ol>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="tc-story"><span><b>Story, lines and narration settled</b></span></li>
+          <li><input type="checkbox" id="tc-nora"><span><b>Nora made and saved</b></span></li>
+          <li><input type="checkbox" id="tc-milo"><span><b>Milo made and saved</b></span></li>
+          <li><input type="checkbox" id="tc-s1"><span><b>Shots 1–7 made</b></span></li>
+          <li><input type="checkbox" id="tc-m30"><span><b>Music, 30 s</b><small>Two takes</small></span></li>
+          <li><input type="checkbox" id="tc-m15"><span><b>Music, 15 s</b></span></li>
+          <li><input type="checkbox" id="tc-files"><span><b>Files dropped in the promo folder</b></span></li>
+          <li><input type="checkbox" id="tc-review"><span><b>Cuts reviewed with sound</b><small>§1</small></span></li>
+          <li><input type="checkbox" id="tc-simfix"><span><b>Simulators fixed</b><small>sudo xcodebuild -runFirstLaunch</small></span></li>
+          <li><input type="checkbox" id="tc-yt30"><span><b>30 s uploaded</b><small>Link sent for the site and docs</small></span></li>
+          <li><input type="checkbox" id="tc-yt15"><span><b>15 s uploaded</b><small>Unlisted</small></span></li>
+          <li><input type="checkbox" id="tc-ytshort"><span><b>Short uploaded</b></span></li>
+        </ul>
+      </section>
+
+      <section id="risks">
+        <h2>What can go wrong</h2>
+        <table class="grid">
+          <tr><th>Problem</th><th>What to do</th></tr>
+          <tr><td><b>The simulators don't start</b> ("CoreSimulator is out of date"): Xcode updated itself to 27.2 at 23:35 during this session, and the system's simulator framework (1174.9.2) is older than it needs</td><td>Run <code>sudo xcodebuild -runFirstLaunch</code> once (it asks for your password). The two simulators I made, "TC Promo iPhone" and "TC Promo Watch", still have the Debug app on them; the record script's <code>restore</code> step removes it, or delete the pair in Xcode.</td></tr>
+          <tr><td>The narration doesn't sound like Nora</td><td>Pick another voice in §8; or I mute Flow's voices and narrate everything.</td></tr>
+          <tr><td>Milo's "Mine!" or "Mommy!" sounds like an adult</td><td>I mute them; the captions carry the words.</td></tr>
+          <tr><td>Someone notices Milo's selfie view is the living room right after the garden (the quack beat)</td><td>That beat uses shot 5's look-up, the best "he looks up" in the shots. Make Feed A (§6) in the garden and I re-record it.</td></tr>
+          <tr><td>It reads as a safety promise</td><td>The script states facts only (no account, no ads, it stays on the phone); nothing says "safe" or "COPPA".</td></tr>
+        </table>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-10-31-toddlercam-promo-video</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>

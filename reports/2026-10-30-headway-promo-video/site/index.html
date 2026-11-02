@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Headway promo video kit (Google Flow)</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d2416'/%3E%3Crect x='9' y='9' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='15' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='21' width='9' height='2.5' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+  <style>
+    .shot { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); padding: 16px 18px; margin: 18px 0; }
+    .shot h3 { margin: 0 0 4px; }
+    .shot .meta-line { color: var(--mut); font-size: 14px; margin: 0 0 10px; }
+    .swatches { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+    .swatches span { display: inline-flex; align-items: center; gap: 8px; font: 13px "JetBrains Mono", monospace; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--panel); }
+    .swatches i { width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line); display: inline-block; }
+    .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .02em; border-radius: 999px; padding: 2px 9px; margin-right: 6px; vertical-align: 2px; border: 1px solid transparent; white-space: nowrap; }
+    .tag.new { background: color-mix(in srgb, #2457d6 13%, transparent); color: #2457d6; border-color: color-mix(in srgb, #2457d6 35%, transparent); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.new { color: #8fb0ff; } }
+    :root[data-theme="dark"] .tag.new { color: #8fb0ff; }
+    .worlds { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+    .worlds > div { border-radius: 14px; padding: 16px 18px; color: #fff; min-width: 0; }
+    .worlds .past { background: linear-gradient(135deg, #7a4a1e, #c98a3c 60%, #f1d29a); text-shadow: 0 1px 2px rgb(0 0 0 / .35); }
+    .worlds .now { background: radial-gradient(circle at 30% 20%, #0d2416, #03100a); color: #3dff7a; font-family: "JetBrains Mono", monospace; font-size: 14px; }
+    .worlds b { display: block; margin-bottom: 4px; }
+    .gallery { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); margin: 14px 0; }
+    .gallery figure { margin: 0; min-width: 0; }
+    .gallery figcaption { font-size: 13px; color: var(--mut); margin-top: 6px; }
+    .gallery figcaption b { color: var(--ink); }
+    .gallery video { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; background: #03100a; max-height: 420px; }
+    .gallery figure.tall video, .gallery figure.tall img { max-height: 520px; width: auto; max-width: 100%; margin: 0 auto; display: block; }
+    @media (max-width: 640px) { .worlds { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>Headway promo video kit (Google Flow)</b><small>A 30 s city comedy: everyone runs for Caltrain except Lin · story, characters and Flow prompts</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <!-- Filled from the sections' <h2>s by report.js; data-toc="Short label" on a section overrides. -->
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <h1>Everyone in the city runs for the train. She doesn't.</h1>
+        <p class="lede">The plan for Headway's promo: a <b>30-second comedy</b> plus 15-second cuts in 16:9 and 9:16, set in today's San Francisco and on the Peninsula. Every morning the city sprints for Caltrain. Lin strolls, coffee in hand, and still makes every train, because her next train is in her glasses and her phone taps her when it's time. Her running gag is Max, a commuter who sprints for everything and makes nothing. The style comes from your reference: a photoreal, expressive lead who plays to the camera, in warm, glowing cinematic light. You make the characters, the shots and the music in Google Flow from the prompts below; I make the screen recordings of the glasses, iPhone and Watch apps, the voiceover and the edit.</p>
+        <div class="status">
+          <div><b>Story + scripts</b><span class="ok">Settled; used in the edit</span></div>
+          <div><b>Characters</b><span class="ok">Lin and Max made in Flow</span></div>
+          <div><b>Flow shots</b><span class="ok">All 7 in, all used</span></div>
+          <div><b>Recordings</b><span class="ok">4 made: glasses board, ring swipe, two iPhone alerts</span></div>
+          <div><b>Voiceover</b><span class="ok">af_heart narration + the characters' own Flow lines</span></div>
+          <div><b>Music</b><span class="ok">Take 2 of each picked (§1)</span></div>
+          <div><b>Edit</b><span class="todo">Rendered: your review (§1)</span></div>
+          <div><b>YouTube</b><span class="ok">30 s and the Short live; the 15 s is ready (§8)</span></div>
+          <div><b>On the pages</b><span class="ok">Home page and docs page embed the 30 s</span></div>
+        </div>
+        <div class="cards">
+          <div class="card"><h3>Grounded in the app</h3>
+            <ul>
+              <li>Every claim comes from <code>projects/headway</code>: live next trains on Even G2 glasses, steered with the R1 ring (swipe through the next trains), and an iPhone that taps you when your train is late, cancelled, time to leave or a few minutes from your stop.</li>
+              <li>The colours come from the app icon: HUD green on deep green.</li>
+            </ul>
+          </div>
+          <div class="card"><h3>Built in from the last video</h3>
+            <ul>
+              <li>Fast: a cut every 2–4 beats of the music, each Flow shot used for 1.5–3 s.</li>
+              <li>No green screens: the glasses' display can't be seen from outside anyway, and the phone faces away. The product is shown in real recordings.</li>
+              <li>Smooth transitions, word-by-word captions, voiceover and music, loudness for social platforms.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>Next for you:</b> watch and listen to the three cuts in §1, and check my two calls you couldn't make while away: the music takes and the narration voice (both easy to swap). Write what to change in <b>Your notes</b> and click <b>Copy summary</b>, or tell me. Once you approve a cut, I add the YouTube fields, thumbnail and captions file.</div>
+      </section>
+
+      <section id="edit" data-toc="The edit · review">
+        <h2>The edit: three cuts to review</h2>
+        <p>Built in Remotion (<code>branding/promo-videos/src/headway-launch</code>) from your seven Flow shots, take 2 of each music track, four real recordings of the apps and the <b>af_heart</b> narration. The jokes are in the characters' own Flow voices; the narration says what Headway does.</p>
+        <div class="gallery">
+          <figure><video src="media/edit/headway-launch-30.mp4" poster="media/edit/headway-launch-30.jpg" controls playsinline preload="none"></video><figcaption><b>30 s · 16:9</b> · the main cut · 30.4 s<br><a class="dl" href="media/edit/headway-launch-30.mp4" download>headway-launch-30.mp4</a></figcaption></figure>
+          <figure><video src="media/edit/headway-launch-15.mp4" poster="media/edit/headway-launch-15.jpg" controls playsinline preload="none"></video><figcaption><b>15 s · 16:9</b> · the city runs, "Me? I don't run.", glasses, phone, end card · 15.3 s<br><a class="dl" href="media/edit/headway-launch-15.mp4" download>headway-launch-15.mp4</a></figcaption></figure>
+          <figure class="tall"><video src="media/edit/headway-launch-15-vertical.mp4" poster="media/edit/headway-launch-15-vertical.jpg" controls playsinline preload="none"></video><figcaption><b>15 s · 9:16</b> · Shorts / Reels / TikTok<br><a class="dl" href="media/edit/headway-launch-15-vertical.mp4" download>headway-launch-15-vertical.mp4</a></figcaption></figure>
+        </div>
+        <h3 data-toc="My calls while you were away">Calls I made while you were away</h3>
+        <table class="grid">
+          <tr><th>Call</th><th>What I picked, and why</th><th>To change it</th></tr>
+          <tr><td>Music, 30 s</td><td><b>Take 2</b> (~99 BPM). Its last 30 s follow the prompt: a stop-start hurried opening with a hit where the doors close on Max (≈4.5 s), a gap for "Me? I don't run.", and the groove arriving just as Headway appears. Take 1 is one even 112 BPM groove with no stop.</td><td>Say "take 1": I re-cut to its beats.</td></tr>
+          <tr><td>Music, 15 s</td><td><b>Take 2</b> (~103 BPM): a steady groove, a stop, then a final hit that lands on the end card. Take 1 runs flat to its fade.</td><td>Same.</td></tr>
+          <tr><td>Narration voice</td><td><b>af_heart</b>, the Kokoro voice closest to Lin's Flow voice (Achernar): median pitch 199 Hz vs her 204 Hz. af_bella (203 Hz) is the runner-up, a little slower. I picked by measurement, not by ear.</td><td>Say "af_bella" (takes for every voice are ready).</td></tr>
+          <tr><td>On-camera lines</td><td>Flow gave the characters their lines, so the edit uses them: Max's "Hold the door!", Lin's "Me? I don't run.", Max's "Oh no! Wait! Stop the train! Let me off!" and Lin's "Bye, Max!". The narration skips those words. Shot 5's own line ("Looks like it's time to head out!") is muted: the narration speaks there.</td><td>—</td></tr>
+          <tr><td>Glasses on screen</td><td>The glasses display (green on black, as the glasses draw it) floats over shot 3's street, out of focus, as if seen through her glasses.</td><td>—</td></tr>
+        </table>
+        <table class="kv">
+          <tr><th>Pace</th><td>Cuts sit on the music's beats (each planned cut moves to the nearest beat within 0.25 s); Flow shots are on screen 0.8–3.3 s.</td></tr>
+          <tr><th>Transitions</th><td>Flow shot → its recording: a cross-zoom. Between story beats: a blurred slide. Into the end card: a dreamy zoom. Everything pushes in slowly.</td></tr>
+          <tr><th>Captions</th><td>Every spoken word, narration and the characters' lines, word by word, timed from a speech-recognition pass; the end card carries the tagline instead of a caption.</td></tr>
+          <tr><th>Sound</th><td>The music ducks under every line. Measured loudness: 30 s −12.8 LUFS (peaks −1.2 dBFS), 15 s −13.8 LUFS; social platforms target about −14.</td></tr>
+          <tr><th>On screen</th><td>"Demo data" on every recording; on the end card: "Not affiliated with Caltrain. Alerts shown are a demonstration. People and scenes are AI-generated."</td></tr>
+          <tr><th>9:16</th><td>Flow shots are centre-cropped (Lin is centred in most), the glasses display widens to the frame, the phone and end card are laid out for the tall frame.</td></tr>
+        </table>
+        <p class="note"><b>What I checked:</b> stills at the cuts and a frame every second of each render; a speech-recognition read of the 30 s and 15 s renders (every line is there, in order); lengths and loudness. <b>What I couldn't:</b> listen. Please watch with sound: the mix between Flow's voices and the narration, and the music choice, need your ears. Known nit: at ≈26 s Max's last caption fades out while "Bye," appears.</p>
+        <p class="note">The renders are reproducible (<code>npx remotion render headway-launch-30</code> etc. in <code>branding/promo-videos</code>, then the loudness pass) and make this report 35 MB, so <code>media/edit/</code> stays out of git.</p>
+      </section>
+
+      <section id="story" data-toc="Story">
+        <h2>The story: the calmest commuter in the city</h2>
+        <p>A Bay Area morning. The whole city is running: scooters, laptops under arms, toast in mouths, all heading for the train. Lin walks the other way through the crowd, sipping her coffee, and narrates to camera like the star of her own show. Max sprints past her and dives at closing doors, and misses. She doesn't run, because Headway shows her next train in her glasses, the ring flips through the ones after it, and her phone taps her when it's time to go and again before her stop. In the payoff she steps off at her stop. Max dozed off, missed it, and is carried away pressed against the window, while she waves her croissant at him.</p>
+        <div data-block="arc"></div>
+        <div class="fields">
+          <div class="field" data-max="80"><b>Tagline (end card)</b><pre>Your next Caltrain, at a glance.</pre></div>
+        </div>
+        <h3 data-toc="Voiceover scripts">Voiceover scripts (she narrates, first person)</h3>
+        <div class="fields">
+          <div class="field" data-max="420"><b>Voiceover, 30-second cut</b><pre>Every morning, this whole city runs for the train.
+
+Me? I don't run.
+
+I wear Headway. My next Caltrain, live, right before my eyes.
+
+One swipe of my ring, and I see every train after it.
+
+Late? Cancelled? Time to go? My phone taps me first.
+
+It even taps me before my stop. Bye, Max.
+
+Headway. Your next Caltrain, at a glance.</pre></div>
+          <div class="field" data-max="260"><b>Voiceover, 15-second cut</b><pre>Every morning, this whole city runs for the train.
+
+Me? I don't. Headway puts my next Caltrain right before my eyes.
+
+And my phone taps me when it's time to go.
+
+Headway. Your next Caltrain, at a glance.</pre></div>
+          <div class="field" data-max="160"><b>Small text on the end card</b><pre>Not affiliated with Caltrain. Alerts shown are a demonstration.</pre></div>
+        </div>
+        <p class="note"><b>On camera vs narration.</b> Lin says "Me? I don't run." (shot 2) and "Bye, Max." (shot 7) on camera, in her Flow voice, and Max shouts "Hold the door!" (shot 2). If those takes sound good, the edit keeps Flow's audio for those moments and the narration skips those words. For the narration I pick the Kokoro voice closest to her Flow voice, so she sounds like one person. If the voices don't match well enough, the edit mutes Flow and the narration says everything.</p>
+      </section>
+
+      <section id="character" data-toc="Characters">
+        <h2>The characters: Lin, and Max</h2>
+        <p>Made in the style of your reference, not as a copy of anyone in it: photoreal, expressive faces in warm, glowing cinematic light, with a lead who plays to the camera. Both are new, original characters, so neither face is anyone's in particular. Lin keeps the reference's loose, messy bun as her signature, now with city clothes.</p>
+        <table class="kv">
+          <tr><th>Keep from the reference</th><td>Warm amber-and-cream grade, golden rim light and sun rays, shallow depth of field, a soft painterly glow on photoreal faces, a big confident smile straight to camera.</td></tr>
+          <tr><th>Don't</th><td>Upload the reference screenshot into Flow as an ingredient: it's another creator's frame (with their watermark and captions), and it would pull Flow towards that specific face. The prompts below carry the style instead.</td></tr>
+        </table>
+        <article class="shot">
+          <h3 data-toc="Lin">Lin, the lead: portrait, body, character info, voice</h3>
+          <p class="meta-line">Flow → Characters → New, in two steps · <b>1. Portrait:</b> paste the portrait prompt into "Describe your character…", make 2–4 and keep the face you like · <b>2. Create body:</b> with that portrait selected, click <b>Create body</b> and paste the body prompt into "What do you want to change?" · save the result as <b>Lin</b> · <b>3. Character info:</b> on Lin's page, paste the character info into "Describe how your character acts…" so the Flow agent keeps her behaviour the same in every shot · <b>4. Voice:</b> Select a voice → pick the voice below, paste the sample dialogue and the performance, Preview, then <b>Add to character</b>. It's for her two short lines on camera (shots 2 and 7); the narration is the voiceover (§7)</p>
+          <div class="fields">
+            <div class="field"><b>Lin · 1 · Portrait prompt</b><pre>Lin, a cheerful, quick-witted young professional in San Francisco in her late twenties. Unflappable and a little smug: she talks to the camera like the star of her own show.
+
+Face: East Asian woman, bright expressive eyes, a wide confident smile, soft natural skin with a light glow, a playful raised eyebrow.
+
+Hair: long dark hair pulled up into a loose, messy bun, several loose strands falling around her face and neck.
+
+Glasses: she always wears slim, lightweight smart glasses that look like ordinary everyday glasses: thin dark rounded-rectangle frames, clear lenses, slim temples. Nothing visible on the lenses.
+
+Clothing in frame: the collar of a camel trench coat open over a cream ribbed knit top, small plain gold stud earrings. No logos, no text.
+
+Photorealistic with a soft cinematic glow, head-and-shoulders portrait facing the camera, warm golden morning light from the left with a soft rim light, softly blurred city street background, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Lin · 2 · Body prompt (Create body)</b><pre>Keep her face, hair, glasses and expression exactly the same. Show her full length, head to toe, standing and facing the camera.
+
+Body: slim and relaxed, average height, easy upright posture, weight on one hip, holding a paper takeaway coffee cup in one hand, a thin matte black ring on her right index finger.
+
+Outfit: an open knee-length camel trench coat over a cream ribbed knit top; high-waisted dark charcoal wide-leg trousers; clean white low-top sneakers; a small tan leather crossbody bag. Small plain gold stud earrings. Her slim everyday glasses with thin dark frames. No logos, no text, no brand marks.
+
+Same warm golden morning light from the left with a soft rim light, softly blurred city street background, 50mm, photorealistic with a soft cinematic glow.</pre></div>
+            <div class="field" data-max="1000"><b>Lin · 3 · Character info ("Describe how your character acts…")</b><pre>Lin is the calmest person in a city that is always running late. She never hurries: she strolls, sips her coffee and takes her time, because she already knows when her train leaves. Unbothered, dry and a little smug, with a playful sense of humour.
+
+How she acts on camera: she plays to the camera like the star of her own show, with knowing glances, a slow raised eyebrow, a small satisfied smile and the occasional wink. When chaos happens around her, she reacts with a long deadpan look instead of panic. Her movements are smooth, unhurried and graceful; she leaves places with a little wave, never a rush.
+
+Habits: always has a paper coffee cup or a croissant in hand. Always wears her slim everyday glasses (they show her trains, which is why she never hurries; she glances at the corner of her view instead of at her phone) and a thin matte black ring on her right index finger that she taps with her thumb. When she checks her phone, she holds it with the back toward the camera.
+
+On camera she speaks only the short lines written in a shot's prompt, dry and unhurried, straight to the camera; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Lin · 4 · Voice to pick</b><pre>Achernar</pre></div>
+            <div class="field" data-max="120"><b>Lin · 4 · Sample dialogue</b><pre>Every morning, this whole city runs for the train. Me? I don't run. Bye, Max.</pre></div>
+            <div class="field" data-max="400"><b>Lin · 4 · Customize performance</b><pre>Soft, light and relaxed, dry and amused, like she's letting the audience in on a private joke. Unhurried pace, a little smug, with a small smile you can hear. Never salesy, never loud. Short pause before "Me? I don't run."</pre></div>
+          </div>
+        </article>
+        <article class="shot">
+          <h3 data-toc="Max">Max, the sprinter: portrait, body, character info, voice</h3>
+          <p class="meta-line">Same four steps · save the result as <b>Max</b>, add his character info and voice (for his one shout in shot 2) · he's in shots 1, 2, 6 and 7</p>
+          <div class="fields">
+            <div class="field"><b>Max · 1 · Portrait prompt</b><pre>Max, a lanky, permanently flustered commuter in his early thirties who is always running late. Comic and expressive: wide panicked eyes, a slightly open mouth, cheeks flushed from running.
+
+Face: a man with light-brown skin, a short scruffy beard, dark hair sticking up at the back as if he just got out of bed, a light sheen of sweat on his forehead.
+
+Clothing in frame: a light-blue button-down shirt with the collar half folded under, under a plain navy fleece vest, a backpack strap on one shoulder. No logos, no text.
+
+Photorealistic with a soft cinematic glow, head-and-shoulders portrait facing the camera, warm golden morning light from the left, softly blurred city street background, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Max · 2 · Body prompt (Create body)</b><pre>Keep his face, hair and expression exactly the same. Show him full length, head to toe, mid-stride as if about to break into a run, facing the camera.
+
+Body: tall and lanky, slightly hunched forward, one arm clutching an open laptop against his chest, the other holding a half-eaten piece of toast.
+
+Outfit: a light-blue button-down shirt, half untucked, with a small coffee stain on the chest; a plain navy fleece vest; khaki chinos; grey running sneakers with one lace untied; a bulging black backpack hanging off one shoulder. No logos, no text, no brand marks.
+
+Same warm golden morning light from the left, softly blurred city street background, 50mm, photorealistic with a soft cinematic glow.</pre></div>
+            <div class="field" data-max="1000"><b>Max · 3 · Character info ("Describe how your character acts…")</b><pre>Max is always running late and always running. Frantic, clumsy and endearing: he sprints for every train, dives at closing doors and misses them, then bends over panting in disbelief. Lin's comic opposite: she glances, he scrolls and sprints.
+
+How he acts on camera: big, exaggerated reactions in the style of a physical comedy: wide panicked eyes, flailing arms, mouth open, hair flying. Everything he carries is about to fall: toast, laptop, coffee, an open backpack. He runs while staring at his phone and refreshing it, holding it with the back toward the camera. He wears no glasses. When he finally sits down he falls asleep instantly, mouth open, head against the window, and wakes up in horror too late.
+
+He never notices Lin and never looks at the camera. On camera he only shouts the short lines written in a shot's prompt, out of breath; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Max · 4 · Voice to pick</b><pre>Achird</pre></div>
+            <div class="field" data-max="120"><b>Max · 4 · Sample dialogue</b><pre>Hold the door! Hold the— no, no, no… Wait, is this my stop?!</pre></div>
+            <div class="field" data-max="400"><b>Max · 4 · Customize performance</b><pre>Frantic and out of breath, talking while sprinting, voice cracking with panic. Fast, high-energy, a bit whiny in a lovable way, like a sitcom character who is always late. Big comic rises in pitch on "no, no, no".</pre></div>
+          </div>
+        </article>
+      </section>
+
+      <section id="style" data-toc="Look and feel">
+        <h2>Look and feel: golden city, green Headway</h2>
+        <p>The city is warm and golden: Bay Area morning sun through the fog, glass towers and painted houses, steam from coffee cups. Headway's world is HUD green. Every Flow prompt carries the warm look; the green belongs to the product shots (the glasses display and the app), so each time it appears it means Headway.</p>
+        <div class="worlds">
+          <div class="past"><b>The city</b>Golden morning light through thin fog, long shadows on the streets, amber and cream with cool fog-blue in the distance. Everyone in motion except her.</div>
+          <div class="now"><b>Headway</b>Neon green text on near-black: the glasses' display, the app's colours and the end card.</div>
+        </div>
+        <div class="swatches">
+          <span><i style="background:#c98a3c"></i>#c98a3c amber</span>
+          <span><i style="background:#f1d29a"></i>#f1d29a cream light</span>
+          <span><i style="background:#8fa3b3"></i>#8fa3b3 fog blue</span>
+          <span><i style="background:#3dff7a"></i>#3dff7a HUD green</span>
+          <span><i style="background:#0d2416"></i>#0d2416 deep green</span>
+        </div>
+        <table class="kv">
+          <tr><th>Camera</th><td>35–50mm, shallow depth of field, slow push-ins on Lin; Max gets fast handheld whip-pans. The contrast is the joke: she's always calm and centred, he's always blurred and late. Comic beats held a moment longer (the doors closing on him, her deadpan look).</td></tr>
+          <tr><th>Never on screen</th><td>Caltrain's logo, livery or signs (a generic silver double-decker commuter train instead), station names, brand names on the glasses, ring, phone, coffee cups or clothes, readable screens, real people's faces from the reference.</td></tr>
+        </table>
+      </section>
+
+      <section id="storyboard" data-toc="Storyboard + Flow">
+        <h2>Storyboard and Flow prompts</h2>
+        <p>Times are for the 30-second cut. <b>Flow</b> is the generated shot (the edit uses 1.5–3 s of each); <b>Recording</b> is the real app (§6). Each prompt is one Copy: paste it into Flow with the characters it names added.</p>
+        <div data-block="shots"></div>
+
+        <article class="shot">
+          <h3 data-toc="Flow settings (once)">Before the shots · Flow agent settings</h3>
+          <table class="kv">
+            <tr><th>Confirm before generating</th><td><b>Always</b>, so you see what's about to be generated (and whether the prompt was rewritten) before credits are spent.</td></tr>
+            <tr><th>Mode</th><td><b>Video · Ingredients</b>, with Lin and/or Max added as ingredients (Frames is for animating a still you already have).</td></tr>
+            <tr><th>Shape</th><td><b>16:9</b> for every shot; the 9:16 cut is made from the same footage.</td></tr>
+            <tr><th>Drafts</th><td><b>Omni 1.1 Flash · 720p · 8s · x1</b>: cheap tries to check the joke, the faces and that no logos or readable screens appear. Shots 3 and 4 (close-ups) can be 6s.</td></tr>
+            <tr><th>The take you keep</th><td>Re-run the prompt that worked on the best model in the dropdown, at the highest resolution it offers (1080p if available; the final video is 1080p, and 720p looks soft there), <b>x2</b> to pick from.</td></tr>
+          </table>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 1 · the city runs"><span class="tag new">Flow</span> Shot 1 · The whole city runs</h3>
+          <p class="meta-line">0:00–0:04 · Video · 16:9 · add Lin and Max</p>
+          <div class="fields"><div class="field"><b>Shot 1 prompt</b><pre>Video. A busy San Francisco street at golden morning light, thin fog between glass towers. A crowd of commuters rushes toward the camera in a frantic stampede: people on scooters, a woman running in heels, people with laptops under their arms. Max sprints through the middle of them with a piece of toast in his mouth, staring at his phone (the screen faces away and is never visible), his backpack flapping. In the centre of the frame, Lin, wearing her slim glasses, strolls calmly in the opposite rhythm, sipping her coffee, completely relaxed, and gives the camera a small knowing smile as people blur past her. Medium-wide shot, slow push-in on Lin, 35mm, shallow depth of field, warm amber colour grade, cinematic comedy. No logos, no text, no signs. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 2 · the doors close"><span class="tag new">Flow</span> Shot 2 · Max misses it, Lin doesn't care</h3>
+          <p class="meta-line">0:04–0:07 · Video · 16:9 · add Lin and Max · the comic beat: hold her deadpan look</p>
+          <div class="fields"><div class="field"><b>Shot 2 prompt</b><pre>Video. A modern commuter-rail platform in the San Francisco Bay Area at golden morning light. Max sprints down the platform toward a generic silver double-decker train and shouting "Hold the door!", and dives at the doors just as they slide shut in his face; the train pulls away and he is left bent over, panting, his toast falling to the ground. Lin, wearing her slim glasses, stands calmly a few steps away, sipping her coffee, and slowly turns to the camera with a long, deadpan, unimpressed look and one raised eyebrow, and says dryly: "Me? I don't run." Medium shot, 35mm, warm golden light, cinematic comedy timing. No logos, no text, no signs, no route numbers on the train. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 3 · the glance"><span class="tag new">Flow</span> Shot 3 · A glance, not a phone</h3>
+          <p class="meta-line">0:07–0:09, then the glasses recording, as if through her eyes · Video · 16:9 · 6s · add Lin</p>
+          <div class="fields"><div class="field"><b>Shot 3 prompt</b><pre>Video. On a busy city sidewalk at golden morning light, people around Lin hurry past staring down at their phones. Lin, wearing her slim everyday glasses with thin dark frames, simply lifts her eyes and glances toward the upper corner of her view, as if reading something only she can see; a faint green glow reflects on her cheek and a small, satisfied smile spreads across her face. Close-up from the front, slow push-in, 50mm, shallow depth of field, soft fog and blurred city lights behind her, warm golden light. Nothing readable on the lenses, no logos, no text. 6 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 4 · the ring"><span class="tag new">Flow</span> Shot 4 · One swipe of the ring</h3>
+          <p class="meta-line">0:13–0:15, then the glasses recording of the swipe · Video · 16:9 · add Lin</p>
+          <div class="fields"><div class="field"><b>Shot 4 prompt</b><pre>Video. Extreme close-up of Lin's hand holding a paper coffee cup: her thumb slides slowly along a thin matte black ring on her index finger, then taps it once. The cuff of her camel trench coat is in frame and a busy city crosswalk is softly blurred behind in golden morning light. Then a quick cut up to her face, wearing her slim glasses: she raises one eyebrow and nods, smug. 85mm macro look, shallow depth of field, warm light. No logos, no text. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 5 · the phone taps"><span class="tag new">Flow</span> Shot 5 · The phone taps her</h3>
+          <p class="meta-line">0:17–0:19, then the iPhone "time to leave" recording · Video · 16:9 · add Lin · the phone's screen faces away</p>
+          <div class="fields"><div class="field"><b>Shot 5 prompt</b><pre>Video. Lin, wearing her slim glasses, sits at the window counter of a sunlit neighbourhood café in San Francisco, about to bite into a croissant. Her phone buzzes on the counter; she picks it up and glances at it with the back of the phone toward the camera (the screen is never visible), nods, takes the croissant with her and strolls out the door without hurrying, giving the barista a little wave. Medium shot, 35mm, golden morning light through the window, relaxed and playful. No logos, no text, the screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 6 · before her stop"><span class="tag new">Flow</span> Shot 6 · A tap before her stop</h3>
+          <p class="meta-line">0:21–0:23, then the iPhone "your stop is next" recording · Video · 16:9 · add Lin and Max · the phone's screen faces away</p>
+          <div class="fields"><div class="field"><b>Shot 6 prompt</b><pre>Video. Inside a bright, modern commuter-train carriage with warm golden sunlight streaming through the windows and the Peninsula's hills passing outside. Lin, wearing her slim glasses, sits reading a paperback; her phone buzzes in her hand, she glances at it with the back of the phone toward the camera (the screen is never visible), calmly closes her book and stands up. Across the aisle, Max is fast asleep with his mouth open and his head against the window, his laptop slipping off his lap. Medium shot, 35mm, warm cinematic grade, quiet comedy. No logos, no text, no signs, the screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 7 · bye, Max"><span class="tag new">Flow</span> Shot 7 · Bye, Max</h3>
+          <p class="meta-line">0:25–0:30 · Video · 16:9 · add Lin and Max · the end card goes over it</p>
+          <div class="fields"><div class="field"><b>Shot 7 prompt</b><pre>Video. A sunny suburban commuter-rail platform on the San Francisco Peninsula, palm trees and golden morning light. Lin steps off a generic silver double-decker train with her coffee and croissant just as the doors close behind her. Through the train window behind her, Max has just woken up and presses his face and hands against the glass in horror as the train pulls away and carries him past his stop. Lin turns to the camera, waves her croissant at him without looking back, says "Bye, Max.", and winks. Medium-wide shot, slow push-in on Lin, 35mm, warm cinematic grade, joyful comic finale. No logos, no text, no signs, no route numbers. 8 seconds.</pre></div></div>
+        </article>
+      </section>
+
+      <section id="recordings" data-toc="Screen recordings">
+        <h2>Screen recordings</h2>
+        <p>Made from the real apps on the local stack with the seed rider and a staged demo morning (SF → Palo Alto, 618 on time, 620 four minutes late), never production: <code>branding/promo-videos/scripts/headway-launch-record.mjs</code>. The glasses display is green on black, so in the edit it can glow over Lin's view of the street, as if seen through her glasses; the phone and Watch recordings sit in device frames.</p>
+        <table class="grid">
+          <tr><th>Recording</th><th>What it shows</th><th>From</th></tr>
+          <tr><td><code>rec-glasses-board</code></td><td>The commute board on the glasses: the next trains from her station, the first one highlighted, with its live status</td><td>Even Hub simulator, paired to the seed rider</td></tr>
+          <tr><td><code>rec-glasses-swipe</code></td><td>A ring swipe through the next trains</td><td>same</td></tr>
+          <tr><td><code>rec-phone-leave</code></td><td>A "time to leave" notification arriving, then the Trains tab</td><td>iPhone simulator (a test push)</td></tr>
+          <tr><td><code>rec-phone-stop</code></td><td>The heads-up a few minutes before her stop</td><td>same</td></tr>
+          <tr><td><code>rec-phone-late</code>, <code>rec-watch</code></td><td>Spares: not made, the cuts didn't need them</td><td>—</td></tr>
+        </table>
+        <p class="note">Train times come from Caltrain's published timetable (compiled into the app); the delay and the alerts are staged with test data on the local stack, which is why the end card says "Alerts shown are a demonstration."</p>
+      </section>
+
+      <section id="audio" data-toc="Voiceover + music">
+        <h2>Voiceover and music</h2>
+        <h3 data-toc="Voiceover">1 · Voiceover (I make it)</h3>
+        <p>Generated locally with Kokoro-82M (Apache 2.0, free for commercial use) once the script in §2 is settled: several takes in female voices (<code>af_heart</code>, <code>af_bella</code>, <code>bf_emma</code> and others), each timed to 26–28 s and 13–14 s, checked word for word by speech recognition. You pick one here. Her tone is dry and amused, not salesy.</p>
+        <h3 data-toc="Music (Flow Music)">2 · Music in Flow Music (you make it)</h3>
+        <p>Instrumental, a cool city strut: funky bass, crisp drums, a comic stop when the doors close on Max. Make 2–4 versions and keep the one whose beat lands clearly; download the best quality offered. It doesn't need to be exactly 30 or 15 s: the edit ends on the track's own ending.</p>
+        <div class="fields">
+          <div class="field" data-max="900"><b>Music prompt, 30 seconds</b><pre>Instrumental only, no vocals, no lyrics. A 30-second playful comedy track for a short film about a calm commuter strolling through a city where everyone else is running for the train. 104 BPM, 4/4, clear downbeats on every bar so a video can be cut to it. 0:00–0:04 a busy, hurried groove: fast hi-hats, staccato strings and a ticking clock over a funky bassline. At 0:04 a record-scratch stop and one bar of near-silence with a single cool bass note. At 0:07 a laid-back, confident city-strut groove kicks in: slap bass, crisp drums, muted funk guitar and warm Rhodes, building steadily with handclaps. At 0:24 a bright brass stab and a playful lift, then a warm resolving chord and a clean ending at exactly 0:30. Leave space in the mid frequencies for a voiceover.</pre></div>
+          <div class="field" data-max="600"><b>Music prompt, 15 seconds</b><pre>Instrumental only, no vocals. A 15-second playful comedy sting, 104 BPM, 4/4, clear downbeats for cutting: a hurried ticking groove for two bars, a record-scratch stop at 0:03, then a laid-back city-strut groove with slap bass, crisp drums and muted funk guitar, a bright brass stab at 0:12 and a warm resolving chord with a clean ending at exactly 0:15. Leave room for a voiceover.</pre></div>
+        </div>
+      </section>
+
+      <section id="youtube" data-toc="YouTube upload">
+        <h2>YouTube upload: what to fill in, for each cut</h2>
+        <p>Up: the 30 s at <a href="https://youtu.be/d9hUqGc19XQ">youtu.be/d9hUqGc19XQ</a> and the Short at <a href="https://youtube.com/shorts/sNthvYTJfxs">youtube.com/shorts/sNthvYTJfxs</a>. The 30 s is embedded on Headway's home page (a click-to-play poster, nothing loads from YouTube before the click) and its docs page. Three uploads, field by field in the order YouTube Studio's upload dialog asks. Each cut has its own title, description, thumbnail and subtitle file; the settings that are the same for all three come after. The <b>30 s cut is the one Headway's site and docs page will embed</b>, so upload it first.</p>
+        <table class="grid">
+          <tr><th>Cut</th><th>Visibility</th></tr>
+          <tr><td><b>30 s · 16:9</b>, the main video</td><td>Public (or Unlisted until the pages are updated)</td></tr>
+          <tr><td><b>15 s · 16:9</b>, for ads and sharing</td><td>Unlisted: a link to share or use in an ad, without a near-copy of the 30 s on the channel</td></tr>
+          <tr><td><b>15 s · 9:16</b>, a Short</td><td><b>Up:</b> <a href="https://youtube.com/shorts/sNthvYTJfxs">youtube.com/shorts/sNthvYTJfxs</a>. Public; vertical and under 3 minutes, so YouTube made it a Short by itself</td></tr>
+        </table>
+
+        <h3>1 · The 30-second video</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Headway: your next Caltrain, at a glance, on Even G2 glasses</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Every morning the whole city runs for the train. Lin doesn't. Her next Caltrain is in her glasses, and her phone taps her when it's time to go.
+
+Headway puts live Caltrain departures, delays and alerts on Even G2 glasses:
+• Your commute by default: save a morning and an evening pair of stations, and the glasses open on the right trains. No taps on the platform.
+• Made for the R1 ring: swipe through the next trains, tap to flip direction. One glance.
+• Alerts that matter: your iPhone taps you when your train is late or cancelled, when it's time to leave, and a few minutes before your stop.
+
+Open Headway: https://headway.hejitech.workers.dev
+How it works: https://tianhaoz95.github.io/hejitech-apps/headway/
+
+Headway is not affiliated with Caltrain. Train times and alerts shown in this video are demo data. People and scenes in this video are AI-generated, and the narration is a synthetic voice.
+
+#Caltrain #SmartGlasses</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/headway-launch-30-thumbnail.jpg" alt="Thumbnail: the end card, the Headway icon, the name and 'Your next Caltrain, at a glance.' in green on deep green, with the disclaimer at the bottom" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, the end card (frame at 29.0 s)<br><a class="dl" href="media/youtube/headway-launch-30-thumbnail.jpg" download>headway-launch-30-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/headway-launch-30.mp4" download>headway-launch-30.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/headway-launch-30.srt" download>headway-launch-30.srt</a> (10 cues) (Video elements, below)</td></tr>
+          <tr><th>Playlist</th><td>Make a <b>Headway</b> playlist and add all three.</td></tr>
+        </table>
+
+        <h3>2 · The 15-second video (16:9)</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Headway in 15 seconds: your next Caltrain, at a glance</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Everyone runs for the train. Lin doesn't: Headway puts her next Caltrain on her Even G2 glasses, and her iPhone taps her when it's time to go.
+
+Open Headway: https://headway.hejitech.workers.dev
+How it works: https://tianhaoz95.github.io/hejitech-apps/headway/
+
+Headway is not affiliated with Caltrain. Train times and alerts shown in this video are demo data. People and scenes in this video are AI-generated, and the narration is a synthetic voice.
+
+#Caltrain #SmartGlasses</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/headway-launch-15-thumbnail.jpg" alt="Thumbnail: the same end card, from the 15-second cut" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, the end card (frame at 14.6 s)<br><a class="dl" href="media/youtube/headway-launch-15-thumbnail.jpg" download>headway-launch-15-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/headway-launch-15.mp4" download>headway-launch-15.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/headway-launch-15.srt" download>headway-launch-15.srt</a> (6 cues)</td></tr>
+        </table>
+
+        <h3>3 · The Short (9:16) · up</h3>
+        <p>Uploaded: <a href="https://youtube.com/shorts/sNthvYTJfxs">youtube.com/shorts/sNthvYTJfxs</a>. If you haven't yet: add its subtitle file and pick the end card as its cover (below).</p>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Everyone runs for the train. She doesn't. #Shorts</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Her next Caltrain is in her glasses. Headway: live Caltrain departures, delays and alerts on Even G2 glasses, and an iPhone that taps you when it's time to go.
+
+https://headway.hejitech.workers.dev
+
+Not affiliated with Caltrain. Demo data. People and scenes are AI-generated; synthetic voice.
+
+#Caltrain #SmartGlasses</pre></div>
+        </div>
+        <div class="gallery">
+          <figure class="tall"><img src="media/youtube/headway-launch-15-vertical-thumbnail.jpg" alt="Vertical end card: the Headway icon, name and tagline centred on deep green" loading="lazy"><figcaption><b>Cover</b> · 1080×1920, the end card (frame at 14.6 s)<br><a class="dl" href="media/youtube/headway-launch-15-vertical-thumbnail.jpg" download>headway-launch-15-vertical-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Thumbnail</th><td>A Short's cover is a frame of the video, picked in the YouTube app (Edit → Thumbnail) after upload; Studio on the web may not offer a file upload for Shorts. Pick the end card. The JPG is for posts elsewhere.</td></tr>
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/headway-launch-15-vertical.mp4" download>headway-launch-15-vertical.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/headway-launch-15-vertical.srt" download>headway-launch-15-vertical.srt</a> (same timings as the 15 s cut). Add it in Studio → Content → the Short → <b>Subtitles</b> if the upload dialog doesn't show Video elements.</td></tr>
+        </table>
+
+        <h3>4 · The same for all three</h3>
+        <table class="kv">
+          <tr><th>Thumbnail</th><td><b>Upload file</b> → the cut's JPG. A custom thumbnail needs a phone-verified channel; if the button is greyed out, use <b>Select from video</b> and pick the end card.</td></tr>
+          <tr><th>Audience</th><td><b>No, it's not made for kids.</b> Age restriction: <b>No</b>.</td></tr>
+        </table>
+        <div class="fields">
+          <div class="field" data-max="500"><b>Tags (Show more)</b><pre>Headway, Caltrain, next Caltrain, Caltrain app, Caltrain delays, Even G2, Even Realities, smart glasses, R1 ring, Bay Area commute, San Francisco, Peninsula, train alerts, iPhone app, Apple Watch, commuter app</pre></div>
+        </div>
+        <table class="kv">
+          <tr><th>Paid promotion</th><td><b>Leave unticked</b>: it's your own product.</td></tr>
+          <tr><th>Altered content</th><td><b>Yes.</b> Lin, Max and the city are realistic AI-generated people and scenes, and the narration is a synthetic voice. YouTube adds a small "Altered or synthetic content" label.</td></tr>
+          <tr><th>Automatic chapters</th><td>Untick; featured places: untick if shown.</td></tr>
+          <tr><th>Language &amp; captions</th><td>Video language <b>English</b>. Caption certification: <b>This content has never aired on television in the U.S.</b></td></tr>
+          <tr><th>License</th><td><b>Standard YouTube License</b>.</td></tr>
+          <tr><th>Allow embedding</th><td><b>On. Required</b> for the 30 s cut: Headway's site and docs page embed it.</td></tr>
+          <tr><th>Category</th><td><b>Science &amp; Technology</b>.</td></tr>
+          <tr><th>Comments</th><td>On, <b>Hold potentially inappropriate comments for review</b>.</td></tr>
+          <tr><th>Add subtitles</th><td>Video elements → <b>Add subtitles → Upload file → With timing</b>, English → the cut's SRT. The words are the script's (narration and the characters' lines, including the closing tagline), timed from the same speech pass as the captions in the video. The video already has captions burned in, so a viewer who turns on CC sees the words twice; the file still helps viewers with sound off on embeds, search and translation.</td></tr>
+          <tr><th>End screen, cards</th><td><b>Skip both.</b> An end screen covers the end card's name and disclaimer; there's nothing to link to yet.</td></tr>
+          <tr><th>Checks</th><td>The music is yours from Flow Music, the footage is yours from Flow and the voice is Kokoro (Apache 2.0), so a copyright claim is unlikely. If one appears, tell me what it names.</td></tr>
+          <tr><th>Visibility</th><td>As in the table at the top. <b>Private</b> can't be embedded (the embed shows "Video unavailable").</td></tr>
+          <tr><th>Then</th><td>Done for the 30 s (<code>d9hUqGc19XQ</code>): it embeds, and it's on the home page and the docs page, live once the change is pushed.</td></tr>
+        </table>
+
+        <h3>Elsewhere</h3>
+        <div class="fields">
+          <div class="field" data-max="280"><b>Short post (X / Threads)</b><pre>Everyone in the city runs for the train. She doesn't. Headway puts your next Caltrain on Even G2 glasses, steered with the R1 ring, and your iPhone taps you when it's time to go.</pre></div>
+        </div>
+        <p class="note">The subtitle files come from <code>branding/promo-videos/scripts/headway-launch-srt.mjs</code>, which reads where each line sits in the composition, so a re-cut gets matching subtitles by running it again.</p>
+      </section>
+
+      <section id="steps">
+        <h2>What to do, in order</h2>
+        <ol class="do">
+          <li><b>Settle the story</b>: notes on §2 and §3, then Copy summary and paste it back.</li>
+          <li><b>Make Lin and Max</b> in Flow from §3 (portrait, Create body, character info, voice); keep the ones you like.</li>
+          <li><b>Make the seven shots</b> from §5 with the named characters added. Keep takes where nothing readable appears on screens or signs, and there are no logos.</li>
+          <li><b>Make the music</b> in Flow Music, both lengths (§7).</li>
+          <li><b>Drop the files</b> into <code>branding/promo-videos/public/headway-launch/</code>, any names, saying which is which.</li>
+          <li><b>Ask for the edit.</b> Meanwhile I make the recordings and the voiceover; the edit comes back in this report for review.</li>
+          <li><b>Review the cuts</b> in §1 with sound, and send notes or approve.</li>
+          <li><b>Upload</b> the approved cuts to YouTube with §8, then send me the 30 s link for the pages.</li>
+        </ol>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="hw2-story"><span><b>Story and voiceover script settled</b></span></li>
+          <li><input type="checkbox" id="hw2-lin"><span><b>Lin made and saved in Flow</b><small>Portrait, Create body, character info, voice (§3)</small></span></li>
+          <li><input type="checkbox" id="hw2-max"><span><b>Max made and saved in Flow</b><small>Same four steps</small></span></li>
+          <li><input type="checkbox" id="hw2-s1"><span><b>Shot 1 · the city runs</b></span></li>
+          <li><input type="checkbox" id="hw2-s2"><span><b>Shot 2 · doors close on Max</b><small>No Caltrain logo, signs or route numbers</small></span></li>
+          <li><input type="checkbox" id="hw2-s3"><span><b>Shot 3 · the glance</b><small>Nothing readable on the lenses</small></span></li>
+          <li><input type="checkbox" id="hw2-s4"><span><b>Shot 4 · ring swipe</b></span></li>
+          <li><input type="checkbox" id="hw2-s5"><span><b>Shot 5 · café, phone taps</b><small>Screen faces away</small></span></li>
+          <li><input type="checkbox" id="hw2-s6"><span><b>Shot 6 · tap before her stop</b><small>Screen faces away</small></span></li>
+          <li><input type="checkbox" id="hw2-s7"><span><b>Shot 7 · bye, Max</b></span></li>
+          <li><input type="checkbox" id="hw2-m30"><span><b>Music, 30 s</b></span></li>
+          <li><input type="checkbox" id="hw2-m15"><span><b>Music, 15 s</b></span></li>
+          <li><input type="checkbox" id="hw2-files"><span><b>Files dropped in the promo folder</b></span></li>
+          <li><input type="checkbox" id="hw2-review"><span><b>Cuts reviewed with sound</b><small>§1</small></span></li>
+          <li><input type="checkbox" id="hw2-yt30"><span><b>30 s uploaded</b><small>Title, description, thumbnail, subtitles, embedding on (§8)</small></span></li>
+          <li><input type="checkbox" id="hw2-yt15"><span><b>15 s uploaded</b><small>Unlisted</small></span></li>
+          <li><input type="checkbox" id="hw2-ytshort"><span><b>Short uploaded</b><small>Cover picked in the YouTube app</small></span></li>
+        </ul>
+      </section>
+
+      <section id="risks">
+        <h2>What can go wrong</h2>
+        <table class="grid">
+          <tr><th>Problem</th><th>What to do</th></tr>
+          <tr><td>Flow draws Caltrain's logo, red-and-white livery or station signs</td><td>Regenerate, with "no logos, no signs" again at the end. Generic silver trains read as Bay Area commuter rail without the trademark.</td></tr>
+          <tr><td>Lin's or Max's face drifts between shots</td><td>Always add the saved characters; for close-ups (shots 3, 4), make 4 takes and keep the closest.</td></tr>
+          <tr><td>Two characters in one shot (1, 2, 6, 7) blend into each other</td><td>Make the shot with both added and keep a take where each looks like their card; if Flow keeps mixing them, make Max's part as its own shot and the edit cuts between them.</td></tr>
+          <tr><td>The glasses come out bulky, like VR goggles, or change shape between shots</td><td>They are part of Lin's saved character, so add her every time, and pick the portrait whose glasses look most like ordinary glasses. Regenerate with "ordinary everyday glasses, thin frames" when they drift.</td></tr>
+          <tr><td>Flow shows something readable on the phone</td><td>Use the part before she turns it; the recording replaces what's on it.</td></tr>
+          <tr><td>Logos on coffee cups, Max's vest or scooters</td><td>Regenerate, or use a take where they're out of focus; "no brand marks" is in every prompt.</td></tr>
+        </table>
+        <div class="unknown"><b>Not known yet:</b> how well Flow keeps two saved characters apart in one frame (shot 2 is the test: make it first), and whether the Even Hub simulator's display recording is crisp enough to blow up full-frame (if not, I'll draw the glasses display from <code>@headway/core</code>'s own screen layout).</div>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-10-30-headway-promo-video</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- Order: design blocks → this report's config → the engine. -->
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>

@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FitLoop promo video kit (Google Flow)</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2314112b'/%3E%3Cpath d='M16 6 A10 10 0 1 1 7.4 11' fill='none' stroke='%23ff7a45' stroke-width='3' stroke-linecap='round'/%3E%3Crect x='11' y='15' width='10' height='2' rx='1' fill='%23ffd2bf'/%3E%3Crect x='10' y='13' width='2' height='6' rx='1' fill='%23ffd2bf'/%3E%3Crect x='20' y='13' width='2' height='6' rx='1' fill='%23ffd2bf'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+  <style>
+    .shot { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); padding: 16px 18px; margin: 18px 0; }
+    .shot h3 { margin: 0 0 4px; }
+    .shot .meta-line { color: var(--mut); font-size: 14px; margin: 0 0 10px; }
+    .swatches { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+    .swatches span { display: inline-flex; align-items: center; gap: 8px; font: 13px "JetBrains Mono", monospace; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--panel); }
+    .swatches i { width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line); display: inline-block; }
+    .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .02em; border-radius: 999px; padding: 2px 9px; margin-right: 6px; vertical-align: 2px; border: 1px solid transparent; white-space: nowrap; }
+    .tag.new { background: color-mix(in srgb, #2457d6 13%, transparent); color: #2457d6; border-color: color-mix(in srgb, #2457d6 35%, transparent); }
+    .tag.me { background: color-mix(in srgb, #ff7a45 15%, transparent); color: #c4501f; border-color: color-mix(in srgb, #ff7a45 40%, transparent); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.new { color: #8fb0ff; } :root:not([data-theme="light"]) .tag.me { color: #ff9d75; } }
+    :root[data-theme="dark"] .tag.new { color: #8fb0ff; }
+    :root[data-theme="dark"] .tag.me { color: #ff9d75; }
+    .worlds { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+    .worlds > div { border-radius: 14px; padding: 16px 18px; color: #fff; min-width: 0; }
+    .worlds .gym { background: linear-gradient(135deg, #14112b, #3a2140 55%, #ff7a45); text-shadow: 0 1px 2px rgb(0 0 0 / .35); }
+    .worlds .hud { background: radial-gradient(circle at 30% 20%, #0d2416, #03100a); color: #3dff7a; font-family: "JetBrains Mono", monospace; font-size: 14px; }
+    .worlds b { display: block; margin-bottom: 4px; }
+    @media (max-width: 640px) { .worlds { grid-template-columns: 1fr; } }
+    .gallery { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); margin: 14px 0; }
+    .gallery figure { margin: 0; min-width: 0; }
+    .gallery figcaption { font-size: 13px; color: var(--mut); margin-top: 6px; }
+    .gallery figcaption b { color: var(--ink); }
+    .gallery video, .gallery img { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; background: #05040f; max-height: 420px; object-fit: contain; }
+    .gallery figure.tall video, .gallery figure.tall img { max-height: 520px; width: auto; max-width: 100%; margin: 0 auto; }
+    .gallery audio { width: 100%; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>FitLoop promo video kit (Google Flow)</b><small>A 30 s gym comedy: everyone guesses except Maya · story, characters, Flow prompts, music prompts</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <h1>Everyone at the gym is guessing. Her agent wrote her plan.</h1>
+        <p class="lede">The plan for FitLoop's promo: a <b>30-second comedy</b> plus 15-second cuts in 16:9 and 9:16, set in a modern gym at dawn. Everyone around Maya is guessing: scrolling workout videos, sitting backwards on machines. Maya isn't. Her own AI agent wrote her workouts and meals; FitLoop puts them in her glasses mid-set, a tap on her ring starts the rest timer, and when a lunge hurts she tells her agent right there. That evening the agent's reply is in her phone and tomorrow's plan is adjusted. Her running gag is Theo, a gym newcomer who copies everything she does, one beat late, until he gives up: "Okay. I'm getting an agent." You make the characters, the shots and the music in Google Flow from the prompts below; I make the screen recordings of the glasses and iPhone apps, the voiceover and the edit.</p>
+        <div class="status">
+          <div><b>Story + scripts</b><span class="ok">Used in the edit</span></div>
+          <div><b>Characters</b><span class="ok">Maya and Theo made in Flow</span></div>
+          <div><b>Flow shots</b><span class="ok">All 7 in, all used</span></div>
+          <div><b>Recordings</b><span class="ok">3 glasses, 2 iPhone screens</span></div>
+          <div><b>Voiceover</b><span class="ok">af_sarah + the characters' own Flow lines</span></div>
+          <div><b>Music</b><span class="ok">30 s take 2, 15 s take 1, picked by measurement</span></div>
+          <div><b>Edit</b><span class="todo">Rendered: your review (§1)</span></div>
+          <div><b>YouTube</b><span class="todo">Kit ready (§9): titles, thumbnails, subtitles</span></div>
+        </div>
+        <div class="cards">
+          <div class="card"><h3>Grounded in the app</h3>
+            <ul>
+              <li>Every claim comes from <code>projects/fitloop</code>: the user's own agent writes the plan over MCP; FitLoop shows it on iPhone, Watch, the web and Even G2 glasses; a tap marks a set done and starts the rest timer; the ring's hold menu sends "Too hard", "It hurts" and more to the agent; the agent replies in the app and publishes the next plan version.</li>
+              <li>FitLoop gives no advice of its own, so the video never says FitLoop coaches: <b>the agent</b> coaches, FitLoop keeps her on the plan (the site's own tagline).</li>
+              <li>Colours from the app icon: FitLoop orange and peach on deep indigo.</li>
+            </ul>
+          </div>
+          <div class="card"><h3>Built in from the last videos</h3>
+            <ul>
+              <li>Fast: a cut every 2–4 beats of the music, each Flow shot used for 1.5–3 s.</li>
+              <li>No green screens: the glasses' display can't be seen from outside, her phone faces away and her watch face is turned to the inside of her wrist. The product is shown in real recordings.</li>
+              <li>Short on-camera lines in the characters' own Flow voices, narration by Kokoro, word-by-word captions, loudness for social platforms.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>Next for you:</b> watch and listen to the three cuts in §1, and check my calls I couldn't make by ear (the music takes and the narration voice, both easy to swap). Write what to change in <b>Your notes</b> and click <b>Copy summary</b>, or tell me. When you like a cut, upload it with §9 and send me the 30 s link for FitLoop's home and docs pages.</div>
+      </section>
+
+      <section id="edit" data-toc="The edit · review">
+        <h2>The edit: three cuts to review</h2>
+        <p>Built in Remotion (<code>branding/promo-videos/src/fitloop-launch</code>) from your seven Flow shots, the two music takes I measured as the best fit, five real recordings of the glasses and iPhone apps, and the <b>af_sarah</b> narration. The jokes are in the characters' own Flow voices; the narration says what FitLoop does.</p>
+        <div class="gallery">
+          <figure><video src="media/edit/fitloop-launch-30.mp4" poster="media/edit/fitloop-launch-30.jpg" controls playsinline preload="none"></video><figcaption><b>30 s · 16:9</b> · the main cut · 30.4 s<br><a class="dl" href="media/edit/fitloop-launch-30.mp4" download>fitloop-launch-30.mp4</a></figcaption></figure>
+          <figure><video src="media/edit/fitloop-launch-15.mp4" poster="media/edit/fitloop-launch-15.jpg" controls playsinline preload="none"></video><figcaption><b>15 s · 16:9</b> · guessing, "My agent wrote mine.", the set, "It hurts", end card · 15.3 s<br><a class="dl" href="media/edit/fitloop-launch-15.mp4" download>fitloop-launch-15.mp4</a></figcaption></figure>
+          <figure class="tall"><video src="media/edit/fitloop-launch-15-vertical.mp4" poster="media/edit/fitloop-launch-15-vertical.jpg" controls playsinline preload="none"></video><figcaption><b>15 s · 9:16</b> · Shorts / Reels / TikTok<br><a class="dl" href="media/edit/fitloop-launch-15-vertical.mp4" download>fitloop-launch-15-vertical.mp4</a></figcaption></figure>
+        </div>
+        <h3 data-toc="My calls">Calls I made while you were away</h3>
+        <table class="grid">
+          <tr><th>Call</th><th>What I picked, and why</th><th>To change it</th></tr>
+          <tr><td>Music, 30 s</td><td><b>Take 2 ("form-check")</b>, 103 BPM. Its first 26 s follow the prompt (a quiet, hesitant intro, the groove arriving at ≈7 s, a one-bar drop at ≈24 s), then it jumps on the beat to the track's last 4.6 s for its clean hard stop on the end card. Take 1 has a sharper stop before its groove but fades out at the end instead of stopping. Both takes are ~60 s long, which is why the edit splices.</td><td>Say "take 1": I re-cut to its beats.</td></tr>
+          <tr><td>Music, 15 s</td><td><b>Take 1 ("gym-sting")</b>: intro, the groove at 3 s, then spliced to its ending: a stop at 12 s and a final hit at 13 s under the end card. Take 2 ends by fading.</td><td>Same.</td></tr>
+          <tr><td>Narration voice</td><td><b>af_sarah</b>, the Kokoro voice closest to Maya's Flow voice: median pitch 207 Hz vs her 197 Hz (af_heart and af_bella 212 Hz, af_nicole 157 Hz, bf_emma 186 Hz but British). Picked by measurement, not by ear. Takes for all five are in §7.</td><td>Say the voice's name.</td></tr>
+          <tr><td>On-camera lines</td><td>Flow said the written lines well, so the edit uses them: Theo's "Wait, how many sets is this?", Maya's "My agent wrote mine." and Theo's "Okay. I'm getting an agent." Flow's ad-libs are muted ("Let's increase the weight for this set." in shot 3, "I almost had it that time. Keep working on it." in shot 5). Shot 6's phone buzz is kept as a sound effect.</td><td>—</td></tr>
+          <tr><td>The 15 s script</td><td>Changed from the plan: it uses the shot 2 exchange instead of a narrated "My agent wrote my plan", then "FitLoop puts my plan in my glasses." Theo's last line didn't fit in 15 s next to the tagline.</td><td>—</td></tr>
+          <tr><td>The loop graphic</td><td>Dropped: the beat between the kitchen and the phone was too short for it, and the phone already shows the agent's reply and the change note.</td><td>Ask, and I add it.</td></tr>
+          <tr><td>Footage left out</td><td>Shot 3 after ≈2 s (Flow drew its own fake display next to her face); shot 7's first ≈3.5 s (a black film-frame border).</td><td>—</td></tr>
+        </table>
+        <table class="kv">
+          <tr><th>Pace</th><td>Cuts sit on the music's beats; Flow shots are on screen 1.1–3.1 s.</td></tr>
+          <tr><th>Transitions</th><td>Flow shot → its recording: a cross-zoom. Between story beats: a blurred slide. Into the end card: a dreamy zoom. Everything pushes in slowly.</td></tr>
+          <tr><th>Captions</th><td>Every spoken word, word by word, timed from a speech-recognition pass; the end card carries the tagline instead of a caption.</td></tr>
+          <tr><th>Sound</th><td>The music ducks under every line. Measured loudness after the two-pass normalisation: 30 s −14.5 LUFS (true peak −0.7 dBTP), 15 s cuts −14.5 LUFS (−1.4 dBTP); social platforms target about −14.</td></tr>
+          <tr><th>On screen</th><td>"Demo data" on every recording; on the end card: "Works with any MCP agent. Plans shown are demo data. Not medical advice. People and scenes are AI-generated."</td></tr>
+          <tr><th>9:16</th><td>Flow shots are cropped around the speaker (Theo for his question, Maya for her answer), the glasses display widens to the frame, the end card is laid out for the tall frame.</td></tr>
+        </table>
+        <p class="note"><b>What I checked:</b> a frame every second of each render; a speech-recognition read of the 30 s and 15 s renders (every line is there, in order, no ad-libs); lengths and loudness. <b>What I couldn't:</b> listen. Please watch with sound: the mix of Flow's voices, the narration and the music, and the splice in each music track, need your ears. Known nits: Theo looks different in shot 2 (no cap, longer hair) than in his other shots; Maya's watch face shows (dark) in shot 4.</p>
+        <p class="note">The renders are reproducible (<code>npx remotion render fitloop-launch-30</code> etc. in <code>branding/promo-videos</code>, then the loudness pass; see <code>media.md</code>) and make this report ≈45 MB, so <code>media/edit/</code> stays out of git.</p>
+      </section>
+
+      <section id="story" data-toc="Story">
+        <h2>The story: the only person at the gym with a plan</h2>
+        <p>A modern gym at dawn: indigo light in the windows, warm orange lamps inside. Everyone is guessing. Theo, new and very enthusiastic, sits backwards on a machine squinting at a workout video. Maya walks past him knowing exactly where she's going. When Theo asks her how many sets he should do, she answers mid-squat, to the camera: "My agent wrote mine." Her glasses show the exercise, the set and its target; a tap on her ring marks the set done and the rest timer starts itself. On a lunge her knee twinges; she holds the ring and tells her agent "It hurts", while Theo, copying her, topples onto a mat. That evening her phone shows the agent's reply and tomorrow's plan, with the lunges swapped out. Next morning she does step-ups; Theo is next to her, doing step-ups too, a beat late, and gives up: "Okay. I'm getting an agent."</p>
+        <div data-block="arc"></div>
+        <div class="fields">
+          <div class="field" data-max="80"><b>Tagline (end card)</b><pre>Your agent coaches. FitLoop keeps you on the plan.</pre></div>
+        </div>
+        <h3 data-toc="Voiceover scripts">Voiceover scripts (Maya narrates, first person)</h3>
+        <div class="fields">
+          <div class="field" data-max="420"><b>Voiceover, 30-second cut</b><pre>Everyone at my gym is guessing.
+
+My agent wrote mine.
+
+My own AI agent plans my workouts and meals. FitLoop puts them in my glasses.
+
+Set done? One tap. The rest timer starts itself.
+
+Something hurts? I tell my agent, mid-set.
+
+It reads everything back, and adjusts tomorrow's plan.
+
+Your agent coaches. FitLoop keeps you on the plan.</pre></div>
+          <div class="field" data-max="260"><b>Voiceover, 15-second cut (as edited)</b><pre>Everyone at my gym is guessing.
+
+(Theo: Wait, how many sets is this? · Maya: My agent wrote mine.)
+
+FitLoop puts my plan in my glasses.
+
+Something hurts? I tell my agent, mid-set.
+
+Your agent coaches. FitLoop keeps you on the plan.</pre></div>
+          <div class="field" data-max="160"><b>Small text on the end card</b><pre>Works with any MCP agent. Plans shown are demo data. Not medical advice.</pre></div>
+        </div>
+        <p class="note"><b>On camera vs narration.</b> Theo asks "Wait, how many sets is this?" and Maya answers "My agent wrote mine." on camera (shot 2), and Theo has the last laugh line, "Okay. I'm getting an agent." (shot 7), all in their Flow voices. If those takes sound good, the edit keeps Flow's audio there and the narration skips Maya's line. For the narration I pick the Kokoro voice closest to her Flow voice, so she sounds like one person. If the voices don't match well enough, the edit mutes Flow and the narration says her line too (Theo's lines stay his).</p>
+        <p class="note"><b>Why "adjusts", not "improves".</b> The video says what happens (the agent reads her check-ins and notes and publishes a new plan) and never promises a result. "AI agent" stays generic: no assistant's name or logo appears, because FitLoop works with any MCP client.</p>
+      </section>
+
+      <section id="character" data-toc="Characters">
+        <h2>The characters: Maya, and Theo</h2>
+        <p>The same movie style as Headway's promo, so the channel feels like one family: photoreal, expressive faces in warm cinematic light, a lead who plays to the camera, a comic foil who never does. Both are new, original characters. Maya's glasses, ring and watch are part of her character from the first frame, so they look the same in every shot.</p>
+        <article class="shot">
+          <h3 data-toc="Maya">Maya, the lead: portrait, body, character info, voice</h3>
+          <p class="meta-line">Flow → Characters → New · <b>1. Portrait:</b> paste into "Describe your character…", make 2–4, keep the face you like (and the glasses that look most like ordinary glasses) · <b>2. Create body:</b> with that portrait selected, <b>Create body</b>, paste into "What do you want to change?" · save as <b>Maya</b> · <b>3. Character info:</b> on Maya's page, "Describe how your character acts…" · <b>4. Voice:</b> Select a voice → pick, paste the sample dialogue and performance, Preview, <b>Add to character</b> (for her one line on camera, shot 2)</p>
+          <div class="fields">
+            <div class="field"><b>Maya · 1 · Portrait prompt</b><pre>Maya, a focused, good-humoured woman in her early thirties who trains before work. Calm, dry and quietly confident: she talks to the camera like she's letting you in on a secret.
+
+Face: a woman with warm brown skin, bright dark eyes, a quick confident half-smile, one eyebrow ready to rise, a light healthy sheen of effort on her forehead.
+
+Hair: dark curly hair pulled back into a high puff, held by a thin black elastic headband.
+
+Glasses: she always wears slim, lightweight smart glasses that look like ordinary everyday glasses: thin dark rounded-rectangle frames, clear lenses, slim temples. Nothing visible on the lenses.
+
+Clothing in frame: a fitted rust-orange sports top with a high neck, small plain silver stud earrings. No logos, no text.
+
+Photorealistic with a soft cinematic glow, head-and-shoulders portrait facing the camera, warm orange lamp light from the left and cool indigo dawn light from behind, softly blurred modern gym background, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Maya · 2 · Body prompt (Create body)</b><pre>Keep her face, hair, glasses and expression exactly the same. Show her full length, head to toe, standing and facing the camera.
+
+Body: athletic and strong, average height, relaxed upright posture, weight on one hip, a light hex dumbbell hanging from one hand. On her left wrist a plain black smartwatch worn with its face turned to the inside of her wrist, so the screen is never visible. A thin matte black ring on her right index finger.
+
+Outfit: the fitted rust-orange high-neck sports top; high-waisted charcoal training leggings; black training shoes with white soles; a small grey towel over one shoulder. Small plain silver stud earrings. Her slim everyday glasses with thin dark frames. No logos, no text, no brand marks.
+
+Same warm orange lamp light from the left and cool indigo dawn light from behind, softly blurred modern gym background, 50mm, photorealistic with a soft cinematic glow.</pre></div>
+            <div class="field" data-max="1000"><b>Maya · 3 · Character info ("Describe how your character acts…")</b><pre>Maya is the only person at her gym who never wonders what to do next: her own AI agent writes her plan, and her glasses show it. Calm, dry and a little smug, with a warm sense of humour.
+
+How she acts on camera: she plays to the camera with knowing glances, a slow raised eyebrow and a small satisfied smile. She moves with smooth, controlled, unhurried form, never showing off. When chaos happens around her she gives a long deadpan look instead of reacting. When something hurts she winces briefly, then stays calm.
+
+Habits: always wears her slim everyday glasses and glances at the upper corner of her view instead of at a phone; taps the thin matte black ring on her right index finger with her thumb; her smartwatch face is always turned to the inside of her wrist. When she checks her phone she holds it with the back toward the camera.
+
+On camera she speaks only the short lines written in a shot's prompt, dry and unhurried, straight to the camera; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Maya · 4 · Voice to pick</b><pre>Sulafat</pre></div>
+            <div class="field" data-max="120"><b>Maya · 4 · Sample dialogue</b><pre>Everyone at my gym is guessing. My agent wrote mine. Set done? One tap.</pre></div>
+            <div class="field" data-max="400"><b>Maya · 4 · Customize performance</b><pre>Warm, relaxed and dry, a little amused, like she's letting the audience in on a private joke. Mid pitch, unhurried, slightly breathy as if between sets. A small smile you can hear. Never salesy, never loud, never a fitness-instructor voice. Short pause before "My agent wrote mine."</pre></div>
+          </div>
+          <p class="note">Sulafat is my suggestion for a warm, mid-pitched female voice; if it sounds wrong in Preview, try Kore (firmer) or Achernar (softer, higher). Tell me which you kept: I match the narration's Kokoro voice to it (likely <code>af_heart</code> or <code>af_nicole</code>).</p>
+        </article>
+        <article class="shot">
+          <h3 data-toc="Theo">Theo, the guesser: portrait, body, character info, voice</h3>
+          <p class="meta-line">Same four steps · save as <b>Theo</b> · he's in shots 1, 2, 5 and 7 · his voice is for his two lines (shots 2 and 7)</p>
+          <div class="fields">
+            <div class="field"><b>Theo · 1 · Portrait prompt</b><pre>Theo, an eager, clueless gym newcomer in his late twenties who has just bought all the gear. Big-hearted and overconfident, with a huge hopeful grin and eyes that are slightly lost.
+
+Face: a broad-faced man with pale freckled skin, a short ginger beard, curly red hair under a plain grey baseball cap worn backwards, a terry-cloth sweatband across his forehead, cheeks a little flushed.
+
+Clothing in frame: a brand-new, oversized neon-yellow tank top with the shop's fold creases still visible. No logos, no text.
+
+Photorealistic with a soft cinematic glow, head-and-shoulders portrait facing the camera, warm orange lamp light from the left and cool indigo dawn light from behind, softly blurred modern gym background, 85mm, shallow depth of field.</pre></div>
+            <div class="field"><b>Theo · 2 · Body prompt (Create body)</b><pre>Keep his face, hair, cap, sweatband and expression exactly the same. Show him full length, head to toe, standing and facing the camera, puffing his chest out.
+
+Body: stocky and broad, a little soft around the middle, standing a bit too proudly. In one hand a tiny pink dumbbell; in the other his phone, held with the back toward the camera.
+
+Outfit: the brand-new oversized neon-yellow tank top with fold creases; baggy grey sweat shorts; white knee-high tube socks; chunky brand-new white running shoes; a water bottle clipped to his shorts. No logos, no text, no brand marks.
+
+Same warm orange lamp light from the left and cool indigo dawn light from behind, softly blurred modern gym background, 50mm, photorealistic with a soft cinematic glow.</pre></div>
+            <div class="field" data-max="1000"><b>Theo · 3 · Character info ("Describe how your character acts…")</b><pre>Theo is new at the gym and has no plan. Eager, sweet and completely lost, he guesses at everything: he sits on machines the wrong way round, watches workout videos on his phone mid-exercise, and copies whatever Maya does, always one beat late and a little wrong. Maya's comic opposite: she knows, he guesses.
+
+How he acts on camera: big, earnest physical comedy: wobbling, overreaching, proud poses that collapse, wide hopeful eyes, a thumbs-up when things are going badly. He holds his phone with the back toward the camera. He wears no glasses, no ring and no watch.
+
+He never looks at the camera except for his last line. On camera he only speaks the short lines written in a shot's prompt, out of breath and sincere; the narration is added later.</pre></div>
+            <div class="field" data-max="40"><b>Theo · 4 · Voice to pick</b><pre>Fenrir</pre></div>
+            <div class="field" data-max="120"><b>Theo · 4 · Sample dialogue</b><pre>Wait, how many sets is this? … Okay. I'm getting an agent.</pre></div>
+            <div class="field" data-max="400"><b>Theo · 4 · Customize performance</b><pre>Eager and out of breath, sincere and a little lost, like a lovable sitcom sidekick. Mid-to-high energy, fast, voice rising hopefully on questions. On "Okay. I'm getting an agent." a defeated pause after "Okay.", then a resigned, decided tone. Never mocking, never shouting.</pre></div>
+          </div>
+          <p class="note">Fenrir is my pick for an excitable male voice; Puck is the upbeat alternative.</p>
+        </article>
+      </section>
+
+      <section id="style" data-toc="Look and feel">
+        <h2>Look and feel: a dawn gym in FitLoop's colours</h2>
+        <p>The gym itself carries FitLoop's palette: deep indigo dawn light through tall windows, warm orange lamps over the floor, matte black equipment, concrete and wood. The product's own world is the glasses' green-on-black display and the app's orange: each time they appear, it means FitLoop.</p>
+        <div class="worlds">
+          <div class="gym"><b>The gym</b>Indigo windows at dawn, warm orange pools of lamp light, steam from a water bottle, chalk dust in the light. Everyone wandering except her.</div>
+          <div class="hud"><b>FitLoop</b>GOBLET SQUAT · SET 2/4 · 10 REPS · 16 KG — green on black, as the G2 draws it; the app's orange and peach on deep indigo for the end card.</div>
+        </div>
+        <div class="swatches">
+          <span><i style="background:#14112b"></i>#14112b indigo</span>
+          <span><i style="background:#05040f"></i>#05040f night</span>
+          <span><i style="background:#ff7a45"></i>#ff7a45 FitLoop orange</span>
+          <span><i style="background:#ffd2bf"></i>#ffd2bf peach</span>
+          <span><i style="background:#3dff7a"></i>#3dff7a G2 green</span>
+        </div>
+        <table class="kv">
+          <tr><th>Camera</th><td>35–50mm, shallow depth of field, slow push-ins on Maya; Theo gets wider, slightly handheld frames. The contrast is the joke: she's centred and still, he's off-balance in the background. Comic beats held a moment longer (Theo toppling, her deadpan look).</td></tr>
+          <tr><th>Never on screen</th><td>Gym or equipment brand names, logos on clothes, shoes, bottles or machines, readable phone or watch screens, anything on the lenses, any AI assistant's name or logo, real people's faces, body-shaming (Theo is lovable, never mocked for his body).</td></tr>
+          <tr><th>Health</th><td>No claims about results, weight or injuries. The "It hurts" beat shows her telling her agent, not FitLoop treating anything; the end card says "Not medical advice".</td></tr>
+        </table>
+      </section>
+
+      <section id="storyboard" data-toc="Storyboard + Flow">
+        <h2>Storyboard and Flow prompts</h2>
+        <p>Times are for the 30-second cut. <b>Flow</b> is the generated shot (the edit uses 1.5–3 s of each); <b>Recording</b> is the real app (made by me, see Screen recordings). Each prompt is one Copy: paste it into Flow with the characters it names added. The animatic of these beats is <code>fitloop-launch-30</code> in Remotion Studio (<code>cd branding/promo-videos && npm run dev</code>).</p>
+        <div data-block="shots"></div>
+
+        <article class="shot">
+          <h3 data-toc="Flow settings (once)">Before the shots · Flow agent settings</h3>
+          <table class="kv">
+            <tr><th>Confirm before generating</th><td><b>Always</b>, so you see what's about to be generated (and whether the prompt was rewritten) before credits are spent.</td></tr>
+            <tr><th>Mode</th><td><b>Video · Ingredients</b>, with Maya and/or Theo added as ingredients (Frames is for animating a still you already have).</td></tr>
+            <tr><th>Shape</th><td><b>16:9</b> for every shot; the 9:16 cut is made from the same footage.</td></tr>
+            <tr><th>Drafts</th><td>The fast model · <b>720p · 8s · x1</b>: cheap tries to check the joke, the faces and that no logos or readable screens appear. Shots 3 and 4 (close-ups) can be 6s.</td></tr>
+            <tr><th>The take you keep</th><td>Re-run the prompt that worked on the best model in the dropdown, at the highest resolution it offers (1080p if available; the final video is 1080p), <b>x2</b> to pick from.</td></tr>
+          </table>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 1 · the gym guesses"><span class="tag new">Flow</span> Shot 1 · The whole gym is guessing</h3>
+          <p class="meta-line">0:00–0:04 · Video · 16:9 · add Maya and Theo</p>
+          <div class="fields"><div class="field"><b>Shot 1 prompt</b><pre>Video. A modern gym at dawn: deep indigo light through tall windows, warm orange lamps over the floor, matte black equipment. Everyone looks lost: a man reads the instructions sticker on a machine, a woman holds a kettlebell and stares at it, someone scrolls a phone between sets. In the foreground, Theo sits backwards on a leg machine, squinting at his phone (the screen faces away and is never visible), then tries to push the pad with his back. Through the middle of the frame, Maya, wearing her slim glasses, walks calmly past him with a dumbbell, knowing exactly where she's going, and gives the camera a small knowing smile. Medium-wide shot, slow push-in on Maya, 35mm, shallow depth of field, cinematic comedy. No logos, no text, no signs, the screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 2 · how many sets?"><span class="tag new">Flow</span> Shot 2 · "How many sets is this?"</h3>
+          <p class="meta-line">0:04–0:07 · Video · 16:9 · add Maya and Theo · the comic beat: hold her deadpan look · make this one first</p>
+          <div class="fields"><div class="field"><b>Shot 2 prompt</b><pre>Video. In a modern gym at dawn with indigo windows and warm orange lamps, Maya, wearing her slim glasses, does slow, controlled goblet squats with a dumbbell. Theo leans in next to her holding a tiny pink dumbbell, out of breath, and asks hopefully: "Wait, how many sets is this?" Without stopping, Maya rises from her squat, turns her head to the camera with a long deadpan look and one raised eyebrow, and says dryly: "My agent wrote mine." Theo looks at his tiny dumbbell, confused. Medium shot, 35mm, shallow depth of field, warm cinematic grade, sitcom comedy timing. No logos, no text, no signs. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 3 · the glance"><span class="tag new">Flow</span> Shot 3 · A glance, not a phone</h3>
+          <p class="meta-line">0:07–0:09, then the glasses recording (her set), as if through her eyes · Video · 16:9 · 6s · add Maya</p>
+          <div class="fields"><div class="field"><b>Shot 3 prompt</b><pre>Video. Close-up of Maya, wearing her slim everyday glasses with thin dark frames, standing between sets in a gym at dawn. Behind her, softly out of focus, people stare down at their phones. She lifts her eyes and glances toward the upper corner of her view, as if reading something only she can see; a faint green glow reflects on her cheek, she nods once and picks up her dumbbell. Close-up from the front, slow push-in, 50mm, shallow depth of field, warm orange lamp light from the left and indigo window light behind. Nothing readable on the lenses, no logos, no text. 6 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 4 · the ring tap"><span class="tag new">Flow</span> Shot 4 · Set done, one tap</h3>
+          <p class="meta-line">0:12–0:14, then the glasses recording (set done, rest timer) · Video · 16:9 · 6s · add Maya</p>
+          <div class="fields"><div class="field"><b>Shot 4 prompt</b><pre>Video. Maya, wearing her slim glasses, finishes the last rep of a dumbbell row on a bench and sets the dumbbell down. Extreme close-up of her right hand: her thumb taps once on the thin matte black ring on her index finger. Her smartwatch on the other wrist is turned face-in and never visible. Then a quick cut up to her face: she exhales, grabs her towel and smiles, relaxed. 85mm macro look, shallow depth of field, warm orange lamp light, chalk dust in the light. No logos, no text, no visible screens. 6 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 5 · it hurts"><span class="tag new">Flow</span> Shot 5 · Something hurts, Theo topples</h3>
+          <p class="meta-line">0:16–0:18, then the glasses recording (hold menu → It hurts) · Video · 16:9 · add Maya and Theo · the slapstick beat</p>
+          <div class="fields"><div class="field"><b>Shot 5 prompt</b><pre>Video. In a gym at dawn with indigo windows and warm orange lamps, Maya, wearing her slim glasses, steps back into a reverse lunge, winces slightly and touches her knee, then stands up calmly and holds her thumb on the thin matte black ring on her index finger for a moment, glancing to the corner of her view. Behind her, Theo copies her lunge a beat late, steps back much too far, wobbles with his arms windmilling and topples slowly sideways onto a soft gym mat, then gives a thumbs-up from the floor. Medium-wide shot, 35mm, Maya sharp in the foreground, Theo slightly soft behind, warm cinematic grade, gentle slapstick comedy. No logos, no text. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 6 · the reply"><span class="tag new">Flow</span> Shot 6 · That evening, her agent's reply</h3>
+          <p class="meta-line">0:20–0:22, then the loop graphic and the iPhone recording (the agent's reply and tomorrow's plan) · Video · 16:9 · add Maya · the phone's screen faces away</p>
+          <div class="fields"><div class="field"><b>Shot 6 prompt</b><pre>Video. Evening in a warm, modern apartment kitchen with deep blue dusk outside the window and warm orange pendant lights. Maya, wearing her slim glasses and a cosy oversized sweater, sets down a bowl of salmon, rice and greens on the counter. Her phone buzzes; she picks it up and reads it with the back of the phone toward the camera (the screen is never visible), raises an eyebrow, smiles and nods as if to say "fair enough", then takes a bite. Medium shot, 35mm, shallow depth of field, cosy warm cinematic grade. No logos, no text, the screen is never visible. 8 seconds.</pre></div></div>
+        </article>
+
+        <article class="shot">
+          <h3 data-toc="Shot 7 · I'm getting an agent"><span class="tag new">Flow</span> Shot 7 · "Okay. I'm getting an agent."</h3>
+          <p class="meta-line">0:25–0:30 · Video · 16:9 · add Maya and Theo · the end card goes over its last seconds</p>
+          <div class="fields"><div class="field"><b>Shot 7 prompt</b><pre>Video. The same gym the next morning at dawn, indigo windows and warm orange lamps. Maya, wearing her slim glasses, does smooth, easy step-ups onto a wooden plyo box. Right next to her, Theo does step-ups too, always one beat late and out of rhythm, sweating, his phone balanced on the next box. He stops, looks at her, then turns to the camera, out of breath, and says with resigned decision: "Okay. I'm getting an agent." Maya keeps stepping, glances at the camera and winks. Medium-wide shot, slow push-in, 35mm, warm cinematic grade, joyful comic finale. No logos, no text, no signs, no visible screens. 8 seconds.</pre></div></div>
+        </article>
+        <article class="shot">
+          <h3 data-toc="Loop graphic + end card"><span class="tag me">Me</span> The loop graphic and the end card</h3>
+          <p class="meta-line">0:22–0:23 and 0:28–0:30 · made in Remotion, no Flow needed</p>
+          <p>Between shot 6 and the phone recording, a one-second motion graphic of FitLoop's loop (the icon's ring drawing itself): <b>your agent writes</b> → <b>you train</b> → <b>you check in</b> → back to the agent. The end card: the icon, "FitLoop", the tagline and the small text, on deep indigo with the orange glow.</p>
+        </article>
+      </section>
+
+      <section id="recordings" data-toc="Screen recordings">
+        <h2>Screen recordings (made)</h2>
+        <p>From the real apps on the local stack (Supabase + the Worker on <code>127.0.0.1:8794</code>) with the seed athlete, never production, by <code>branding/promo-videos/scripts/fitloop-launch-record.mjs</code>. "The agent" is the script itself calling FitLoop's MCP tools with the seed's local agent token, so what's shown is the real loop: it published a demo plan (Monday's lower-body session: goblet squat, then reverse lunges), the glasses sent "It hurts" on the lunge, the agent replied and published Tuesday's plan with step-ups. Heart rate is staged through the same endpoint the iPhone uses to relay the watch's. Afterwards every FitLoop row was restored from a backup taken first.</p>
+        <div class="gallery">
+          <figure><video src="media/rec/rec-glasses-set.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-glasses-set</b> · goblet squat, set 1 of 4, 10 reps @ 16 kg, heart rate</figcaption></figure>
+          <figure><video src="media/rec/rec-glasses-rest.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-glasses-rest</b> · a tap: set 2 of 4, REST 1:00 starts itself</figcaption></figure>
+          <figure><video src="media/rec/rec-glasses-hurts.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-glasses-hurts</b> · hold on the reverse lunge, the menu, "Tell agent: It hurts"</figcaption></figure>
+          <figure class="tall"><img src="media/stills/still-phone-reply.png" alt="iPhone Feedback screen: the note 'Pain or discomfort' on lower-body/reverse-lunge, marked Answered, with the agent's reply: 'Thanks for telling me. From tomorrow, step-ups replace the reverse lunges: same work, easier on the knee. Stop if it still hurts.'" loading="lazy"><figcaption><b>The agent's reply</b> · iPhone, Feedback</figcaption></figure>
+          <figure class="tall"><img src="media/stills/still-phone-today.png" alt="iPhone Today for Tuesday, Nov 3: Lower body, 0% done, the change note 'Step-ups instead of reverse lunges, after your knee note.', the workout and meals" loading="lazy"><figcaption><b>Tomorrow's plan</b> · iPhone, Today (Tue)</figcaption></figure>
+        </div>
+        <p class="note">The iPhone screens are stills: the simulator's video recorder only writes frames when the screen changes, so the edit shows each screen in the phone frame with a slow push-in. The glasses' "Sent to your agent" flash didn't appear in the captured frames, so that clip ends on the menu choice. Not made: a web-app recording (the cuts didn't need it).</p>
+      </section>
+
+      <section id="audio" data-toc="Voiceover + music">
+        <h2>Voiceover and music</h2>
+        <h3 data-toc="Voiceover takes">1 · Voiceover takes (Kokoro-82M, local)</h3>
+        <p>Every narration line in five voices (<code>branding/promo-videos/scripts/fitloop-launch-vo.py</code>), read back by speech recognition: every word matches the script. The edit uses <b>af_sarah</b>, the closest in pitch to Maya's Flow voice. Each player is the six 30 s lines back to back.</p>
+        <div class="gallery">
+          <figure><audio src="media/audio/vo-af_sarah.m4a" controls preload="none"></audio><figcaption><b>af_sarah</b> · used · 207 Hz</figcaption></figure>
+          <figure><audio src="media/audio/vo-af_heart.m4a" controls preload="none"></audio><figcaption><b>af_heart</b> · 212 Hz (Headway's narrator)</figcaption></figure>
+          <figure><audio src="media/audio/vo-af_bella.m4a" controls preload="none"></audio><figcaption><b>af_bella</b> · 212 Hz</figcaption></figure>
+          <figure><audio src="media/audio/vo-af_nicole.m4a" controls preload="none"></audio><figcaption><b>af_nicole</b> · 157 Hz, whispery and slow</figcaption></figure>
+          <figure><audio src="media/audio/vo-bf_emma.m4a" controls preload="none"></audio><figcaption><b>bf_emma</b> · 186 Hz, British</figcaption></figure>
+        </div>
+        <h3 data-toc="Music (Flow Music)">2 · Music in Flow Music (yours)</h3>
+        <p>Four takes came in, all a steady 103.4 BPM and about 60 s long; the picks and splices are in §1. The prompts, for a redo:</p>
+        <div class="fields">
+          <div class="field" data-max="900"><b>Music prompt, 30 seconds</b><pre>Instrumental only, no vocals, no lyrics. A 30-second playful comedy track for a short film about the only person in a gym who knows what she's doing. 104 BPM, 4/4, clear downbeats on every bar so a video can be cut to it. 0:00–0:04 a wonky, hesitant groove: plucked pizzicato strings, a tuba-like bass and woodblock, slightly off-balance like someone guessing. At 0:04 a sudden stop and one bar of near-silence with a single soft bass note. At 0:07 a confident, punchy workout groove kicks in: tight kick and claps, a warm synth bass, bright synth stabs and muted funk guitar, building steadily. At 0:24 a one-bar drop to just kick and bass, then a bright, resolving final chord and a clean ending at exactly 0:30. Leave space in the mid frequencies for a voiceover.</pre></div>
+          <div class="field" data-max="600"><b>Music prompt, 15 seconds</b><pre>Instrumental only, no vocals. A 15-second playful workout sting, 104 BPM, 4/4, clear downbeats for cutting: two bars of a wonky, hesitant pizzicato groove, a sudden stop at 0:03, then a confident, punchy groove with tight kick, claps, warm synth bass and bright synth stabs, a bright final hit at 0:13 and a clean ending at exactly 0:15. Leave room for a voiceover.</pre></div>
+        </div>
+      </section>
+
+      <section id="stills" data-toc="Stills (spare)">
+        <h2>Stills (spare)</h2>
+        <p>For posts and thumbnails: the glasses display as captured (green on black) and the two iPhone screens, full resolution.</p>
+        <div class="gallery">
+          <figure><img src="media/stills/glasses-set.png" alt="Glasses display: GOBLET SQUAT 1/4, Set 1 of 4, 10 reps @ 16 kg, HR 134, tap: set done" loading="lazy"><figcaption><a class="dl" href="media/stills/glasses-set.png" download>glasses-set.png</a></figcaption></figure>
+          <figure><img src="media/stills/glasses-rest.png" alt="Glasses display: Set 2 of 4, REST 1:00, heart rate" loading="lazy"><figcaption><a class="dl" href="media/stills/glasses-rest.png" download>glasses-rest.png</a></figcaption></figure>
+          <figure><img src="media/stills/glasses-hurts.png" alt="Glasses display: the reverse lunge menu with 'Tell agent: It hurts' selected" loading="lazy"><figcaption><a class="dl" href="media/stills/glasses-hurts.png" download>glasses-hurts.png</a></figcaption></figure>
+          <figure class="tall"><img src="media/stills/still-phone-reply.png" alt="iPhone Feedback screen with the agent's reply" loading="lazy"><figcaption><a class="dl" href="media/stills/still-phone-reply.png" download>still-phone-reply.png</a></figcaption></figure>
+          <figure class="tall"><img src="media/stills/still-phone-today.png" alt="iPhone Today for Tuesday with the change note" loading="lazy"><figcaption><a class="dl" href="media/stills/still-phone-today.png" download>still-phone-today.png</a></figcaption></figure>
+        </div>
+      </section>
+
+      <section id="youtube" data-toc="YouTube upload">
+        <h2>YouTube upload: what to fill in, for each cut</h2>
+        <p>Three uploads, field by field in the order YouTube Studio asks. The <b>30 s cut is the one FitLoop's home page and docs page will embed</b>, so upload it first.</p>
+        <table class="grid">
+          <tr><th>Cut</th><th>Visibility</th></tr>
+          <tr><td><b>30 s · 16:9</b>, the main video</td><td>Public (or Unlisted until the pages are updated)</td></tr>
+          <tr><td><b>15 s · 16:9</b>, for ads and sharing</td><td>Unlisted: a link to share or use in an ad, without a near-copy of the 30 s on the channel</td></tr>
+          <tr><td><b>15 s · 9:16</b>, a Short</td><td>Public; vertical and under 3 minutes, so YouTube makes it a Short by itself</td></tr>
+        </table>
+
+        <h3>1 · The 30-second video</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>FitLoop: your AI agent coaches, FitLoop keeps you on the plan</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Everyone at the gym is guessing. Maya isn't: her own AI agent wrote her workouts and meals, and FitLoop puts them in her glasses, mid-set.
+
+FitLoop has no coach of its own. Your agent (Claude, Meta's assistant or any MCP agent) writes the plan around your goals, time and limits; FitLoop keeps you on it:
+• On iPhone, Apple Watch, the web and Even G2 glasses: the exercise, the set and its target, a rest timer that starts itself, heart rate from your watch.
+• Feedback in the moment: "too hard", "it hurts" or a note, tied to the exercise or meal, from the glasses' ring menu or the app.
+• The loop: your agent reads your check-ins and notes, replies, and publishes the next version of your plan.
+
+Open FitLoop: https://fitloop.hejitech.workers.dev
+How it works: https://tianhaoz95.github.io/hejitech-apps/fitloop/
+
+Plans, weights, heart rate and the agent's reply in this video are demo data. FitLoop is not medical advice. People and scenes in this video are AI-generated, and the narration is a synthetic voice.
+
+#Fitness #SmartGlasses</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/fitloop-launch-30-thumbnail.jpg" alt="Thumbnail: the end card, the FitLoop icon, the name and 'Your agent coaches. FitLoop keeps you on the plan.' in orange on deep indigo, with the disclaimer at the bottom" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, the end card (29.6 s)<br><a class="dl" href="media/youtube/fitloop-launch-30-thumbnail.jpg" download>fitloop-launch-30-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/fitloop-launch-30.mp4" download>fitloop-launch-30.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/fitloop-launch-30.srt" download>fitloop-launch-30.srt</a> (9 cues)</td></tr>
+          <tr><th>Playlist</th><td>Make a <b>FitLoop</b> playlist and add all three.</td></tr>
+        </table>
+
+        <h3>2 · The 15-second video (16:9)</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>FitLoop in 15 seconds: your agent's plan, in your glasses</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Everyone at the gym is guessing. Her agent wrote her plan: FitLoop puts it on her Even G2 glasses mid-set, and when something hurts she tells her agent right there.
+
+Open FitLoop: https://fitloop.hejitech.workers.dev
+How it works: https://tianhaoz95.github.io/hejitech-apps/fitloop/
+
+Plans shown are demo data. Not medical advice. People and scenes are AI-generated; the narration is a synthetic voice.
+
+#Fitness #SmartGlasses</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/fitloop-launch-15-thumbnail.jpg" alt="Thumbnail: the same end card, from the 15-second cut" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720 (14.8 s)<br><a class="dl" href="media/youtube/fitloop-launch-15-thumbnail.jpg" download>fitloop-launch-15-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/fitloop-launch-15.mp4" download>fitloop-launch-15.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/fitloop-launch-15.srt" download>fitloop-launch-15.srt</a> (6 cues)</td></tr>
+        </table>
+
+        <h3>3 · The Short (9:16)</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Everyone at the gym is guessing. Her agent wrote her plan. #Shorts</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>Her AI agent writes her workouts; FitLoop puts them in her Even G2 glasses, mid-set. Something hurts? She tells her agent right there.
+
+https://fitloop.hejitech.workers.dev
+
+Demo data. Not medical advice. People and scenes are AI-generated; synthetic voice.
+
+#Fitness #SmartGlasses</pre></div>
+        </div>
+        <div class="gallery">
+          <figure class="tall"><img src="media/youtube/fitloop-launch-15-vertical-thumbnail.jpg" alt="Vertical end card: the FitLoop icon, name and tagline on two lines, centred on deep indigo" loading="lazy"><figcaption><b>Cover</b> · 1080×1920 (14.8 s)<br><a class="dl" href="media/youtube/fitloop-launch-15-vertical-thumbnail.jpg" download>fitloop-launch-15-vertical-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Thumbnail</th><td>A Short's cover is a frame of the video, picked in the YouTube app (Edit → Thumbnail) after upload; Studio on the web may not take a file. Pick the end card. The JPG is for posts elsewhere.</td></tr>
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/fitloop-launch-15-vertical.mp4" download>fitloop-launch-15-vertical.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/fitloop-launch-15-vertical.srt" download>fitloop-launch-15-vertical.srt</a>. Add it in Studio → Content → the Short → <b>Subtitles</b> if the upload dialog doesn't show Video elements.</td></tr>
+        </table>
+
+        <h3>4 · The same for all three</h3>
+        <table class="kv">
+          <tr><th>Thumbnail</th><td><b>Upload file</b> → the cut's JPG. A custom thumbnail needs a phone-verified channel; if the button is greyed out, use <b>Select from video</b> and pick the end card.</td></tr>
+          <tr><th>Audience</th><td><b>No, it's not made for kids.</b> Age restriction: <b>No</b>.</td></tr>
+        </table>
+        <div class="fields">
+          <div class="field" data-max="500"><b>Tags (Show more)</b><pre>FitLoop, AI fitness coach, AI agent, MCP, workout plan, meal plan, Even G2, Even Realities, smart glasses, R1 ring, iPhone app, Apple Watch, gym, strength training, fitness app</pre></div>
+        </div>
+        <table class="kv">
+          <tr><th>Paid promotion</th><td><b>Leave unticked</b>: it's your own product.</td></tr>
+          <tr><th>Altered content</th><td><b>Yes.</b> Maya, Theo and the gym are realistic AI-generated people and scenes, and the narration is a synthetic voice.</td></tr>
+          <tr><th>Automatic chapters</th><td>Untick; featured places: untick if shown.</td></tr>
+          <tr><th>Language &amp; captions</th><td>Video language <b>English</b>. Caption certification: <b>This content has never aired on television in the U.S.</b></td></tr>
+          <tr><th>License</th><td><b>Standard YouTube License</b>.</td></tr>
+          <tr><th>Allow embedding</th><td><b>On. Required</b> for the 30 s cut: FitLoop's home page and docs page embed it.</td></tr>
+          <tr><th>Category</th><td><b>Science &amp; Technology</b>.</td></tr>
+          <tr><th>Comments</th><td>On, <b>Hold potentially inappropriate comments for review</b>.</td></tr>
+          <tr><th>Add subtitles</th><td>Video elements → <b>Add subtitles → Upload file → With timing</b>, English → the cut's SRT. The video already has captions burned in, so CC shows the words twice; the file still helps sound-off embeds, search and translation.</td></tr>
+          <tr><th>End screen, cards</th><td><b>Skip both.</b> An end screen covers the end card's name and disclaimer.</td></tr>
+          <tr><th>Checks</th><td>The music is yours from Flow Music, the footage is yours from Flow and the voice is Kokoro (Apache 2.0), so a copyright claim is unlikely. If one appears, tell me what it names.</td></tr>
+          <tr><th>Visibility</th><td>As in the table at the top. <b>Private</b> can't be embedded.</td></tr>
+          <tr><th>Then</th><td>Send me the 30 s link: I put it on FitLoop's home page and docs page.</td></tr>
+        </table>
+        <h3>Elsewhere</h3>
+        <div class="fields">
+          <div class="field" data-max="280"><b>Short post (X / Threads)</b><pre>Everyone at the gym is guessing. Her AI agent wrote her plan. FitLoop puts it on your iPhone, Apple Watch and Even G2 glasses mid-set, and sends "it hurts" straight back to your agent.</pre></div>
+        </div>
+        <p class="note">The subtitle files come from <code>branding/promo-videos/scripts/fitloop-launch-srt.mjs</code>, which reads where each line sits in the composition, so a re-cut gets matching subtitles by running it again.</p>
+      </section>
+
+      <section id="steps">
+        <h2>What to do, in order</h2>
+        <ol class="do">
+          <li><b>Review the three cuts</b> in §1 with sound: the music picks, the narration voice, the mix with Flow's voices. Send notes, or approve.</li>
+          <li><b>Upload</b> the cuts you like to YouTube with §9 (30 s first, embedding on).</li>
+          <li><b>Send me the 30 s link</b>: I add it to FitLoop's home page and its docs page.</li>
+          <li><b>Back up</b> <code>branding/promo-videos/public/fitloop-launch/</code> (Flow takes can't be regenerated exactly).</li>
+        </ol>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="fl-story"><span><b>Story and voiceover script settled</b></span></li>
+          <li><input type="checkbox" id="fl-maya"><span><b>Maya made and saved in Flow</b><small>Portrait, Create body, character info, voice</small></span></li>
+          <li><input type="checkbox" id="fl-theo"><span><b>Theo made and saved in Flow</b><small>Same four steps</small></span></li>
+          <li><input type="checkbox" id="fl-s1"><span><b>Shot 1 · the gym is guessing</b><small>Screen faces away</small></span></li>
+          <li><input type="checkbox" id="fl-s2"><span><b>Shot 2 · "How many sets is this?"</b><small>Both lines land; faces stay apart</small></span></li>
+          <li><input type="checkbox" id="fl-s3"><span><b>Shot 3 · the glance</b><small>Nothing readable on the lenses</small></span></li>
+          <li><input type="checkbox" id="fl-s4"><span><b>Shot 4 · ring tap</b><small>Watch face turned in</small></span></li>
+          <li><input type="checkbox" id="fl-s5"><span><b>Shot 5 · it hurts, Theo topples</b></span></li>
+          <li><input type="checkbox" id="fl-s6"><span><b>Shot 6 · kitchen, the reply</b><small>Screen faces away</small></span></li>
+          <li><input type="checkbox" id="fl-s7"><span><b>Shot 7 · "I'm getting an agent."</b></span></li>
+          <li><input type="checkbox" id="fl-m30"><span><b>Music, 30 s</b></span></li>
+          <li><input type="checkbox" id="fl-m15"><span><b>Music, 15 s</b></span></li>
+          <li><input type="checkbox" id="fl-files"><span><b>Files dropped in the promo folder</b></span></li>
+          <li><input type="checkbox" id="fl-review"><span><b>Cuts reviewed with sound</b></span></li>
+          <li><input type="checkbox" id="fl-yt30"><span><b>30 s uploaded</b><small>Title, description, thumbnail, subtitles, embedding on</small></span></li>
+          <li><input type="checkbox" id="fl-yt15"><span><b>15 s uploaded</b><small>Unlisted</small></span></li>
+          <li><input type="checkbox" id="fl-ytshort"><span><b>Short uploaded</b><small>Cover picked in the YouTube app</small></span></li>
+        </ul>
+      </section>
+
+      <section id="risks">
+        <h2>What can go wrong</h2>
+        <table class="grid">
+          <tr><th>Problem</th><th>What to do</th></tr>
+          <tr><td>Flow draws gym or equipment brand logos, or a logo on Theo's tank top</td><td>Regenerate, with "no logos, no text" again at the end, or use a take where it's out of focus.</td></tr>
+          <tr><td>Maya's watch face turns toward the camera and shows a screen</td><td>Use the part before it does, or regenerate; "face turned to the inside of her wrist" is in her body prompt.</td></tr>
+          <tr><td>The glasses come out bulky, like goggles, or change between shots</td><td>Always add Maya; pick the portrait whose glasses look most like ordinary glasses; regenerate with "ordinary everyday glasses, thin frames".</td></tr>
+          <tr><td>Maya and Theo blend into each other in shots 1, 2, 5, 7</td><td>Make shot 2 first as the test. If Flow keeps mixing them, make Theo's part as its own shot and the edit cuts between them.</td></tr>
+          <tr><td>Theo's fall looks painful or mean</td><td>Keep takes where he lands softly and gives the thumbs-up; the joke is his enthusiasm, never his body.</td></tr>
+          <tr><td>Bad lifting form (a rounded back, knees caving)</td><td>Regenerate or cut away: Maya's form should look controlled; it's a fitness product.</td></tr>
+          <tr><td>Flow ad-libs extra lines</td><td>The edit keeps only the written lines and mutes the rest; I transcribe every take first.</td></tr>
+        </table>
+        <div class="unknown"><b>Not known yet:</b> how the cuts sound: I picked the music and the voice by measurement. Answered since the plan: the simulator shows heart rate once it's relayed (staged on the local stack), and Flow kept Maya and Theo apart in every two-person shot (Theo's look drifts in shot 2).</div>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-11-01-fitloop-promo-video</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>

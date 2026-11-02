@@ -1,0 +1,27 @@
+name: TCDriver
+options: { bundleIdPrefix: com.hejitech.promo, deploymentTarget: { iOS: "18.0", watchOS: "11.0" } }
+settings: { base: { CODE_SIGNING_ALLOWED: NO, GENERATE_INFOPLIST_FILE: YES, SWIFT_VERSION: "5.0", DEVELOPMENT_TEAM: "" } }
+targets:
+  DriverPhone:
+    type: application
+    platform: iOS
+    sources: [HostPhone]
+    settings: { base: { INFOPLIST_KEY_UILaunchScreen_Generation: YES } }
+  DriverPhoneUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [PhoneTests, Shared.swift]
+    dependencies: [{ target: DriverPhone }]
+  DriverWatch:
+    type: application
+    platform: watchOS
+    sources: [HostWatch]
+    settings: { base: { INFOPLIST_KEY_WKWatchOnly: YES, INFOPLIST_KEY_WKApplication: YES } }
+  DriverWatchUITests:
+    type: bundle.ui-testing
+    platform: watchOS
+    sources: [WatchTests, Shared.swift]
+    dependencies: [{ target: DriverWatch }]
+schemes:
+  DriverPhone: { build: { targets: { DriverPhone: all, DriverPhoneUITests: [test] } }, test: { targets: [DriverPhoneUITests] } }
+  DriverWatch: { build: { targets: { DriverWatch: all, DriverWatchUITests: [test] } }, test: { targets: [DriverWatchUITests] } }
