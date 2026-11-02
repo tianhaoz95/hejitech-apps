@@ -9,7 +9,7 @@ builds and release scripts read them there.
 
 One Remotion project (React, code-driven video) for every product's promos, so there is one install,
 one version to upgrade and shared pieces such as the green-screen replacement, caption style and
-end card. Agents: the `heji-promo-video` skill (the whole workflow, from the guide report to YouTube and the pages) and `heji-remotion` (the edit).
+end card. Agents: the `heji-promo-video` skill (the whole workflow, from the guide report to YouTube and the pages), `heji-demo-video` (product walkthroughs built on real screen recordings) and `heji-remotion` (the edit).
 
 ```
 promo-videos/

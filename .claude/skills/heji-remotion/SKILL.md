@@ -23,7 +23,7 @@ resolve inside `upstream/`.
   `workspaces`.
 - Pin every `remotion` / `@remotion/*` package to the same exact version (`npm i -E`); upgrade
   them together with `npx remotion upgrade`. Check with `npm run lint` (eslint + tsc).
-- **How promos are made here** (the whole workflow, report to YouTube: skill `heji-promo-video`): AI-generated shots (Google Flow)
+- **How promos are made here** (the whole workflow, report to YouTube: skill `heji-promo-video`; product walkthroughs: `heji-demo-video`): AI-generated shots (Google Flow)
   show people and places with the screen hidden; the product is a real screen recording of the app
   (a scripted Playwright run on the local stack, never production), not a green screen (keying and
   corner-pinning looked shaky and covered the hand). Cut on the music's beats with

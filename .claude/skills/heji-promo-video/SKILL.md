@@ -5,6 +5,9 @@ description: Make a HEJI project's promotional video end to end -- a heji-report
 
 # Promo video for a project
 
+For a longer how-to-use walkthrough built on real screens (chapters, zooms, callouts), use
+`heji-demo-video`; it reuses this skill's tools and lessons.
+
 The worked example is Trading Plan Board's launch video: report
 `reports/2026-10-30-tradeboard-promo-video` (or `reports/archive/…` once archived), edit
 `branding/promo-videos/src/tradeboard-launch`, scripts `branding/promo-videos/scripts/tradeboard-launch-*`.
@@ -23,6 +26,37 @@ cockpit: they make the AI footage and the music in Google Flow; you make everyth
 | Edit, captions, renders | you | Remotion (`heji-remotion`) |
 | YouTube fields, thumbnails, subtitles per cut | you | report section with the first render; owner uploads |
 | Embeds on the landing and docs pages | you | after the owner sends the link |
+
+## Where every file goes (absolute paths, this Mac)
+
+Every agent and the owner use these exact folders, so nobody has to guess where a take landed.
+`<id>` is the promo's id (`<project>-<promo>`, e.g. `headway-launch`); `<report>` is its report folder (`<date>-<project>-promo-video`).
+The repo is the **main checkout** at `/Volumes/DATA/GitHub/hejitech-apps`. Media is git-ignored, so
+it exists only there: from a worktree or any other checkout (e.g. `/Volumes/DATA/GitHub/hejitech-g2digest-ready`),
+still read and write media at the paths below, never in your own checkout's `branding/`.
+
+| What | Absolute path | Written by |
+|---|---|---|
+| Every source asset the edit uses: Flow shots, images and art, music takes, the owner's device recordings, your recordings (`rec-*.mp4`, event logs), screenshots, voiceover takes | `/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/public/<id>/` (flat, no subfolders; `staticFile("<id>/…")` reads it) | owner drops Flow downloads here; you write the rest |
+| The list of those files, where each came from | `/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/src/<id>/media.md` (tracked) | you, every time a file is added or replaced |
+| The edit (code), voiceover timings | `/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/src/<id>/` (tracked) | you |
+| Recorder, voiceover and SRT scripts | `/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/scripts/<id>-*` (tracked) | you |
+| Raw renders | `/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/out/<composition>.mp4` (ignored) | `npx remotion render` |
+| Final, loudness-normalised renders and SRTs | `/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/out/final/` (ignored) | you |
+| Copies the owner reviews in the report | `/Volumes/DATA/GitHub/hejitech-apps/reports/<report>/site/media/` (`edit/` renders + posters, ignored by convention; `rec/`, `audio/`, `stills/` review copies; `youtube/` thumbnails + SRTs, committed) | you, copied from the folders above, never the only copy |
+| Throwaway frames, stills to check, temp audio | the session's scratchpad directory | you; never put an asset the edit needs there |
+
+- Tell the owner the `public/<id>/` path (absolute) in the report's summary and in every Flow/music
+  card ("download into …"), and accept files they leave in `~/Downloads` only by moving them there
+  and adding them to `media.md`.
+- Name files so another agent can tell what they are (as the existing folders do): Flow shots keep
+  Flow's download name with the shot number in front (`Shot_3_draft_09a6abcf_1080p.mp4`, the kept
+  take re-run at full quality as `shot-3_<flow id>_1080p.mp4`), `art-<name>.png` for Flow images,
+  `music-<len>s-take<n>-<title>.mp3` (the trimmed track the edit plays: `music-<len>-edit.wav`),
+  `rec-<beat or chapter>.mp4` (+ `.events.json` for demos), `still-<screen>.png`,
+  `vo-<voice>-<line or chapter>.wav`.
+- Before starting work, `ls` the `public/<id>/` folder and read `media.md`: a previous agent's
+  files are the source of truth; don't re-download or re-record what's already there.
 
 ## Lessons that shaped this (don't relearn them)
 
