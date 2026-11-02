@@ -9,7 +9,8 @@
     <!-- @header -->
     <main>
       <div class="wrap">
-        <section class="hero">
+        <section class="hero with-promo">
+          <div>
           <h1>Your brief, ready before the train.</h1>
           <p class="lede">An agent compiles your brief ahead of time into cards you skim on Even G2 glasses and audio you hear in your headphones. On the way you swipe past what doesn't matter and hold the ring for the deep dive. Nothing loads, nothing generates, and you don't read for longer than a glance.</p>
           <div class="row" style="margin: 18px 0 26px">
@@ -17,6 +18,13 @@
             <a class="btn primary" href="/pair/" data-signed-in hidden>Pair your glasses</a>
             <a class="btn secondary" href="/preview/fixture">See a sample edition</a>
           </div>
+          </div>
+          <figure class="promo-wrap" data-promo>
+            <button class="promo" type="button" aria-label="Play the 30-second video: G2 Digest on Even G2 glasses">
+              <img src="/promo-poster.jpg" alt="" width="1280" height="720" /><span class="play" aria-hidden="true"></span>
+            </button>
+            <figcaption class="small muted">G2 Digest in 30 seconds. Briefs in the video are demo data; people and scenes are AI-generated. <a href="https://youtu.be/gcS32dRwPMo">Watch on YouTube</a></figcaption>
+          </figure>
         </section>
         <div class="grid2">
           <div class="panel">
@@ -36,5 +44,6 @@
       </div>
     </main>
     <!-- @footer -->
+    <script type="module" src="/src/promo.ts"></script>
   </body>
 </html>

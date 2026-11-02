@@ -65,12 +65,16 @@ export default withMermaid(
       nav: [
         // The home page's app cards link each project; the nav stays short.
         { text: "Apps", link: "/#apps" },
+        { text: "Videos", link: "/videos" },
         { text: "Monorepo", link: "/monorepo" },
         // Styled as a button in custom.css (.VPNavBarMenuLink[href$="/status"]).
         { text: "● Status", link: "/status", activeMatch: "^/status" },
       ],
       sidebar: Object.fromEntries(projects.map((p) => [`/${p}/`, sidebarFor(p)])),
-      socialLinks: [{ icon: "github", link: "https://github.com/tianhaoz95/hejitech-apps" }],
+      socialLinks: [
+        { icon: "github", link: "https://github.com/tianhaoz95/hejitech-apps" },
+        { icon: "youtube", link: "https://www.youtube.com/channel/UCCx17EMpUwCYWkJYqXMQVRQ", ariaLabel: "HEJI TECH on YouTube" },
+      ],
       search: {
         provider: "local",
         options: {

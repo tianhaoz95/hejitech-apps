@@ -9,7 +9,8 @@
     <!-- @header -->
     <main>
       <div class="wrap">
-        <section class="hero">
+        <section class="hero with-promo">
+          <div>
           <h1>Your agent coaches. FitLoop keeps you on the plan.</h1>
           <p class="lede">Ask Claude, Meta's assistant or any agent that speaks MCP to build your training and meals around your goals, time and limits. FitLoop puts the plan where you are: iPhone, Apple Watch, the web and Even G2 glasses mid-set. Check things off, leave a note when something's off, and your agent picks it all up next time.</p>
           <div class="row" style="margin: 18px 0 26px">
@@ -17,6 +18,13 @@
             <a class="btn primary" href="/today/" data-signed-in hidden>Today's plan</a>
             <a class="btn secondary" href="/support/">Connect your agent</a>
           </div>
+          </div>
+          <figure class="promo-wrap" data-promo>
+            <button class="promo" type="button" aria-label="Play the 30-second video: FitLoop at the gym">
+              <img src="/promo-poster.jpg" alt="" width="1280" height="720" /><span class="play" aria-hidden="true"></span>
+            </button>
+            <figcaption class="small muted">FitLoop in 30 seconds. Workouts in the video are demo data; people and scenes are AI-generated. <a href="https://youtu.be/yNye1ZyYcoQ">Watch on YouTube</a></figcaption>
+          </figure>
         </section>
         <div class="grid2">
           <section class="panel">
@@ -45,6 +53,7 @@
       </div>
     </main>
     <!-- @footer -->
+    <script type="module" src="/src/promo.ts"></script>
     <script type="module" src="/src/home.ts"></script>
   </body>
 </html>

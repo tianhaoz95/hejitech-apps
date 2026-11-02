@@ -6,7 +6,7 @@ import { el } from "./ui.ts";
 const promo = document.querySelector<HTMLElement>("[data-promo] .promo");
 promo?.addEventListener("click", () => {
   promo.replaceWith(el("iframe", {
-    class: "promo", src: "https://www.youtube-nocookie.com/embed/7zRrCZNjr8s?autoplay=1&rel=0", title: "How Trading Plan Board works (30 s)",
+    class: "promo", src: "https://www.youtube-nocookie.com/embed/oVojWDFUrkc?autoplay=1&rel=0", title: "How Trading Plan Board works (30 s)",
     allow: "autoplay; encrypted-media; picture-in-picture; fullscreen", allowfullscreen: true, referrerpolicy: "strict-origin-when-cross-origin",
   }));
 });

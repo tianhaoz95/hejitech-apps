@@ -27,6 +27,16 @@ features:
     details: Delays past your threshold, cancellations, Caltrain's service alerts for your stations, a leave-now reminder for your usual train, and a heads-up before your stop.
 ---
 
+## See it in 30 seconds
+
+<div class="promo-video">
+  <iframe src="https://www.youtube-nocookie.com/embed/dAxVDil4ARA?rel=0" title="Headway: your next Caltrain, at a glance (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+</div>
+
+Everyone in the city runs for the train; Lin's next Caltrain is in her glasses, and her phone taps
+her when it's time to go. Train times and alerts in the video are demo data; people and scenes are
+AI-generated. [Watch on YouTube](https://youtu.be/dAxVDil4ARA).
+
 ## How it fits together
 
 ```

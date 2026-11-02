@@ -32,6 +32,7 @@ const href = (url: string) => (url.startsWith("/") ? withBase(url) : url);
           <template v-if="lens === 'user'">
             <a v-if="app.appUrl" class="heji-btn brand no-icon" target="_blank" rel="noopener" :href="app.appUrl">Visit app</a>
             <a class="heji-btn no-icon" target="_blank" rel="noopener" :href="href(app.docs)">Docs →</a>
+            <a v-if="app.video" class="heji-btn no-icon" target="_blank" rel="noopener" :href="`https://youtu.be/${app.video}`" :aria-label="`Watch ${app.name} in 30 seconds on YouTube`">▶ 30 s video</a>
           </template>
           <template v-else>
             <a class="heji-btn brand no-icon" target="_blank" rel="noopener" :href="href(app.docs)">Docs →</a>

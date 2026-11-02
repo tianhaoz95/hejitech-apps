@@ -263,3 +263,10 @@ html { scrollbar-gutter: stable; }
 /* A product page's embedded promo video, 16:9 at the content width. */
 .promo-video { position: relative; aspect-ratio: 16 / 9; margin: 16px 0; border-radius: 12px; overflow: hidden; background: #0e1b2b; }
 .promo-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+/* The Videos page (pages/videos.md): one 16:9 player per app. */
+.heji-videos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 28px 20px; margin-top: 24px; }
+.heji-videos figure { margin: 0; min-width: 0; }
+.heji-videos .promo-video { margin: 0 0 10px; }
+.heji-videos figcaption { font-size: 14px; line-height: 1.55; color: var(--vp-c-text-2); }
+.heji-videos figcaption b { color: var(--vp-c-text-1); }

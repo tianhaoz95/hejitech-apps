@@ -4,6 +4,8 @@ Caltrain status on Even G2 glasses, steered with the R1 ring, with iPhone alerts
 cancellations, leaving on time and arriving at your stop. Docs:
 <https://tianhaoz95.github.io/hejitech-apps/headway/>. Working on it: [`CLAUDE.md`](CLAUDE.md).
 
+▶ **[Watch it in 30 seconds](https://youtu.be/dAxVDil4ARA)** · [the Short](https://youtube.com/shorts/g0088LeISt8)
+
 ```
 projects/headway/
   packages/core/        @headway/core: compiled Caltrain timetable, GTFS-RT reader, boards, settings,

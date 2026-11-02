@@ -23,6 +23,16 @@ features:
     details: No third-party SDKs, analytics or accounts. A parental gate guards settings; Guided Access setup is taught in the app.
 ---
 
+## See it in 30 seconds
+
+<div class="promo-video">
+  <iframe src="https://www.youtube-nocookie.com/embed/kvPABm2YNLU?rel=0" title="ToddlerCam: a camera for little hands, and a remote on your watch (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+</div>
+
+Four hundred photos of the back of his head, so Milo got his own camera: both cameras at once, and
+the watch is the remote. His taps only make bubbles, and every photo stays on the phone. People and
+scenes are AI-generated; in-app footage is demo footage. [Watch on YouTube](https://youtu.be/kvPABm2YNLU).
+
 ## Working on it
 
 Everything is in [`projects/toddlercam`](https://github.com/tianhaoz95/hejitech-apps/tree/main/projects/toddlercam),

@@ -17,7 +17,7 @@
       ToddlerCam
     </a>
     <div class="nav-links">
-      <a href="#promo">Video</a>
+      <a href="#film">Video</a>
       <a href="#features">Features</a>
       <a href="#privacy">Privacy</a>
       <a href="support.html">Support</a>
@@ -106,6 +106,22 @@
     </div>
   </div>
 </header>
+
+<section id="film" class="film-section">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker">See it in 30 seconds</span>
+      <h2>Four hundred photos of the back of his head.</h2>
+      <p>So Milo got his own camera, and the watch became the remote.</p>
+    </div>
+    <figure class="film-wrap" data-film>
+      <button class="film" type="button" aria-label="Play the 30-second ToddlerCam film">
+        <img src="assets/film-poster.jpg" alt="" width="1280" height="720" loading="lazy"><span class="play" aria-hidden="true"></span>
+      </button>
+      <figcaption>ToddlerCam in 30 seconds. People and scenes are AI-generated; in-app footage is demo footage. <a href="https://youtu.be/kvPABm2YNLU">Watch on YouTube</a></figcaption>
+    </figure>
+  </div>
+</section>
 
 <section id="promo" class="promo-section">
   <div class="wrap">
@@ -399,5 +415,22 @@
   }
 </script>
 
+<script>
+  // The 30 s film: swap the poster for the YouTube player on click.
+  (function () {
+    var b = document.querySelector("[data-film] .film");
+    if (!b) return;
+    b.addEventListener("click", function () {
+      var f = document.createElement("iframe");
+      f.className = "film";
+      f.src = "https://www.youtube-nocookie.com/embed/kvPABm2YNLU?autoplay=1&rel=0";
+      f.title = "ToddlerCam: a camera for little hands, and a remote on your watch (30 s)";
+      f.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+      f.allowFullscreen = true;
+      f.referrerPolicy = "strict-origin-when-cross-origin";
+      b.replaceWith(f);
+    });
+  })();
+</script>
 </body>
 </html>

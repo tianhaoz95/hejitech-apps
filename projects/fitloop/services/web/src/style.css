@@ -137,3 +137,15 @@ label.check input { width: auto; }
 .photos img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 10px; }
 table.small td, table.small th { padding: 4px 8px; text-align: left; }
 .toggles { display: grid; gap: 8px; }
+
+/* Promo video: a poster button, replaced by the YouTube player on click (src/promo.ts) */
+.promo-wrap { width: 100%; margin: 0; }
+.promo { display: block; position: relative; width: 100%; aspect-ratio: 16 / 9; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #141024; box-shadow: var(--shadow); cursor: pointer; }
+.promo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.promo .play { position: absolute; left: 16px; bottom: 16px; width: 68px; height: 48px; border-radius: 14px; background: rgba(0, 0, 0, .65); transition: background .15s; }
+.promo .play::after { content: ""; position: absolute; left: 27px; top: 14px; border-style: solid; border-width: 10px 0 10px 17px; border-color: transparent transparent transparent #fff; }
+.promo:hover .play, .promo:focus-visible .play { background: #e62117; }
+iframe.promo { cursor: auto; }
+.promo-wrap figcaption { margin-top: 8px; }
+.hero.with-promo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 460px); gap: 32px; align-items: center; }
+@media (max-width: 900px) { .hero.with-promo { grid-template-columns: minmax(0, 1fr); } }

@@ -23,6 +23,17 @@ features:
     details: The companion switches games, starts the lullaby and shows live touch counts over WatchConnectivity. Kids Category, nothing leaves the devices.
 ---
 
+## See it in 30 seconds
+
+<div class="promo-video">
+  <iframe src="https://www.youtube-nocookie.com/embed/Q1qmSJNQtOw?rel=0" title="TinyTouch: hand your watch to a toddler, without the surprise calls (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+</div>
+
+She called his boss. Twice. Now he opens TinyTouch first: every tap is a bubble, an animal or a note,
+the phone switches the game or starts the lullaby, and getting out takes a three-second hold. People
+and scenes are AI-generated. The side-button SOS is a watch setting, outside any app: TinyTouch shows
+how to turn it off. [Watch on YouTube](https://youtu.be/Q1qmSJNQtOw).
+
 ## Working on it
 
 Everything is in [`projects/tinytouch`](https://github.com/tianhaoz95/hejitech-apps/tree/main/projects/tinytouch):

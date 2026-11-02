@@ -27,6 +27,16 @@ features:
     details: The app records facts; an MCP server lets your own AI assistant read and log them. No in-app advice, and no aggregation beyond the one-line status.
 ---
 
+## See it in 30 seconds
+
+<div class="promo-video">
+  <iframe src="https://www.youtube-nocookie.com/embed/To1mquGs_JQ?rel=0" title="Wee Hours: whisper the 3am feed to your watch, and both parents know (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+</div>
+
+At three a.m. nobody remembers who fed the baby. Now he whispers it to his watch, the phone
+understands it on the device, and his wife sees it on hers and goes back to sleep. A log, not medical
+advice; times shown are demo data; people and scenes are AI-generated. [Watch on YouTube](https://youtu.be/To1mquGs_JQ).
+
 ## What's next, in one line
 
 Every surface shows the same status, derived from the log by the same fixture-locked code in Swift

@@ -5,6 +5,8 @@ on iPhone, Apple Watch, the web and Even G2 glasses, with check-ins and in-the-m
 back to the agent over MCP. Docs: <https://tianhaoz95.github.io/hejitech-apps/fitloop/>. Working on
 it: [`CLAUDE.md`](CLAUDE.md).
 
+▶ **[Watch it in 30 seconds](https://youtu.be/yNye1ZyYcoQ)** · [the Short](https://youtube.com/shorts/YGC6bK1CoMk)
+
 ```
 projects/fitloop/
   packages/core/        @fitloop/core: plan format + validator, day state and adherence, settings and

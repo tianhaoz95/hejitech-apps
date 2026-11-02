@@ -2,6 +2,8 @@
 
 A child-development play experience and accidental-touch shield designed specifically for parents holding an 18-month-old toddler with an Apple Watch, paired with an iPhone companion remote.
 
+▶ **[Watch it in 30 seconds](https://youtu.be/Q1qmSJNQtOw)** · [the Short](https://youtube.com/shorts/JRmy2gbIT38)
+
 <p align="center">
   <a href="https://github.com/tianhaoz95/hejitech-apps/actions/workflows/tinytouch-testflight.yml">
     <img src="https://github.com/tianhaoz95/hejitech-apps/actions/workflows/tinytouch-testflight.yml/badge.svg" alt="TestFlight Release Status">

@@ -6,6 +6,8 @@
 
 Turn any AI agent into a travel planner whose output works **fully offline on your phone**.
 
+▶ **[Watch it in 30 seconds](https://youtu.be/U1Hhwjfqh7c)** · [the Short](https://youtube.com/shorts/fjj1S9f8iAE)
+
 An agent (Claude Code, claude.ai, Cursor, …) with the Waypack skill and MCP server interviews you, researches, and publishes a **trip bundle**: a self-contained mobile web app plus `manifest.json`. The backend cuts an **offline vector map** of the trip area. The Waypack app downloads both, so the itinerary, a real map with trails, your GPS dot, and Navigate hand-offs all work in airplane mode.
 
 Design: [`docs/design.md`](docs/design.md) · Deviations: [`docs/DECISIONS.md`](docs/DECISIONS.md) · Deploy: [`docs/DEPLOY.md`](docs/DEPLOY.md) · Status: [`docs/STATUS.md`](docs/STATUS.md)

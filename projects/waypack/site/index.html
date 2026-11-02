@@ -190,6 +190,16 @@ details summary::-webkit-details-marker { display: none; }
 details summary::after { content: "+"; font-size: 1.4rem; font-weight: 400; color: var(--muted); line-height: 1; margin-left: 12px; }
 details[open] summary::after { content: "−"; }
 details p { color: var(--muted); margin: 12px 0 0; line-height: 1.6; }
+/* Promo video: the poster is served from here; the YouTube player replaces it only on click (privacy.html says so). */
+.promo-sec { padding: 8px 0 56px; }
+.promo-wrap { max-width: 860px; margin: 0 auto; }
+.promo { display: block; position: relative; width: 100%; aspect-ratio: 16 / 9; padding: 0; border: 0; border-radius: var(--radius); overflow: hidden; background: #2b231d; box-shadow: var(--paper-shadow); cursor: pointer; }
+.promo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.promo .play { position: absolute; left: 50%; top: 50%; width: 76px; height: 54px; margin: -27px 0 0 -38px; border-radius: 16px; background: rgba(0, 0, 0, .62); transition: background .15s ease; }
+.promo .play::after { content: ""; position: absolute; left: 30px; top: 16px; border-style: solid; border-width: 11px 0 11px 19px; border-color: transparent transparent transparent #fff; }
+.promo:hover .play, .promo:focus-visible .play { background: var(--accent); }
+iframe.promo { border: 0; cursor: auto; }
+.promo-wrap figcaption { margin-top: 10px; text-align: center; }
 footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--muted); font-size: .9rem; }
 footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; }
 footer a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
@@ -274,6 +284,17 @@ footer a:hover { color: var(--text); }
     </div>
   </div>
 </header>
+
+<section class="promo-sec" aria-label="Video">
+  <div class="wrap">
+    <figure class="promo-wrap" data-promo>
+      <button class="promo" type="button" aria-label="Play the 30-second video: Waypack in the snow with zero bars">
+        <img src="img/promo-poster.jpg" alt="" width="1280" height="720" loading="lazy"><span class="play" aria-hidden="true"></span>
+      </button>
+      <figcaption class="small muted">Waypack in 30 seconds. Example trip; people and scenes are AI-generated. <a href="https://youtu.be/U1Hhwjfqh7c">Watch on YouTube</a></figcaption>
+    </figure>
+  </div>
+</section>
 
 <section id="how">
   <div class="wrap">
@@ -555,6 +576,18 @@ npx @waypack/cli skill install</code><button type="button">Copy</button></pre>
         b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1500);
       }).catch(function () {});
     });
+  });
+  // Promo video: swap the poster for the YouTube player on click, so nothing loads from YouTube until then.
+  var promo = document.querySelector("[data-promo] .promo");
+  if (promo) promo.addEventListener("click", function () {
+    var f = document.createElement("iframe");
+    f.className = "promo";
+    f.src = "https://www.youtube-nocookie.com/embed/U1Hhwjfqh7c?autoplay=1&rel=0";
+    f.title = "Waypack: your AI agent plans the trip, Waypack keeps it working offline (30 s)";
+    f.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+    f.allowFullscreen = true;
+    f.referrerPolicy = "strict-origin-when-cross-origin";
+    promo.replaceWith(f);
   });
 </script>
 </body>

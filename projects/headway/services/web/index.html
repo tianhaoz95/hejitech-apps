@@ -9,7 +9,8 @@
     <!-- @header -->
     <main>
       <div class="wrap">
-        <section class="hero">
+        <section class="hero with-promo">
+          <div>
           <div class="eyebrow"><span class="dot"></span>Even G2 Glasses · R1 Ring · iPhone Alerts</div>
           <h1>Your next Caltrain, at a glance.</h1>
           <p class="lede">Headway puts your commute on Even G2 glasses: the next trains from your station, live 511.org delays and Caltrain service alerts. Swipe the R1 ring to look further, tap to flip direction, hold to follow the train you're on. Your iPhone taps you when it's late, cancelled, time to leave, or minutes from your stop.</p>
@@ -18,6 +19,13 @@
             <a class="btn primary" href="/settings/" data-signed-in hidden>Configure your commute</a>
             <a class="btn secondary" href="/support/">How it works</a>
           </div>
+          </div>
+          <figure class="promo-wrap" data-promo>
+            <button class="promo" type="button" aria-label="Play the 30-second video: Headway on Even G2 glasses">
+              <img src="/promo-poster.jpg" alt="" width="1280" height="720" /><span class="play" aria-hidden="true"></span>
+            </button>
+            <figcaption class="small muted">Headway in 30 seconds. Train times and alerts in the video are demo data.</figcaption>
+          </figure>
         </section>
         <div class="grid2">
           <section class="panel" aria-labelledby="board-title">
@@ -66,5 +74,6 @@
     </main>
     <!-- @footer -->
     <script type="module" src="/src/board.ts"></script>
+    <script type="module" src="/src/promo.ts"></script>
   </body>
 </html>

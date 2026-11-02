@@ -27,6 +27,16 @@ features:
     details: Self-contained HTML + manifest bundles run under strict Content Security Policy inside a Flutter loopback server with zero external network access.
 ---
 
+## See it in 30 seconds
+
+<div class="promo-video">
+  <iframe src="https://www.youtube-nocookie.com/embed/U1Hhwjfqh7c?rel=0" title="Waypack: your AI agent plans the trip, Waypack keeps it working offline (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+</div>
+
+Up in the mountains there's no signal, and nobody has a single bar. Her trip, planned at home by her
+AI agent and downloaded on the Wi-Fi, still opens: what's next, the map, her GPS dot. The trip is an
+example (check road and park conditions before you go); people and scenes are AI-generated. [Watch on YouTube](https://youtu.be/U1Hhwjfqh7c).
+
 ## System Architecture
 
 Waypack bridges modern LLM coding and planning agents with real-world travel conditions where cellular signal is intermittent or non-existent.

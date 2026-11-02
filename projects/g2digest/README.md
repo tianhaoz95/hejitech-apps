@@ -4,6 +4,8 @@ A daily brief compiled ahead of time into glanceable cards for Even G2 glasses +
 pre-made audio for the headphones (PRD v1.0, 2026-10-22). The hard work happens when an agent
 builds the edition; on the train the plugin only plays it back.
 
+▶ **[Watch it in 30 seconds](https://youtu.be/gcS32dRwPMo)** · [the Short](https://youtube.com/shorts/2PqpT3wgFcw)
+
 ```
 packages/core      @g2digest/core: types, render (bundle → frames), validator, brief checks, gesture
                    state machine, card authoring guide (guide/*.md → src/guide.gen.ts), fixtures
