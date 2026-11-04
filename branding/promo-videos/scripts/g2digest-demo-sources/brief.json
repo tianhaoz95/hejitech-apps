@@ -1,0 +1,95 @@
+{
+ "title": "Morning brief",
+ "tldr": true,
+ "total_card_budget": 10,
+ "total_audio_budget_sec": 900,
+ "language": "en",
+ "units": {
+  "temperature": "C",
+  "distance": "km"
+ },
+ "glossary": [
+  {
+   "term": "coral spawning",
+   "gloss": "the night corals release eggs all at once"
+  }
+ ],
+ "no_gloss": [
+  "battery",
+  "reef"
+ ],
+ "delivery": {
+  "time": "06:30",
+  "timezone": "Europe/London",
+  "days": [
+   "mon",
+   "tue",
+   "wed",
+   "thu",
+   "fri"
+  ]
+ },
+ "sections": [
+  {
+   "id": "my-line",
+   "title": "My line",
+   "template": "status",
+   "source": {
+    "kind": "rss",
+    "entities": [
+     "Harbor Line"
+    ],
+    "urls": [
+     "http://127.0.0.1:8899/harbor-line.xml"
+    ]
+   },
+   "instructions": "Anything that changes my ride on the Harbor Line: closures, new timetables, night service. A delay over ten minutes this week is an alert. If nothing changed, one quiet card that says so.",
+   "max_cards": 1,
+   "quiet_behavior": "show_status",
+   "audio": {
+    "glance": true,
+    "deep_dive": "on_alert"
+   }
+  },
+  {
+   "id": "ocean-science",
+   "title": "Ocean science",
+   "template": "discovery",
+   "source": {
+    "kind": "rss",
+    "entities": [],
+    "urls": [
+     "http://127.0.0.1:8899/ocean.xml"
+    ]
+   },
+   "instructions": "New results about the ocean with numbers behind them: papers, field trials, open data. Rank by how much they change what is possible, not by hype. Leave the section out on a day with nothing that clears the bar.",
+   "max_cards": 2,
+   "quiet_behavior": "omit",
+   "audio": {
+    "glance": true,
+    "deep_dive": "required"
+   }
+  },
+  {
+   "id": "weekend",
+   "title": "Weekend",
+   "template": "metric",
+   "source": {
+    "kind": "feed",
+    "entities": [
+     "Harbor City forecast"
+    ],
+    "urls": [
+     "http://127.0.0.1:8899/forecast.json"
+    ]
+   },
+   "instructions": "Saturday and Sunday highs and the chance of rain, plus the one reason in plain words.",
+   "max_cards": 1,
+   "quiet_behavior": "show_last",
+   "audio": {
+    "glance": true,
+    "deep_dive": "never"
+   }
+  }
+ ]
+}

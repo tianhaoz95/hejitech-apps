@@ -1,0 +1,13 @@
+{
+ "clip": "rec-4-glasses-before.mp4",
+ "width": 1728,
+ "height": 864,
+ "events": [
+  {
+   "step": "tour",
+   "t": 1.2,
+   "type": "up",
+   "label": "tour"
+  }
+ ]
+}

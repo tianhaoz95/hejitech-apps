@@ -1,0 +1,50 @@
+{
+ "clip": "rec-4-pair.mp4",
+ "width": 1920,
+ "height": 1080,
+ "duration": 9.45,
+ "events": [
+  {
+   "step": "4.1",
+   "t": 0.94,
+   "type": "look",
+   "label": "Pairing code",
+   "box": {
+    "x": 473,
+    "y": 335,
+    "w": 975,
+    "h": 90
+   },
+   "x": 960.5,
+   "y": 380
+  },
+  {
+   "step": "4.4",
+   "t": 5.6,
+   "type": "click",
+   "label": "Make a feed link",
+   "box": {
+    "x": 473,
+    "y": 570,
+    "w": 218,
+    "h": 65
+   },
+   "x": 582,
+   "y": 602.5
+  },
+  {
+   "step": "4.4a",
+   "t": 6.84,
+   "type": "result",
+   "label": "Private feed URL",
+   "box": {
+    "x": 473,
+    "y": 733,
+    "w": 975,
+    "h": 89
+   },
+   "x": 960.5,
+   "y": 777.5
+  }
+ ]
+}

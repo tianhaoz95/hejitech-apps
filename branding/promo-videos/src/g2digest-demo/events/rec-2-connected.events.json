@@ -1,0 +1,17 @@
+{
+ "clip": "rec-2-connected.mp4",
+ "width": 1920,
+ "height": 1080,
+ "duration": 2.5,
+ "from_s": 20.458,
+ "to_s": 22.958,
+ "speed": [],
+ "marks": [
+  {
+   "t": 0.3,
+   "run_s": 20.8,
+   "name": "connected"
+  }
+ ],
+ "tools": []
+}

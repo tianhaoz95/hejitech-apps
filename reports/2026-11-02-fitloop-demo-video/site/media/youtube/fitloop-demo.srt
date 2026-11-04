@@ -1,0 +1,79 @@
+1
+00:00:00,000 --> 00:00:04,350
+Everyone at the gym is guessing weights and counting sets.
+
+2
+00:00:04,350 --> 00:00:13,170
+Here is how FitLoop lets your own AI agent coach your workouts and meals across iPhone, Apple Watch, and Even G2 glasses.
+
+3
+00:00:13,170 --> 00:00:18,600
+Connect Claude or any MCP agent to FitLoop with a single tap.
+
+4
+00:00:18,600 --> 00:00:24,850
+Your agent fetches the plan guide and your profile to craft a customized weekly routine.
+
+5
+00:00:24,850 --> 00:00:32,300
+FitLoop validates every exercise, rest timer, and rep count against strict glasses-friendly limits.
+
+6
+00:00:32,300 --> 00:00:38,480
+Once validated, your agent publishes the plan, instantly syncing to your devices.
+
+7
+00:00:38,480 --> 00:00:45,160
+On your phone, the Today tab displays your full morning session, from goblet squats to meals.
+
+8
+00:00:45,160 --> 00:00:51,610
+Tap into any movement to preview procedural exercise animations and coaching cues.
+
+9
+00:00:51,610 --> 00:00:57,580
+When you start, your Apple Watch tracks your workout session and streams live heart rate.
+
+10
+00:00:57,580 --> 00:01:03,350
+Check off sets as you finish them, and the rest timer automatically counts down.
+
+11
+00:01:03,350 --> 00:01:08,870
+Take your workout completely hands-free by pairing your Even G2 glasses.
+
+12
+00:01:08,870 --> 00:01:15,820
+A crisp nine-line green display shows your active exercise, target reps, and live heart rate.
+
+13
+00:01:15,820 --> 00:01:21,620
+Single tap your R1 smart ring to log your set and trigger the rest countdown.
+
+14
+00:01:21,620 --> 00:01:27,470
+Hold the ring to view form cues, or tap out instant feedback if something hurts.
+
+15
+00:01:27,470 --> 00:01:33,440
+If your knee twinges during lunges, select It hurts right from your glasses or phone.
+
+16
+00:01:33,440 --> 00:01:39,240
+At lunch, check off your meal, adjusting whether you ate more, less, or swapped dishes.
+
+17
+00:01:39,240 --> 00:01:45,970
+Your agent reads your check-ins and notes over MCP, and replies with helpful adjustments.
+
+18
+00:01:45,970 --> 00:01:52,570
+Tomorrow's plan automatically swaps out squats for step-ups, keeping you safe and on track.
+
+19
+00:01:52,570 --> 00:01:56,720
+Your agent coaches. FitLoop keeps you on the plan.
+
+20
+00:01:56,720 --> 00:02:00,550
+FitLoop. Smarter training, right in your vision.

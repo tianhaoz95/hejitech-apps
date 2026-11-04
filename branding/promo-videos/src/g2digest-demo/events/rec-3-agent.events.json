@@ -1,0 +1,173 @@
+{
+ "clip": "rec-3-agent.mp4",
+ "width": 1920,
+ "height": 1080,
+ "duration": 75.97,
+ "from_s": 23.561,
+ "to_s": 564.611,
+ "speed": [
+  1,
+  24,
+  4
+ ],
+ "marks": [
+  {
+   "t": 0.5,
+   "run_s": 24.1,
+   "name": "prompt"
+  },
+  {
+   "t": 3.7,
+   "run_s": 27.3,
+   "name": "run"
+  },
+  {
+   "t": 68.12,
+   "run_s": 556.8,
+   "name": "published"
+  }
+ ],
+ "tools": [
+  {
+   "t": 8.42,
+   "run_s": 32,
+   "tool": "ToolSearch"
+  },
+  {
+   "t": 18.9,
+   "run_s": 42.5,
+   "tool": "get_card_authoring_guide"
+  },
+  {
+   "t": 18.92,
+   "run_s": 42.5,
+   "tool": "get_user_brief"
+  },
+  {
+   "t": 21.46,
+   "run_s": 45,
+   "tool": "Bash"
+  },
+  {
+   "t": 24.97,
+   "run_s": 49.3,
+   "tool": "Bash"
+  },
+  {
+   "t": 26.52,
+   "run_s": 86.5,
+   "tool": "Bash"
+  },
+  {
+   "t": 26.77,
+   "run_s": 92.6,
+   "tool": "Bash"
+  },
+  {
+   "t": 28.86,
+   "run_s": 142.7,
+   "tool": "Bash"
+  },
+  {
+   "t": 29.46,
+   "run_s": 157.2,
+   "tool": "Bash"
+  },
+  {
+   "t": 29.6,
+   "run_s": 160.4,
+   "tool": "Bash"
+  },
+  {
+   "t": 33.16,
+   "run_s": 245.9,
+   "tool": "Bash"
+  },
+  {
+   "t": 39.93,
+   "run_s": 408.3,
+   "tool": "Bash"
+  },
+  {
+   "t": 40.14,
+   "run_s": 413.6,
+   "tool": "create_audio_upload"
+  },
+  {
+   "t": 40.17,
+   "run_s": 414.3,
+   "tool": "create_audio_upload"
+  },
+  {
+   "t": 40.19,
+   "run_s": 414.8,
+   "tool": "create_audio_upload"
+  },
+  {
+   "t": 40.22,
+   "run_s": 415.4,
+   "tool": "create_audio_upload"
+  },
+  {
+   "t": 40.24,
+   "run_s": 416,
+   "tool": "create_audio_upload"
+  },
+  {
+   "t": 40.27,
+   "run_s": 416.5,
+   "tool": "create_audio_upload"
+  },
+  {
+   "t": 41.1,
+   "run_s": 436.4,
+   "tool": "Bash"
+  },
+  {
+   "t": 41.86,
+   "run_s": 454.8,
+   "tool": "Bash"
+  },
+  {
+   "t": 43.16,
+   "run_s": 475.5,
+   "tool": "validate_cards",
+   "ok": false,
+   "codes": [
+    "E_SHAPE"
+   ]
+  },
+  {
+   "t": 48.01,
+   "run_s": 494.8,
+   "tool": "validate_cards",
+   "ok": false,
+   "codes": [
+    "error"
+   ]
+  },
+  {
+   "t": 52.97,
+   "run_s": 514.7,
+   "tool": "validate_cards",
+   "ok": false,
+   "codes": [
+    "E_AUDIO_SHAPE"
+   ]
+  },
+  {
+   "t": 58.71,
+   "run_s": 537.6,
+   "tool": "validate_cards",
+   "ok": true,
+   "codes": []
+  },
+  {
+   "t": 69.37,
+   "run_s": 558,
+   "tool": "publish_cards",
+   "ok": true,
+   "codes": []
+  }
+ ]
+}

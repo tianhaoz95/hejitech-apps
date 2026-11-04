@@ -1,0 +1,103 @@
+1
+00:00:00,120 --> 00:00:03,220
+Your brief, ready before the train.
+
+2
+00:00:03,220 --> 00:00:07,070
+Here's the whole path, from your words to your glasses.
+
+3
+00:00:07,070 --> 00:00:15,120
+You write the brief. Your own agent builds the edition. G2 Digest checks it, and delivers it.
+
+4
+00:00:15,120 --> 00:00:19,500
+Start in the web app. Open Your brief, and give your edition a name.
+
+5
+00:00:19,500 --> 00:00:22,780
+Set Ready by to the time you leave home.
+
+6
+00:00:22,780 --> 00:00:29,300
+Add a section for each thing you follow, with a source and plain instructions: what counts, and what to skip.
+
+7
+00:00:29,300 --> 00:00:34,880
+Then Save brief. Your agent reads it. It never edits it.
+
+8
+00:00:35,350 --> 00:00:41,100
+Next, Build agents. Any agent that speaks MCP and can make audio will do.
+
+9
+00:00:41,100 --> 00:00:44,600
+Point it at the server, and it asks to connect.
+
+10
+00:00:44,600 --> 00:00:48,920
+You see exactly what it may do. Click Allow.
+
+11
+00:00:50,980 --> 00:00:57,200
+Copy the one prompt it runs, and schedule it an hour before your train.
+
+12
+00:00:59,300 --> 00:01:04,130
+Here's a real run. The agent fetches the card guide and your brief.
+
+13
+00:01:04,130 --> 00:01:08,780
+It reads every source, then writes the full edition and the cards.
+
+14
+00:01:08,780 --> 00:01:12,500
+It records the audio itself, and uploads it.
+
+15
+00:01:12,500 --> 00:01:20,950
+Then G2 Digest checks every card against its rules. Nothing publishes until there are no errors.
+
+16
+00:01:20,950 --> 00:01:28,270
+Published. Open the edition: every card with its sources, and a preview of the glasses.
+
+17
+00:01:30,750 --> 00:01:33,850
+On Pair, get a six-digit code.
+
+18
+00:01:33,850 --> 00:01:38,850
+Open G2 Digest in the Even app, and type it in. You pair once.
+
+19
+00:01:38,850 --> 00:01:43,250
+The glasses leave the tour, and show every edition you have.
+
+20
+00:01:43,250 --> 00:01:48,650
+No glasses today? Make a feed link for your podcast app.
+
+21
+00:01:50,850 --> 00:01:55,550
+On the train, pick today's edition. It opens at the first card.
+
+22
+00:01:55,550 --> 00:02:00,130
+Swipe up on the ring for the next card. The dots show where you are.
+
+23
+00:02:00,130 --> 00:02:05,630
+Tap to hear the glance. Tap, then hold, for the deep dive.
+
+24
+00:02:06,050 --> 00:02:12,000
+Double tap to stop, and again to go back. It's already on your phone, so it plays offline.
+
+25
+00:02:12,000 --> 00:02:16,600
+Write it once. Your agent builds it. You just read.
+
+26
+00:02:16,600 --> 00:02:21,660
+G2 Digest. Your brief, ready before the train.

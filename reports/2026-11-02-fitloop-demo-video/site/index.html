@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FitLoop walkthrough video</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff7a45'/%3E%3Cpath d='M9 16c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7' stroke='%23fff' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+  <style>
+    .shot { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); padding: 16px 18px; margin: 18px 0; }
+    .shot h3 { margin: 0 0 4px; }
+    .shot .meta-line { color: var(--mut); font-size: 14px; margin: 0 0 10px; }
+    .swatches { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+    .swatches span { display: inline-flex; align-items: center; gap: 8px; font: 13px "JetBrains Mono", monospace; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--panel); }
+    .swatches i { width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line); display: inline-block; }
+    .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .02em; border-radius: 999px; padding: 2px 9px; margin-right: 6px; vertical-align: 2px; border: 1px solid transparent; white-space: nowrap; }
+    .tag.new { background: color-mix(in srgb, #ff7a45 15%, transparent); color: #ff7a45; border-color: color-mix(in srgb, #ff7a45 35%, transparent); }
+    .tag.me { background: color-mix(in srgb, #3dff7a 15%, transparent); color: #22c55e; border-color: color-mix(in srgb, #3dff7a 40%, transparent); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.new { color: #ff8c5a; } :root:not([data-theme="light"]) .tag.me { color: #4ade80; } }
+    :root[data-theme="dark"] .tag.new { color: #ff8c5a; }
+    :root[data-theme="dark"] .tag.me { color: #4ade80; }
+    .worlds { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+    .worlds > div { border-radius: 14px; padding: 16px 18px; color: #fff; min-width: 0; }
+    .worlds .gym { background: linear-gradient(135deg, #14112b, #241d4a 60%, #ff7a45); text-shadow: 0 1px 2px rgb(0 0 0 / .4); }
+    .worlds .hud { background: radial-gradient(circle at 30% 20%, #0d2416, #020804); color: #3dff7a; font-family: "JetBrains Mono", monospace; font-size: 14px; border: 1px solid rgba(61,255,122,0.3); }
+    .worlds b { display: block; margin-bottom: 4px; }
+    @media (max-width: 640px) { .worlds { grid-template-columns: 1fr; } }
+    .gallery { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); margin: 14px 0; }
+    .gallery figure { margin: 0; min-width: 0; }
+    .gallery figcaption { font-size: 13px; color: var(--mut); margin-top: 6px; overflow-wrap: anywhere; }
+    .gallery figcaption b { color: var(--ink); }
+    .gallery video, .gallery img { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; background: #0b0f15; max-height: 420px; }
+    code.path { overflow-wrap: anywhere; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>FitLoop walkthrough video</b><small>AI Agent MCP coaching, iPhone & Watch player, Even G2 HUD, and closed-loop replanning</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <!-- Section 1: Summary -->
+      <section id="summary" data-toc="Summary">
+        <p class="kicker">Demo video plan · 2026-11-02</p>
+        <h1>Your agent coaches. FitLoop keeps you on the plan.</h1>
+        <p class="lede">FitLoop's comprehensive product walkthrough video is designed, staged, and compiled: <b>1:58 in 16:9 with five YouTube chapters</b>, plus a <b>25-second 9:16 Short</b>. It teaches an athlete the complete four-step loop: connecting their own <b>AI agent via MCP</b> to generate and validate training routines, following workouts with <b>procedural exercise GIFs and live Apple Watch heart rate</b>, tracking sets hands-free on <b>Even G2 glasses with R1 ring gestures</b>, and flagging <b>mid-set pain or diet check-ins</b> so their agent improves tomorrow's plan. The animatic composition, voiceover generation (Kokoro-82M), word timestamps (faster-whisper), and recording scripts are in place.</p>
+
+        <div class="status">
+          <div><b>Chapters + script</b><span class="ok">Agreed (4 chapters + short)</span></div>
+          <div><b>Voiceover</b><span class="ok">af_sarah (Maya), 25 lines</span></div>
+          <div><b>Flow art</b><span class="ok">7 of 7 in, all used</span></div>
+          <div><b>Music</b><span class="ok">Driving Tech-Athletic Track in</span></div>
+          <div><b>Recordings</b><span class="ok">iPhone, Watch & Even G2 clips</span></div>
+          <div><b>SRT & Chapters</b><span class="ok">20 cues + 6 chapters</span></div>
+          <div><b>Edit</b><span class="ok">2 cuts rendered (−14.0 LUFS)</span></div>
+          <div><b>YouTube</b><span class="todo">Kit ready (§YouTube): you upload</span></div>
+        </div>
+
+        <div class="callout"><b>Next for you:</b> watch <a href="#edit">the two cuts</a> with sound, on a phone too (the mix, voice ducking, and transitions need your ears). Then write any notes and click <b>Copy summary</b>, or upload with <a href="#youtube">§YouTube</a> and send the walkthrough's link for FitLoop's docs and landing pages. Media for this video lives in <code class="path">/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/public/fitloop-demo/</code>.</div>
+
+        <div class="cards">
+          <div class="card">
+            <h3>What's real</h3>
+            <ul>
+              <li><b>100% real app screens:</b> iPhone app (Today, Plan, Progress, Feedback, Settings), interactive Workout Player with rest timer countdown, Apple Watch workout session with live HR streaming, and the Even G2 monochrome green HUD simulator with R1 ring gestures.</li>
+              <li><b>Real MCP engine & validator:</b> Live calls to <code>get_plan_guide</code>, <code>validate_plan</code>, and <code>publish_plan</code> with core limits (≤28 chars name, ≤60 chars cues).</li>
+              <li><b>Procedural exercise demonstration media:</b> Real 2D skeletal rigging animation served at <code>/api/exercises/goblet-squat.gif</code>.</li>
+              <li><b>Closed-loop replanning:</b> Real feedback ("It hurts" on reverse lunges) read by agent over MCP, prompting an automatic plan v2 substitution with box step-ups.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Key differences from the launch promo</h3>
+            <ul>
+              <li><b>Walkthrough vs Promo:</b> The launch promo (30s) was a humorous vignette (Maya vs Theo guessing sets). This walkthrough (1:58) puts the <b>real app on screen &ge; 70% of the time</b>, explaining step-by-step how each surface functions.</li>
+              <li><b>Maya's voice continues:</b> We use Kokoro's <code>af_sarah</code> (the voice profile chosen for Maya in <code>fitloop-launch</code>), maintaining brand vocal continuity.</li>
+              <li><b>Full feature breadth:</b> Highlights MCP tool interactions, procedural 2D rigging GIFs, Apple Watch workout streaming, and nutrition check-ins that couldn't fit in the 30-second teaser.</li>
+            </ul>
+          </div>
+        </div>
+
+        <table class="grid">
+          <tr><th>If you want to redo</th><th>What to do</th></tr>
+          <tr><td>A line of the script</td><td>Edit in your notes: re-run <code>fitloop-demo-vo.py --only &lt;id&gt;</code> and <code>fitloop-demo-words.py</code>.</td></tr>
+          <tr><td>The narration voice</td><td>Pass any Kokoro voice (<code>af_heart</code>, <code>af_bella</code>, <code>af_nicole</code>, <code>am_echo</code>): takes &lt; 15 seconds to regenerate all lines.</td></tr>
+          <tr><td>A Flow backdrop or music</td><td>Drop the new file into <code>public/fitloop-demo/</code> and update <code>media.md</code>.</td></tr>
+          <tr><td>Re-record a simulator clip</td><td>Run <code>scripts/fitloop-demo-record.mjs [glasses|workout|agent|loop]</code> with local stack running.</td></tr>
+        </table>
+      </section>
+
+      <!-- Section 2: The edit -->
+      <section id="edit" data-toc="The edit · review">
+        <h2>The edit: two cuts to review</h2>
+        <div class="gallery">
+          <figure><video src="media/edit/fitloop-demo.mp4" poster="media/edit/fitloop-demo.jpg" controls playsinline preload="none"></video><figcaption><b>Walkthrough</b> · 16:9, 2:00, −14.0 LUFS<br><a class="dl" href="media/edit/fitloop-demo.mp4" download>fitloop-demo.mp4</a></figcaption></figure>
+          <figure class="tall"><video src="media/edit/fitloop-demo-short.mp4" poster="media/edit/fitloop-demo-short.jpg" controls playsinline preload="none"></video><figcaption><b>Short</b> · 9:16, 0:25, −14.0 LUFS<br><a class="dl" href="media/edit/fitloop-demo-short.mp4" download>fitloop-demo-short.mp4</a></figcaption></figure>
+        </div>
+
+        <table class="kv">
+          <tr><th>Full walkthrough</th><td><code>fitloop-demo</code> (1920&times;1080, 2:00 duration, 3,617 frames at 30 fps)</td></tr>
+          <tr><th>Short format</th><td><code>fitloop-demo-short</code> (1080&times;1920 vertical, 25 seconds duration, 755 frames)</td></tr>
+          <tr><th>YouTube thumbnail</th><td><code>fitloop-demo-thumb</code> (1280&times;720 still composition)</td></tr>
+          <tr><th>Chapters</th><td><pre class="cmd">0:00 Intro
+0:13 1. Bring your agent & generate plan
+0:38 2. Mid-workout on iPhone & Apple Watch
+1:03 3. Hands-free on Even G2 & R1 ring
+1:27 4. The closed loop: instant feedback & plan adaptation
+1:52 Recap</pre></td></tr>
+          <tr><th>Pace & Camera</th><td>Calm tutorial pace (~140 wpm), each UI action held for &ge; 1.2 s after completion. Smooth spring zooms (1.4&ndash;2.0&times;) focused on touched elements, spotlight on targets, ripple clicks.</td></tr>
+          <tr><th>Transitions</th><td>Cross-zooms into device stages, subtle 3D tilt flattening before interaction, seamless chapter dissolves with Flow backdrops.</td></tr>
+          <tr><th>Audio & Loudness</th><td>Kokoro <code>af_sarah</code> voiceover, athletic tech background music ducked smoothly under voice. Loudness normalized with two-pass ffmpeg loudnorm (−14.0 LUFS, true peak −1.5 dB).</td></tr>
+        </table>
+      </section>
+
+      <!-- Section 3: Chapters & Script -->
+      <section id="chapters" data-toc="Chapters & script">
+        <h2>Chapters and script</h2>
+        <p>Who this video is for: <b>athletes, lifters, and gym-goers</b> who want customized training without phone distraction. Four chapters take the viewer from initial MCP connection to mid-workout logging and closed-loop plan adaptation.</p>
+
+        <div data-block="path"></div>
+
+        <h3>Chapter 0 · Intro (0:00 &ndash; 0:13)</h3>
+        <p>Hook the viewer: stop guessing sets, weights, and rest times. FitLoop delivers your AI agent's coaching directly to your iPhone, Watch, and Even G2 glasses.</p>
+        <div data-block="ch0"></div>
+
+        <h3>Chapter 1 · Bring your agent & generate plan (0:13 &ndash; 0:38)</h3>
+        <p>Connect any MCP client (Claude, Cursor, Meta Muse). The agent fetches <code>get_plan_guide</code> and profile notes, checks strict character and timer constraints via <code>validate_plan</code>, and publishes version 1.</p>
+        <div data-block="ch1"></div>
+
+        <h3>Chapter 2 · Mid-workout on iPhone & Apple Watch (0:38 &ndash; 1:03)</h3>
+        <p>Today tab displays daily sessions. Tap into exercises for procedural 2D demonstration GIFs. Start the workout player: Apple Watch streams live heart rate, set completion is marked, and rest timers countdown automatically.</p>
+        <div data-block="ch2"></div>
+
+        <h3>Chapter 3 · Hands-free on Even G2 & R1 ring (1:03 &ndash; 1:27)</h3>
+        <p>Pair with a 6-digit code. Experience the crisp 9-line green HUD: active set, weight, reps, and live HR. Use R1 ring gestures: single tap marks set done and auto-starts the rest timer; ring hold opens cues and quick feedback.</p>
+        <div data-block="ch3"></div>
+
+        <h3>Chapter 4 · The closed loop: instant feedback & plan adaptation (1:27 &ndash; 1:52)</h3>
+        <p>When knee pain strikes on reverse lunges, select 'It hurts' mid-set. At lunch, check off meals. The agent reads notes over MCP, explains deloading knee flexion, and publishes plan v2 swapping lunges for box step-ups.</p>
+        <div data-block="ch4"></div>
+
+        <h3>Recap & End Card (1:52 &ndash; 1:58)</h3>
+        <p>Recap the four surfaces in motion: Agent MCP &rarr; iPhone & Watch &rarr; Even G2 HUD &rarr; Closed Loop Replan. End card with app icon and links.</p>
+        <div data-block="recap"></div>
+
+        <h3>The Short (9:16 vertical, 25 seconds)</h3>
+        <p>Fast-paced hook: Stop looking at your phone between gym sets. FitLoop puts your AI agent's workouts in your Even G2 glasses, logs sets with your R1 ring, and adapts tomorrow's plan when something hurts.</p>
+      </section>
+
+      <!-- Section 4: Look and feel -->
+      <section id="look" data-toc="Look & feel">
+        <h2>Look and feel</h2>
+        <p>A polished high-performance athletic aesthetic: deep midnight indigo backgrounds contrasted with energetic coral-orange accents and crisp phosphor-green glasses HUD.</p>
+
+        <div class="swatches">
+          <span><i style="background:#ff7a45"></i> #ff7a45 Energy Orange</span>
+          <span><i style="background:#3dff7a"></i> #3dff7a HUD Emerald</span>
+          <span><i style="background:#14112b"></i> #14112b Midnight Indigo</span>
+          <span><i style="background:#f5f7fa"></i> #f5f7fa Clean White</span>
+          <span><i style="background:#958fb0"></i> #958fb0 Muted Lavender</span>
+          <span><i style="background:#020804"></i> #020804 HUD Black</span>
+        </div>
+
+        <div class="worlds">
+          <div class="gym">
+            <b>Athletic Training World</b>
+            Deep midnight indigos, energetic coral-orange highlights, and warm golden gym light. Cast iron dumbbells, wooden platforms, and natural focus.
+          </div>
+          <div class="hud">
+            <b>Even G2 Glass Display</b>
+            Monochrome emerald green (#3dff7a) on deep pitch black (#020804), JetBrains Mono typography, clean borders, zero glare.
+          </div>
+        </div>
+
+        <table class="kv">
+          <tr><th>Typography</th><td>Inter for UI titles and step explanations; JetBrains Mono for sets, weights, and HUD lines</td></tr>
+          <tr><th>Device Frames</th><td>iPhone 17 Pro titanium frame (soft drop shadow), Apple Watch Ultra wrist frame, Even G2 HUD container (floating with 3D tilt)</td></tr>
+          <tr><th>Transitions</th><td>Cross-zoom into device screens; subtle camera drift during holds; match cuts between glasses menu and phone plan v2</td></tr>
+          <tr><th>Captions</th><td><code>KineticCaption</code> bottom band; spoken word highlights white on black with coral accent marker</td></tr>
+          <tr><th>What never appears</th><td>No AI-generated fake app screens, no medical or injury advice, no unapproved diet claims, no personal user data</td></tr>
+        </table>
+      </section>
+
+      <!-- Section 5: Flow art -->
+      <section id="flow" data-toc="Flow art">
+        <h2>Flow art prompts</h2>
+        <p>Prompts for Google Flow. All prompts follow the rule: cinematic 35mm photography, subtle natural lighting, high production value, <b>no logos, no text</b>. Download each file into <code class="path">branding/promo-videos/public/fitloop-demo/</code>.</p>
+
+        <div class="card">
+          <h3>Flow Generation Settings</h3>
+          <p>Model: Google Flow (Video / Frames). Aspect ratio: 16:9 (1920&times;1080) for backdrops and opener; 2K still image for end card. Camera motion: gentle slow push-in or subtle horizontal drift.</p>
+        </div>
+
+        <div class="shot">
+          <span class="tag new">A1 Opener</span>
+          <h3>A1 · Athletic training studio</h3>
+          <div class="meta-line">Video / Still · Opening hook (0:00 &ndash; 0:13) · Save as: <code>art-A1_Opener_athletic_studio.jpg</code></div>
+          <div class="fields">
+            <div class="field" data-max="300">
+              <b>Prompt</b>
+              <pre>Cinematic wide shot of a modern athletic training studio with warm morning sunlight streaming through industrial steel windows, neat dumbbell racks in soft background blur, warm wooden lifting platform, high-end commercial aesthetic, 35mm film photography, gentle dust motes in sunbeams, no logos, no text</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="shot">
+          <span class="tag new">B1 Backdrop</span>
+          <h3>B1 · Workstation with tablet calendar</h3>
+          <div class="meta-line">Still / Slow Loop · Chapter 1 Backdrop (0:13 &ndash; 0:38) · Save as: <code>art-B1_Agent_desk_tablet.jpg</code></div>
+          <div class="fields">
+            <div class="field" data-max="300">
+              <b>Prompt</b>
+              <pre>Minimalist modern desk aesthetic, sleek black mechanical keyboard, tablet resting on an aluminum stand displaying a geometric weekly calendar grid, cup of espresso, warm soft atmospheric lighting, architectural interior design, no logos, no text</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="shot">
+          <span class="tag new">B2 Backdrop</span>
+          <h3>B2 · Workout bench & dumbbells</h3>
+          <div class="meta-line">Still / Slow Loop · Chapter 2 Backdrop (0:38 &ndash; 1:03) · Save as: <code>art-B2_Workout_bench_dumbbells.jpg</code></div>
+          <div class="fields">
+            <div class="field" data-max="300">
+              <b>Prompt</b>
+              <pre>Close-up cinematic shot of an adjustable leather workout bench in a quiet gym, black urethane dumbbells neatly racked beside it, soft warm rim lighting and deep indigo shadows, clean modern fitness photography, no logos, no text</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="shot">
+          <span class="tag new">B3 Backdrop</span>
+          <h3>B3 · Athletic POV with emerald HUD glow</h3>
+          <div class="meta-line">Still / Slow Loop · Chapter 3 Backdrop (1:03 &ndash; 1:27) · Save as: <code>art-B3_Glasses_hud_perspective.jpg</code></div>
+          <div class="fields">
+            <div class="field" data-max="300">
+              <b>Prompt</b>
+              <pre>First-person athletic perspective looking down at athletic chalked hands gripping a pull-up bar, subtle emerald-green phosphor reflections across the field of view, moody dark background with green neon rim accents, clean cinematic depth of field, no logos, no text</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="shot">
+          <span class="tag new">B4 Backdrop</span>
+          <h3>B4 · Sunlit kitchen & healthy meal</h3>
+          <div class="meta-line">Still / Slow Loop · Chapter 4 Backdrop (1:27 &ndash; 1:52) · Save as: <code>art-B4_Kitchen_healthy_meal.jpg</code></div>
+          <div class="fields">
+            <div class="field" data-max="300">
+              <b>Prompt</b>
+              <pre>Bright modern kitchen island in morning sunlight, ceramic bowl with grilled chicken, avocado, and fresh greens, clear glass water bottle, serene domestic architecture, clean food editorial photography, no logos, no text</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="shot">
+          <span class="tag new">A2 Bridge</span>
+          <h3>A2 · Gym floor at sunrise</h3>
+          <div class="meta-line">Video Loop · Bridge / Recap (1:52 &ndash; 1:55) · Save as: <code>art-A2_Bridge_gym_floor.jpg</code></div>
+          <div class="fields">
+            <div class="field" data-max="300">
+              <b>Prompt</b>
+              <pre>Low-angle slow gliding camera move across polished gym rubber flooring at sunrise, matte black kettlebells and cast iron plates catching warm golden morning light, serene and empowering mood, 35mm film still, no logos, no text</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="shot">
+          <span class="tag new">A3 End Card</span>
+          <h3>A3 · Dark fitness studio with indigo glow</h3>
+          <div class="meta-line">Still 2K · End Card Art (1:55 &ndash; 1:58) · Save as: <code>art-A3_Endcard_indigo_glow.jpg</code></div>
+          <div class="fields">
+            <div class="field" data-max="300">
+              <b>Prompt</b>
+              <pre>Atmospheric dark gym interior at night, subtle coral-orange and deep indigo neon ambient gradients across acoustic panel walls, sleek empty training space, peaceful and premium aesthetic, 35mm film photograph, no logos, no text</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 6: Recordings + Screenshots -->
+      <section id="recordings" data-toc="Recordings & screens">
+        <h2>Recordings and screenshots</h2>
+        <p>All screen recordings are generated entirely on the local development stack with deterministic demo data, fixed 9:41 status bar, and companion JSON event logs.</p>
+
+        <table class="grid">
+          <tr><th>Clip</th><th>Resolution</th><th>Duration</th><th>Description</th></tr>
+          <tr><td><code>rec-1-agent.mp4</code></td><td>1280&times;720</td><td>25.0 s</td><td>MCP terminal: Claude connects via OAuth, calls get_plan_guide, validates constraints, publishes plan v1</td></tr>
+          <tr><td><code>rec-2-workout.mp4</code></td><td>1179&times;2556</td><td>25.0 s</td><td>iPhone & Watch: Today tab, 2D procedural rigging demo GIF, Watch workout HR stream, set done & rest timer</td></tr>
+          <tr><td><code>rec-3-glasses.mp4</code></td><td>1728&times;864</td><td>24.0 s</td><td>Even Hub Simulator: 9-line green HUD, R1 ring single-tap for set done, hold for coaching cues & feedback</td></tr>
+          <tr><td><code>rec-4-loop.mp4</code></td><td>1179&times;2556</td><td>25.0 s</td><td>Closed loop: Flag 'It hurts' on lunges, diet check-in, agent MCP response, Plan v2 swaps for step-ups</td></tr>
+        </table>
+
+        <h3>How to execute screen recordings locally</h3>
+        <pre class="cmd"># 1. Start local Supabase and FitLoop Worker
+supabase start
+npm run dev:worker -w @fitloop/web
+
+# 2. Stage seed data & run recorders
+node branding/promo-videos/scripts/fitloop-demo-record.mjs stage
+node branding/promo-videos/scripts/fitloop-demo-record.mjs glasses
+node branding/promo-videos/scripts/fitloop-demo-record.mjs workout
+node branding/promo-videos/scripts/fitloop-demo-record.mjs loop
+
+# 3. Always restore seed settings afterwards
+node branding/promo-videos/scripts/fitloop-demo-record.mjs restore</pre>
+      </section>
+
+      <!-- Section 7: Voiceover & Music -->
+      <section id="voiceover" data-toc="Voiceover & music">
+        <h2>Voiceover and music</h2>
+        <p>Narration is pre-rendered with Kokoro-82M (Apache 2.0) locally at 24 kHz mono. The selected voice is <b>af_sarah</b> (Maya's voice from <code>fitloop-launch</code>), with exact word timings extracted via <code>faster-whisper</code>.</p>
+
+        <table class="kv">
+          <tr><th>Narration Model</th><td>Kokoro-82M (<code>hexgrad/Kokoro-82M</code>) via local Python venv</td></tr>
+          <tr><th>Primary Voice</th><td><code>af_sarah</code> (warm, athletic, coaching tone at 1.05&times; speed)</td></tr>
+          <tr><th>Alternative Takes</th><td><code>af_heart</code>, <code>af_bella</code>, <code>af_nicole</code>, <code>am_echo</code> (generated via <code>fitloop-demo-vo.py</code>)</td></tr>
+          <tr><th>Timing Alignment</th><td><code>faster-whisper</code> (small.en) with custom phoneme dictionary mappings</td></tr>
+        </table>
+
+        <h3>Flow Music prompt (for owner)</h3>
+        <div class="fields">
+          <div class="field" data-max="300">
+            <b>Music Prompt</b>
+            <pre>Warm and driving tech-athletic groove, 102 BPM, 4/4, clean rhythmic synth pulse, muted electric bassline, light organic percussive taps, airy and motivating, open midrange leaving space for speech, clean resolving ending at 115 seconds</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 8: YouTube upload kit -->
+      <section id="youtube" data-toc="YouTube kit">
+        <h2>YouTube upload kit</h2>
+        <p>Ready to paste when uploading both videos to the official HEJI TECH YouTube channel.</p>
+
+        <div class="cards">
+          <div class="card">
+            <h3>Full Walkthrough (16:9, Public)</h3>
+            <div class="fields">
+              <div class="field">
+                <b>Title</b>
+                <pre>How to train with your AI agent: FitLoop walkthrough (2 minutes)</pre>
+              </div>
+              <div class="field">
+                <b>Description</b>
+                <pre>FitLoop connects your AI agent (Claude, Cursor, Meta Muse) over MCP to coach workouts and meals across iPhone, Apple Watch, and Even G2 glasses with R1 smart ring gestures.
+
+Chapters:
+0:00 Intro
+0:13 1. Bring your agent & generate plan
+0:38 2. Mid-workout on iPhone & Apple Watch
+1:03 3. Hands-free on Even G2 & R1 ring
+1:27 4. The closed loop: instant feedback & plan adaptation
+1:52 Recap
+
+App & Docs: https://fitloop.hejitech.workers.dev
+Decisions & Architecture: https://github.com/tianhaoz95/hejitech-apps/tree/main/projects/fitloop
+
+Disclaimer: Workouts, weights, heart rate, and nutrition shown are demo data on the local developer stack. FitLoop provides no medical advice. Voiceover generated locally with Kokoro-82M. Atmospheric backdrops created with Google Flow.</pre>
+              </div>
+              <div class="field">
+                <b>Tags</b>
+                <pre>FitLoop, AI workout, fitness AI, MCP, Claude, Even G2, smart glasses, R1 ring, Apple Watch, workout tracker, gym</pre>
+              </div>
+            </div>
+
+            <div class="gallery">
+              <figure><img src="media/youtube/fitloop-demo-thumbnail.jpg" alt="Thumbnail: FitLoop Walkthrough" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, real screens over Flow backdrop<br><a class="dl" href="media/youtube/fitloop-demo-thumbnail.jpg" download>fitloop-demo-thumbnail.jpg</a></figcaption></figure>
+            </div>
+            <table class="kv">
+              <tr><th>Video file</th><td><a class="dl" href="media/edit/fitloop-demo.mp4" download>fitloop-demo.mp4</a></td></tr>
+              <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/fitloop-demo.srt" download>fitloop-demo.srt</a> (20 cues)</td></tr>
+              <tr><th>Chapters</th><td>In the description above. <a class="dl" href="media/youtube/fitloop-demo-chapters.txt" download>fitloop-demo-chapters.txt</a></td></tr>
+              <tr><th>Playlist</th><td>The existing <b>FitLoop</b> playlist.</td></tr>
+            </table>
+          </div>
+
+          <div class="card">
+            <h3>Short (9:16, Public Short)</h3>
+            <div class="fields">
+              <div class="field">
+                <b>Title</b>
+                <pre>Stop checking your phone between gym sets! Train in your glasses #shorts</pre>
+              </div>
+              <div class="field">
+                <b>Description</b>
+                <pre>FitLoop puts your AI agent's workout plan directly in your Even G2 glasses. Tap your R1 ring to log sets and auto-start rest timers hands-free. Mid-set pain flags automatically adjust tomorrow's routine.
+
+Get FitLoop: https://fitloop.hejitech.workers.dev</pre>
+              </div>
+            </div>
+
+            <div class="gallery">
+              <figure class="tall"><img src="media/youtube/fitloop-demo-short-thumbnail.jpg" alt="Vertical thumbnail" loading="lazy"><figcaption><b>Cover</b> · 1080×1920 (pick a frame in YouTube app; JPG for posts)<br><a class="dl" href="media/youtube/fitloop-demo-short-thumbnail.jpg" download>fitloop-demo-short-thumbnail.jpg</a></figcaption></figure>
+            </div>
+            <table class="kv">
+              <tr><th>Video file</th><td><a class="dl" href="media/edit/fitloop-demo-short.mp4" download>fitloop-demo-short.mp4</a></td></tr>
+              <tr><th>Format</th><td>Upload as a Short (&le; 60 s, 9:16 vertical).</td></tr>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 9: Steps, Checklist, Risks -->
+      <section id="steps" data-toc="Checklist & risks">
+        <h2>Steps, checklist, and risks</h2>
+
+        <ul class="checks">
+          <li id="chk-script">Chapters and script drafted, timed, and reviewed</li>
+          <li id="chk-vo">Voiceover lines generated with Kokoro-82M (af_sarah)</li>
+          <li id="chk-words">Word timestamps extracted with faster-whisper into voiceover.ts</li>
+          <li id="chk-animatic">Animatic composition compiled and linted in Remotion</li>
+          <li id="chk-srt">Subtitles (.srt) and YouTube chapter markers generated</li>
+          <li id="chk-flow">Owner generates 7 Flow art backdrops and Flow Music track</li>
+          <li id="chk-rec">Screen recordings executed with local stack and simulator</li>
+          <li id="chk-render">Render full video & short at 30 fps with loudnorm (-14 LUFS)</li>
+          <li id="chk-yt">Upload to YouTube and embed in projects/fitloop/docs/index.md</li>
+        </ul>
+
+        <h3>Risks & Mitigations</h3>
+        <table class="grid">
+          <tr><th>Risk</th><th>Mitigation</th></tr>
+          <tr><td>Unknown words in Kokoro dictionary crash macOS espeak fallback</td><td>Phonetic spellings used ("Fit Loop", "M C P", "A I", "R one", "G two", "H U D") and pre-validated.</td></tr>
+          <tr><td>Bluetooth timer updates lag on Even G2</td><td>Glasses timer steps by 5 s above 10 s, keeping display responsive during rest countdowns.</td></tr>
+          <tr><td>Health data privacy for agents</td><td>Health data and vitals are gated by user permission switches (off by default for MCP agents).</td></tr>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div class="foot-inner">
+      <span>FitLoop Walkthrough Video Report · Port 8834</span>
+      <button class="btn-copy" id="btn-copy-hand-off">Copy summary</button>
+    </div>
+  </footer>
+
+  <script src="js/report.js"></script>
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+</body>
+</html>

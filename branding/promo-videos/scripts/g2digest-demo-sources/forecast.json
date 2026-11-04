@@ -1,0 +1,3 @@
+{ "note": "Demo forecast made for a G2 Digest video; invented.", "place": "Harbor City",
+  "days": [ { "day": "Saturday", "high_c": 21, "rain_pct": 5 }, { "day": "Sunday", "high_c": 23, "rain_pct": 5 } ],
+  "reason": "A high-pressure system parks over the coast." }

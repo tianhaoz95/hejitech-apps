@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Harbor Line notices (demo)</title><link>http://127.0.0.1:8899/</link><description>Demo feed made for a G2 Digest video. Every item is invented; none of it is news.</description>
+<item><title>Night service on the Harbor Line becomes permanent from Friday</title><link>http://127.0.0.1:8899/items/harbor-night.html</link><guid>demo-harbor-night</guid><pubDate>Sun, 01 Nov 2026 18:00:00 GMT</pubDate><description>After the summer trial, trains run all night on Fridays and every night from 7 November, with shorter trains between 01:00 and 05:00.</description></item>
+<item><title>Platform 2 at Quay Street repainted</title><link>http://127.0.0.1:8899/items/quay-paint.html</link><guid>demo-quay-paint</guid><pubDate>Sat, 31 Oct 2026 09:00:00 GMT</pubDate><description>Repainting at Quay Street platform 2 is finished. No change to service.</description></item>
+</channel></rss>

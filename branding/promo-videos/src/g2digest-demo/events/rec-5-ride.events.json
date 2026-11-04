@@ -1,0 +1,67 @@
+{
+ "clip": "rec-5-ride.mp4",
+ "width": 1728,
+ "height": 864,
+ "events": [
+  {
+   "step": "5.1a",
+   "t": 1.5,
+   "type": "click",
+   "label": "5.1a"
+  },
+  {
+   "step": "5.2",
+   "t": 4.5,
+   "type": "up",
+   "label": "5.2"
+  },
+  {
+   "step": "5.2a",
+   "t": 5.81,
+   "type": "up",
+   "label": "5.2a"
+  },
+  {
+   "step": "5.2b",
+   "t": 7.11,
+   "type": "up",
+   "label": "5.2b"
+  },
+  {
+   "step": "5.2c",
+   "t": 8.42,
+   "type": "up",
+   "label": "5.2c"
+  },
+  {
+   "step": "5.3",
+   "t": 10.62,
+   "type": "click",
+   "label": "5.3"
+  },
+  {
+   "step": "5.3a",
+   "t": 14.13,
+   "type": "long_press",
+   "label": "5.3a"
+  },
+  {
+   "step": "5.3b",
+   "t": 14.38,
+   "type": "long_press_release",
+   "label": "5.3b"
+  },
+  {
+   "step": "5.4",
+   "t": 19.39,
+   "type": "double_click",
+   "label": "5.4"
+  },
+  {
+   "step": "5.4a",
+   "t": 21.19,
+   "type": "double_click",
+   "label": "5.4a"
+  }
+ ]
+}

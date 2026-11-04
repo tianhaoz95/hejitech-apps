@@ -1,0 +1,22 @@
+{
+ "clip": "rec-3-full.mp4",
+ "width": 1920,
+ "height": 1080,
+ "duration": 4.17,
+ "events": [
+  {
+   "step": "3.5d",
+   "t": 1,
+   "type": "look",
+   "label": "Sections + sources",
+   "box": {
+    "x": 173,
+    "y": 574,
+    "w": 645,
+    "h": 40
+   },
+   "x": 495.5,
+   "y": 594
+  }
+ ]
+}

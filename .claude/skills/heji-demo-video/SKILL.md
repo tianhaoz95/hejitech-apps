@@ -18,6 +18,12 @@ first, its lessons and tools apply here unless this file says otherwise), with t
 | Pace | cut every 2–4 beats | one action at a time, held long enough to follow; music underscores |
 | Voiceover | hook lines | step by step: what to tap and what happens, second person |
 
+**Worked example:** G2 Digest's walkthrough (brief → a real Claude Code run over MCP → glasses):
+report `reports/2026-11-02-g2digest-demo-video`, edit `branding/promo-videos/src/g2digest-demo/Composition.tsx`
+(ids `g2digest-demo`, `-short`, `-thumb`), shared pieces `src/shared/Walkthrough.tsx`, scripts
+`branding/promo-videos/scripts/g2digest-demo-*` (recorder with event logs, demo feeds, narration, word
+timings, SRT + chapter list). Read them before starting: copy and adapt, don't rebuild.
+
 The style to aim for is the polished SaaS / Google product-film look: the real UI floats in a clean
 device frame over a rich generated backdrop, the camera glides in on whatever is being touched,
 everything else dims, short labels pop in beside it, and every chapter flows into the next without a
@@ -92,6 +98,35 @@ still read and write media at the paths below, never in your own checkout's `bra
 - Lessons from the promos still hold: Flow prompts say "video", one self-contained prompt per shot,
   "no logos, no text"; voiceover and music are required; music picked by measurement when there are
   several takes; render one composition at a time with `--concurrency=2`; two-pass loudnorm.
+
+## Lessons from the first one (don't relearn them)
+
+- **A real agent run is recordable.** Run the agent (Claude Code, Codex…) in a node-pty mirrored into a
+  headless xterm, drive it with keystrokes, save the byte stream with times (`agent-run.json`), then
+  replay it into xterm.js in Playwright at any speed (`… term`). Give it a clean env (drop
+  `CLAUDE_CODE_*`), `--strict-mcp-config --mcp-config` with only the product's server (the owner's own
+  connectors must not show), and a cheaper model when the owner's usage is high. Clear the server's stored
+  OAuth first (`/mcp` → Clear authentication) so the consent step is real.
+- **OAuth consent on camera:** set `BROWSER` to a script that writes the URL to a file; the recorder opens
+  it in a signed-in Playwright page, records it, clicks Allow, and the callback reaches the agent.
+- **Tool calls come from the agent's transcript**, not the screen (the TUI collapses them):
+  `~/.claude/projects/<dir>/<session>.jsonl` has every `tool_use` with a timestamp; anchor it to the
+  prompt's submit time. Show them as a ticker beside the terminal, with the validator's verdicts.
+- **Things on screen to keep out:** the usage banner in Claude Code's `/mcp` menu (end that clip before
+  it appears), tokens and private links (cover them with a solid "hidden" panel: CSS `backdrop-filter`
+  doesn't render in Remotion), the owner's other tools. Stage the data so lists don't show test leftovers.
+- **The Even Hub simulator's phone page can't be typed into** (`/api/input` is glasses-only; System Events
+  keystrokes need Accessibility, which isn't granted). Record it before and after (`?pair=<code>`), cut
+  between them, and label the step instead of faking the typing. Its `/api/screenshot/webview` is the
+  real phone page.
+- **Event logs:** mark an action *before* doing it (the page moves after a click); aim at the left part of
+  wide targets; label size must account for the window's scale.
+- **Length:** a full path (5 chapters + intro) runs ~2:20 at ~150 wpm; agree a step to drop if 2:00 is a
+  hard limit. Narration at 1.06× still reads as calm.
+- **Kokoro:** install spaCy's `en_core_web_sm` wheel into the venv; the strict no-fallback dictionary
+  rejects some words, so reword (or let the agent split its scripts, as it did).
+- **Checking the render:** frames sampled at fixed intervals can land mid-transition and look empty;
+  check a dense sheet (`fps=1`) before suspecting the render.
 
 ## 1. Read the project, then scaffold the report
 
@@ -182,9 +217,10 @@ if any. Each step's line should end before its hold time does; adjust the hold, 
 ## 5. The edit (you, with `heji-remotion`)
 
 Reuse `src/shared/` (`Cuts`, `DesktopRecording`, `PhoneRecording`, `FlowShot`, `KineticCaption`,
-`CaptionBand`, `DemoLabel`). The first demo video adds the walkthrough pieces to
-`src/shared/Walkthrough.tsx` (generic, no product names, never importing from a demo) and becomes
-this skill's worked example; update this file with its paths when it ships.
+`CaptionBand`, `DemoLabel`) and `src/shared/Walkthrough.tsx` (generic, no product names, never importing
+from a demo): `Backdrop`, `cameraKeys`/`camAt`, `SteppedClip` (a clip window played over a step's
+duration with camera, spotlight, ripple, label and `redact`), `Window`, `Phone`, `Hud`, `StepTitle`,
+`ChapterBar`, `Badge`, `Scene`. Add to it rather than to a demo when a piece is reusable.
 
 | Piece | What it does |
 |---|---|

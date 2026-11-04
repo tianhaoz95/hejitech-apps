@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>G2 Digest walkthrough video</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2307140b'/%3E%3Crect x='5' y='9' width='22' height='14' rx='3.5' fill='none' stroke='%233dff7a' stroke-width='2'/%3E%3Crect x='9' y='12.5' width='10' height='2' rx='1' fill='%233dff7a'/%3E%3Crect x='9' y='15.5' width='7' height='2' rx='1' fill='%233dff7a'/%3E%3Crect x='9' y='18.5' width='12' height='2' rx='1' fill='%233dff7a'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+  <style>
+    .shot { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); padding: 16px 18px; margin: 18px 0; }
+    .shot h3 { margin: 0 0 4px; }
+    .shot .meta-line { color: var(--mut); font-size: 14px; margin: 0 0 10px; }
+    .swatches { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+    .swatches span { display: inline-flex; align-items: center; gap: 8px; font: 13px "JetBrains Mono", monospace; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--panel); }
+    .swatches i { width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line); display: inline-block; }
+    .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .02em; border-radius: 999px; padding: 2px 9px; margin-right: 6px; vertical-align: 2px; border: 1px solid transparent; white-space: nowrap; }
+    .tag.new { background: color-mix(in srgb, #2457d6 13%, transparent); color: #2457d6; border-color: color-mix(in srgb, #2457d6 35%, transparent); }
+    .tag.me { background: color-mix(in srgb, #1f8a4c 15%, transparent); color: #1f8a4c; border-color: color-mix(in srgb, #1f8a4c 40%, transparent); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.new { color: #8fb0ff; } :root:not([data-theme="light"]) .tag.me { color: #6fe3a0; } }
+    :root[data-theme="dark"] .tag.new { color: #8fb0ff; }
+    :root[data-theme="dark"] .tag.me { color: #6fe3a0; }
+    .worlds { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+    .worlds > div { border-radius: 14px; padding: 16px 18px; color: #fff; min-width: 0; }
+    .worlds .metro { background: linear-gradient(135deg, #030805, #0f2a1a 55%, #c9a14e); text-shadow: 0 1px 2px rgb(0 0 0 / .4); }
+    .worlds .hud { background: radial-gradient(circle at 30% 20%, #0d2416, #03100a); color: #3dff7a; font-family: "JetBrains Mono", monospace; font-size: 14px; }
+    .worlds b { display: block; margin-bottom: 4px; }
+    @media (max-width: 640px) { .worlds { grid-template-columns: 1fr; } }
+    .gallery { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); margin: 14px 0; }
+    .gallery figure { margin: 0; min-width: 0; }
+    .gallery figcaption { font-size: 13px; color: var(--mut); margin-top: 6px; overflow-wrap: anywhere; }
+    .gallery figcaption b { color: var(--ink); }
+    .gallery video, .gallery img { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; background: #03100a; max-height: 420px; }
+    .gallery figure.tall video, .gallery figure.tall img { max-height: 520px; width: auto; max-width: 100%; margin: 0 auto; }
+    .gallery audio { width: 100%; }
+      code.path { overflow-wrap: anywhere; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>G2 Digest walkthrough video</b><small>The full path on real screens, brief → your agent → glasses · first cut rendered: watch with sound, then upload</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <!-- Filled from the sections' <h2>s by report.js; data-toc="Short label" on a section overrides. -->
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <h1>From your brief, through your agent, to your glasses: the first cut is ready</h1>
+        <p class="lede">G2 Digest's <b>walkthrough video</b> is rendered: <b>2:22 in 16:9 with seven YouTube chapters</b>, plus a <b>26-second 9:16 short</b>. It follows an edition's whole path on real screens: you write the brief, connect your own agent over OAuth, watch a <b>real Claude Code run</b> research, write, make audio, get refused by the validator three times and publish, then pair the glasses and read on the ride with the R1 ring (and the podcast feed for headphones). Your eight Flow pieces and the music are all in it. Watch both cuts <b>with sound</b>, then upload with §YouTube.</p>
+        <div class="status">
+          <div><b>Chapters + script</b><span class="ok">As planned; D1–D4 = recommendations</span></div>
+          <div><b>Recordings</b><span class="ok">10 clips, local stack, demo brief</span></div>
+          <div><b>Agent run</b><span class="ok">Real: 8 min 59 s, 4 validations, published</span></div>
+          <div><b>Flow art</b><span class="ok">8 of 8 in, all used</span></div>
+          <div><b>Voiceover</b><span class="ok">am_echo, 32 lines</span></div>
+          <div><b>Music</b><span class="ok">"First Light Walkthrough", 107.7 BPM</span></div>
+          <div><b>Edit</b><span class="todo">2 cuts rendered: your review</span></div>
+          <div><b>YouTube</b><span class="todo">Kit ready (§YouTube): you upload</span></div>
+        </div>
+        <div class="callout"><b>Next for you:</b> watch <a href="#edit">the two cuts</a> with sound, on a phone too (I can't listen: the mix, the voice and the music need your ears). Then write notes and click <b>Copy summary</b>, or upload with <a href="#youtube">§YouTube</a> and send me the walkthrough's link for G2 Digest's docs page. Media for this video lives in <code class="path">/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/public/g2digest-demo/</code>.</div>
+        <div class="cards">
+          <div class="card"><h3>What's real</h3>
+            <ul>
+              <li>Every product frame is the app on the local stack: the brief editor, Build agents, the OAuth consent page Claude Code itself opened, the agent's terminal, the edition and its G2 preview, Pair, and the plugin in the Even Hub simulator (phone page and glasses).</li>
+              <li>The agent is Claude Code (Sonnet) running <code>pipeline/build-prompt.md</code> against the local MCP server. Its research, scripts, audio, the validator's refusals and the publish are one unedited run, time-lapsed with the real speed and clock on screen. It cut the platform-repaint notice and the "ocean will power everything" press release on its own, as the brief asks.</li>
+              <li>The glance and deep dive you hear under chapter 5 are the agent's own audio.</li>
+            </ul>
+          </div>
+          <div class="card"><h3>Different from the plan</h3>
+            <ul>
+              <li><b>2:22, not 2:00.</b> The narration alone is 1:52; the full path didn't fit in two minutes without dropping a step. Say if you'd rather lose a step (e.g. the podcast feed).</li>
+              <li><b>The code isn't typed on camera.</b> macOS won't let this shell send keystrokes to the simulator, so chapter 4 shows the code form, then the paired glasses, with a label "type the code from Pair".</li>
+              <li><b>One line reworded</b> for the voice: "Double tap to stop, and again to go back" (the first double tap stops the audio).</li>
+            </ul>
+          </div>
+        </div>
+        <table class="grid">
+          <tr><th>If you want to redo</th><th>What to do</th></tr>
+          <tr><td>A line of the script</td><td>Change it in your notes: I regenerate that line, re-time captions and subtitles, re-render.</td></tr>
+          <tr><td>The narration voice</td><td>Name another Kokoro voice: one command regenerates all 32 lines.</td></tr>
+          <tr><td>A Flow piece or the music</td><td>Drop the new file in the folder above and say which: the edit swaps one file name.</td></tr>
+          <tr><td>The length</td><td>Name the step to drop; the chapters re-flow.</td></tr>
+        </table>
+      </section>
+
+      <section id="edit" data-toc="The edit · review">
+        <h2>The edit: two cuts to review</h2>
+        <div class="gallery">
+          <figure><video src="media/edit/g2digest-demo.mp4" poster="media/edit/g2digest-demo.jpg" controls playsinline preload="none"></video><figcaption><b>Walkthrough</b> · 16:9, 2:22, −14.4 LUFS<br><a class="dl" href="media/edit/g2digest-demo.mp4" download>g2digest-demo.mp4</a></figcaption></figure>
+          <figure class="tall"><video src="media/edit/g2digest-demo-short.mp4" poster="media/edit/g2digest-demo-short.jpg" controls playsinline preload="none"></video><figcaption><b>Short</b> · 9:16, 0:26, −14.5 LUFS<br><a class="dl" href="media/edit/g2digest-demo-short.mp4" download>g2digest-demo-short.mp4</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Chapters</th><td><pre class="cmd">0:00 Intro
+0:13 1 · Write your brief
+0:33 2 · Connect your agent
+0:55 3 · Your agent builds the edition
+1:26 4 · Pair your glasses
+1:47 5 · Read on the ride
+2:11 Recap</pre></td></tr>
+          <tr><th>Pace</th><td>Each step plays its recording from one action to the next at whatever speed fits its line (mostly 0.8–2×; a "⏩ 2.0×" badge when typing is sped up). The agent run is time-lapsed up to ~60× through research and audio, 4× through the validator, 1× at the publish; the badge shows the speed and the run's real clock.</td></tr>
+          <tr><th>Camera</th><td>Zooms and pans onto each action from the recorder's event logs (springing in just before the narration names it), spotlight on the target, the UI's own words as a label, cursor ripple on clicks; the R1 ring and its gesture beside the glasses.</td></tr>
+          <tr><th>Transitions</th><td>Blur-fade between steps, the window springing flat out of a slight tilt at each new screen, the chapter bar's dot travelling to the next stop. Bridges: your A1 (opener), promo shot 6 (night before), A2 (night to sunrise), promo shot 7 (out of the tunnel).</td></tr>
+          <tr><th>Sound</th><td>Kokoro am_echo narration; the music's own soft intro under the opener, spliced on a bar line into its last minute so it ends on its own ending, ducked under the voice; the agent's reef glance and deep dive under chapter 5.</td></tr>
+          <tr><th>On screen</th><td>"Demo data" on every recording; "Even Hub simulator" on the phone and glasses; the podcast feed link covered ("private link · hidden"); end card: name, tagline, URL, "works with any MCP agent", and the disclaimer (demo data, AI backdrops, synthetic narration, Claude Code as one example).</td></tr>
+          <tr><th>Checked</th><td>Stills at every step before rendering, frames from both renders, loudness (two-pass, −14 LUFS, true peak −1.3 dB), subtitles (in order, no overlaps), YouTube's chapter rules (first at 0:00, seven, each ≥ 10 s). <b>Not checked:</b> how it sounds.</td></tr>
+        </table>
+      </section>
+
+      <section id="decisions" data-toc="Decisions">
+        <h2>Decisions: the recommendations, since none were changed</h2>
+        <table class="grid">
+          <tr><th>#</th><th>Question</th><th>Went with</th></tr>
+          <tr><td>D1</td><td>Agent on screen</td><td><b>Claude Code</b>, named (Sonnet, to spare your weekly usage). The end card says it's one example of an MCP agent.</td></tr>
+          <tr><td>D2</td><td>What the demo brief follows</td><td><b>Made-up feeds</b> served locally (<code>branding/promo-videos/scripts/g2digest-demo-sources/</code>): the Harbor Line, a reef trial, a seawater battery, a forecast, plus a repaint notice and a hype press release for the agent to cut.</td></tr>
+          <tr><td>D3</td><td>Narration voice</td><td><b>am_echo</b>, the promo's voice.</td></tr>
+          <tr><td>D4</td><td>Promo shots as bridges</td><td><b>Yes</b>: shot 6 before chapter 3, shot 7 before chapter 5.</td></tr>
+        </table>
+      </section>
+
+      <section id="chapters" data-toc="Chapters + script">
+        <h2>Chapters and script: the edition's whole path, in five stops</h2>
+        <p class="note">This is the plan as agreed; the final timings are in §The edit (the cut runs 2:22).</p>
+        <p><b>Who it's for:</b> someone who just found G2 Digest (on Even Hub, or from the promo) and owns Even G2 glasses and an R1 ring. They should finish knowing how to set it up end to end and how to read on the ride. <b>Length:</b> 2:00 at ~140 words a minute, one action at a time.</p>
+        <div data-block="path"></div>
+        <div data-block="timeline"></div>
+
+        <h3>Voiceover, the whole walkthrough</h3>
+        <div class="fields">
+          <div class="field" data-max="1800"><b>Voiceover, 2-minute walkthrough</b><pre>Your brief, ready before the train. Here's the whole path, from your words to your glasses.
+You write the brief. Your own agent builds the edition. G2 Digest checks it, and delivers it.
+
+Start in the web app. Open Your brief, and give your edition a name.
+Set Ready by to the time you leave home.
+Add a section for each thing you follow, with a source and plain instructions: what counts, and what to skip.
+Then Save brief. Your agent reads it. It never edits it.
+
+Next, Build agents. Any agent that speaks MCP and can make audio will do.
+Point it at the server, and it asks to connect.
+You see exactly what it may do. Click Allow.
+Copy the one prompt it runs, and schedule it an hour before your train.
+
+Here's a real run. The agent fetches the card guide and your brief.
+It reads every source, then writes the full edition and the cards.
+It records the audio itself, and uploads it.
+Then the validator checks every card. Nothing publishes until there are no errors.
+Published. Open the edition: every card with its sources, and a preview of the glasses.
+
+On Pair, get a six-digit code.
+Open G2 Digest in the Even app, and type it in. You pair once.
+The glasses leave the tour, and show your editions.
+No glasses today? Make a feed link for your podcast app.
+
+On the train, pick today's edition. It opens at the first card.
+Swipe up on the ring for the next card. The dots show where you are.
+Tap to hear the glance. Tap, then hold, for the deep dive.
+Double tap to go back. It's already on your phone, so it plays offline.
+
+Write it once. Your agent builds it. You just read.
+G2 Digest. Your brief, ready before the train.</pre></div>
+        </div>
+        <p class="note">One take per chapter, so a re-recorded chapter only re-voices itself. Each line ends before its step's hold does; if it runs long, the hold grows, not the speech rate.</p>
+
+        <h3>Chapter by chapter: the step tables (the contract between script, recording and edit)</h3>
+        <p>Each row is one action: the recorder performs it and logs where it happened, the edit zooms there, and the voiceover names it. Labels in the voiceover are the UI's exact words.</p>
+        <article class="shot">
+          <h3><span class="tag me">0:00–0:13</span> Intro and the path</h3>
+          <p class="meta-line">Flow opener A1 (dawn, glasses and ring on a windowsill) → a real glasses card fades in → the five-stop path is drawn → it shrinks into the chapter bar.</p>
+          <div data-block="ch0"></div>
+        </article>
+        <article class="shot">
+          <h3><span class="tag me">0:13–0:31</span> 1 · Write your brief</h3>
+          <p class="meta-line">Goal: an edition that follows what you care about, ready when you leave. Recording <code>rec-1-brief</code> (web, desktop) over backdrop B1.</p>
+          <div data-block="ch1"></div>
+        </article>
+        <article class="shot">
+          <h3><span class="tag me">0:31–0:49</span> 2 · Connect your agent</h3>
+          <p class="meta-line">Goal: your own agent may build your editions, and you approved exactly what it can do. Recordings <code>rec-2-agents</code> (web) and <code>rec-2-consent</code> (the consent page the agent opens) over backdrop B2.</p>
+          <div data-block="ch2"></div>
+        </article>
+        <article class="shot">
+          <h3><span class="tag me">0:49–1:13</span> 3 · Your agent builds the edition</h3>
+          <p class="meta-line">Goal: see what happens while you sleep. Bridge: promo shot 6 (D4). Recording <code>rec-3-agent</code> (a real terminal, time-lapsed with a speed badge) then <code>rec-3-edition</code> (web) over backdrop B3.</p>
+          <div data-block="ch3"></div>
+        </article>
+        <article class="shot">
+          <h3><span class="tag me">1:13–1:30</span> 4 · Pair your glasses</h3>
+          <p class="meta-line">Goal: the glasses and your podcast app receive every edition. Bridge A2 (night turns to morning). Recordings <code>rec-4-pair</code> (web), <code>rec-4-phone</code> (the plugin's phone page) and <code>rec-4-glasses</code> (simulator), phone and glasses side by side over backdrop B4.</p>
+          <div data-block="ch4"></div>
+        </article>
+        <article class="shot">
+          <h3><span class="tag me">1:30–1:51</span> 5 · Read on the ride</h3>
+          <p class="meta-line">Goal: skim with the ring, listen to the depth, offline. Bridge: promo shot 7 (D4). Recording <code>rec-5-ride</code> (simulator, HUD green) over backdrop B5, with the edition's own audio under the glance and deep dive.</p>
+          <div data-block="ch5"></div>
+        </article>
+        <article class="shot">
+          <h3><span class="tag me">1:51–2:00</span> Recap and end card</h3>
+          <p class="meta-line">The five stops light up one by one, each with its chapter's best frame; then end card art A3 with the icon, name, tagline, "g2digest.hejitech.workers.dev", "Works with any MCP agent" and the disclaimer.</p>
+        </article>
+
+        <h3>The short (9:16, about 40 s): from your agent to your glasses</h3>
+        <p>The single most striking stretch of the path: a real agent run publishes, and a minute later (time-lapsed) it's on the glasses. Phone-height terminal and glasses, larger callouts, no chapter bar, its own end card.</p>
+        <div class="fields">
+          <div class="field" data-max="500"><b>Voiceover, short</b><pre>Your agent builds tomorrow's brief tonight.
+It reads your sources, writes the cards, records the audio, and passes the validator.
+Then it publishes.
+In the morning, it's on your glasses.
+Swipe the ring to skim. Tap, then hold, for the deep dive.
+G2 Digest. Your brief, ready before the train.</pre></div>
+        </div>
+        <div data-block="short"></div>
+      </section>
+
+      <section id="style" data-toc="Look and feel">
+        <h2>Look and feel: night to morning, in G2 Digest's green</h2>
+        <p>Same world as the promo: G2 Digest's HUD green on deep green, a metro city. The video moves through one night: the brief and the agent happen in the evening (lamp light, blue night outside), the build runs overnight, pairing happens at dawn, the ride is in the morning, and the end card is golden daylight. The real screens are always the brightest thing in the frame.</p>
+        <div class="swatches">
+          <span><i style="background:#07140b"></i>#07140b deep green</span>
+          <span><i style="background:#030805"></i>#030805 night</span>
+          <span><i style="background:#3dff7a"></i>#3dff7a G2 green</span>
+          <span><i style="background:#e3f2e6"></i>#e3f2e6 mint (titles)</span>
+          <span><i style="background:#f2c46b"></i>#f2c46b daylight</span>
+        </div>
+        <table class="kv">
+          <tr><th>Device frames</th><td>Web app: a slim dark browser window (no real browser chrome, just three dots and the page's path, e.g. <code>/brief/</code>), soft shadow. Terminal: the same window in black with a monospace title "agent". Phone page: a plain dark phone outline. Glasses: the HUD frame as the simulator draws it, green on black, floating like the promo's. Each sits over its chapter's backdrop, slightly tilted, and settles flat before the first step.</td></tr>
+          <tr><th>Camera</th><td>Zoom 1.4–2.2× onto each step's target from the recorder's event log, springing in about half a second before the voiceover names it, held while it's read, back out between steps. Slow parallax: backdrop drifts, device holds still during a step.</td></tr>
+          <tr><th>Transitions (one family)</th><td><b>Along the line.</b> Chapter changes: the chapter bar's green dot travels to the next stop while the frame blur-slides left. Into a recording: a cross-zoom into the device. Out of the edition into the glasses: the G2 preview card scales up and becomes the real glasses card (match cut). The end card: a dreamy zoom into daylight. No other wipes.</td></tr>
+          <tr><th>Spotlight, labels, touches</th><td>Everything but the target dims to ~60 % black with a soft edge. Labels: mint text on a deep-green pill with a thin green line to the target, the UI's own words, ≤ 5 words. A green ring follows the cursor on desktop; a ripple marks phone taps; ring gestures appear as a small ring icon with an arrow (swipe up, tap, hold, double tap) beside the glasses.</td></tr>
+          <tr><th>Titles and type</th><td>Inter (as every promo): chapter cards "2 · Connect your agent" in mint, the goal in a lighter line under it. Captions bottom-centre over the caption band, clear of the chapter bar (top).</td></tr>
+          <tr><th>Speed</th><td>1× for every action. Only the agent's research and audio rendering are time-lapsed, with a "16×" style badge showing the real speed and a small clock showing real elapsed minutes.</td></tr>
+          <tr><th>Never on screen</th><td>A generated picture of the app, the glasses' display or a terminal; real headlines, companies or people in the edition; tokens (the token in the agents config is the placeholder <code>g2a_…</code>; the seed's local token is never shown); the reader's email beyond the seed address; real station names or logos in the art.</td></tr>
+        </table>
+        <p>The real screens today (from the promo's recordings, same demo edition):</p>
+        <div class="gallery">
+          <figure><img src="media/stills/now-web-brief.jpg" alt="The web app's Your brief page in dark mode: Edition, Delivery and language and Sections panels, with a Save brief button top right"><figcaption><b>Your brief</b> · chapter 1</figcaption></figure>
+          <figure><img src="media/stills/now-web-edition.jpg" alt="The web app's edition page: the On the glasses preview with gesture buttons on the left, the full edition with sources on the right"><figcaption><b>Edition + G2 preview</b> · end of chapter 3</figcaption></figure>
+          <figure><img src="media/stills/now-glasses-list.jpg" alt="The glasses display in the simulator: green text on black listing editions"><figcaption><b>Glasses: list of editions</b> · chapters 4–5</figcaption></figure>
+          <figure><img src="media/stills/now-glasses-card.jpg" alt="A glasses card: MY LINE, Harbor Line: night trains, 24h, The trial is over and it stays, position dots on the right, 12S no deep dive at the bottom"><figcaption><b>Glasses: a card</b> · chapter 5</figcaption></figure>
+        </div>
+      </section>
+
+      <section id="flow" data-toc="Flow art">
+        <h2>Flow art: eight pieces, no screens, mostly no people</h2>
+        <p>Download every take into <code class="path">/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/public/g2digest-demo/</code> and keep Flow's file name (I add the piece's id in front if it's missing: <code>art-B1_…png</code>, <code>A1_…mp4</code>). Several takes of one piece are fine: I pick and say which.</p>
+        <article class="shot">
+          <h3>Flow settings (check before generating)</h3>
+          <table class="kv">
+            <tr><th>Stills (A3, B1–B5)</th><td>Flow → <b>Images</b>, 16:9, 2–4 per prompt, keep the best. They are backdrops: the centre stays calm and slightly dark, because a device frame covers it.</td></tr>
+            <tr><th>Loops (each B)</th><td>Then <b>Video · Frames</b> with the kept still as the first frame and the loop prompt under it, 16:9, 8 s; draft on the fast model at 720p, the keeper at the highest quality offered (1080p).</td></tr>
+            <tr><th>Videos (A1, A2)</th><td><b>Video · Text to video</b> (no characters needed), 16:9, 8 s, same draft-then-final rule.</td></tr>
+            <tr><th>Every prompt</th><td>Already says: no people's faces, no logos, no text, no readable screens. Mute Flow's sound: the edit adds music and narration.</td></tr>
+          </table>
+        </article>
+        <article class="shot">
+          <h3><span class="tag new">A1</span> Opener video · 0:00–0:04</h3>
+          <p class="meta-line">Night turns to dawn over a city; the glasses and ring wait on the sill. The first real glasses card fades in over it.</p>
+          <div class="fields"><div class="field"><b>A1 prompt</b><pre>Video. Pre-dawn in a quiet modern apartment, a wide window over a sleeping city with a metro viaduct in the distance. On the windowsill in the foreground rest a pair of slim matte black everyday glasses and a thin matte black ring. The sky slowly shifts from deep blue-green night to the first warm amber light at the horizon; a distant train glides across the viaduct with its windows glowing. A soft green glint catches the glasses' lens for a moment. Slow push-in toward the glasses, 50mm, shallow depth of field, calm cinematic grade in deep green and amber. No people, no logos, no text, nothing readable on the lenses. 8 seconds.</pre></div></div>
+        </article>
+        <article class="shot">
+          <h3><span class="tag new">B1</span> Backdrop · Write your brief (evening)</h3>
+          <div class="fields">
+            <div class="field"><b>B1 still prompt</b><pre>A calm evening desk by a window, seen softly out of focus: a warm desk lamp, a mug of tea, a paper notebook with a pen, deep green wall, blue night with blurred city lights outside. Wide 16:9 composition with a large calm, dark, uncluttered area in the centre. Cinematic, shallow depth of field, palette of deep green, warm lamp amber and night blue. No people, no screens, no logos, no text.</pre></div>
+            <div class="field"><b>B1 loop prompt (Frames, from the kept still)</b><pre>Video. Keep the image exactly as it is. The lamp light flickers very gently, steam rises slowly from the mug, a few city lights twinkle outside. Very slow push-in. No people, no text. 8 seconds.</pre></div>
+          </div>
+        </article>
+        <article class="shot">
+          <h3><span class="tag new">B2</span> Backdrop · Connect your agent</h3>
+          <div class="fields">
+            <div class="field"><b>B2 still prompt</b><pre>An abstract dark space in deep green-black, with fine glowing green threads of light that start at the left and right edges and reach toward each other, meeting softly in the centre like two hands connecting; tiny points of light drift along the threads. Wide 16:9, elegant and calm, lots of dark negative space in the middle, subtle film grain. No people, no symbols, no logos, no text.</pre></div>
+            <div class="field"><b>B2 loop prompt (Frames, from the kept still)</b><pre>Video. Keep the image exactly as it is. Small points of green light travel slowly along the threads toward the centre and the threads pulse gently once. Very slow push-in. No text. 8 seconds.</pre></div>
+          </div>
+        </article>
+        <article class="shot">
+          <h3><span class="tag new">B3</span> Backdrop · Your agent builds the edition (overnight)</h3>
+          <div class="fields">
+            <div class="field"><b>B3 still prompt</b><pre>A city skyline at 3am seen from a high window, deep blue-green night, most windows dark, a metro viaduct crossing the middle distance, faint green light trails flowing slowly along it like data. Wide 16:9, cinematic, calm, dark centre with space for a frame, soft bokeh. No people, no signs, no logos, no text.</pre></div>
+            <div class="field"><b>B3 loop prompt (Frames, from the kept still)</b><pre>Video. Keep the image exactly as it is. The green light trails flow steadily along the viaduct, a few windows switch off, clouds drift. Very slow push-in. No text. 8 seconds.</pre></div>
+          </div>
+        </article>
+        <article class="shot">
+          <h3><span class="tag new">A2</span> Bridge video · night turns to morning (before chapter 4)</h3>
+          <div class="fields"><div class="field"><b>A2 prompt</b><pre>Video. Time-lapse from a high window over a city: deep blue-green night with a metro viaduct, light trails along it, then the sky brightens quickly through teal to warm amber sunrise, the city's windows light up, the first morning train crosses the viaduct in golden light. Locked-off wide shot, 24mm, cinematic grade. No people, no signs, no logos, no text. 8 seconds.</pre></div></div>
+        </article>
+        <article class="shot">
+          <h3><span class="tag new">B4</span> Backdrop · Pair your glasses (dawn)</h3>
+          <div class="fields">
+            <div class="field"><b>B4 still prompt</b><pre>Morning light on a light oak table by a window: a pair of slim matte black everyday glasses and a thin matte black ring placed to the right, a phone lying face down to the left, a coffee cup, soft long shadows, warm amber sunlight with a cool green tint in the shadows. Wide 16:9, shallow depth of field, a clear calm area in the centre. No people, no visible screens, no logos, no text.</pre></div>
+            <div class="field"><b>B4 loop prompt (Frames, from the kept still)</b><pre>Video. Keep the image exactly as it is. Sunlight slowly moves across the table, the coffee steams, a faint green glint passes over the glasses' lens. Very slow push-in. No text. 8 seconds.</pre></div>
+          </div>
+        </article>
+        <article class="shot">
+          <h3><span class="tag new">B5</span> Backdrop · Read on the ride</h3>
+          <div class="fields">
+            <div class="field"><b>B5 still prompt</b><pre>Inside an empty modern metro carriage in a dark tunnel, softly out of focus: cool green-tinted light, chrome poles, tunnel lights streaking past the dark windows as bokeh. Wide 16:9, cinematic, darker in the centre to leave room for a floating frame. No people, no signs, no maps, no logos, no text.</pre></div>
+            <div class="field"><b>B5 loop prompt (Frames, from the kept still)</b><pre>Video. Keep the image exactly as it is. Tunnel lights streak past the windows steadily, the carriage sways very slightly. Very slow push-in. No people, no text. 8 seconds.</pre></div>
+          </div>
+        </article>
+        <article class="shot">
+          <h3><span class="tag new">A3</span> End card art (daylight)</h3>
+          <div class="fields"><div class="field"><b>A3 still prompt</b><pre>A sunlit elevated metro platform in the morning, golden light, a train waiting with its doors open, soft haze, seen from a low angle, very calm. Wide 16:9 with the left two thirds of the frame clear and softly blurred for a title. Cinematic, warm amber with deep green shadows. No people, no signs, no station names, no logos, no text.</pre></div></div>
+        </article>
+        <p class="note">Bridges from the promo (D4): <code>Shot_6_draft_54e21e40_1080p.mp4</code> (night before) and <code>Shot_7_draft_b0a34f35_1080p.mp4</code> (out of the tunnel), about 1.5 s each, copied from <code>public/g2digest-launch/</code>; nothing to make.</p>
+      </section>
+
+      <section id="recordings" data-toc="Recordings">
+        <h2>Recordings: what was recorded, and how</h2>
+        <p>All from the local stack with the seed reader, never production; the seed was restored afterwards (its own brief, devices and no editions). Recorder: <code>branding/promo-videos/scripts/g2digest-demo-record.mjs</code> (<code>stage · brief · agents · agent · term · edition · pair · glasses · restore</code>). Each clip has an event log (<code>rec-*.events.json</code>) that aims the edit's camera, spotlight and labels.</p>
+        <div class="gallery">
+          <figure><video src="media/rec/rec-1-brief.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-1-brief</b> · Name, Ready by 06:30, Add section (Ocean science, rss feed, instructions), Save brief</figcaption></figure>
+          <figure><video src="media/rec/rec-2-agents.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-2-agents</b> · Build agents: Connect, Copy the prompt, Schedule it</figcaption></figure>
+          <figure><video src="media/rec/rec-2-consent.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-2-consent</b> · the consent page Claude Code opened: "Let Claude Code (g2digest) build your editions?" → Allow</figcaption></figure>
+          <figure><video src="media/rec/rec-3-agent.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-3-agent</b> · the real run, replayed from its terminal byte stream (time-lapsed; the edit adds the MCP-call ticker from Claude Code's transcript)</figcaption></figure>
+          <figure><video src="media/rec/rec-3-edition.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-3-edition</b> · the published edition in the G2 preview, Swipe up ×3</figcaption></figure>
+          <figure><video src="media/rec/rec-4-pair.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-4-pair</b> · the 6-digit code; Make a feed link (the link is covered here and in the video)</figcaption></figure>
+          <figure class="tall"><video src="media/rec/rec-4-glasses-before-phone.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-4-glasses-before</b> · the simulator's phone page before pairing</figcaption></figure>
+          <figure><video src="media/rec/rec-4-glasses.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-4-glasses</b> · paired: the list of editions</figcaption></figure>
+          <figure><video src="media/rec/rec-5-ride.mp4" controls muted playsinline preload="none"></video><figcaption><b>rec-5-ride</b> · open, Swipe up ×4, Tap (glance), Tap then hold (deep dive), Double tap ×2</figcaption></figure>
+        </div>
+        <h3>The agent run</h3>
+        <table class="grid">
+          <tr><th>Run time</th><th>What happened</th></tr>
+          <tr><td>0:00</td><td>/mcp → Authenticate; Claude Code opens the consent page; Allow; "Authentication successful. Connected to g2digest."</td></tr>
+          <tr><td>0:27</td><td>The prompt from Build agents pasted; get_card_authoring_guide, get_user_brief</td></tr>
+          <tr><td>0:40–1:30</td><td>Reads the three feeds and the item pages; writes the edition, cards and audio scripts; cuts the repaint notice (not a service change) and the press release (no data)</td></tr>
+          <tr><td>1:30–6:20</td><td>Makes six audio files with <code>./speak</code> (Kokoro); splits the deep dives by paragraph when a word wasn't in the voice's dictionary; create_audio_upload ×6, PUTs each file</td></tr>
+          <tr><td>7:28–8:30</td><td>validate_cards ✗ E_SHAPE · ✗ server error · ✗ E_AUDIO_SHAPE · ✓ (no errors, no warnings)</td></tr>
+          <tr><td>8:50</td><td>publish_cards ✓ (7 cards, 7 min of audio); run log</td></tr>
+        </table>
+        <div class="callout"><b>Found a G2 Digest bug on the way:</b> the second validation crashed the Worker ("<code>methodology?.trim is not a function</code>") instead of returning an error, because the agent sent a section's <code>methodology</code> as something other than a string. <code>projects/g2digest/packages/core/src/validate.ts:182</code> calls <code>.trim()</code> without checking the type (the shape check at line 271 runs too late for it). An agent gets a bare server error instead of a rule it can fix. Not fixed here; say if you want it fixed.</div>
+      </section>
+
+      <section id="audio" data-toc="Voiceover + music">
+        <h2>Voiceover and music</h2>
+        <p><b>Voiceover:</b> Kokoro <b>am_echo</b> at 1.06×, one clip per line (32: 26 for the walkthrough, 6 for the short), read back with faster-whisper for the caption timings (<code>scripts/g2digest-demo-vo.py</code>, <code>scripts/g2digest-demo-words.py</code>). Spelled the way it's said: "G two Digest", "M C P"; the captions show "G2", "MCP".</p>
+        <p><b>Music:</b> your "First Light Walkthrough" (2:52). Measured with librosa: <b>107.7 BPM</b>, very steady (beat spacing varies 8 ms); a soft intro to ~20 s, a quieter break at 1:38–1:50, a fade from ~2:34. The walkthrough plays the intro under the opener, then splices on a bar line at 0:40 into the part that runs to the track's own ending; the short uses the track's last 26 s. Both ducked to ~0.24 under the narration, 0.5 between lines.</p>
+      </section>
+
+      <section id="youtube" data-toc="YouTube upload">
+        <h2>YouTube upload: what to fill in, for each cut</h2>
+        <p>Two uploads, in the order Studio asks. The walkthrough is the one G2 Digest's docs page will embed, so upload it first.</p>
+        <table class="grid">
+          <tr><th>Cut</th><th>Visibility</th></tr>
+          <tr><td><b>Walkthrough · 16:9 · 2:22</b></td><td>Public (or Unlisted until the docs page is updated)</td></tr>
+          <tr><td><b>Short · 9:16 · 0:26</b></td><td>Public: vertical and under 3 minutes, so YouTube makes it a Short</td></tr>
+        </table>
+
+        <h3>1 · The walkthrough</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>How G2 Digest works: from your AI agent to your Even G2 glasses</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>The whole path of a G2 Digest edition, on real screens: you write the brief, your own AI agent builds the edition overnight, G2 Digest checks every card, and it's waiting on your Even G2 glasses before the train.
+
+What you'll see:
+• Write your brief: the sections you follow, their sources, plain instructions, when it must be ready.
+• Connect your agent: any agent that speaks MCP and can make audio; you approve exactly what it may do.
+• A real agent run: it reads the sources, writes the cards, records the audio, and fixes what the validator rejects before it can publish.
+• Pair your glasses once with a six-digit code, or add a private podcast feed.
+• Read on the ride: swipe the R1 ring to skim, tap for the glance, tap and hold for the deep dive. It plays offline.
+
+0:00 Intro
+0:13 1 · Write your brief
+0:33 2 · Connect your agent
+0:55 3 · Your agent builds the edition
+1:26 4 · Pair your glasses
+1:47 5 · Read on the ride
+2:11 Recap
+
+Open G2 Digest: https://g2digest.hejitech.workers.dev
+How it works: https://tianhaoz95.github.io/hejitech-apps/g2digest/
+
+G2 Digest is not affiliated with Even Realities or Anthropic. Claude Code is shown as one example of an MCP agent. The briefs, sources and editions in this video are demo data: the line, places, results and numbers are invented. Screens are recorded from a local test setup and the Even Hub simulator. Backdrops and scenes are AI-generated, and the narration is a synthetic voice.
+
+#SmartGlasses #EvenG2</pre></div>
+        </div>
+        <div class="gallery">
+          <figure><img src="media/youtube/g2digest-demo-thumbnail.jpg" alt="Thumbnail: 'Agent → glasses' in large type, a tilted terminal window with the agent's run and a glasses card reading OCEAN SCIENCE 1/2, Healthy reef sound lifts coral settling 4x, over a night city" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, real screens over your B3 backdrop<br><a class="dl" href="media/youtube/g2digest-demo-thumbnail.jpg" download>g2digest-demo-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/g2digest-demo.mp4" download>g2digest-demo.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/g2digest-demo.srt" download>g2digest-demo.srt</a> (26 cues)</td></tr>
+          <tr><th>Chapters</th><td>In the description above (YouTube reads the timestamps: first at 0:00, seven, each ≥ 10 s). Leave automatic chapters off. <a class="dl" href="media/youtube/g2digest-demo-chapters.txt" download>g2digest-demo-chapters.txt</a></td></tr>
+          <tr><th>Playlist</th><td>The existing <b>G2 Digest</b> playlist.</td></tr>
+        </table>
+
+        <h3>2 · The Short</h3>
+        <div class="fields">
+          <div class="field" data-max="100"><b>Title</b><pre>Your AI agent builds tomorrow's brief tonight #Shorts</pre></div>
+          <div class="field" data-max="5000"><b>Description</b><pre>A real agent run, sped up: it reads your sources, writes the cards, records the audio and passes G2 Digest's checks. In the morning it's on your Even G2 glasses: swipe the ring to skim, tap and hold for the deep dive.
+
+https://g2digest.hejitech.workers.dev
+
+Not affiliated with Even Realities or Anthropic; Claude Code shown as one MCP agent. Demo data. AI-generated backdrops; synthetic voice.
+
+#SmartGlasses #EvenG2</pre></div>
+        </div>
+        <div class="gallery">
+          <figure class="tall"><img src="media/youtube/g2digest-demo-short-thumbnail.jpg" alt="Vertical thumbnail: 'Agent → glasses', the terminal and a glasses card" loading="lazy"><figcaption><b>Cover</b> · 1080×1920 (pick a frame in the YouTube app; this JPG is for posts)<br><a class="dl" href="media/youtube/g2digest-demo-short-thumbnail.jpg" download>g2digest-demo-short-thumbnail.jpg</a></figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Video file</th><td><a class="dl" href="media/edit/g2digest-demo-short.mp4" download>g2digest-demo-short.mp4</a></td></tr>
+          <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/g2digest-demo-short.srt" download>g2digest-demo-short.srt</a> (6 cues). If the dialog has no Video elements, add it later in Studio → Content → the Short → Subtitles.</td></tr>
+        </table>
+
+        <h3>3 · The same for both</h3>
+        <div class="fields">
+          <div class="field" data-max="500"><b>Tags (Show more)</b><pre>G2 Digest, Even G2, Even Realities, smart glasses, R1 ring, AI agent, MCP, Claude Code, tutorial, how to, walkthrough, daily brief, morning brief, audio briefing, commute, offline</pre></div>
+        </div>
+        <table class="kv">
+          <tr><th>Thumbnail</th><td><b>Upload file</b> → the walkthrough's JPG (custom thumbnails need a phone-verified channel; otherwise Select from video).</td></tr>
+          <tr><th>Audience</th><td><b>Not made for kids.</b> No age restriction.</td></tr>
+          <tr><th>Paid promotion</th><td>Unticked: your own product.</td></tr>
+          <tr><th>Altered content</th><td><b>Yes</b>: the bridges include the promo's realistic AI-generated people (Sam, Bea) and the narration is a synthetic voice.</td></tr>
+          <tr><th>Language &amp; captions</th><td>English; caption certification "never aired on television in the U.S."</td></tr>
+          <tr><th>License, embedding</th><td>Standard YouTube License; <b>Allow embedding: on</b> (required for the docs page).</td></tr>
+          <tr><th>Category, comments</th><td>Science &amp; Technology; hold potentially inappropriate comments for review.</td></tr>
+          <tr><th>Subtitles</th><td>Video elements → Add subtitles → Upload file → With timing → the cut's SRT. The captions are burned in too, so CC shows them twice; the file still helps sound-off embeds, search and translation.</td></tr>
+          <tr><th>End screen, cards</th><td>Skip both: an end screen would cover the end card.</td></tr>
+          <tr><th>Then</th><td>Send me the walkthrough's link: I check it embeds, add "Watch the walkthrough" to G2 Digest's docs page with each chapter linked from the docs section it explains, and link it from the landing page under the promo.</td></tr>
+        </table>
+        <h3>Elsewhere</h3>
+        <div class="fields">
+          <div class="field" data-max="280"><b>Short post (X / Threads)</b><pre>How G2 Digest works, end to end: you write the brief, your own AI agent builds it overnight (a real run, validator and all), and it's on your Even G2 glasses before the train.</pre></div>
+        </div>
+        <p class="note">Subtitles and chapters come from the composition (<code>node scripts/g2digest-demo-srt.mjs out/final</code> in <code>branding/promo-videos</code>); after a re-cut, run it again and recopy.</p>
+      </section>
+
+      <section id="todo" data-toc="Steps + checklist">
+        <h2>Steps, checklist and risks</h2>
+        <ol class="do">
+          <li><b>You:</b> watch both cuts with sound, on a phone too.</li>
+          <li><b>You:</b> notes (Copy summary), or upload with §YouTube.</li>
+          <li><b>You:</b> send the walkthrough's link; <b>me:</b> the docs and landing pages.</li>
+          <li><b>Optional:</b> decide on the validator crash (§Recordings).</li>
+        </ol>
+        <ul class="checks">
+          <li id="c-decisions">D1–D4 (recommendations used)</li>
+          <li id="c-assets">Flow art and music (all 8 + track)</li>
+          <li id="c-review">Walkthrough watched with sound</li>
+          <li id="c-review-short">Short watched with sound</li>
+          <li id="c-yt">Walkthrough uploaded; link sent</li>
+          <li id="c-yt-short">Short uploaded</li>
+          <li id="c-bug">Validator crash: fix or leave</li>
+        </ul>
+        <table class="grid">
+          <tr><th>Risk</th><th>Note</th></tr>
+          <tr><td>Claude Code on screen</td><td>Named once on the consent page and in the terminal header; the narration says "any agent that speaks MCP" and the end card and descriptions say it's one example.</td></tr>
+          <tr><td>Simulator, not the glasses</td><td>Labelled "Even Hub simulator"; the narration never claims more.</td></tr>
+          <tr><td>The local test setup shows on screen</td><td><code>127.0.0.1:8790</code> addresses, the agent's folder path and the seed's <code>reader@example.com</code> appear in places. No tokens: the feed link is covered, the OAuth URL is one-time and local.</td></tr>
+        </table>
+      </section>
+
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-11-02-g2digest-demo-video</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- Order: design blocks → this report's config → the engine. -->
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+1
+00:00:00,120 --> 00:00:03,570
+Your agent builds tomorrow's brief tonight.
+
+2
+00:00:03,570 --> 00:00:09,470
+It reads your sources, writes the cards, records the audio, and passes every check.
+
+3
+00:00:09,470 --> 00:00:11,490
+Then it publishes.
+
+4
+00:00:12,250 --> 00:00:15,430
+In the morning, it's on your glasses.
+
+5
+00:00:15,500 --> 00:00:20,750
+Swipe the ring to skim. Tap, then hold, for the deep dive.
+
+6
+00:00:20,750 --> 00:00:25,810
+G2 Digest. Your brief, ready before the train.

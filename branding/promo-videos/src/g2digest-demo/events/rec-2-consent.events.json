@@ -1,0 +1,36 @@
+{
+ "clip": "rec-2-consent.mp4",
+ "width": 1920,
+ "height": 1080,
+ "duration": 7.29,
+ "events": [
+  {
+   "step": "2.3",
+   "t": 0.93,
+   "type": "look",
+   "label": "What it may do",
+   "box": {
+    "x": 674,
+    "y": 478,
+    "w": 573,
+    "h": 149
+   },
+   "x": 960.5,
+   "y": 552.5
+  },
+  {
+   "step": "2.3a",
+   "t": 5.35,
+   "type": "click",
+   "label": "Allow",
+   "box": {
+    "x": 674,
+    "y": 631,
+    "w": 573,
+    "h": 65
+   },
+   "x": 960.5,
+   "y": 663.5
+  }
+ ]
+}
