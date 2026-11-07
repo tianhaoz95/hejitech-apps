@@ -110,20 +110,23 @@ export async function sendPush(env: Env, device: { apns_token: string; environme
       authorization: `bearer ${await token(env)}`,
       "apns-topic": env.APNS_TOPIC || "com.hejitech.headway",
       "apns-push-type": "alert",
-      "apns-priority": "10",
+      // Quiet notifications don't need waking the phone for.
+      "apns-priority": n.priority ? "10" : "5",
       "apns-collapse-id": n.key.slice(0, 64),
       "content-type": "application/json",
     },
     body: JSON.stringify({
       aps: {
         alert: { title: n.title, body: n.body },
-        sound: "default",
+        // Non-priority alerts land in Notification Center without a sound or lighting the screen.
+        ...(n.priority ? { sound: "default" } : {}),
         "thread-id": n.thread,
         // Delays, cancellations, leave-now and arrival are time-sensitive (they break through Focus
         // when the user allows it); service alerts are ordinary.
-        "interruption-level": n.kind === "service" ? "active" : "time-sensitive",
+        "interruption-level": !n.priority ? "passive" : n.kind === "service" ? "active" : "time-sensitive",
       },
       kind: n.kind,
+      priority: n.priority,
     }),
   });
   if (res.ok) return { ok: true };

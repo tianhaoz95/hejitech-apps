@@ -76,4 +76,25 @@ class ModelsTest {
         assertEquals(ExpressPreference.PREFER_EXPRESS, decoded?.expressPreference)
         assertEquals(2, decoded?.stations?.size)
     }
+
+    @Test
+    fun `settings from before the new choices get defaults, and they round-trip`() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; coerceInputValues = true; encodeDefaults = true }
+        val old = json.decodeFromString<Settings>("""{"switch_at":"12:00","days":[0],"alerts":{"delay":true,"delay_threshold":5,"cancellation":true,"service":true,"leave_now":true,"arrival":true,"arrival_minutes":5}}""")
+        assertEquals(OnTrainMode.CARD, old.onTrain)
+        assertEquals(AlertScope.PRIORITY, old.alerts.scope)
+        val next = old.copy(onTrain = OnTrainMode.BACKGROUND, alerts = old.alerts.copy(scope = AlertScope.ALL), shareName = "Sam")
+        assertEquals(next, json.decodeFromString<Settings>(json.encodeToString(Settings.serializer(), next)))
+    }
+
+    @Test
+    fun `decodes the on-train card and says when a train is past due`() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; coerceInputValues = true }
+        val b = json.decodeFromString<MyBoard>("""{"has_commute":true,"on_train":{"trip_id":"t","service_date":"20261106","confidence":"high","train":"513","kind":"EXP","dir":"N","from":{"id":"a","name":"A","short":"A"},"to":{"id":"b","name":"B","short":"B"},"to_source":"commute","pred_arr":5,"arr":5,"stops":[{"id":"b","name":"B","short":"B","pred":5,"status":"now"}]}}""")
+        assertEquals("513", b.onTrain?.train)
+        assertEquals("Express", b.onTrain?.kindName)
+        val t = BoardTrain(tripId = "t", train = "513", kind = "EXP", dir = "N", serviceDate = "x", dep = 1_000_000.0, arr = 2_000_000.0, predDep = 1_000_000.0, predArr = 2_000_000.0, status = TrainStatus.SCHEDULED, pastDue = true)
+        assertEquals("Due", t.dueLabel(1_060_000))
+        assertEquals("May have left", t.dueLabel(1_200_000))
+    }
 }

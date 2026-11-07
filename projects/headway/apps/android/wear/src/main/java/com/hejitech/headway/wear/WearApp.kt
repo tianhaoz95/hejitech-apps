@@ -48,6 +48,7 @@ fun WearApp(viewModel: WearViewModel) {
             val syncState by viewModel.syncState.collectAsState()
             val board = syncState?.board
             val tracked = syncState?.tracked
+            val onTrain = syncState?.onTrain
             val isLoading by viewModel.isLoading.collectAsState()
 
             val listState = rememberScalingLazyListState()
@@ -84,8 +85,35 @@ fun WearApp(viewModel: WearViewModel) {
                     }
                 }
 
+                // The train the phone sees you riding
+                if (onTrain != null) {
+                    item {
+                        Card(
+                            onClick = { if (!onTrain.tracked) viewModel.trackOnTrain(onTrain) },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            backgroundPainter = CardDefaults.cardBackgroundPainter(
+                                startBackgroundColor = Color(0xFF10242C),
+                                endBackgroundColor = Color(0xFF10242C)
+                            )
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    if (onTrain.isSure) "On train ${onTrain.train}" else "Train ${onTrain.train}?",
+                                    style = MaterialTheme.typography.caption1,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                onTrain.next?.takeIf { it.id != onTrain.to.id }?.let {
+                                    Text("Next: ${it.short} ${Clock.time(it.pred)}", style = MaterialTheme.typography.caption2)
+                                }
+                                Text("${onTrain.to.short} ${Clock.time(onTrain.predArr)} · ${Clock.until(onTrain.predArr)}", style = MaterialTheme.typography.caption2)
+                                Text(if (onTrain.tracked) "Tracking" else "Tap to track", style = MaterialTheme.typography.caption2, color = WearStatusGreen)
+                            }
+                        }
+                    }
+                }
+
                 // Active tracked train card
-                if (tracked != null) {
+                if (tracked != null && tracked.tripId != onTrain?.tripId) {
                     item {
                         Card(
                             onClick = { viewModel.untrackTrain() },

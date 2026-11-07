@@ -5,7 +5,7 @@ import UserNotifications
 @main
 struct HeadwayApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @State private var model = AppModel()
+    @State private var model = AppModel.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -18,6 +18,7 @@ struct HeadwayApp: App {
                     await model.start()
                 }
                 .onChange(of: scenePhase) { _, phase in
+                    model.applyLocationForRides(active: phase == .active)
                     if phase == .active { Task { await model.refresh() } }
                 }
         }
@@ -30,6 +31,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        // iOS relaunches a closed app for a significant move; no window opens, so `.task` doesn't run.
+        MainActor.assumeIsolated {
+            let model = AppModel.shared
+            self.model = model
+            model.location.onBackgroundFixes = { [weak model] fixes in model?.handleBackgroundFixes(fixes) }
+            model.resumeBackgroundRides()
+        }
         return true
     }
 

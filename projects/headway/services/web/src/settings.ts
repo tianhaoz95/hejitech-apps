@@ -29,6 +29,13 @@ const field = (label: string, input: HTMLElement, hint?: string) =>
 const time = (v: string | null) => el("input", { type: "time", value: v ?? "" });
 const num = (v: number, min: number, max: number, cls = "") =>
   el("input", { type: "number", min: String(min), max: String(max), value: String(v), inputmode: "numeric", ...(cls ? { class: cls } : {}) });
+const choice = (value: string, options: [string, string][], ariaLabel: string) => {
+  const s = el("select", { "aria-label": ariaLabel }) as HTMLSelectElement;
+  for (const [v, label] of options) s.append(el("option", { value: v }, label));
+  s.value = value;
+  return s;
+};
+
 const toggle = (on: boolean, ariaLabel: string) => {
   const i = el("input", { type: "checkbox", class: "switch", "aria-label": ariaLabel });
   i.checked = on;
@@ -156,7 +163,7 @@ function legEditor(part: "morning" | "evening", leg: Leg | null, onMirror?: () =
   };
 }
 
-function settingRow(title: string, desc: string, sw: HTMLInputElement, extraControl?: HTMLElement) {
+function settingRow(title: string, desc: string, sw: HTMLElement, extraControl?: HTMLElement) {
   return el("div", { class: "setting-row" },
     el("div", { class: "setting-info" },
       el("div", { class: "setting-title" }, title),
@@ -205,6 +212,13 @@ async function render() {
   const arrivalSw = toggle(a.arrival, "Arrival alert for tracked train");
   const arrivalMin = num(a.arrival_minutes, 1, 60, "num-inline");
   const betterTrainSw = toggle(a.better_train, "Better train alerts");
+  const scope = choice(a.scope ?? "priority", [["priority", "Priority only"], ["all", "Priority and quiet"]], "Which notifications");
+  const onTrainMode = choice(s.on_train ?? "card", [
+    ["off", "Off"],
+    ["card", "Show the card (app open)"],
+    ["auto", "Also start tracking (app open)"],
+    ["background", "Also with the app closed"],
+  ], "When you're on a train");
 
   const status = el("p", { class: "small muted", role: "status" }, "Changes apply to your glasses and iPhone on save.");
   const save = el("button", { class: "btn primary", type: "button" }, "Save commute & alerts");
@@ -224,7 +238,9 @@ async function render() {
         arrival: arrivalSw.checked,
         arrival_minutes: Number(arrivalMin.value),
         better_train: betterTrainSw.checked,
+        scope: scope.value as Settings["alerts"]["scope"],
       },
+      on_train: onTrainMode.value as Settings["on_train"],
     };
     const issues = checkSettings(next);
     if (issues.length) {
@@ -266,6 +282,14 @@ async function render() {
         el("h2", {}, "Alert me on my iPhone when"),
         el("span", { class: "badge" }, "Push notifications")),
       el("div", { class: "setting-list" },
+        settingRow(
+          "Which notifications",
+          "Priority is what affects your commute: your direction, inside your watch window. Quiet adds the rest for your stations, without a sound.",
+          scope),
+        settingRow(
+          "On a train",
+          "Uses your phone's location to show the next stop and your arrival once you're riding. With the app closed needs Always location on the phone; set it from the app.",
+          onTrainMode),
         settingRow(
           "Train delayed",
           "Notify when a train in your watch window is running late",

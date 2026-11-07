@@ -15,6 +15,8 @@ const MIN = 60_000;
 export const LIVE_MAX_AGE_MS = 10 * MIN;
 /** Trains shown on a board. */
 export const BOARD_TRAINS = 8;
+/** A board keeps a train this long past its time at your station (the later of scheduled and predicted): real trains run late. */
+export const BOARD_LINGER_MS = 5 * MIN;
 
 const index = new Map(STATIONS.map((s, i) => [s.id, i]));
 export const station = (id: string): Station | undefined => STATIONS[index.get(id) ?? -1];
@@ -51,7 +53,7 @@ export function isFresh(snapshot: RealtimeSnapshot | null | undefined, now: numb
 }
 
 /** The live entry for a trip on a service day (a snapshot entry for another day doesn't apply). */
-function liveTrip(snapshot: RealtimeSnapshot | null, trip: Trip, date: string): RealtimeTrip | null {
+export function liveTrip(snapshot: RealtimeSnapshot | null, trip: Trip, date: string): RealtimeTrip | null {
   const rt = snapshot?.trips[trip.id];
   if (!rt) return null;
   if (rt.start_date && rt.start_date !== date) return null;
@@ -62,7 +64,7 @@ function liveTrip(snapshot: RealtimeSnapshot | null, trip: Trip, date: string): 
  * Seconds late at stop `pos` of a trip: the stop's own update, else the nearest earlier stop's
  * (GTFS-RT propagation), else the trip's delay. Null when the feed says nothing about this trip.
  */
-function delayAt(trip: Trip, pos: number, rt: RealtimeTrip | null, dayStart: number, kind: "arr" | "dep"): number | null {
+export function delayAt(trip: Trip, pos: number, rt: RealtimeTrip | null, dayStart: number, kind: "arr" | "dep"): number | null {
   if (!rt) return null;
   const at = (p: number): number | null => {
     const s = STATIONS[trip.stops[p * 3]];
@@ -105,6 +107,8 @@ function status(delayMin: number | null, cancelled: boolean): TrainStatus {
 export interface DepartureOptions {
   /** Keep trains that left up to this long ago (by prediction). */
   lookbackMs?: number;
+  /** Keep trains until this long after the later of their scheduled and predicted time here, marked `past_due`. */
+  lingerMs?: number;
   /** Don't look further ahead than this. */
   horizonMs?: number;
   limit?: number;
@@ -195,11 +199,13 @@ export function departures(fromId: string, toId: string, now: number, snapshot: 
       const cancelled = Boolean(rt?.cancelled) || skippedAt(trip, a, rt) || skippedAt(trip, b, rt);
       const pred_dep = dep + (dd ?? 0) * 1000;
       const pred_arr = arr + (da ?? dd ?? 0) * 1000;
-      if (pred_dep < now - lookback && !(cancelled && dep >= now - lookback)) continue;
+      const lingering = opts.lingerMs !== undefined && !cancelled && Math.max(dep, pred_dep) >= now - opts.lingerMs;
+      if (pred_dep < now - lookback && !(cancelled && dep >= now - lookback) && !lingering) continue;
       const delay_min = dd === null ? null : Math.round(dd / 60);
       out.push({
         trip_id: trip.id, train: trip.train, kind: trip.kind, dir: trip.dir, service_date: date,
         dep, arr, pred_dep, pred_arr, delay_min, status: status(delay_min, cancelled), stops_between: b - a - 1,
+        ...(lingering && Math.max(dep, pred_dep) < now ? { past_due: true } : {}),
       });
     }
   }
@@ -218,7 +224,8 @@ export function departures(fromId: string, toId: string, now: number, snapshot: 
   if (opts.walkMinutes !== undefined && opts.walkMinutes !== null) {
     const walk = opts.walkMinutes;
     const hasCatchable = result.some((t) => t.status !== "cancelled" && (t.pred_dep - now) / MIN >= walk / 2);
-    if (hasCatchable) {
+    // A board keeps what's about to leave for riders already at the platform; others hide it.
+    if (hasCatchable && opts.lingerMs === undefined) {
       result = result.filter((t) => t.status === "cancelled" || (t.pred_dep - now) / MIN >= walk / 2);
     }
     let foundLeave = false;
@@ -236,10 +243,15 @@ export function departures(fromId: string, toId: string, now: number, snapshot: 
     }
   }
 
-  const finalSlice = result.slice(0, opts.limit ?? BOARD_TRAINS);
+  // Lingering trains don't use up the room for trains still to come.
+  const behind = result.filter((t) => t.past_due).length;
+  const finalSlice = result.slice(0, (opts.limit ?? BOARD_TRAINS) + behind);
   applyTrainInsights(finalSlice);
   return finalSlice;
 }
+
+/** Still worth comparing: not cancelled, not gone, not out of reach from where you are. */
+const catchable = (t: BoardTrain) => t.status !== "cancelled" && !t.past_due && t.catch !== "missed";
 
 /** Enriches trains with ride duration, overtaking detection, earliest arrival, and shortest ride. */
 export function applyTrainInsights(trains: BoardTrain[]): BoardTrain[] {
@@ -251,7 +263,7 @@ export function applyTrainInsights(trains: BoardTrain[]): BoardTrain[] {
     t.shortest = false;
   }
 
-  const active = trains.filter((t) => t.status !== "cancelled");
+  const active = trains.filter(catchable);
   if (!active.length) return trains;
 
   let earliest = active[0];
@@ -281,7 +293,7 @@ export function applyTrainInsights(trains: BoardTrain[]): BoardTrain[] {
 
 /** Computes the tip for the board when the next catchable train is overtaken by a later train. */
 export function computeBoardTip(trains: BoardTrain[], walkMinutes?: number | null): BoardTip | null {
-  const active = trains.filter((t) => t.status !== "cancelled");
+  const active = trains.filter(catchable);
   if (!active.length) return null;
 
   const leaveTrain = trains.find((t) => t.catch === "leave" && t.status !== "cancelled");
@@ -321,8 +333,8 @@ export function board(fromId: string, toId: string, now: number, snapshot: Realt
   const live = isFresh(snapshot, now);
   const travel = opts.origin && f.lat != null && f.lon != null ? travelEstimate(opts.travelMode ?? "walk", opts.origin, { lat: f.lat, lon: f.lon }) : null;
   if (travel) opts = { ...opts, walkMinutes: travel.minutes };
-  const trains = departures(f.id, t.id, now, snapshot, opts, tt);
-  if (travel) for (const x of trains) x.buffer_min = x.status === "cancelled" ? null : Math.floor((x.pred_dep - now) / MIN) - travel.minutes;
+  const trains = departures(f.id, t.id, now, snapshot, { lingerMs: BOARD_LINGER_MS, ...opts }, tt);
+  if (travel) for (const x of trains) x.buffer_min = x.status === "cancelled" || x.past_due ? null : Math.floor((x.pred_dep - now) / MIN) - travel.minutes;
   const tip = live ? computeBoardTip(trains, opts.walkMinutes) : null;
   return {
     from: lite(f), to: lite(t), leg, generated_at: now, live,

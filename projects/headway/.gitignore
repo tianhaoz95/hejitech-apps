@@ -7,3 +7,6 @@ apps/ios/Headway.xcodeproj
 apps/ios/.derived
 apps/ios/HeadwayKit/.build
 apps/ios/.derived-device
+
+# Xcode opening the HeadwayKit package
+apps/ios/HeadwayKit/.swiftpm/

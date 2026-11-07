@@ -204,7 +204,7 @@ fun CommuteScreen(viewModel: HeadwayViewModel) {
                         val newSettings = settings.copy(
                             morning = Leg.morning(morningFrom.id, morningTo.id),
                             evening = Leg.evening(eveningFrom.id, eveningTo.id),
-                            alerts = AlertSettings(
+                            alerts = settings.alerts.copy(
                                 delay = delayAlert,
                                 cancellation = cancellationAlert,
                                 service = serviceAlert,

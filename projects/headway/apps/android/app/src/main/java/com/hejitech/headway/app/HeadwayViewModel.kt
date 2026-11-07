@@ -40,6 +40,13 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
     private val _tracked = MutableStateFlow<TrackedWithProgress?>(null)
     val tracked: StateFlow<TrackedWithProgress?> = _tracked.asStateFlow()
 
+    private val _onTrain = MutableStateFlow<OnTrainCard?>(null)
+    val onTrain: StateFlow<OnTrainCard?> = _onTrain.asStateFlow()
+
+    private val rideLocation = RideLocation(application)
+    /** The Activity is showing, so following the phone is allowed under "while using the app". */
+    private var appVisible = false
+
     private val _hasCommute = MutableStateFlow(false)
     val hasCommute: StateFlow<Boolean> = _hasCommute.asStateFlow()
 
@@ -125,6 +132,7 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
 
     private suspend fun loadBoardInternal() {
         if (apiClient.session != null) {
+            reportRide()
             val myBoard = apiClient.getMyBoard(
                 from = _selectedFrom.value.id,
                 to = _selectedTo.value.id,
@@ -133,6 +141,7 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
             _board.value = myBoard.board
             _hasCommute.value = myBoard.hasCommute
             _tracked.value = myBoard.tracked
+            _onTrain.value = myBoard.onTrain
         } else {
             val b = apiClient.getBoard(
                 from = _selectedFrom.value.id,
@@ -141,6 +150,62 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
             )
             _board.value = b
         }
+        syncToWatch()
+    }
+
+    /** Sends recent fixes when they could mean a train: moving, or a ride is under way. Standing still makes no request. */
+    private suspend fun reportRide() {
+        if (!_settings.value.onTrain.usesLocation) return
+        val fixes = rideLocation.samples()
+        val moving = fixes.takeLast(3).any { (it.speed ?: 0.0) >= 5.0 }
+        if (fixes.size < 2 || !(moving || _onTrain.value != null)) return
+        runCatching { apiClient.reportOnTrain(fixes) }
+    }
+
+    /** Starts or stops following the phone for what the on-train setting asks. */
+    fun applyRideWatching() {
+        val mode = _settings.value.onTrain
+        val context = getApplication<Application>()
+        if (mode.usesLocation && appVisible) rideLocation.start() else rideLocation.stop()
+        if (mode == OnTrainMode.BACKGROUND && rideLocation.hasBackgroundAccess()) {
+            OnTrainService.start(context, apiClient)
+        } else {
+            OnTrainService.stop(context)
+        }
+    }
+
+    fun onAppVisible(visible: Boolean) {
+        appVisible = visible
+        applyRideWatching()
+    }
+
+    fun setOnTrainMode(mode: OnTrainMode) {
+        saveSettings(_settings.value.copy(onTrain = mode))
+        _settings.value = _settings.value.copy(onTrain = mode)
+        if (!mode.usesLocation) _onTrain.value = null
+        applyRideWatching()
+    }
+
+    fun setAlertScope(scope: AlertScope) {
+        saveSettings(_settings.value.copy(alerts = _settings.value.alerts.copy(scope = scope)))
+    }
+
+    /** Tracks the train you're on, to a stop you pick or the one the card expects. */
+    fun trackOnTrain(stop: String? = null) {
+        val c = _onTrain.value ?: return
+        viewModelScope.launch {
+            try {
+                apiClient.track(Tracked(tripId = c.tripId, serviceDate = c.serviceDate, from = c.from.id, to = stop ?: c.to.id))
+                refresh()
+            } catch (e: Exception) {
+                _errorMessage.value = "Failed to track train: ${e.localizedMessage}"
+            }
+        }
+    }
+
+    fun dismissOnTrain() {
+        _onTrain.value = null
+        viewModelScope.launch { runCatching { apiClient.dismissOnTrain() } }
         syncToWatch()
     }
 
@@ -178,6 +243,7 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val resp = apiClient.getSettings()
                 _settings.value = resp.settings
+                applyRideWatching()
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to load settings: ${e.localizedMessage}"
             }
@@ -191,6 +257,7 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
                 val resp = apiClient.saveSettings(newSettings)
                 _settings.value = resp.settings
                 _hasCommute.value = true
+                applyRideWatching()
                 refresh()
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to save settings: ${e.localizedMessage}"
@@ -252,6 +319,9 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
     fun signOut() {
         apiClient.setSession(null)
         _tracked.value = null
+        _onTrain.value = null
+        rideLocation.stop()
+        OnTrainService.stop(getApplication())
         _hasCommute.value = false
         refresh()
     }
@@ -276,6 +346,7 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
                 val state = WatchSyncState(
                     board = _board.value,
                     tracked = _tracked.value,
+                    onTrain = _onTrain.value,
                     hasCommute = _hasCommute.value,
                     stations = _stations.value,
                     expressPreference = _expressPreference.value,

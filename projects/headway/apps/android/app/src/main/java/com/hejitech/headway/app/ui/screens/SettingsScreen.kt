@@ -2,6 +2,8 @@ package com.hejitech.headway.app.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
@@ -12,15 +14,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hejitech.headway.app.HeadwayViewModel
 import com.hejitech.headway.app.ui.theme.DarkSurface
 import com.hejitech.headway.app.ui.theme.StatusRed
+import com.hejitech.headway.core.model.AlertScope
+import com.hejitech.headway.core.model.OnTrainMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: HeadwayViewModel) {
+fun SettingsScreen(viewModel: HeadwayViewModel, onRideModeChosen: (OnTrainMode) -> Unit = {}) {
+    val settings by viewModel.settings.collectAsState()
     val isLocalBackend by viewModel.isLocalBackend.collectAsState()
     val session = viewModel.apiClient.session
     var showWhatsNewDialog by remember { mutableStateOf(false) }
@@ -73,6 +79,81 @@ fun SettingsScreen(viewModel: HeadwayViewModel) {
                                 Text("Sign In (Rider Account)")
                             }
                         }
+                    }
+                }
+            }
+
+            // On a train
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp).selectableGroup()) {
+                        Text("On a train", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OnTrainMode.entries.forEach { mode ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .selectable(
+                                        selected = settings.onTrain == mode,
+                                        role = Role.RadioButton,
+                                        onClick = {
+                                            onRideModeChosen(mode)
+                                            viewModel.setOnTrainMode(mode)
+                                        }
+                                    )
+                                    .padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(selected = settings.onTrain == mode, onClick = null)
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(mode.title, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                        Text(
+                            settings.onTrain.detail + " Your location is only used to find the train and is never stored.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.LightGray
+                        )
+                    }
+                }
+            }
+
+            // Which notifications
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp).selectableGroup()) {
+                        Text("Which alerts", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        AlertScope.entries.forEach { scope ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .selectable(
+                                        selected = settings.alerts.scope == scope,
+                                        role = Role.RadioButton,
+                                        onClick = { viewModel.setAlertScope(scope) }
+                                    )
+                                    .padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(selected = settings.alerts.scope == scope, onClick = null)
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(scope.title, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                        Text(
+                            "Priority alerts affect your commute: your direction, inside your watch window, and the train you track. Priority and quiet adds delays and notices for your stations at other times or the other way, silently. Alerts arrive on an iPhone signed in to the same account.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.LightGray
+                        )
                     }
                 }
             }

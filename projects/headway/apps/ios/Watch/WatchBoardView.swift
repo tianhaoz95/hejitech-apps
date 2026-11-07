@@ -13,7 +13,15 @@ struct WatchBoardView: View {
     var body: some View {
         NavigationStack {
             List {
-                if let t = model.tracked {
+                if let ride = model.onTrain {
+                    Section {
+                        WatchOnTrainCard(card: ride, now: now)
+                    } header: {
+                        Text("On the train").font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+
+                if let t = model.tracked, t.tripId != model.onTrain?.tripId {
                     Section {
                         WatchTrackedCard(tracked: t, now: now)
                     } header: {
@@ -206,7 +214,11 @@ struct WatchTrainRow: View {
                 Spacer()
 
                 // Countdown until departure
-                if train.status != .cancelled {
+                if train.pastDue == true {
+                    Text(train.dueLabel(now: now))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.orange)
+                } else if train.status != .cancelled {
                     Text(Clock.until(train.predDep, now: now))
                         .font(.headline.monospacedDigit())
                         .foregroundStyle(Color.accentColor)
@@ -277,6 +289,42 @@ struct WatchTrackedCard: View {
             }
             .font(.caption2)
             .padding(.top, 2)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct WatchOnTrainCard: View {
+    @Environment(WatchModel.self) private var model
+    let card: OnTrainCard
+    let now: Date
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Label(card.isSure ? "Train \(card.train)" : "Train \(card.train)?", systemImage: "tram.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color.accentColor)
+                Spacer()
+                if let d = card.delayMin, d >= 2 {
+                    Text("+\(d)m").font(.caption2.weight(.bold)).foregroundStyle(.orange)
+                }
+            }
+            if let next = card.next, next.id != card.to.id {
+                Text("Next: \(next.name) (\(Clock.time(next.pred)))").font(.caption2)
+            }
+            Text("\(card.to.short) \(Clock.time(card.predArr)) · in \(Clock.until(card.predArr, now: now))")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            if card.tracked {
+                Button("Stop tracking", role: .destructive) { Task { await model.untrack() } }
+                    .font(.caption2)
+                    .padding(.top, 2)
+            } else {
+                Button("Track") { Task { await model.trackOnTrain(card) } }
+                    .font(.caption2)
+                    .padding(.top, 2)
+            }
         }
         .padding(.vertical, 4)
     }

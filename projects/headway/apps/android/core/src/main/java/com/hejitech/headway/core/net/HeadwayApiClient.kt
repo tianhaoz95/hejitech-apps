@@ -118,6 +118,24 @@ class HeadwayApiClient(
         executeEmpty(reqBuilder.build())
     }
 
+    /** Asks which train these fixes are riding. [background] adds a notification if Headway starts tracking it. */
+    suspend fun reportOnTrain(samples: List<OnTrainSample>, background: Boolean = false): OnTrainReport = withContext(Dispatchers.IO) {
+        val body = buildJsonObject {
+            put("samples", json.encodeToJsonElement(samples))
+            put("background", background)
+        }.toString().toRequestBody(jsonMediaType)
+        val builder = Request.Builder().url("${config.site}/api/me/on-train").post(body)
+        addAuthHeader(builder)
+        executeAndDecode(builder.build())
+    }
+
+    /** "Not on this train": no card for a while. */
+    suspend fun dismissOnTrain() = withContext(Dispatchers.IO) {
+        val builder = Request.Builder().url("${config.site}/api/me/on-train").delete()
+        addAuthHeader(builder)
+        executeEmpty(builder.build())
+    }
+
     suspend fun createPairingCode(): PairingCode = withContext(Dispatchers.IO) {
         val reqBuilder = Request.Builder()
             .url("${config.site}/api/pairing-code")

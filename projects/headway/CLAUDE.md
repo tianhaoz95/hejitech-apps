@@ -17,7 +17,7 @@ node projects/headway/scripts/build-timetable.mjs      # new Caltrain timetable 
 echo "SUPABASE_SERVICE_ROLE_KEY=<local service key>" > projects/headway/services/web/.dev.vars
 npm run dev:worker -w @headway/web                     # 127.0.0.1:8792 (+ TRANSIT_511_API_KEY in .dev.vars for live data)
 curl "http://127.0.0.1:8792/cdn-cgi/handler/scheduled?cron=*+*+*+*+*"   # run the cron once
-node projects/headway/scripts/test-api.mjs             # integration (18 checks: boards, pairing, push, MCP/OAuth, RLS)
+node projects/headway/scripts/test-api.mjs             # integration (22 checks: boards, on-train, pairing, push, MCP/OAuth, RLS)
 projects/headway/scripts/glasses-sim.sh [--e2e]        # the plugin in the Even Hub simulator, paired to the seed rider
 npm run package -w @headway/glasses                    # apps/glasses/build/headway.ehpk (version = MARKETING_VERSION)
 
@@ -41,7 +41,8 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|g
 
 - **`@headway/core` is the one engine** (`packages/core/src`): `schedule.ts` (timetable → departures,
   live predictions, boards, the commute leg for now, a train's progress), `alerts.ts` (which
-  notifications are due, pure), `glasses.ts` (screens laid out in pixels by `font.ts`'s measured
+  notifications are due and which are priority, pure), `ontrain.ts` (which train a phone's fixes are riding,
+  the in-train card), `glasses.ts` (screens laid out in pixels by `font.ts`'s measured
   glyph widths, 9 lines in a bordered frame, and the R1 `Navigator`), `gtfsrt.ts` (protobuf
   reader), `settings.ts` (defaults + `checkSettings`). Change behaviour there, with a test; never
   format glasses text elsewhere.
@@ -68,6 +69,9 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|g
 
 ## Pitfalls
 
+- `test-api.mjs`'s "Not on it" uses its second user: on the seed rider it hides the card for 20 minutes.
+  To simulate a ride on the simulator, `xcrun simctl location booted start --speed=22 --interval=3 lat,lon lat,lon …`
+  along the stations of a train running now.
 - Times are Pacific everywhere (`core/src/time.ts`); GTFS service days start at noon minus 12 h, and
   trains after midnight belong to the day before.
 - The timetable runs out (`feed_end`; a core test fails 21 days before): rebuild it with

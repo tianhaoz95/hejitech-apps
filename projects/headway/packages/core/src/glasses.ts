@@ -12,23 +12,27 @@
 //   pick          choose From, then To (swipe, tap); double tap back
 //   track         tap refreshes, long press stops tracking, double tap back to the board
 //   alerts        swipe pages, tap or double tap back
+//   on train      opens by itself when the phone sees you riding a train: tap tracks it (once tracked,
+//                 refreshes), long press for the menu, double tap back to the board
 import { fitPx, LINE_PX, MAX_LINES, padPx, spreadPx, wrapPx } from "./font.ts";
 import { STATIONS, stationIndex } from "./schedule.ts";
 import { clock, clockAmPm, minutesUntil } from "./time.ts";
-import type { Board, BoardTrain, TrainProgress } from "./types.ts";
+import type { Board, BoardTrain, OnTrainCard, TrainProgress } from "./types.ts";
 
 /** Trains visible on the board at once (header, column row and footer take lines; the rest scroll). */
 export const VISIBLE_TRAINS = MAX_LINES - 3;
 export const FLASH_MS = 2500;
 
 export type Input = "up" | "down" | "tap" | "double_tap" | "long_press";
-export type Screen = "board" | "menu" | "pick" | "track" | "alerts";
+export type Screen = "board" | "menu" | "pick" | "track" | "alerts" | "on_train";
 
 export interface World {
   board: Board | null;
   progress: TrainProgress | null;
   /** A morning or evening leg is set (the "Commute" menu item depends on it). */
   hasCommute: boolean;
+  /** The train the phone sees you riding. */
+  onTrain?: OnTrainCard | null;
   /** Showing a pair picked on the glasses instead of the commute. */
   custom: boolean;
   now: number;
@@ -39,6 +43,7 @@ export interface World {
 export type Command =
   | { kind: "show_pair"; pair: { from: string; to: string } | null }
   | { kind: "track"; train: BoardTrain; from: string; to: string }
+  | { kind: "track_on_train"; card: OnTrainCard }
   | { kind: "untrack" }
   | { kind: "refresh" }
   /** Ask the system to close the plugin (its confirm dialog). */
@@ -96,8 +101,12 @@ export function trainRow(t: BoardTrain, now: number, selected: boolean, walkMinu
   ];
   const left = cells.map((c, i) => padPx(c, COLS[i])).join("");
   let right = "";
-  if (t.status !== "cancelled") {
-    if (walkMinutes != null && t.catch && t.leave_by != null) {
+  if (t.past_due) {
+    right = "due?";
+  } else if (t.status !== "cancelled") {
+    if (t.catch === "missed") {
+      right = untilText(t.pred_dep, now);
+    } else if (walkMinutes != null && t.catch && t.leave_by != null) {
       if (t.catch === "run") {
         right = "RUN";
       } else {
@@ -164,6 +173,18 @@ export function trackLines(p: TrainProgress | null, now: number): string[] {
   return lines.slice(0, MAX_LINES);
 }
 
+export function onTrainLines(c: OnTrainCard | null, now: number): string[] {
+  if (!c) return ["ON THE TRAIN", "", "Ride finished.", "", "2x tap: back"];
+  const status = c.delay_min === null ? "sched" : c.delay_min >= 2 ? `+${c.delay_min}` : "on time";
+  const lines = [spreadPx(`ON ${c.train} ${c.kind}`, status), ""];
+  if (c.next && c.next.id !== c.to.id) lines.push(spreadPx(`Next: ${c.next.short}`, clock(c.next.pred)));
+  lines.push(spreadPx(`${c.to.short} ${clock(c.pred_arr)}`, `in ${untilText(c.pred_arr, now)}`));
+  lines.push(c.stops_left <= 1 ? "Your stop is next" : `${c.stops_left - 1} stops to go`);
+  if (c.alerts.length) lines.push(`${c.alerts.length} alert${c.alerts.length > 1 ? "s" : ""} ahead`);
+  lines.push("", c.tracked ? "tap: refresh  2x tap: board" : "tap: track  2x tap: board");
+  return lines.slice(0, MAX_LINES);
+}
+
 export class Navigator {
   screen: Screen = "board";
   cursor = 0;
@@ -174,6 +195,8 @@ export class Navigator {
   flash: { text: string; until: number } | null = null;
   /** The board train the cursor was on, so a refresh keeps it selected. */
   private cursorTrip: string | null = null;
+  /** The ride this screen last opened for: backing out of it stays out. */
+  private onTrainSeen: string | null = null;
 
   menu(world: World): MenuItem[] {
     const items: MenuItem[] = [];
@@ -189,6 +212,7 @@ export class Navigator {
         },
       });
     }
+    if (world.onTrain) items.push({ label: `On train ${world.onTrain.train}`, run: () => { this.screen = "on_train"; return []; } });
     if (world.progress) items.push({ label: `Train ${world.progress.train} to ${world.progress.to.short}`, run: () => { this.screen = "track"; return [{ kind: "refresh" }]; } });
     if (world.hasCommute && world.custom) items.push({ label: "My commute", run: () => [{ kind: "show_pair", pair: null }] });
     items.push({ label: "Pick stations", run: () => this.startPick(world) });
@@ -302,6 +326,18 @@ export class Navigator {
         this.say("2x tap: back to the board", now);
         return [];
       }
+      case "on_train": {
+        const c = world.onTrain;
+        if (input === "double_tap") { this.screen = "board"; return []; }
+        if (input === "long_press") { this.screen = "menu"; this.menuIndex = 0; return []; }
+        if (input === "tap" && c && !c.tracked) {
+          this.say(`Tracking ${c.train} to ${c.to.short}`, now);
+          return [{ kind: "track_on_train", card: c }];
+        }
+        if (input === "tap") { this.say("Refreshing", now); return [{ kind: "refresh" }]; }
+        this.say("2x tap: back to the board", now);
+        return [];
+      }
       case "alerts": {
         const n = world.board?.alerts.length ?? 0;
         if ((input === "up" || input === "down") && n) {
@@ -314,10 +350,22 @@ export class Navigator {
     }
   }
 
+  /** Opens the on-train screen once per ride, only from the board, and closes it when the ride ends. */
+  private followRide(world: World) {
+    const ride = world.onTrain ? `${world.onTrain.service_date}:${world.onTrain.trip_id}` : null;
+    if (ride && ride !== this.onTrainSeen && this.screen === "board") this.screen = "on_train";
+    if (ride) this.onTrainSeen = ride;
+    if (!ride && this.screen === "on_train") this.screen = "board";
+  }
+
   lines(world: World): string[] {
     const now = world.now;
+    this.followRide(world);
     let lines: string[];
     switch (this.screen) {
+      case "on_train":
+        lines = onTrainLines(world.onTrain ?? null, now);
+        break;
       case "board":
         if (this.cursorTrip === null && world.board) {
           this.boardChanged(world);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  addDays, board, boardActivityState, checkSettings, distanceM, travelEstimate, validOrigin, clock, commuteBoard, currentLeg, defaultSettings, departures, findStation, newLeg, normalizeSettings, progress, serviceDayStart, STATIONS, station, TIMETABLE, timetableDaysLeft, zoned,
+  addDays, BOARD_TRAINS, board, boardActivityState, checkSettings, distanceM, travelEstimate, validOrigin, clock, commuteBoard, currentLeg, defaultSettings, departures, findStation, newLeg, normalizeSettings, progress, serviceDayStart, STATIONS, station, TIMETABLE, timetableDaysLeft, zoned,
 } from "../src/index.ts";
 import { at, commuter, firstTrain, SATURDAY, snapshot, THANKSGIVING, WEEKDAY } from "./helpers.ts";
 
@@ -337,5 +337,55 @@ describe("travel estimate from the rider's location", () => {
     expect(validOrigin(null, "1")).toBeNull();
     expect(validOrigin("x", "1")).toBeNull();
     expect(validOrigin("91", "0")).toBeNull();
+  });
+});
+
+describe("keeping a train on the board after its time", () => {
+  const first = () => departures("mountain_view", "san_francisco", at(WEEKDAY, "08:00"), null, { lookbackMs: 0 })[0];
+
+  it("stays until 5 minutes after its scheduled time, marked past due", () => {
+    const t = first();
+    const later = (m: number) => board("mountain_view", "san_francisco", t.dep + m * 60_000, null)!.trains.find((x) => x.trip_id === t.trip_id);
+    expect(later(-1)?.past_due).toBeUndefined();
+    expect(later(4)?.past_due).toBe(true);
+    expect(later(5)?.past_due).toBe(true);
+    expect(later(6)).toBeUndefined();
+  });
+
+  it("counts from the live time when the train runs late", () => {
+    const t = first();
+    const now = t.dep + 11 * 60_000;
+    const snap = snapshot(now, { [t.trip_id]: { delay: 8 * 60, stops: {} } });
+    const row = board("mountain_view", "san_francisco", now, snap)!.trains.find((x) => x.trip_id === t.trip_id);
+    expect(row?.past_due).toBe(true);
+    const gone = t.dep + 14 * 60_000;
+    expect(board("mountain_view", "san_francisco", gone, snapshot(gone, { [t.trip_id]: { delay: 8 * 60, stops: {} } }))!.trains.some((x) => x.trip_id === t.trip_id)).toBe(false);
+  });
+
+  it("counts from the schedule when the train is early", () => {
+    const t = first();
+    const now = t.dep + 4 * 60_000;
+    const row = board("mountain_view", "san_francisco", now, snapshot(now, { [t.trip_id]: { delay: -3 * 60, stops: {} } }))!.trains.find((x) => x.trip_id === t.trip_id);
+    expect(row?.past_due).toBe(true);
+  });
+
+  it("doesn't use up the board's room or win the insights", () => {
+    const t = first();
+    const b = board("mountain_view", "san_francisco", t.dep + 2 * 60_000, null)!;
+    expect(b.trains.filter((x) => !x.past_due)).toHaveLength(BOARD_TRAINS);
+    const row = b.trains.find((x) => x.trip_id === t.trip_id)!;
+    expect(row.first_in).toBe(false);
+    expect(row.shortest).toBe(false);
+  });
+
+  it("keeps a train you can't reach any more, for those at the platform", () => {
+    const t = first();
+    const row = board("mountain_view", "san_francisco", t.dep - 2 * 60_000, null, "morning", undefined, { walkMinutes: 10 })!.trains.find((x) => x.trip_id === t.trip_id);
+    expect(row?.catch).toBe("missed");
+  });
+
+  it("leaves the alert engine's view alone", () => {
+    const t = first();
+    expect(departures("mountain_view", "san_francisco", t.dep + 2 * 60_000, null, { lookbackMs: 0 }).some((x) => x.trip_id === t.trip_id)).toBe(false);
   });
 });

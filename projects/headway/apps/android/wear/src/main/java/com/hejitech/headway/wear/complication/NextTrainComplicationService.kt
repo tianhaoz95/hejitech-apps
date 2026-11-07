@@ -21,7 +21,7 @@ class NextTrainComplicationService : SuspendingComplicationDataSourceService() {
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
         WearStore.init(applicationContext)
         val state = WearStore.syncState.value
-        val train = state?.board?.trains?.firstOrNull()
+        val train = state?.board?.trains?.firstOrNull { !it.pastDue }
         val toShort = state?.board?.to?.short ?: "SF"
 
         if (train == null) {

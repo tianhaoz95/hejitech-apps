@@ -85,4 +85,33 @@ final class HeadwayKitTests: XCTestCase {
     func testErrorMessagesComeFromTheWorker() {
         XCTAssertEqual(BackendError.http(400, #"{"error":"that code is wrong"}"#).errorDescription, "that code is wrong")
     }
+
+    func testOldSettingsGetDefaultsForNewChoices() throws {
+        let json = #"{"morning":null,"evening":null,"switch_at":"12:00","days":[0],"alerts":{"delay":true,"delay_threshold":5,"cancellation":true,"service":true,"leave_now":true,"arrival":true,"arrival_minutes":5}}"#
+        let s = try JSONDecoder().decode(Settings.self, from: Data(json.utf8))
+        XCTAssertEqual(s.onTrain, .card)
+        XCTAssertEqual(s.alerts.scope, .priority)
+    }
+
+    func testNewChoicesSurviveARoundTrip() throws {
+        var s = Settings.defaults
+        s.onTrain = .background
+        s.alerts.scope = .all
+        let back = try JSONDecoder().decode(Settings.self, from: JSONEncoder().encode(s))
+        XCTAssertEqual(back.onTrain, .background)
+        XCTAssertEqual(back.alerts.scope, .all)
+    }
+
+    func testAPastDueTrainSaysSo() {
+        let t = BoardTrain(train: "513", dep: 1_000_000, arr: 2_000_000, predDep: 1_000_000, predArr: 2_000_000, pastDue: true)
+        XCTAssertEqual(t.dueLabel(now: Date(timeIntervalSince1970: 1_060)), "Due")
+        XCTAssertEqual(t.dueLabel(now: Date(timeIntervalSince1970: 1_200)), "May have left")
+    }
+
+    func testBoardDecodesTheOnTrainCard() throws {
+        let json = #"{"board":null,"has_commute":true,"saved":true,"tracked":null,"on_train":{"trip_id":"t","service_date":"20261106","confidence":"high","train":"513","kind":"EXP","dir":"N","from":{"id":"a","name":"A","short":"A"},"to":{"id":"b","name":"B","short":"B"},"to_source":"commute","next":{"id":"b","name":"B","short":"B","pred":5},"pred_arr":5,"arr":5,"delay_min":null,"stops_left":1,"stops":[{"id":"b","name":"B","short":"B","pred":5,"status":"now"}],"alerts":[],"tracked":false,"live":true}}"#
+        let b = try JSONDecoder().decode(MyBoard.self, from: Data(json.utf8))
+        XCTAssertEqual(b.onTrain?.train, "513")
+        XCTAssertTrue(b.onTrain?.isSure == true)
+    }
 }

@@ -99,3 +99,29 @@ calls made while building, with the reason for each.
   nothing about location is stored or logged. The board's `walk_minutes` becomes the estimate (so
   leave-by and catch states follow it) and each train gets `buffer_min`. Leave-now pushes still use the
   leg's `walk_minutes`: the cron has no location, by design.
+
+## Issue #7 (2026-11-06): on the train, late trains, priority alerts
+
+The owner's choices: all three on-train behaviours are options in Settings (`off`, `card` (default),
+`auto`, `background`) on every app; the 5 minutes count from your boarding station; non-priority alerts
+are quiet and Priority only is the default.
+
+- **Detection is in core and matches trains, not just speed** (`ontrain.ts`). Fast along the line isn't
+  enough: a road runs beside it. A fix must also fit a running train's position within 3 minutes (6
+  without live data). Only `high` confidence (at a station first, or above road speed) may start
+  tracking by itself; `low` says "Looks like".
+- **Fixes aren't stored.** They come with a request and go. The match (a trip, no location) lives in KV
+  for up to 30 minutes, not a table, so it needs no migration and can't grow into a location history.
+- **Stopping auto-tracking sticks for the ride** (`auto_tracked`), and "Not on it" holds 20 minutes.
+- **Background on iPhone wakes on significant moves**, then takes 45 seconds of fixes (speed needs a few
+  in a row), rather than following continuously: battery, and App Review. Android can only follow from a
+  foreground service, so a notification shows while it watches; its session is in memory, so it stops
+  with the app process until a sign-in survives one.
+- **Lingering is for boards only.** `lingerMs` is set by `board()`; the alert engine still ignores trains
+  that left. A board also keeps trains you can't reach from where you are ("Missed"): you may be on the
+  platform. They no longer win "First to" or a tip.
+- **Priority reads what an alert says.** Feeds only say which stations: a named train, direction, clock
+  time or active period that misses your leg makes it non-priority. An alert saying none of those counts,
+  so nothing that may matter goes quiet because of its wording.
+- **Quiet alerts have their own `q:` keys**, so a train that later becomes priority still gets its normal
+  alert. They follow your commute days too: `days` already means "only on these days".

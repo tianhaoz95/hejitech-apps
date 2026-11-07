@@ -2,6 +2,7 @@ package com.hejitech.headway.core.sync
 
 import com.hejitech.headway.core.model.Board
 import com.hejitech.headway.core.model.ExpressPreference
+import com.hejitech.headway.core.model.OnTrainCard
 import com.hejitech.headway.core.model.Station
 import com.hejitech.headway.core.model.TrackedWithProgress
 import kotlinx.serialization.Serializable
@@ -12,6 +13,7 @@ import kotlinx.serialization.json.Json
 data class WatchSyncState(
     val board: Board? = null,
     val tracked: TrackedWithProgress? = null,
+    val onTrain: OnTrainCard? = null,
     val hasCommute: Boolean = false,
     val stations: List<Station> = emptyList(),
     val expressPreference: ExpressPreference = ExpressPreference.ALL,

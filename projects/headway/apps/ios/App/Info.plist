@@ -38,8 +38,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>If you choose it in Settings, Headway notices when you board a train with the app closed and starts tracking it, so you get your stop alert. Your location is never stored.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Headway estimates how long your walk or drive to the station takes from where you are, so leave-by times fit. Your location is never stored.</string>
+	<string>Headway estimates how long your trip to the station takes from where you are, and notices when you are on a train to show your next stop and arrival. Your location is never stored.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
@@ -47,6 +49,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>location</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

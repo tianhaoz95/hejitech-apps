@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { board, checkSettings, commuteBoard, decodeFeed, defaultSettings, encode, LINE_PX, MAX_LINES, Navigator, textPx, progress, station, STATIONS, type World } from "../src/index.ts";
+import { board, checkSettings, commuteBoard, decodeFeed, defaultSettings, encode, LINE_PX, MAX_LINES, Navigator, onTrainLines, trainRow, textPx, progress, station, STATIONS, type World } from "../src/index.ts";
 import { at, commuter, firstTrain, snapshot, WEEKDAY } from "./helpers.ts";
 
 const now = at(WEEKDAY, "07:55");
@@ -170,5 +170,51 @@ describe("GTFS-Realtime", () => {
     expect(f.trips["154"].cancelled).toBe(true);
     expect(f.trips["156"].delay).toBe(-120);
     expect(f.alerts).toEqual([{ id: "a1", header: "Delays at Mountain View", description: "Up to 15 minutes.", start: 1_792_990_000, stations: ["mountain_view"], routes: [], effect: "SIGNIFICANT_DELAYS" }]);
+  });
+});
+
+describe("on the train", () => {
+  const card = (over = {}) => ({
+    trip_id: "t1", service_date: "20261027", confidence: "high" as const, train: "513", kind: "EXP" as const, dir: "N" as const,
+    from: { id: "mountain_view", name: "Mountain View", short: "MTN VIEW" }, to: { id: "san_francisco", name: "San Francisco", short: "SF" }, to_source: "commute" as const,
+    next: { id: "palo_alto", name: "Palo Alto", short: "PALO ALTO", pred: 1_000_000 }, pred_arr: 3_000_000, arr: 3_000_000, delay_min: 4, stops_left: 4, stops: [], alerts: [], tracked: false, live: true, ...over,
+  });
+  const world = (onTrain: ReturnType<typeof card> | null) => ({ board: null, progress: null, onTrain, hasCommute: true, custom: false, now: 0 });
+
+  it("opens once per ride, and backing out stays out", () => {
+    const nav = new Navigator();
+    expect(nav.lines(world(card())).join("\n")).toContain("ON 513 EXP");
+    expect(nav.screen).toBe("on_train");
+    nav.input("double_tap", world(card()));
+    expect(nav.screen).toBe("board");
+    nav.lines(world(card()));
+    expect(nav.screen).toBe("board");
+  });
+
+  it("shows the next stop, the arrival, and what a tap does", () => {
+    const text = onTrainLines(card(), 0).join("\n");
+    expect(text).toContain("Next: PALO ALTO");
+    expect(text).toContain("3 stops to go");
+    expect(text).toContain("tap: track");
+    expect(onTrainLines(card({ tracked: true }), 0).join("\n")).toContain("tap: refresh");
+  });
+
+  it("tracks on a tap, refreshes once tracked", () => {
+    const nav = new Navigator();
+    nav.lines(world(card()));
+    expect(nav.input("tap", world(card()))[0]).toMatchObject({ kind: "track_on_train" });
+    expect(nav.input("tap", world(card({ tracked: true })))[0]).toEqual({ kind: "refresh" });
+  });
+
+  it("goes back to the board when the ride ends", () => {
+    const nav = new Navigator();
+    nav.lines(world(card()));
+    nav.lines(world(null));
+    expect(nav.screen).toBe("board");
+  });
+
+  it("says a train is past its time", () => {
+    const t = { trip_id: "x", train: "101", kind: "LOC", dir: "N", service_date: "20261027", dep: 0, arr: 60_000, pred_dep: 0, pred_arr: 60_000, delay_min: null, status: "scheduled", stops_between: 1, past_due: true } as const;
+    expect(trainRow(t, 120_000, false)).toContain("due?");
   });
 });

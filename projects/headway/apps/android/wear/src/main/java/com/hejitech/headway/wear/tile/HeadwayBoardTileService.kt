@@ -39,7 +39,7 @@ class HeadwayBoardTileService : TileService() {
         WearStore.init(applicationContext)
         val state = WearStore.syncState.value
         val board = state?.board
-        val nextTrain = board?.trains?.firstOrNull()
+        val nextTrain = board?.trains?.firstOrNull { !it.pastDue }
 
         val layout = Layout.Builder().setRoot(buildTileLayout(board, nextTrain)).build()
         TileBuilders.Tile.Builder()

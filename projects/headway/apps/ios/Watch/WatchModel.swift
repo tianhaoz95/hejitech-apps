@@ -13,6 +13,7 @@ import WidgetKit
 final class WatchModel: NSObject, WCSessionDelegate {
     var board: Board?
     var tracked: TrackedWithProgress?
+    var onTrain: OnTrainCard?
     var hasCommute: Bool = false
     var stations: [Station] = []
     var expressPreference: ExpressPreference = .all
@@ -50,6 +51,7 @@ final class WatchModel: NSObject, WCSessionDelegate {
         self.session = state.session
         self.board = state.board
         self.tracked = state.tracked
+        self.onTrain = state.onTrain
         self.hasCommute = state.hasCommute
         if !state.stations.isEmpty { self.stations = state.stations }
         self.expressPreference = state.expressPreference
@@ -87,6 +89,7 @@ final class WatchModel: NSObject, WCSessionDelegate {
                 self.board = r.board
                 self.hasCommute = r.hasCommute
                 self.tracked = r.tracked
+                self.onTrain = r.onTrain
                 self.error = nil
 
                 let state = WatchSyncState(
@@ -157,6 +160,25 @@ final class WatchModel: NSObject, WCSessionDelegate {
                 from: b.from.id,
                 to: b.to.id
             ))
+            await refresh()
+        }
+    }
+
+    /// Tracks the train the iPhone sees you riding.
+    func trackOnTrain(_ card: OnTrainCard) async {
+        WKInterfaceDevice.current().play(.success)
+        let payload: [String: Any] = [
+            WatchMessage.kind: WatchMessage.kindTrack,
+            WatchMessage.tripId: card.tripId,
+            WatchMessage.serviceDate: card.serviceDate,
+            WatchMessage.fromStation: card.from.id,
+            WatchMessage.toStation: card.to.id
+        ]
+        if WCSession.isSupported(), WCSession.default.isReachable {
+            WCSession.default.sendMessage(payload, replyHandler: nil)
+        }
+        if session != nil {
+            try? await backend.track(Tracked(tripId: card.tripId, serviceDate: card.serviceDate, from: card.from.id, to: card.to.id))
             await refresh()
         }
     }

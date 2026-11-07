@@ -61,6 +61,19 @@ class WearViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Tracks the train the phone sees you riding (through the phone, which holds the session). */
+    fun trackOnTrain(card: OnTrainCard) {
+        viewModelScope.launch {
+            sendActionToPhone(buildJsonObject {
+                put(WatchMessage.KEY_ACTION, WatchMessage.ACTION_TRACK)
+                put(WatchMessage.KEY_TRIP_ID, card.tripId)
+                put(WatchMessage.KEY_SERVICE_DATE, card.serviceDate)
+                put(WatchMessage.KEY_FROM, card.from.id)
+                put(WatchMessage.KEY_TO, card.to.id)
+            }.toString())
+        }
+    }
+
     fun flipStations() {
         viewModelScope.launch {
             val current = syncState.value?.board ?: return@launch

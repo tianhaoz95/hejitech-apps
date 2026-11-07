@@ -28,6 +28,7 @@ public struct WatchSyncState: Codable, Sendable {
     public var session: AuthSession?
     public var board: Board?
     public var tracked: TrackedWithProgress?
+    public var onTrain: OnTrainCard?
     public var hasCommute: Bool
     public var stations: [Station]
     public var expressPreference: ExpressPreference
@@ -37,6 +38,7 @@ public struct WatchSyncState: Codable, Sendable {
         session: AuthSession? = nil,
         board: Board? = nil,
         tracked: TrackedWithProgress? = nil,
+        onTrain: OnTrainCard? = nil,
         hasCommute: Bool = false,
         stations: [Station] = [],
         expressPreference: ExpressPreference = .all,
@@ -45,6 +47,7 @@ public struct WatchSyncState: Codable, Sendable {
         self.session = session
         self.board = board
         self.tracked = tracked
+        self.onTrain = onTrain
         self.hasCommute = hasCommute
         self.stations = stations
         self.expressPreference = expressPreference

@@ -175,6 +175,79 @@ await step("wrong codes are throttled", async () => {
   assert.equal(last.status, 429);
 });
 
+// ---------------------------------------------------------------- on a train
+await step("on a train: off asks nothing, a ride shows a card everywhere, auto tracks once, not-on-it holds", async () => {
+  const { departures, distanceM, station, tripProgressStops } = await import("../packages/core/src/index.ts");
+  const save = async (over) => {
+    const cur = (await call("/api/settings", { auth: session })).body.settings;
+    const r = await call("/api/settings", { method: "PUT", auth: session, body: { settings: { ...cur, ...over } } });
+    assert.equal(r.status, 200, r.text);
+    return r.body.settings;
+  };
+  await call("/api/track", { method: "DELETE", auth: session });
+  const before = (await call("/api/settings", { auth: session })).body.settings;
+  assert.equal(before.on_train, "card", "the default");
+  assert.equal(before.alerts.scope, "priority", "the default");
+  const bad = await call("/api/settings", { method: "PUT", auth: session, body: { settings: { ...before, on_train: "sometimes" } } });
+  assert.equal(bad.status, 422);
+  assert.equal((await call("/api/me/on-train", { method: "POST", body: { samples: [] } })).status, 401, "needs a session");
+
+  // A train running now, and fixes along its current stretch.
+  const now = Date.now();
+  const running = departures("san_francisco", "sj_diridon", now, null, { lookbackMs: 90 * 60_000 }).concat(departures("sj_diridon", "san_francisco", now, null, { lookbackMs: 90 * 60_000 })).find((t) => t.dep < now - 60_000 && t.arr > now + 5 * 60_000);
+  await save({ on_train: "off" });
+  assert.equal((await call("/api/me/on-train", { method: "POST", auth: session, body: { samples: [] } })).body.on_train, null);
+  await save({ on_train: "card" });
+  if (!running) { console.log("    (no train running right now: skipped the ride itself)"); return; }
+
+  const [from, to] = running.dir === "N" ? ["sj_diridon", "san_francisco"] : ["san_francisco", "sj_diridon"];
+  const stops = tripProgressStops({ trip_id: running.trip_id, service_date: running.service_date, from, to }, now, null);
+  const i = stops.findIndex((x) => x.status === "now");
+  const a = station(stops[Math.max(0, i - 1)].id), b = station(stops[i].id);
+  const sp = (distanceM(a, b) / 1000) < 1 ? 15 : 25;
+  const samples = [0.35, 0.45, 0.55].map((f, n) => ({ lat: a.lat + f * (b.lat - a.lat), lon: a.lon + f * (b.lon - a.lon), at: now - (2 - n) * 15_000, speed: sp }));
+  const r = await call("/api/me/on-train", { method: "POST", auth: session, body: { samples } });
+  assert.equal(r.status, 200, r.text);
+  // The nearest train wins, and that may be another one close by: what matters is the card.
+  if (!r.body.on_train) { console.log("    (fixes didn't line up with a train: skipped the rest)"); return; }
+  assert.equal(r.body.auto_tracked, false, "card mode doesn't track");
+  assert.ok(r.body.on_train.stops.length > 0);
+  const onBoard = (await call("/api/me/board", { auth: session })).body;
+  assert.equal(onBoard.on_train?.trip_id, r.body.on_train.trip_id, "on the commute board");
+  assert.equal((await call("/api/me/board", { auth: SEED_DEVICE })).body.on_train?.trip_id, r.body.on_train.trip_id, "on the glasses");
+  assert.equal(onBoard.tracked, null);
+  assert.ok(!JSON.stringify(r.body).includes(String(samples[0].lat)), "no location comes back");
+
+  await call("/api/track", { method: "DELETE", auth: session });
+  await save({ on_train: "auto" });
+  const auto = await call("/api/me/on-train", { method: "POST", auth: session, body: { samples } });
+  assert.equal(auto.body.auto_tracked, auto.body.on_train?.confidence === "high", "auto tracks when sure");
+  if (auto.body.auto_tracked) {
+    assert.ok((await call("/api/me/board", { auth: session })).body.tracked, "tracked");
+    await call("/api/track", { method: "DELETE", auth: session });
+    const again = await call("/api/me/on-train", { method: "POST", auth: session, body: { samples } });
+    assert.equal(again.body.auto_tracked, false, "stopping it doesn't start it again");
+  }
+
+  // The second user: "Not on it" holds for 20 minutes, which would hide the seed rider's card in a dev session.
+  assert.ok((await call("/api/me/on-train", { method: "POST", auth: other, body: { samples } })).body.on_train, "their own ride");
+  assert.equal((await call("/api/me/on-train", { method: "DELETE", auth: other })).status, 200);
+  assert.equal((await call("/api/me/board", { auth: other })).body.on_train, null, "not on it");
+  assert.equal((await call("/api/me/on-train", { method: "POST", auth: other, body: { samples } })).body.on_train, null, "stays dismissed");
+  await call("/api/me/on-train", { method: "POST", auth: session, body: { samples: [] } });
+  await save({ on_train: "card" });
+  await call("/api/track", { method: "DELETE", auth: session });
+});
+
+await step("priority: the alert choice is saved", async () => {
+  const cur = (await call("/api/settings", { auth: session })).body.settings;
+  const r = await call("/api/settings", { method: "PUT", auth: session, body: { settings: { ...cur, alerts: { ...cur.alerts, scope: "all" } } } });
+  assert.equal(r.body.settings.alerts.scope, "all");
+  const bad = await call("/api/settings", { method: "PUT", auth: session, body: { settings: { ...cur, alerts: { ...cur.alerts, scope: "loud" } } } });
+  assert.equal(bad.status, 422);
+  await call("/api/settings", { method: "PUT", auth: session, body: { settings: cur } });
+});
+
 // ---------------------------------------------------------------- push
 await step("push registration: hex tokens, one owner per phone, no pushes without APNs keys", async () => {
   const token = randomBytes(32).toString("hex");

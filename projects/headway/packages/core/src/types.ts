@@ -1,6 +1,8 @@
 // Shared shapes: the compiled timetable, a live snapshot of Caltrain's realtime feeds, a user's
 // settings, and the boards every surface (glasses, iPhone, web, MCP, alert engine) shows.
 
+import type { EtaStopInfo } from "./schedule.ts";
+
 export type ServiceKind = "LOC" | "LTD" | "EXP" | "SCC";
 export type ExpressPreference = "all" | "prefer_express" | "express_only";
 /** N = toward San Francisco, S = toward San Jose / Gilroy. */
@@ -130,7 +132,22 @@ export interface AlertSettings {
   arrival_minutes: number;
   /** Alert when a later-departing train arrives sooner (overtakes your train). */
   better_train: boolean;
+  /** Priority only, or priority plus quiet notifications for everything else on your stations. */
+  scope: AlertScope;
 }
+
+/**
+ * `priority`: only what affects your commute (your direction, inside your watch window).
+ * `all`: those, plus delays and alerts on your stations at other times or the other way, delivered quietly.
+ */
+export type AlertScope = "priority" | "all";
+
+/**
+ * What Headway does when your location shows you're on a train.
+ * `off`: nothing. `card`: shows an in-train card with the app open; tracking is one tap.
+ * `auto`: also starts tracking, with the app open. `background`: `auto`, with the app closed too (Always location).
+ */
+export type OnTrainMode = "off" | "card" | "auto" | "background";
 
 export interface Settings {
   morning: Leg | null;
@@ -144,6 +161,8 @@ export interface Settings {
   express_preference?: ExpressPreference;
   /** Optional first name shown on shared live ETA pages (e.g. "Sam"). Max 20 chars. */
   share_name?: string | null;
+  /** What to do on detecting that you're on a train (default `card`). */
+  on_train?: OnTrainMode;
 }
 
 // ---------------------------------------------------------------- boards
@@ -185,6 +204,8 @@ export interface BoardTrain {
   first_in?: boolean | null;
   /** True if this train has the shortest ride among visible non-cancelled trains. */
   shortest?: boolean | null;
+  /** Its time at your station has passed, but it stays listed for BOARD_LINGER_MS: real trains run late. */
+  past_due?: boolean;
 }
 
 export type LegName = "morning" | "evening" | "custom";
@@ -259,5 +280,50 @@ export interface BoardActivityTrain {
 /** ActivityKit content state of BoardActivityAttributes; pushed by the cron, mirrored in HeadwayKit. */
 export interface BoardActivityState {
   trains: BoardActivityTrain[];
+  live: boolean;
+}
+
+// ---------------------------------------------------------------- on a train
+
+/** One location fix from a phone. Goes with a request and is never stored. */
+export interface OnTrainSample {
+  lat: number;
+  lon: number;
+  /** epoch ms */
+  at: number;
+  /** Metres per second as reported by the phone; absent or negative: unknown. */
+  speed?: number;
+}
+
+/** `high`: boarded at a station or moving faster than road traffic near the tracks, so it may start tracking. */
+export type OnTrainConfidence = "high" | "low";
+
+/** The train a rider seems to be on (kept briefly in KV: no location). */
+export interface OnTrainMatch {
+  trip_id: string;
+  service_date: string;
+  confidence: OnTrainConfidence;
+}
+
+/** What a rider on the train wants to see instead of when to leave for it. */
+export interface OnTrainCard extends OnTrainMatch {
+  train: string;
+  kind: ServiceKind;
+  dir: Direction;
+  /** The last stop the train left: `from` when tracking it. */
+  from: Pick<Station, "id" | "name" | "short">;
+  to: Pick<Station, "id" | "name" | "short">;
+  /** `commute`: your leg's destination. `terminal`: no leg matches, so the end of the line. */
+  to_source: "commute" | "tracked" | "terminal";
+  next: { id: string; name: string; short: string; pred: number } | null;
+  pred_arr: number;
+  arr: number;
+  delay_min: number | null;
+  stops_left: number;
+  stops: EtaStopInfo[];
+  /** Caltrain alerts for the stops ahead, without those naming the other direction. */
+  alerts: ServiceAlert[];
+  /** You're already tracking this train. */
+  tracked: boolean;
   live: boolean;
 }

@@ -1,7 +1,7 @@
 // The plugin's logic without the Even SDK: where boards come from (the user's commute when paired,
 // a pair picked on the glasses, the bundled timetable when offline), tracking, and what to show.
 // main.ts wires it to the bridge (glasses + R1) and the phone page; tests drive it with fakes.
-import { board as scheduleBoard, Navigator, progress, type Board, type Command, type Input, type Tracked, type TrainProgress, type World } from "@headway/core";
+import { board as scheduleBoard, Navigator, progress, type Board, type Command, type Input, type OnTrainCard, type Tracked, type TrainProgress, type World } from "@headway/core";
 
 export interface Store {
   get(k: string): Promise<string | null>;
@@ -51,6 +51,7 @@ export class HeadwayApp {
   hasCommute = false;
   tracked: Tracked | null = null;
   progress: TrainProgress | null = null;
+  onTrain: OnTrainCard | null = null;
   paired = false;
   note: string | undefined;
   private pair: Pair | null = null;
@@ -70,7 +71,7 @@ export class HeadwayApp {
   }
 
   world(): World {
-    return { board: this.board, progress: this.progress, hasCommute: this.hasCommute, custom: Boolean(this.pair), now: this.now(), note: this.note };
+    return { board: this.board, progress: this.progress, onTrain: this.onTrain, hasCommute: this.hasCommute, custom: Boolean(this.pair), now: this.now(), note: this.note };
   }
 
   render() {
@@ -126,9 +127,10 @@ export class HeadwayApp {
           return this.refresh();
         }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const body = (await res.json()) as { board: Board | null; has_commute: boolean; tracked: (Tracked & { progress: TrainProgress }) | null };
+        const body = (await res.json()) as { board: Board | null; has_commute: boolean; tracked: (Tracked & { progress: TrainProgress }) | null; on_train?: OnTrainCard | null };
         this.board = body.board;
         this.hasCommute = body.has_commute;
+        this.onTrain = body.on_train ?? null;
         // No commute saved yet: a live default board, never an empty screen.
         if (!this.board) this.board = await this.publicBoard(DEFAULT_PAIR);
         // The phone (or an assistant) may have started or stopped tracking.
@@ -137,6 +139,7 @@ export class HeadwayApp {
         await this.opts.store.set(K.tracked, JSON.stringify(this.tracked));
       } else {
         this.hasCommute = false;
+        this.onTrain = null;
         // Unpaired (a reviewer, a first launch): a live board for any pair, the default one first.
         this.board = await this.publicBoard(this.pair ?? DEFAULT_PAIR);
         await this.refreshProgress(null);
@@ -195,8 +198,10 @@ export class HeadwayApp {
         if (c.pair && this.board) this.board = scheduleBoard(c.pair.from, c.pair.to, this.now(), null, "custom") ?? this.board;
         this.render();
         await this.refresh();
-      } else if (c.kind === "track") {
-        const t: Tracked = { trip_id: c.train.trip_id, service_date: c.train.service_date, from: c.from, to: c.to };
+      } else if (c.kind === "track" || c.kind === "track_on_train") {
+        const t: Tracked = c.kind === "track"
+          ? { trip_id: c.train.trip_id, service_date: c.train.service_date, from: c.from, to: c.to }
+          : { trip_id: c.card.trip_id, service_date: c.card.service_date, from: c.card.from.id, to: c.card.to.id };
         await this.setTracked(t);
         this.progress = progress(t, this.now(), null);
         this.render();

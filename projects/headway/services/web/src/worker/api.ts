@@ -2,20 +2,22 @@
 //
 // Who may call what:
 //   none                          stations, any board, a train's progress, status; POST /api/pair (throttled)
-//   session or glasses token      the user's commute board, the tracked train
+//   session or glasses token      the user's commute board, the tracked train, the train they're on
 //   Supabase session (web, iPhone) settings, pairing codes, devices, push registration, agent tokens, delete data
 import { appleKey, revokeIfPossible } from "./apple.ts";
-import { board, checkSettings, commuteBoard, newLeg, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type ExpressPreference, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
+import { board, checkSettings, clock, commuteBoard, detectOnTrain, newLeg, onTrainCard, stillOnTrain, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type ExpressPreference, type OnTrainSample, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
 import { NOT_BOARD_ACTIVITY, pushConfigured, sendPush } from "./push.ts";
 import { reviewSignIn } from "./review.ts";
 import {
-  admin, bearer, createEtaShare, json, loadEtaShare, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
-  revokeEtaShares, saveSettings, saveTracked, sha256, supabaseUser, updateEtaShareExpiry, type Db, type Env,
+  admin, bearer, createEtaShare, json, loadEtaShare, loadOnTrain, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
+  revokeEtaShares, saveOnTrain, type OnTrainSession, saveSettings, saveTracked, sha256, supabaseUser, updateEtaShareExpiry, type Db, type Env,
 } from "./store.ts";
 
 /** Every table holding a user's Headway rows (DELETE /api/account, the review account's reset). */
 const USER_TABLES = ["profiles", "pairing_codes", "device_tokens", "access_tokens", "push_devices", "activity_tokens", "tracked_trips", "sent_notifications"] as const;
 
+/** "Not on this train" holds this long, so the same stretch of track doesn't ask again. */
+const DISMISS_ON_TRAIN_MS = 20 * 60_000;
 const PAIR_FAILURES_PER_WINDOW = 10;
 const PAIR_WINDOW_SEC = 600;
 
@@ -169,7 +171,9 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
       ...(origin ? { origin, travelMode: travelMode ?? legMode } : {}),
     });
     const p = tracked ? progress(tracked, now, snapshot) : null;
-    return reply({ board: b, has_commute: Boolean(settings.morning || settings.evening), saved, tracked: tracked && p && !p.arrived ? { ...tracked, progress: p } : null });
+    const ride = settings.on_train === "off" ? null : await loadOnTrain(env, userId);
+    const on_train = ride && !(ride.dismissed_until && ride.dismissed_until > now) ? onTrainCard(ride, settings, tracked, now, snapshot) : null;
+    return reply({ board: b, has_commute: Boolean(settings.morning || settings.evening), saved, tracked: tracked && p && !p.arrived ? { ...tracked, progress: p } : null, on_train });
   }
   if (path === "/api/track" && req.method === "POST") {
     const t = checkTracked((await req.json().catch(() => null)) as Partial<Tracked> | null);
@@ -228,6 +232,60 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
 
   if (who.via !== "session") return reply({ error: "this needs the Headway app (glasses only read boards and track trains)" }, 403);
 
+  // ------------------------------------------------------------ the train you're on
+  if (path === "/api/me/on-train" && req.method === "POST") {
+    const body = (await req.json().catch(() => null)) as { samples?: OnTrainSample[]; background?: boolean } | null;
+    const samples = Array.isArray(body?.samples) ? body!.samples.slice(-20) : [];
+    const [{ settings }, snapshot, tracked, session] = await Promise.all([loadSettings(db, userId), loadSnapshot(db), loadTracked(db, userId), loadOnTrain(env, userId)]);
+    const mode = settings.on_train ?? "card";
+    if (mode === "off") return reply({ on_train: null, auto_tracked: false });
+    if (session?.dismissed_until && session.dismissed_until > now) return reply({ on_train: null, auto_tracked: false });
+
+    const kept = session && !session.dismissed_until && stillOnTrain(session, samples, now, snapshot) ? session : null;
+    const found = detectOnTrain(samples, now, snapshot);
+    const sameTrip = kept && found && found.trip_id === kept.trip_id && found.service_date === kept.service_date;
+    // A confident match replaces a tentative guess at another train; otherwise the ride holds.
+    const ride = kept && found && !sameTrip && kept.confidence === "low" && found.confidence === "high" ? found : kept ?? found;
+    if (!ride) {
+      if (session) await saveOnTrain(env, userId, null);
+      return reply({ on_train: null, auto_tracked: false });
+    }
+    // A low-confidence match can become high on a later fix, never the other way round.
+    const confidence = sameTrip && found!.confidence === "high" ? "high" : ride.confidence;
+    const next: OnTrainSession = { trip_id: ride.trip_id, service_date: ride.service_date, confidence, auto_tracked: ride === kept ? kept?.auto_tracked : undefined, saved_at: kept?.saved_at ?? now };
+
+    let current = tracked;
+    let autoTracked = false;
+    const mayTrack = (mode === "auto" || mode === "background") && confidence === "high" && !next.auto_tracked && (!tracked || tracked.trip_id !== ride.trip_id);
+    if (mayTrack && !tracked) {
+      const card = onTrainCard(next, settings, null, now, snapshot);
+      if (card) {
+        current = { trip_id: card.trip_id, service_date: card.service_date, from: card.from.id, to: card.to.id };
+        await saveTracked(db, userId, current);
+        next.auto_tracked = true;
+        autoTracked = true;
+        if (body?.background && pushConfigured(env)) {
+          const n: Notification = {
+            key: `on_train:${card.service_date}:${card.trip_id}`, kind: "on_train", priority: true, thread: `train:${card.service_date}:${card.trip_id}`,
+            title: `On train ${card.train}`,
+            body: `Tracking it to ${card.to.name}, arriving ${clock(card.pred_arr)}. Not on it? Stop tracking in Headway.`,
+          };
+          const { data } = await db.from("push_devices").select("id, apns_token, environment").eq("user_id", userId);
+          await Promise.all((data ?? []).map((d) => sendPush(env, d, n)));
+        }
+      }
+    }
+    // Writes only when something changed, or to keep the session from expiring mid-ride.
+    const changed = !session || session.trip_id !== next.trip_id || session.confidence !== next.confidence || Boolean(session.auto_tracked) !== Boolean(next.auto_tracked);
+    if (changed || now - (session?.saved_at ?? 0) > 5 * 60_000) await saveOnTrain(env, userId, { ...next, saved_at: now });
+    return reply({ on_train: onTrainCard(next, settings, current, now, snapshot), auto_tracked: autoTracked });
+  }
+  if (path === "/api/me/on-train" && req.method === "DELETE") {
+    const session = await loadOnTrain(env, userId);
+    await saveOnTrain(env, userId, { trip_id: session?.trip_id ?? "", service_date: session?.service_date ?? "", confidence: "low", dismissed_until: now + DISMISS_ON_TRAIN_MS, saved_at: now });
+    return reply({ ok: true });
+  }
+
   // ------------------------------------------------------------ settings
   if (path === "/api/settings" && req.method === "GET") return reply({ ...(await loadSettings(db, userId)), email: who.email ?? null });
   if (path === "/api/settings" && req.method === "PUT") {
@@ -282,7 +340,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     if (!pushConfigured(env)) return reply({ error: "push isn't set up on the server yet" }, 503);
     const { data } = await db.from("push_devices").select("id, apns_token, environment").eq("user_id", userId);
     if (!data?.length) return reply({ error: "no iPhone registered for alerts" }, 404);
-    const n: Notification = { key: `test:${now}`, kind: "service", thread: "headway-test", title: "Headway alerts work", body: "You'll hear from Headway like this when your train is late, cancelled or almost at your stop." };
+    const n: Notification = { key: `test:${now}`, kind: "service", priority: true, thread: "headway-test", title: "Headway alerts work", body: "You'll hear from Headway like this when your train is late, cancelled or almost at your stop." };
     const results = await Promise.all(data.map((d) => sendPush(env, d, n)));
     return reply({ results: results.map((r) => (r.ok ? "sent" : r.reason)) });
   }
@@ -314,6 +372,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
       const { error } = await db.from(t).delete().eq("user_id", userId);
       if (error) return reply({ error: `couldn't delete ${t}: ${error.message}` }, 500);
     }
+    await saveOnTrain(env, userId, null);
     return reply({ ok: true, apple_revoked: appleRevoked });
   }
 

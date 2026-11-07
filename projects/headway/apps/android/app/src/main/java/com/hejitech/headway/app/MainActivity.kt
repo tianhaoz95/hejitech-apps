@@ -1,5 +1,12 @@
 package com.hejitech.headway.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.hejitech.headway.core.model.OnTrainMode
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -31,6 +38,40 @@ enum class MainTab(val title: String) {
 class MainActivity : ComponentActivity() {
 
     private val viewModel: HeadwayViewModel by viewModels()
+
+    private val askBackground = registerForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.applyRideWatching() }
+    private val askLocation = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        viewModel.applyRideWatching()
+        // Android asks for "all the time" only after "while using the app".
+        if (wantsBackground && granted[Manifest.permission.ACCESS_FINE_LOCATION] == true && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            askBackground.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+    }
+    private var wantsBackground = false
+
+    /** Asks for the location access an on-train choice needs, then the choice takes effect. */
+    private fun requestRideAccess(mode: OnTrainMode) {
+        if (!mode.usesLocation) return
+        wantsBackground = mode == OnTrainMode.BACKGROUND
+        val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (!fine) {
+            val perms = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && wantsBackground) perms += Manifest.permission.POST_NOTIFICATIONS
+            askLocation.launch(perms.toTypedArray())
+        } else if (wantsBackground && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            askBackground.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        viewModel.onAppVisible(true)
+    }
+
+    override fun onStop() {
+        viewModel.onAppVisible(false)
+        super.onStop()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,7 +122,7 @@ class MainActivity : ComponentActivity() {
                             MainTab.TRAINS -> BoardScreen(viewModel = viewModel)
                             MainTab.COMMUTE -> CommuteScreen(viewModel = viewModel)
                             MainTab.GLASSES -> GlassesScreen(viewModel = viewModel)
-                            MainTab.SETTINGS -> SettingsScreen(viewModel = viewModel)
+                            MainTab.SETTINGS -> SettingsScreen(viewModel = viewModel, onRideModeChosen = ::requestRideAccess)
                         }
                     }
                 }

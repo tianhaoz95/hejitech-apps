@@ -24,7 +24,10 @@ struct WhatsNewView: View {
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
-        ReleaseNotes(version: "1.0.0", date: "October 2026", items: [
+        ReleaseNotes(version: "1.0.0", date: "November 2026", items: [
+            WhatsNewItem(icon: "tram.fill", title: "A card for when you're on the train", description: "Once your location shows you riding, Headway shows your next stop, when you arrive and how many stops are left. Choose in Settings whether it just shows the card, also starts tracking, or also works with the app closed. On your watch and glasses too."),
+            WhatsNewItem(icon: "clock.badge.exclamationmark", title: "Late trains stay on the board", description: "A train stays listed until 5 minutes after its time at your station, marked Due or May have left, because real trains are often a few minutes behind."),
+            WhatsNewItem(icon: "bell.badge", title: "Priority alerts", description: "Alerts now go by whether they affect you: your direction, inside your watch window. A 2 pm delay or one the other way stays quiet. Choose Priority and quiet in Settings to get those too, without a sound."),
             WhatsNewItem(icon: "party.popper.fill", title: "Headway 1.0", description: "The first App Store release. Live Caltrain departures with leave-by times, delay and cancellation alerts, Lock Screen and Home Screen widgets, your watch and Even G2 glasses, all from one commute you set once."),
             WhatsNewItem(icon: "tram.fill", title: "Tidier train rows", description: "A train's status, stops and the Faster mark stay on one line instead of wrapping."),
         ]),

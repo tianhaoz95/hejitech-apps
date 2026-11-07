@@ -32,11 +32,19 @@ struct BoardView: View {
     var body: some View {
         NavigationStack {
             List {
+                if let ride = model.onTrain {
+                    Section {
+                        OnTrainCardView(card: ride, now: now)
+                    }
+                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                    .listRowBackground(Color.clear)
+                }
                 if let t = model.tracked {
-                    Section("Tracking") { TrackedRow(tracked: t, now: now) }
+                    Section("Tracking") { TrackedRow(tracked: t, now: now, compact: model.onTrain?.tripId == t.tripId) }
                 }
                 if let b = model.board {
-                    if let tip = b.tip {
+                    // On the train, when to leave for one is beside the point.
+                    if model.onTrain == nil, let tip = b.tip {
                         Section {
                             InsightBanner(tip: tip)
                         }
@@ -44,7 +52,7 @@ struct BoardView: View {
                         .listRowBackground(Color.clear)
                     }
 
-                    if let walk = b.walkMinutes {
+                    if model.onTrain == nil, let walk = b.walkMinutes {
                         Section {
                             CatchCard(board: b, walkMinutes: walk, now: now)
                         }
@@ -444,7 +452,12 @@ struct TrainRow: View {
                 }
             }
             Spacer()
-            if train.status != .cancelled {
+            if train.pastDue == true {
+                Text(train.dueLabel(now: now))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.trailing)
+            } else if train.status != .cancelled {
                 if let catchState = train.catchState, let leaveBy = train.leaveBy {
                     VStack(alignment: .trailing, spacing: 2) {
                         if catchState == "run" {
@@ -476,7 +489,7 @@ struct TrainRow: View {
                 }
             }
         }
-        .opacity(train.overtakenByTrain != nil ? 0.7 : 1.0)
+        .opacity(train.pastDue == true ? 0.6 : train.overtakenByTrain != nil ? 0.7 : 1.0)
         .accessibilityElement(children: .combine)
     }
 }
@@ -503,12 +516,15 @@ struct TrackedRow: View {
     @Environment(AppModel.self) private var model
     let tracked: TrackedWithProgress
     let now: Date
+    /// The on-train card above already says where this train is: only what you can do about it.
+    var compact = false
     @State private var shareItem: ShareItem?
     @State private var sharing = false
 
     var body: some View {
         let p = tracked.progress
         VStack(alignment: .leading, spacing: 6) {
+            if !compact {
             HStack {
                 Text("Train \(p.train) to \(p.to.name)").font(.headline)
                 Spacer()
@@ -519,6 +535,7 @@ struct TrackedRow: View {
             }
             Text("Arrives \(Clock.time(p.predArr)) · in \(Clock.until(p.predArr, now: now)) · \(max(0, p.stopsLeft - 1)) stops to go")
                 .font(.subheadline).foregroundStyle(.secondary)
+            }
             HStack {
                 Label("Lock Screen & Dynamic Island", systemImage: "dot.radiowaves.left.and.right")
                     .font(.caption)
@@ -607,5 +624,90 @@ struct StationPickerRow: View {
         Picker(title, selection: $selection) {
             ForEach(model.stations) { s in Text(s.name).tag(s.id) }
         }
+    }
+}
+
+/// Shown once your location says you're riding: what's next on this train, not when to leave for one.
+struct OnTrainCardView: View {
+    @Environment(AppModel.self) private var model
+    let card: OnTrainCard
+    let now: Date
+
+    private var stopsAhead: [OnTrainStop] { card.stops.filter { $0.status != "done" } }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Label(card.isSure ? "On train \(card.train)" : "Looks like train \(card.train)", systemImage: "tram.fill")
+                    .font(.headline)
+                Text(card.kindName).font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                if let d = card.delayMin {
+                    Text(d >= 2 ? "\(d) min late" : d <= -2 ? "\(-d) min early" : "On time")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(d >= 2 ? .orange : .green)
+                }
+            }
+
+            if let next = card.next, next.id != card.to.id {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Next stop").foregroundStyle(.secondary)
+                    Text(next.name).fontWeight(.semibold)
+                    Spacer()
+                    Text(Clock.time(next.pred)).monospacedDigit()
+                }
+                .font(.subheadline)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(card.to.name).font(.title3.weight(.bold))
+                    Spacer()
+                    Text(Clock.time(card.predArr)).font(.title3.weight(.bold).monospacedDigit())
+                }
+                Text(destinationLine).font(.footnote).foregroundStyle(.secondary)
+            }
+
+            ForEach(card.alerts.prefix(2)) { a in
+                Label(a.header, systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+            }
+
+            HStack(spacing: 10) {
+                if card.tracked {
+                    Label("Tracking", systemImage: "location.fill").font(.footnote.weight(.semibold)).foregroundStyle(Color.accentColor)
+                } else {
+                    Button("Track") { Task { await model.trackOnTrain() } }
+                        .buttonStyle(.borderedProminent)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+                Menu("Getting off at") {
+                    ForEach(stopsAhead) { s in
+                        Button(s.name) { Task { await model.trackOnTrain(to: s.id) } }
+                    }
+                }
+                .buttonStyle(.bordered)
+                Spacer()
+                if !card.tracked {
+                    Button("Not on it") { Task { await model.dismissOnTrain() } }
+                        .font(.footnote)
+                        .buttonStyle(.borderless)
+                }
+            }
+            .controlSize(.small)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityElement(children: .contain)
+    }
+
+    private var destinationLine: String {
+        let left = max(0, card.stopsLeft - 1)
+        let stops = left == 0 ? "your stop is next" : "\(left) stop\(left == 1 ? "" : "s") before yours"
+        let where_ = card.toSource == "terminal" ? " · end of the line" : ""
+        return "In \(Clock.until(card.predArr, now: now)) · \(stops)\(where_)"
     }
 }

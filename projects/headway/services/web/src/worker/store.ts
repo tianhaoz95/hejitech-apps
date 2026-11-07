@@ -1,7 +1,7 @@
 // Data access for the Worker: the service-role client on the `headway` schema, tokens (only hashes
 // are stored), settings, the realtime snapshot and the tracked train.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { normalizeSettings, type RealtimeSnapshot, type Settings, type Tracked } from "@headway/core";
+import { normalizeSettings, type OnTrainMatch, type RealtimeSnapshot, type Settings, type Tracked } from "@headway/core";
 
 export interface Env {
   OAUTH_KV: KVNamespace;
@@ -226,4 +226,29 @@ export async function supabaseUser(env: Env, req: Request): Promise<{ id: string
   if (!res.ok) return null;
   const u = (await res.json()) as { id: string; email?: string };
   return { id: u.id, email: u.email };
+}
+
+// ---------------------------------------------------------------- the train you're riding
+
+/** KV, not a table: it lasts one ride, and only ever names the train, never where you are. */
+export interface OnTrainSession extends OnTrainMatch {
+  /** Headway has tracked this train for you once: stopping it mustn't start it again. */
+  auto_tracked?: boolean;
+  /** "Not on this train": no card for it (or any other) until then, epoch ms. */
+  dismissed_until?: number;
+  saved_at: number;
+}
+
+const onTrainKey = (userId: string) => `headway:on_train:${userId}`;
+/** A session outlives the gap between refreshes, and a ride ends it sooner. */
+const ON_TRAIN_TTL_SEC = 30 * 60;
+
+export async function loadOnTrain(env: Env, userId: string): Promise<OnTrainSession | null> {
+  const raw = await env.OAUTH_KV.get(onTrainKey(userId));
+  try { return raw ? (JSON.parse(raw) as OnTrainSession) : null; } catch { return null; }
+}
+
+export async function saveOnTrain(env: Env, userId: string, s: OnTrainSession | null): Promise<void> {
+  if (!s) return env.OAUTH_KV.delete(onTrainKey(userId));
+  await env.OAUTH_KV.put(onTrainKey(userId), JSON.stringify(s), { expirationTtl: ON_TRAIN_TTL_SEC });
 }

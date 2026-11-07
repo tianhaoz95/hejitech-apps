@@ -50,10 +50,11 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
-        UIBackgroundModes: [remote-notification]
+        UIBackgroundModes: [remote-notification, location]
         NSSupportsLiveActivities: true
         NSSupportsLiveActivitiesFrequentUpdates: true
-        NSLocationWhenInUseUsageDescription: Headway estimates how long your walk or drive to the station takes from where you are, so leave-by times fit. Your location is never stored.
+        NSLocationWhenInUseUsageDescription: Headway estimates how long your trip to the station takes from where you are, and notices when you are on a train to show your next stop and arrival. Your location is never stored.
+        NSLocationAlwaysAndWhenInUseUsageDescription: If you choose it in Settings, Headway notices when you board a train with the app closed and starts tracking it, so you get your stop alert. Your location is never stored.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         ITSAppUsesNonExemptEncryption: false

@@ -26,6 +26,7 @@ import com.hejitech.headway.core.model.*
 fun BoardScreen(viewModel: HeadwayViewModel) {
     val board by viewModel.board.collectAsState()
     val tracked by viewModel.tracked.collectAsState()
+    val onTrain by viewModel.onTrain.collectAsState()
     val fromStation by viewModel.selectedFrom.collectAsState()
     val toStation by viewModel.selectedTo.collectAsState()
     val stations by viewModel.stations.collectAsState()
@@ -123,6 +124,17 @@ fun BoardScreen(viewModel: HeadwayViewModel) {
                     ) {
                         Text("EXP Only")
                     }
+                }
+            }
+
+            // The train your location shows you riding
+            onTrain?.let { ride ->
+                item {
+                    OnTrainBanner(
+                        card = ride,
+                        onTrack = { stop -> viewModel.trackOnTrain(stop) },
+                        onDismiss = { viewModel.dismissOnTrain() }
+                    )
                 }
             }
 
@@ -333,7 +345,7 @@ fun TrainCard(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    Clock.until(train.predDep),
+                    if (train.pastDue) train.dueLabel() else Clock.until(train.predDep),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
@@ -410,6 +422,79 @@ fun TrainCard(
                     if (isTracked) Icons.Default.LocationOn else Icons.Default.AddLocation,
                     contentDescription = "Track train"
                 )
+            }
+        }
+    }
+}
+
+/** Shown once your location says you're riding: what's next on this train, not when to leave for one. */
+@Composable
+fun OnTrainBanner(card: OnTrainCard, onTrack: (String?) -> Unit, onDismiss: () -> Unit) {
+    var pickStop by remember { mutableStateOf(false) }
+    Card(
+        colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.DirectionsTransit, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    if (card.isSure) "On train ${card.train}" else "Looks like train ${card.train}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(card.kindName, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Spacer(modifier = Modifier.weight(1f))
+                card.delayMin?.let { d ->
+                    Text(
+                        if (d >= 2) "$d min late" else if (d <= -2) "${-d} min early" else "On time",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (d >= 2) StatusAmber else StatusGreen
+                    )
+                }
+            }
+            card.next?.takeIf { it.id != card.to.id }?.let { next ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Next stop ${next.name}", style = MaterialTheme.typography.bodyMedium)
+                    Text(Clock.time(next.pred), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(card.to.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(Clock.time(card.predArr), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            }
+            val left = maxOf(0, card.stopsLeft - 1)
+            val stops = if (left == 0) "your stop is next" else "$left stop${if (left == 1) "" else "s"} before yours"
+            Text(
+                "In ${Clock.until(card.predArr)} · $stops${if (card.toSource == "terminal") " · end of the line" else ""}",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+            card.alerts.take(2).forEach { a ->
+                Text(a.header, style = MaterialTheme.typography.bodySmall, color = StatusAmber)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (card.tracked) {
+                    Text("Tracking", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                } else {
+                    Button(onClick = { onTrack(null) }) { Text("Track") }
+                }
+                Box {
+                    OutlinedButton(onClick = { pickStop = true }) { Text("Getting off at") }
+                    DropdownMenu(expanded = pickStop, onDismissRequest = { pickStop = false }) {
+                        card.stops.filter { it.status != "done" }.forEach { s ->
+                            DropdownMenuItem(text = { Text(s.name) }, onClick = {
+                                pickStop = false
+                                onTrack(s.id)
+                            })
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                if (!card.tracked) TextButton(onClick = onDismiss) { Text("Not on it") }
             }
         }
     }

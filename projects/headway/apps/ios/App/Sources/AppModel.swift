@@ -12,6 +12,8 @@ import WidgetKit
 /// Caltrain's live feed; the app only shows it.
 @MainActor @Observable
 final class AppModel {
+    static let shared = AppModel()
+
     enum Phase { case launching, signedOut, ready }
 
     var phase: Phase = .launching
@@ -19,6 +21,8 @@ final class AppModel {
     var board: Board?
     var hasCommute = false
     var tracked: TrackedWithProgress?
+    /// The train your location shows you riding.
+    var onTrain: OnTrainCard?
     var settings = Settings.defaults
     var settingsSaved = false
     var stations: [Station] = []
@@ -127,6 +131,8 @@ final class AppModel {
             settingsSaved = r.saved
             email = r.email ?? s.email
             phase = .ready
+            rememberOnTrainMode()
+            applyLocationForRides(active: true)
             expressPreference = settings.expressPreference
             await refresh()
             await registerForPushIfAllowed()
@@ -243,6 +249,7 @@ final class AppModel {
             session: backend.session,
             board: board,
             tracked: tracked,
+            onTrain: onTrain,
             hasCommute: hasCommute,
             stations: stations,
             expressPreference: expressPreference
@@ -264,12 +271,14 @@ final class AppModel {
             syncWatch()
         }
         do {
+            await reportRide()
             let here = useLocation ? await location.current() : nil
             let origin = here.map { (lat: $0.coordinate.latitude, lon: $0.coordinate.longitude) }
             let r = try await backend.myBoard(from: customPair?.from, to: customPair?.to, express: expressPreference, origin: origin)
             board = r.board
             hasCommute = r.hasCommute
             tracked = r.tracked
+            onTrain = r.onTrain
             #if os(iOS) && canImport(ActivityKit)
             await LiveActivityManager.shared.syncTracked(tracked, backend: backend)
             await LiveActivityManager.shared.syncBoard(board)
@@ -323,6 +332,82 @@ final class AppModel {
             tracked = nil
             syncWatch()
         } catch { self.error = error.localizedDescription }
+    }
+
+    // MARK: on a train
+
+    /// Sends recent fixes when they could mean a train: the phone is moving, or a ride is under way.
+    /// Standing at home makes no request.
+    private func reportRide() async {
+        guard settings.onTrain.usesLocation, location.authorized else { return }
+        let fixes = location.samples
+        let moving = fixes.suffix(3).contains { ($0.speed ?? 0) >= 5 }
+        guard moving || onTrain != nil, fixes.count >= 2 else { return }
+        _ = try? await backend.reportOnTrain(samples: fixes)
+    }
+
+    /// Starts or stops following the phone for what the on-train setting asks.
+    func applyLocationForRides(active: Bool) {
+        let mode = settings.onTrain
+        if mode.usesLocation, active { location.startSampling() } else { location.stopSampling() }
+        location.setBackgroundWatching(mode == .background)
+    }
+
+    /// Wakes for a significant move with the app closed: the keychain's session is all it needs.
+    func resumeBackgroundRides() {
+        guard let raw = UserDefaults.standard.string(forKey: Self.onTrainModeKey), OnTrainMode(rawValue: raw) == .background else { return }
+        location.setBackgroundWatching(true)
+    }
+
+    func handleBackgroundFixes(_ fixes: [OnTrainSample]) {
+        guard fixes.count >= 2, backend.session != nil else { return }
+        guard fixes.suffix(3).contains(where: { ($0.speed ?? 0) >= 5 }) else { return }
+        Task { _ = try? await backend.reportOnTrain(samples: fixes, background: true) }
+    }
+
+    private static let onTrainModeKey = "onTrainMode"
+    private func rememberOnTrainMode() { UserDefaults.standard.set(settings.onTrain.rawValue, forKey: Self.onTrainModeKey) }
+
+    /// Changes the on-train setting from Settings, asking for the location access it needs first.
+    func setOnTrainMode(_ mode: OnTrainMode) async {
+        var granted = true
+        if mode == .background { granted = await location.requestAlways() }
+        else if mode.usesLocation { granted = await location.requestAccess() }
+        guard granted else {
+            error = mode == .background
+                ? "Headway needs Always location for this. Turn it on in Settings › Headway › Location."
+                : "Location is off for Headway. Turn it on in Settings › Headway › Location."
+            return
+        }
+        var next = settings
+        next.onTrain = mode
+        if await save(next) {
+            rememberOnTrainMode()
+            applyLocationForRides(active: true)
+            if !mode.usesLocation { onTrain = nil }
+            error = nil
+        }
+    }
+
+    func setAlertScope(_ scope: AlertScope) async {
+        var next = settings
+        next.alerts.scope = scope
+        _ = await save(next)
+    }
+
+    /// Tracks the train you're on, to a stop you pick or the one the card expects.
+    func trackOnTrain(to stop: String? = nil) async {
+        guard let c = onTrain else { return }
+        do {
+            try await backend.track(Tracked(tripId: c.tripId, serviceDate: c.serviceDate, from: c.from.id, to: stop ?? c.to.id))
+            await refresh()
+        } catch { self.error = error.localizedDescription }
+    }
+
+    func dismissOnTrain() async {
+        onTrain = nil
+        do { try await backend.dismissOnTrain() } catch { self.error = error.localizedDescription }
+        syncWatch()
     }
 
     /// Turns the location estimate on (asking for access the first time) or off.

@@ -246,6 +246,13 @@ public final class Backend: @unchecked Sendable {
     }
     public func track(_ t: Tracked) async throws { let _: OK = try await call("POST", "/api/track", body: t) }
     public func untrack() async throws { let _: OK = try await call("DELETE", "/api/track") }
+    /// Asks which train these fixes are riding. `background` adds a notification if Headway starts tracking it.
+    public func reportOnTrain(samples: [OnTrainSample], background: Bool = false) async throws -> OnTrainReport {
+        struct Body: Encodable { let samples: [OnTrainSample]; let background: Bool }
+        return try await call("POST", "/api/me/on-train", body: Body(samples: samples, background: background))
+    }
+    /// "Not on this train": no card for a while.
+    public func dismissOnTrain() async throws { let _: OK = try await call("DELETE", "/api/me/on-train") }
     public func pairingCode() async throws -> PairingCode { try await call("POST", "/api/pairing-code") }
     public func devices() async throws -> [PairedDevice] { try await call("GET", "/api/devices") }
     public func unpair(_ id: String) async throws { let _: OK = try await call("DELETE", "/api/devices/\(id)") }

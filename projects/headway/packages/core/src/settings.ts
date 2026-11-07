@@ -2,11 +2,13 @@
 // requests all go through.
 import { station } from "./schedule.ts";
 import { hhmm } from "./time.ts";
-import type { AlertSettings, ExpressPreference, Leg, Settings } from "./types.ts";
+import type { AlertScope, AlertSettings, ExpressPreference, Leg, OnTrainMode, Settings } from "./types.ts";
 
 export const DEFAULT_ALERTS: AlertSettings = {
-  delay: true, delay_threshold: 5, cancellation: true, service: true, leave_now: true, arrival: true, arrival_minutes: 5, better_train: true,
+  delay: true, delay_threshold: 5, cancellation: true, service: true, leave_now: true, arrival: true, arrival_minutes: 5, better_train: true, scope: "priority",
 };
+
+export const DEFAULT_ON_TRAIN: OnTrainMode = "card";
 
 export const DEFAULT_PREFERENCE: ExpressPreference = "all";
 
@@ -16,7 +18,7 @@ export const DEFAULT_WINDOWS = {
 } as const;
 
 export function defaultSettings(): Settings {
-  return { morning: null, evening: null, switch_at: "12:00", days: [0, 1, 2, 3, 4], alerts: { ...DEFAULT_ALERTS }, express_preference: DEFAULT_PREFERENCE, share_name: null };
+  return { morning: null, evening: null, switch_at: "12:00", days: [0, 1, 2, 3, 4], alerts: { ...DEFAULT_ALERTS }, express_preference: DEFAULT_PREFERENCE, share_name: null, on_train: DEFAULT_ON_TRAIN };
 }
 
 /** A leg with defaults filled in: `newLeg("mountain_view", "san_francisco", "morning")`. */
@@ -32,6 +34,8 @@ export interface Issue {
 const bool = (v: unknown) => typeof v === "boolean";
 const int = (v: unknown, lo: number, hi: number) => typeof v === "number" && Number.isInteger(v) && v >= lo && v <= hi;
 const validPref = (v: unknown): v is ExpressPreference => v === "all" || v === "prefer_express" || v === "express_only";
+const validScope = (v: unknown): v is AlertScope => v === "priority" || v === "all";
+const validOnTrain = (v: unknown): v is OnTrainMode => v === "off" || v === "card" || v === "auto" || v === "background";
 
 function checkLeg(leg: unknown, path: string, issues: Issue[]) {
   if (leg === null) return;
@@ -67,9 +71,13 @@ export function checkSettings(s: unknown): Issue[] {
     for (const k of ["delay", "cancellation", "service", "leave_now", "arrival", "better_train"] as const) if (!bool(a[k])) issues.push({ path: `alerts.${k}`, message: "must be true or false" });
     if (!int(a.delay_threshold, 1, 60)) issues.push({ path: "alerts.delay_threshold", message: "must be 1–60 minutes" });
     if (!int(a.arrival_minutes, 1, 60)) issues.push({ path: "alerts.arrival_minutes", message: "must be 1–60 minutes" });
+    if (a.scope !== undefined && !validScope(a.scope)) issues.push({ path: "alerts.scope", message: 'must be "priority" or "all"' });
   }
   if (v.express_preference !== undefined && !validPref(v.express_preference)) {
     issues.push({ path: "express_preference", message: 'must be "all", "prefer_express", or "express_only"' });
+  }
+  if (v.on_train !== undefined && !validOnTrain(v.on_train)) {
+    issues.push({ path: "on_train", message: 'must be "off", "card", "auto" or "background"' });
   }
   if (v.share_name !== undefined && v.share_name !== null && (typeof v.share_name !== "string" || v.share_name.trim().length > 20)) {
     issues.push({ path: "share_name", message: "must be null or up to 20 characters" });
@@ -97,8 +105,14 @@ export function normalizeSettings(s: unknown): Settings {
     evening: leg(v.evening, "evening"),
     switch_at: typeof v.switch_at === "string" ? v.switch_at : d.switch_at,
     days: Array.isArray(v.days) ? v.days : d.days,
-    alerts: { ...d.alerts, ...(typeof v.alerts === "object" && v.alerts ? v.alerts : {}) },
+    alerts: normalizedAlerts(v.alerts, d.alerts),
     express_preference: globalPref,
     share_name: typeof v.share_name === "string" && v.share_name.trim() ? v.share_name.trim().slice(0, 20) : null,
+    on_train: validOnTrain(v.on_train) ? v.on_train : DEFAULT_ON_TRAIN,
   };
+}
+
+function normalizedAlerts(a: unknown, base: AlertSettings): AlertSettings {
+  const merged = { ...base, ...(typeof a === "object" && a ? a : {}) } as AlertSettings;
+  return { ...merged, scope: validScope(merged.scope) ? merged.scope : base.scope };
 }

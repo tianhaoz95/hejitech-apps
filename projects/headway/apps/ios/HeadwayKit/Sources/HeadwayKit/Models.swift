@@ -63,8 +63,15 @@ public struct BoardTrain: Codable, Hashable, Identifiable, Sendable {
     public var firstIn: Bool?
     /// True if this train has the shortest ride among visible non-cancelled trains.
     public var shortest: Bool?
+    /// Its time at your station has passed; it stays listed for a few minutes because real trains run late.
+    public var pastDue: Bool?
 
     public var id: String { "\(serviceDate):\(tripId)" }
+
+    /// What to say about a train past its time: right after it, it's probably just arriving.
+    public func dueLabel(now: Date) -> String {
+        now.timeIntervalSince1970 * 1000 - max(dep, predDep) < 120_000 ? "Due" : "May have left"
+    }
     public var kindName: String { ["LOC": "Local", "LTD": "Limited", "EXP": "Express", "SCC": "South County"][kind] ?? kind }
     public var isExpress: Bool { kind == "EXP" }
 
@@ -88,7 +95,8 @@ public struct BoardTrain: Codable, Hashable, Identifiable, Sendable {
         overtakenByTrain: String? = nil,
         firstIn: Bool? = nil,
         shortest: Bool? = nil,
-        bufferMin: Int? = nil
+        bufferMin: Int? = nil,
+        pastDue: Bool? = nil
     ) {
         self.tripId = tripId
         self.train = train
@@ -110,6 +118,7 @@ public struct BoardTrain: Codable, Hashable, Identifiable, Sendable {
         self.firstIn = firstIn
         self.shortest = shortest
         self.bufferMin = bufferMin
+        self.pastDue = pastDue
     }
 
     enum CodingKeys: String, CodingKey {
@@ -117,7 +126,7 @@ public struct BoardTrain: Codable, Hashable, Identifiable, Sendable {
         case tripId = "trip_id", serviceDate = "service_date", predDep = "pred_dep", predArr = "pred_arr", delayMin = "delay_min", stopsBetween = "stops_between"
         case leaveBy = "leave_by", catchState = "catch"
         case rideMin = "ride_min", overtakenBy = "overtaken_by", overtakenByTrain = "overtaken_by_train", firstIn = "first_in", shortest
-        case bufferMin = "buffer_min"
+        case bufferMin = "buffer_min", pastDue = "past_due"
     }
 }
 
@@ -254,11 +263,72 @@ public struct MyBoard: Codable, Sendable {
     public var hasCommute: Bool
     public var saved: Bool
     public var tracked: TrackedWithProgress?
+    public var onTrain: OnTrainCard?
 
     enum CodingKeys: String, CodingKey {
         case board, saved, tracked
-        case hasCommute = "has_commute"
+        case hasCommute = "has_commute", onTrain = "on_train"
     }
+}
+
+/// One location fix sent to tell which train you're on. Used for that answer and never stored.
+public struct OnTrainSample: Codable, Hashable, Sendable {
+    public var lat: Double
+    public var lon: Double
+    /// Epoch milliseconds.
+    public var at: Double
+    /// Metres per second; absent when the phone doesn't know.
+    public var speed: Double?
+    public init(lat: Double, lon: Double, at: Double, speed: Double?) {
+        self.lat = lat; self.lon = lon; self.at = at; self.speed = speed
+    }
+}
+
+public struct OnTrainStop: Codable, Hashable, Identifiable, Sendable {
+    public var id: String
+    public var name: String
+    public var short: String
+    public var pred: Double
+    /// done, now or upcoming.
+    public var status: String
+}
+
+/// What someone riding a train wants to see instead of when to leave for it.
+public struct OnTrainCard: Codable, Hashable, Sendable {
+    public var tripId: String
+    public var serviceDate: String
+    /// high, or low: "looks like", and Headway won't start tracking by itself.
+    public var confidence: String
+    public var train: String
+    public var kind: String
+    public var dir: String
+    public var from: StationRef
+    public var to: StationRef
+    /// commute, tracked or terminal (no commute matches: the end of the line).
+    public var toSource: String
+    public var next: NextStop?
+    public var predArr: Double
+    public var arr: Double
+    public var delayMin: Int?
+    public var stopsLeft: Int
+    public var stops: [OnTrainStop]
+    public var alerts: [ServiceAlert]
+    public var tracked: Bool
+    public var live: Bool
+
+    public var kindName: String { ["LOC": "Local", "LTD": "Limited", "EXP": "Express", "SCC": "South County"][kind] ?? kind }
+    public var isSure: Bool { confidence == "high" }
+
+    enum CodingKeys: String, CodingKey {
+        case confidence, train, kind, dir, from, to, next, arr, stops, alerts, tracked, live
+        case tripId = "trip_id", serviceDate = "service_date", toSource = "to_source", predArr = "pred_arr", delayMin = "delay_min", stopsLeft = "stops_left"
+    }
+}
+
+public struct OnTrainReport: Codable, Sendable {
+    public var onTrain: OnTrainCard?
+    public var autoTracked: Bool
+    enum CodingKeys: String, CodingKey { case onTrain = "on_train", autoTracked = "auto_tracked" }
 }
 
 // MARK: - settings
@@ -324,6 +394,27 @@ public struct Leg: Codable, Hashable, Sendable {
     }
 }
 
+/// Which notifications to send. Priority affects your commute; `all` adds the rest, quietly.
+public enum AlertScope: String, Codable, CaseIterable, Sendable {
+    case priority, all
+    public var title: String { self == .priority ? "Priority only" : "Priority and quiet" }
+}
+
+/// What Headway does when your location shows you're on a train.
+public enum OnTrainMode: String, Codable, CaseIterable, Sendable {
+    case off, card, auto, background
+    public var title: String {
+        switch self {
+        case .off: "Off"
+        case .card: "Show the card"
+        case .auto: "Also start tracking"
+        case .background: "Also with the app closed"
+        }
+    }
+    public var usesLocation: Bool { self != .off }
+    public var startsTracking: Bool { self == .auto || self == .background }
+}
+
 public struct AlertSettings: Codable, Hashable, Sendable {
     public var delay: Bool
     public var delayThreshold: Int
@@ -333,6 +424,7 @@ public struct AlertSettings: Codable, Hashable, Sendable {
     public var arrival: Bool
     public var arrivalMinutes: Int
     public var betterTrain: Bool
+    public var scope: AlertScope = .priority
 
     public init(delay: Bool = true, delayThreshold: Int = 5, cancellation: Bool = true, service: Bool = true, leaveNow: Bool = true, arrival: Bool = true, arrivalMinutes: Int = 5, betterTrain: Bool = true) {
         self.delay = delay
@@ -346,7 +438,7 @@ public struct AlertSettings: Codable, Hashable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case delay, cancellation, service, arrival
+        case delay, cancellation, service, arrival, scope
         case delayThreshold = "delay_threshold", leaveNow = "leave_now", arrivalMinutes = "arrival_minutes", betterTrain = "better_train"
     }
 
@@ -360,6 +452,7 @@ public struct AlertSettings: Codable, Hashable, Sendable {
         arrival = try c.decode(Bool.self, forKey: .arrival)
         arrivalMinutes = try c.decode(Int.self, forKey: .arrivalMinutes)
         betterTrain = (try? c.decodeIfPresent(Bool.self, forKey: .betterTrain)) ?? true
+        scope = (try? c.decodeIfPresent(AlertScope.self, forKey: .scope)) ?? .priority
     }
 }
 
@@ -372,9 +465,11 @@ public struct Settings: Codable, Hashable, Sendable {
     public var alerts: AlertSettings
     public var expressPreference: ExpressPreference
     public var shareName: String?
+    public var onTrain: OnTrainMode = .card
 
     enum CodingKeys: String, CodingKey {
         case morning, evening, days, alerts
+        case onTrain = "on_train"
         case switchAt = "switch_at"
         case expressPreference = "express_preference"
         case shareName = "share_name"
@@ -405,6 +500,7 @@ public struct Settings: Codable, Hashable, Sendable {
         alerts = try c.decode(AlertSettings.self, forKey: .alerts)
         expressPreference = (try? c.decodeIfPresent(ExpressPreference.self, forKey: .expressPreference)) ?? .all
         shareName = try c.decodeIfPresent(String.self, forKey: .shareName)
+        onTrain = (try? c.decodeIfPresent(OnTrainMode.self, forKey: .onTrain)) ?? .card
     }
 
     // Legs are always sent (null clears one).
@@ -417,6 +513,7 @@ public struct Settings: Codable, Hashable, Sendable {
         try c.encode(alerts, forKey: .alerts)
         try c.encode(expressPreference, forKey: .expressPreference)
         try c.encode(shareName, forKey: .shareName)
+        try c.encode(onTrain, forKey: .onTrain)
     }
 }
 

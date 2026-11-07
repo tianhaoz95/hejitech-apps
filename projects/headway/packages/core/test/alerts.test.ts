@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueNotifications, station, type Tracked } from "../src/index.ts";
+import { alertAffectsLeg, departures, dueNotifications, station, type RealtimeSnapshot, type ServiceAlert, type Settings, type Tracked } from "../src/index.ts";
 import { at, commuter, firstTrain, SATURDAY, snapshot, WEEKDAY } from "./helpers.ts";
 
 const MIN = 60_000;
@@ -116,5 +116,107 @@ describe("better train alerts", () => {
     // Disabled setting prevents sending
     const disabled = run(now, snap, { alerts: { ...commuter().alerts, better_train: false } });
     expect(disabled.notifications.filter((x) => x.kind === "better_train")).toHaveLength(0);
+  });
+});
+
+describe("priority and quiet notifications", () => {
+  const alert = (id: string, header: string, over: Partial<ServiceAlert> = {}): ServiceAlert => ({ id, header, description: "", stations: [], routes: [], ...over });
+  const leg = commuter().morning!;
+
+  describe("alertAffectsLeg", () => {
+    const now = at(WEEKDAY, "08:00");
+    it("counts one that says nothing about direction or time", () => {
+      expect(alertAffectsLeg(alert("a", "Elevator out of service at Mountain View"), leg, now)).toBe(true);
+    });
+    it("drops the other direction but keeps yours", () => {
+      expect(alertAffectsLeg(alert("a", "Southbound delays near Millbrae"), leg, now)).toBe(false);
+      expect(alertAffectsLeg(alert("a", "Northbound delays near Millbrae"), leg, now)).toBe(true);
+      expect(alertAffectsLeg(alert("a", "SB trains single tracking"), leg, now)).toBe(false);
+    });
+    it("counts one naming both directions", () => {
+      expect(alertAffectsLeg(alert("a", "Northbound and southbound delays"), leg, now)).toBe(true);
+    });
+    it("drops times outside the window", () => {
+      expect(alertAffectsLeg(alert("a", "Delays expected around 2 pm"), leg, now)).toBe(false);
+      expect(alertAffectsLeg(alert("a", "Delays expected around 8:30 am"), leg, now)).toBe(true);
+    });
+    it("drops one whose period misses the window", () => {
+      const afternoon = Math.floor(at(WEEKDAY, "14:00") / 1000);
+      expect(alertAffectsLeg(alert("a", "Track work", { start: afternoon }), leg, now)).toBe(false);
+    });
+    it("checks a named train against the leg", () => {
+      const t = firstTrain(WEEKDAY, "08:00");
+      const after = firstTrain(WEEKDAY, "14:00");
+      expect(alertAffectsLeg(alert("a", `Train ${t.train} is delayed`), leg, now)).toBe(true);
+      expect(alertAffectsLeg(alert("a", `Train ${after.train} is delayed`), leg, now)).toBe(false);
+    });
+  });
+
+  const due = (now: number, over: Partial<Settings["alerts"]>, snap: RealtimeSnapshot, sent = new Set<string>()) => {
+    const s = commuter();
+    return dueNotifications({ now, settings: { ...s, alerts: { ...s.alerts, ...over } }, snapshot: snap, tracked: null, sent }).notifications;
+  };
+
+  it("sends only priority by default: a 2 pm delay on your line says nothing", () => {
+    const now = at(WEEKDAY, "14:00");
+    const t = firstTrain(WEEKDAY, "14:10");
+    expect(due(now, {}, snapshot(now, { [t.trip_id]: { delay: 15 * 60, stops: {} } }))).toEqual([]);
+  });
+
+  it("makes that delay quiet when asked for everything", () => {
+    const now = at(WEEKDAY, "14:00");
+    const t = firstTrain(WEEKDAY, "14:10");
+    const n = due(now, { scope: "all" }, snapshot(now, { [t.trip_id]: { delay: 15 * 60, stops: {} } }));
+    const hit = n.find((x) => x.key.includes(t.trip_id))!;
+    expect(hit.priority).toBe(false);
+    expect(hit.key.startsWith("q:delay:")).toBe(true);
+  });
+
+  it("makes a reverse-direction delay in the commute window quiet, and your own priority", () => {
+    const now = at(WEEKDAY, "08:00");
+    const mine = firstTrain(WEEKDAY, "08:10");
+    const back = departures("san_francisco", "mountain_view", now, null, { lookbackMs: 0 })[0];
+    const snap = snapshot(now, { [mine.trip_id]: { delay: 15 * 60, stops: {} }, [back.trip_id]: { delay: 15 * 60, stops: {} } });
+    expect(due(now, {}, snap).map((x) => x.key)).toEqual(expect.arrayContaining([expect.stringContaining(mine.trip_id)]));
+    expect(due(now, {}, snap).some((x) => x.key.includes(back.trip_id))).toBe(false);
+    const all = due(now, { scope: "all" }, snap);
+    expect(all.find((x) => x.key.includes(mine.trip_id))?.priority).toBe(true);
+    expect(all.find((x) => x.key.includes(back.trip_id))?.priority).toBe(false);
+  });
+
+  it("keeps a reverse service alert out of priority", () => {
+    const now = at(WEEKDAY, "08:00");
+    const snap = snapshot(now, {}, [alert("sb", "Southbound delays at Mountain View", { stations: ["mountain_view"] })]);
+    expect(due(now, {}, snap).filter((x) => x.kind === "service")).toEqual([]);
+    const all = due(now, { scope: "all" }, snap).filter((x) => x.kind === "service");
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({ key: "q:service:sb", priority: false });
+  });
+
+  it("still sends a train's priority alert after its quiet one", () => {
+    const now = at(WEEKDAY, "08:00");
+    const t = firstTrain(WEEKDAY, "08:10");
+    const snap = snapshot(now, { [t.trip_id]: { delay: 15 * 60, stops: {} } });
+    const sent = new Set([`q:delay:${t.service_date}:${t.trip_id}:2`]);
+    expect(due(now, { scope: "all" }, snap, sent).find((x) => x.key.includes(t.trip_id))?.priority).toBe(true);
+  });
+
+  it("doesn't repeat quietly what already went out as priority", () => {
+    const now = at(WEEKDAY, "14:00");
+    const snap = snapshot(now, {}, [alert("a", "Elevator out at Mountain View", { stations: ["mountain_view"] })]);
+    expect(due(now, { scope: "all" }, snap, new Set(["service:a"]))).toEqual([]);
+  });
+
+  it("stays silent on days off, whatever the scope", () => {
+    const now = at(SATURDAY, "09:00");
+    const snap = snapshot(now, {}, [alert("a", "Elevator out at Mountain View", { stations: ["mountain_view"] })]);
+    expect(due(now, { scope: "all" }, snap)).toEqual([]);
+  });
+
+  it("keeps the tracked train's alerts priority", () => {
+    const t = firstTrain(WEEKDAY, "08:00");
+    const s = commuter();
+    const r = dueNotifications({ now: t.arr - 60_000, settings: s, snapshot: null, tracked: { trip_id: t.trip_id, service_date: t.service_date, from: "mountain_view", to: "san_francisco" }, sent: new Set() });
+    expect(r.notifications.find((n) => n.kind === "arrival")?.priority).toBe(true);
   });
 });
