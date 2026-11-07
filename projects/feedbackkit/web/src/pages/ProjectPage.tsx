@@ -848,28 +848,59 @@ export function ProjectPage() {
         deleteTarget.type === "single" ? [deleteTarget.item] : deleteTarget.items;
       const idsToDelete = itemsToDelete.map((item) => item.id);
 
-      // Best effort cleanup of storage objects
+      // Read before deleting: the events holding preview paths cascade away.
+      const { data: eventRows } = await supabase
+        .from("feedback_events")
+        .select("feedback_id, data")
+        .in("feedback_id", idsToDelete);
+
+      // Delete database row(s). Row-level security can leave rows in place with
+      // no error, so ask for the deleted rows back. A report already gone (another
+      // tab, a repeated click) is what was asked for; only one still there failed.
+      const { data: deletedRows, error } = await supabase
+        .from("feedback_items")
+        .delete()
+        .in("id", idsToDelete)
+        .select("id");
+
+      if (error) throw error;
+
+      if ((deletedRows ?? []).length < idsToDelete.length) {
+        const { data: remainingRows, error: remainingError } = await supabase
+          .from("feedback_items")
+          .select("id")
+          .in("id", idsToDelete);
+        if (remainingError) throw remainingError;
+        if (remainingRows.length > 0) {
+          throw new Error(
+            remainingRows.length === 1
+              ? "This report wasn't deleted. You may not have permission to delete it."
+              : `${remainingRows.length} reports weren't deleted. You may not have permission to delete them.`
+          );
+        }
+      }
+
+      // Best effort cleanup of storage objects, only once their reports are gone
       const storagePaths: string[] = [];
       for (const item of itemsToDelete) {
         if (item.screenshot_raw_path) storagePaths.push(item.screenshot_raw_path);
         if (item.screenshot_annotated_path) storagePaths.push(item.screenshot_annotated_path);
         if (item.attachment_path) storagePaths.push(item.attachment_path);
       }
+      for (const row of eventRows ?? []) {
+        const data = (row.data ?? {}) as Record<string, unknown>;
+        for (const key of ["media_path", "screenshot_path", "screenshot_raw_path", "screenshot_annotated_path"]) {
+          const path = data[key];
+          if (typeof path === "string") storagePaths.push(path);
+        }
+      }
       if (storagePaths.length > 0) {
         try {
-          await supabase.storage.from("feedback-screenshots").remove(storagePaths);
+          await supabase.storage.from("feedback-screenshots").remove([...new Set(storagePaths)]);
         } catch (storageErr) {
           console.warn("Could not delete some storage files:", storageErr);
         }
       }
-
-      // Delete database row(s)
-      const { error } = await supabase
-        .from("feedback_items")
-        .delete()
-        .in("id", idsToDelete);
-
-      if (error) throw error;
 
       const deletedSet = new Set(idsToDelete);
       const remainingItems = feedbackItems.filter((item) => !deletedSet.has(item.id));

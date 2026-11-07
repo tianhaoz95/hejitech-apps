@@ -28,6 +28,7 @@ struct FeedbackPortalApp: App {
                 }
             }
             .tint(.blue)
+            .actionErrorAlert(appState)
             .onAppear(perform: installTriggers)
             .onChange(of: client.currentSession?.userId, initial: true) {
                 PortalDogfood.updateUser(client.currentSession)

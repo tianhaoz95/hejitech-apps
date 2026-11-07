@@ -80,6 +80,8 @@ public final class AppState: ObservableObject {
     }
 
     @Published public var feedbackItems: [PortalFeedbackItem] = []
+    /// A triage action that failed, shown as an alert over the whole app.
+    @Published public var actionErrorMessage: String?
     @Published public var promptTemplate: PortalPromptTemplate?
 
     @Published public var statusFilter: PortalFeedbackStatus? = nil
@@ -104,6 +106,9 @@ public final class AppState: ObservableObject {
 
     private var isSyncingProjects: Bool = false
     private var inFlightFeedbackTask: Task<Void, Never>? = nil
+    /// Reports deleted in this session. A list fetched while their delete was
+    /// on its way still has them, so every fetched result is filtered by this.
+    private var deletedFeedbackIds: Set<String> = []
     private let client = SupabasePortalClient.shared
 
     // MARK: - Computed Filtered Items
@@ -341,7 +346,7 @@ public final class AppState: ObservableObject {
                 async let templateTask = client.fetchPromptTemplate(projectId: proj.id)
 
                 let (items, template) = try await (itemsTask, templateTask)
-                self.feedbackItems = items
+                self.feedbackItems = items.filter { !self.deletedFeedbackIds.contains($0.id) }
                 self.promptTemplate = template
                 self.hasMoreFeedback = items.count >= self.feedbackPageSize
             } catch is CancellationError {
@@ -360,6 +365,7 @@ public final class AppState: ObservableObject {
     @discardableResult
     public func refreshFeedbackItem(id: String) async -> PortalFeedbackItem? {
         guard let refreshed = try? await client.fetchFeedbackItem(id: id) else { return nil }
+        guard !deletedFeedbackIds.contains(id) else { return nil }
         if let idx = feedbackItems.firstIndex(where: { $0.id == id }) {
             feedbackItems[idx] = refreshed
         } else if selectedProject == nil || refreshed.projectId == selectedProject?.id {
@@ -385,7 +391,7 @@ public final class AppState: ObservableObject {
                 offset: offset
             )
             let existingIds = Set(feedbackItems.map { $0.id })
-            let uniqueNew = newItems.filter { !existingIds.contains($0.id) }
+            let uniqueNew = newItems.filter { !existingIds.contains($0.id) && !deletedFeedbackIds.contains($0.id) }
             feedbackItems.append(contentsOf: uniqueNew)
             hasMoreFeedback = newItems.count >= feedbackPageSize
         } catch is CancellationError {
@@ -413,7 +419,7 @@ public final class AppState: ObservableObject {
             if let idx = feedbackItems.firstIndex(where: { $0.id == item.id }) {
                 feedbackItems[idx].status = item.status
             }
-            self.errorMessage = "Failed to update status: \(error.localizedDescription)"
+            self.actionErrorMessage = "Failed to update status: \(error.localizedDescription)"
         }
     }
 
@@ -433,11 +439,12 @@ public final class AppState: ObservableObject {
             if let idx = feedbackItems.firstIndex(where: { $0.id == item.id }) {
                 feedbackItems[idx].isArchived = item.isArchived
             }
-            self.errorMessage = "Failed to toggle archive: \(error.localizedDescription)"
+            self.actionErrorMessage = "Failed to toggle archive: \(error.localizedDescription)"
         }
     }
 
     public func delete(item: PortalFeedbackItem) async {
+        deletedFeedbackIds.insert(item.id)
         feedbackItems.removeAll { $0.id == item.id }
         selectedFeedbackIds.remove(item.id)
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
@@ -448,8 +455,9 @@ public final class AppState: ObservableObject {
                 self.projects = (try? await client.fetchProjects(organizationId: currentOrganization?.id)) ?? self.projects
             }
         } catch {
+            deletedFeedbackIds.remove(item.id)
             await loadFeedback()
-            self.errorMessage = "Failed to delete: \(error.localizedDescription)"
+            self.actionErrorMessage = "Failed to delete: \(error.localizedDescription)"
         }
     }
 
@@ -475,7 +483,7 @@ public final class AppState: ObservableObject {
             }
         } catch {
             await loadFeedback()
-            self.errorMessage = error.localizedDescription
+            self.actionErrorMessage = error.localizedDescription
         }
     }
 
@@ -499,7 +507,7 @@ public final class AppState: ObservableObject {
             }
         } catch {
             await loadFeedback()
-            self.errorMessage = error.localizedDescription
+            self.actionErrorMessage = error.localizedDescription
         }
     }
 
@@ -507,6 +515,7 @@ public final class AppState: ObservableObject {
         let ids = Array(selectedFeedbackIds)
         guard !ids.isEmpty else { return }
 
+        deletedFeedbackIds.formUnion(ids)
         feedbackItems.removeAll { ids.contains($0.id) }
         selectedFeedbackIds.removeAll()
         isMultiSelectActive = false
@@ -518,8 +527,9 @@ public final class AppState: ObservableObject {
                 self.projects = (try? await client.fetchProjects(organizationId: currentOrganization?.id)) ?? self.projects
             }
         } catch {
+            deletedFeedbackIds.subtract(ids)
             await loadFeedback()
-            self.errorMessage = error.localizedDescription
+            self.actionErrorMessage = error.localizedDescription
         }
     }
 

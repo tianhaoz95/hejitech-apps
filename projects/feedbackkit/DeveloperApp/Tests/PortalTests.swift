@@ -893,3 +893,166 @@ final class PortalTests: XCTestCase {
         XCTAssertEqual(appState.feedbackItems.first(where: { $0.id == firstItem.id })?.status, .resolved)
     }
 }
+
+/// Answers the client's requests from a queue and records them.
+private final class StubURLProtocol: URLProtocol {
+    static var responses: [(status: Int, body: String)] = []
+    static var requests: [URLRequest] = []
+    /// Answers by request instead of the queue, for code that sends several at once.
+    static var handler: ((URLRequest) -> (status: Int, body: String))?
+
+    static var events = "[]"
+    static func eventsBody(for path: String) -> String { path.hasSuffix("/feedback_events") ? events : "[]" }
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func stopLoading() {}
+    override func startLoading() {
+        Self.requests.append(request)
+        let path = request.url?.path ?? ""
+        let isFeedbackItems = path.hasSuffix("/feedback_items")
+        let next = Self.handler?(request)
+            ?? (!isFeedbackItems ? (status: 200, body: Self.eventsBody(for: path))
+                : Self.responses.isEmpty ? (status: 500, body: "") : Self.responses.removeFirst())
+        let response = HTTPURLResponse(url: request.url!, statusCode: next.status, httpVersion: nil, headerFields: nil)!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(next.body.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+}
+
+@MainActor
+final class PortalWriteChecksTests: XCTestCase {
+    private let client = SupabasePortalClient.shared
+    private var wasDemoMode = false
+
+    override func setUp() async throws {
+        wasDemoMode = client.isDemoMode
+        client.isDemoMode = false
+        StubURLProtocol.responses = []
+        StubURLProtocol.requests = []
+        StubURLProtocol.handler = nil
+        StubURLProtocol.events = "[]"
+        URLProtocol.registerClass(StubURLProtocol.self)
+    }
+
+    override func tearDown() async throws {
+        URLProtocol.unregisterClass(StubURLProtocol.self)
+        client.isDemoMode = wasDemoMode
+    }
+
+    func testBatchDeleteIsOneRequestAskingForTheRowsBack() async throws {
+        StubURLProtocol.responses = [(200, #"[{"id":"a"},{"id":"b"}]"#)]
+        try await client.batchDelete(ids: ["a", "b"])
+
+        let deletes = StubURLProtocol.requests.filter { $0.url?.path.hasSuffix("/feedback_items") == true }
+        XCTAssertEqual(deletes.count, 1)
+        let request = try XCTUnwrap(deletes.first)
+        XCTAssertEqual(request.httpMethod, "DELETE")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Prefer"), "return=representation")
+        XCTAssertTrue(try XCTUnwrap(request.url?.query).contains("id=in.(a,b)"))
+    }
+
+    func testDeleteOfNothingFailsWhenTheReportStillExists() async {
+        StubURLProtocol.responses = [(200, "[]"), (200, #"[{"id":"a"}]"#)]
+        do {
+            try await client.deleteFeedbackItem(id: "a")
+            XCTFail("A delete that left the report in place must throw")
+        } catch {
+            XCTAssertTrue(error is PortalWriteError)
+        }
+    }
+
+    func testDeleteOfAReportAlreadyGoneSucceeds() async throws {
+        StubURLProtocol.responses = [(200, "[]"), (200, "[]")]
+        try await client.deleteFeedbackItem(id: "a")
+        XCTAssertEqual(StubURLProtocol.requests.last?.httpMethod, "GET")
+    }
+
+    /// URLProtocol hands the body over as a stream, so a test reads it from there.
+    private func removedPaths() throws -> [String] {
+        let requests = StubURLProtocol.requests.filter { $0.url?.path.hasSuffix("/object/feedback-screenshots") == true }
+        return try requests.flatMap { request -> [String] in
+            let stream = try XCTUnwrap(request.httpBodyStream)
+            stream.open()
+            defer { stream.close() }
+            var data = Data()
+            var buffer = [UInt8](repeating: 0, count: 4096)
+            while stream.hasBytesAvailable {
+                let count = stream.read(&buffer, maxLength: buffer.count)
+                if count <= 0 { break }
+                data.append(contentsOf: buffer[0..<count])
+            }
+            struct Body: Decodable { let prefixes: [String] }
+            return try JSONDecoder().decode(Body.self, from: data).prefixes
+        }
+    }
+
+    func testDeletingAReportRemovesItsFilesAndPreviews() async throws {
+        StubURLProtocol.events = #"[{"feedback_id":"a","data":{"media_path":"p/a/after/1.mp4"}},{"feedback_id":"a","data":null}]"#
+        StubURLProtocol.responses = [(200, #"[{"id":"a","screenshot_raw_path":"p/a/raw.png","screenshot_annotated_path":null,"attachment_path":"p/a/attachment/f.txt"}]"#)]
+
+        try await client.deleteFeedbackItem(id: "a")
+
+        XCTAssertEqual(Set(try removedPaths()), ["p/a/raw.png", "p/a/attachment/f.txt", "p/a/after/1.mp4"])
+    }
+
+    func testAFailedDeleteLeavesTheFilesAlone() async throws {
+        StubURLProtocol.events = #"[{"feedback_id":"a","data":{"media_path":"p/a/after/1.mp4"}}]"#
+        StubURLProtocol.responses = [(200, "[]"), (200, #"[{"id":"a"}]"#)]
+
+        do {
+            try await client.deleteFeedbackItem(id: "a")
+            XCTFail("A delete that left the report in place must throw")
+        } catch {}
+
+        XCTAssertEqual(try removedPaths(), [])
+    }
+
+    func testUpdatesThatChangeNothingFail() async {
+        StubURLProtocol.responses = [(200, "[]")]
+        do {
+            try await client.updateFeedbackArchive(id: "a", isArchived: true)
+            XCTFail("An update that changed no row must throw")
+        } catch {
+            XCTAssertTrue(error is PortalWriteError)
+        }
+    }
+
+    func testFailedDeleteShowsAnError() async throws {
+        let state = AppState()
+        let item = DemoData.sampleFeedbackItems[0]
+        state.feedbackItems = [item]
+        StubURLProtocol.responses = [(500, "")]
+
+        await state.delete(item: item)
+
+        XCTAssertNotNil(state.actionErrorMessage)
+    }
+
+    /// The reported bug: a list fetched while a delete was on its way still has
+    /// the report, and it must not reappear.
+    func testRefreshDoesNotBringBackADeletedReport() async throws {
+        let item = DemoData.sampleFeedbackItems[0]
+        let projectId = item.projectId
+        let deletedId = item.id
+        StubURLProtocol.handler = { request in
+            guard request.url?.path.hasSuffix("/feedback_items") == true else { return (200, "[]") }
+            if request.httpMethod == "DELETE" { return (200, #"[{"id":"\#(deletedId)"}]"#) }
+            // Stale on purpose: still has the report the delete just removed.
+            return (200, """
+            [{"id":"\(deletedId)","project_id":"\(projectId)","created_at":"2026-11-07T00:00:00Z"},
+             {"id":"kept","project_id":"\(projectId)","created_at":"2026-11-06T00:00:00Z"}]
+            """)
+        }
+        let state = AppState()
+        state.selectedProject = DemoData.sampleProjects[0]
+        state.feedbackItems = [item]
+
+        await state.delete(item: item)
+        await state.loadFeedback()
+
+        XCTAssertEqual(state.feedbackItems.map(\.id), ["kept"])
+        XCTAssertNil(state.actionErrorMessage)
+    }
+}

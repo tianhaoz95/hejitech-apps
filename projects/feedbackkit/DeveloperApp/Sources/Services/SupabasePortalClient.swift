@@ -1,6 +1,22 @@
 import Foundation
 import FeedbackKit
 
+public enum PortalWriteError: LocalizedError {
+    case nothingChanged
+    case notDeleted(count: Int)
+
+    public var errorDescription: String? {
+        switch self {
+        case .nothingChanged:
+            return "The server didn't save this change. You may not have permission to edit this report."
+        case .notDeleted(let count):
+            return count == 1
+                ? "This report wasn't deleted. You may not have permission to delete it."
+                : "\(count) reports weren't deleted. You may not have permission to delete them."
+        }
+    }
+}
+
 @MainActor
 public final class SupabasePortalClient: ObservableObject {
     public static let shared = SupabasePortalClient()
@@ -652,16 +668,7 @@ public final class SupabasePortalClient: ObservableObject {
         let payload = ["status": status.rawValue]
         let bodyData = try JSONSerialization.data(withJSONObject: payload)
 
-        let request = try makeRequest(
-            path: "/rest/v1/feedback_items",
-            method: "PATCH",
-            queryItems: [URLQueryItem(name: "id", value: "eq.\(id)")],
-            body: bodyData
-        )
-        let (_, httpResponse) = try await executeRequest(request)
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw URLError(.badServerResponse)
-        }
+        try await patchFeedbackItem(id: id, body: bodyData)
     }
 
     public func updateFeedbackArchive(id: String, isArchived: Bool) async throws {
@@ -675,16 +682,7 @@ public final class SupabasePortalClient: ObservableObject {
         let payload = ["is_archived": isArchived]
         let bodyData = try JSONSerialization.data(withJSONObject: payload)
 
-        let request = try makeRequest(
-            path: "/rest/v1/feedback_items",
-            method: "PATCH",
-            queryItems: [URLQueryItem(name: "id", value: "eq.\(id)")],
-            body: bodyData
-        )
-        let (_, httpResponse) = try await executeRequest(request)
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw URLError(.badServerResponse)
-        }
+        try await patchFeedbackItem(id: id, body: bodyData)
     }
 
     public func saveEditedPrompt(id: String, prompt: String) async throws {
@@ -698,32 +696,147 @@ public final class SupabasePortalClient: ObservableObject {
         let payload = ["edited_prompt": prompt]
         let bodyData = try JSONSerialization.data(withJSONObject: payload)
 
+        try await patchFeedbackItem(id: id, body: bodyData)
+    }
+
+    /// PostgREST answers 2xx even when row-level security or a stale id leaves
+    /// nothing to change, so asks for the changed rows back and checks for one.
+    private func patchFeedbackItem(id: String, body: Data) async throws {
         let request = try makeRequest(
             path: "/rest/v1/feedback_items",
             method: "PATCH",
-            queryItems: [URLQueryItem(name: "id", value: "eq.\(id)")],
-            body: bodyData
+            queryItems: [
+                URLQueryItem(name: "id", value: "eq.\(id)"),
+                URLQueryItem(name: "select", value: "id")
+            ],
+            body: body,
+            preferReturn: "return=representation"
         )
-        let (_, httpResponse) = try await executeRequest(request)
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw URLError(.badServerResponse)
+        guard try await feedbackIds(from: request).contains(id) else {
+            throw PortalWriteError.nothingChanged
         }
     }
 
+    private func feedbackIds(from request: URLRequest) async throws -> Set<String> {
+        let (data, httpResponse) = try await executeRequest(request)
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        struct Row: Decodable { let id: String }
+        return Set(try JSONDecoder().decode([Row].self, from: data).map(\.id))
+    }
+
     public func deleteFeedbackItem(id: String) async throws {
+        try await deleteFeedbackItems(ids: [id])
+    }
+
+    /// Deletes in one request per chunk, so a batch doesn't sit half done for
+    /// seconds where a refresh can show the rest of it again. An id the server
+    /// didn't delete only counts as a failure if the report still exists: one
+    /// already gone (another device, a repeated tap) is what was asked for.
+    /// The reports' files go too, once the reports are gone: the database can't
+    /// delete storage objects itself.
+    public func deleteFeedbackItems(ids: [String]) async throws {
         if isDemoMode {
-            demoFeedback.removeAll { $0.id == id }
+            demoFeedback.removeAll { ids.contains($0.id) }
             return
         }
 
-        let request = try makeRequest(
-            path: "/rest/v1/feedback_items",
-            method: "DELETE",
-            queryItems: [URLQueryItem(name: "id", value: "eq.\(id)")]
-        )
-        let (_, httpResponse) = try await executeRequest(request)
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw URLError(.badServerResponse)
+        for start in stride(from: 0, to: ids.count, by: 100) {
+            let chunk = Array(ids[start..<min(start + 100, ids.count)])
+            let filter = URLQueryItem(name: "id", value: "in.(\(chunk.joined(separator: ",")))")
+
+            // Read before deleting: the events holding preview paths cascade away.
+            let previewPaths = await previewPaths(feedbackIds: chunk)
+
+            let deleteRequest = try makeRequest(
+                path: "/rest/v1/feedback_items",
+                method: "DELETE",
+                queryItems: [
+                    filter,
+                    URLQueryItem(name: "select", value: "id,screenshot_raw_path,screenshot_annotated_path,attachment_path")
+                ],
+                preferReturn: "return=representation"
+            )
+            let (data, httpResponse) = try await executeRequest(deleteRequest)
+            guard (200...299).contains(httpResponse.statusCode) else {
+                throw URLError(.badServerResponse)
+            }
+            let deleted = try JSONDecoder().decode([DeletedFeedbackRow].self, from: data)
+            await removeStorageObjects(deleted.flatMap { row in
+                row.paths + (previewPaths[row.id] ?? [])
+            })
+
+            guard deleted.count < Set(chunk).count else { continue }
+            let remaining = try await feedbackIds(from: makeRequest(
+                path: "/rest/v1/feedback_items",
+                queryItems: [filter, URLQueryItem(name: "select", value: "id")]
+            ))
+            if !remaining.isEmpty {
+                throw PortalWriteError.notDeleted(count: remaining.count)
+            }
+        }
+    }
+
+    private struct DeletedFeedbackRow: Decodable {
+        let id: String
+        let screenshot_raw_path: String?
+        let screenshot_annotated_path: String?
+        let attachment_path: String?
+
+        var paths: [String] {
+            [screenshot_raw_path, screenshot_annotated_path, attachment_path].compactMap { $0 }
+        }
+    }
+
+    /// After-fix previews and other files recorded on the reports' timelines.
+    /// Best effort, like removing the files: a failure must not block the delete.
+    private func previewPaths(feedbackIds: [String]) async -> [String: [String]] {
+        struct EventData: Decodable {
+            let media_path: String?
+            let screenshot_path: String?
+            let screenshot_raw_path: String?
+            let screenshot_annotated_path: String?
+        }
+        struct Row: Decodable {
+            let feedback_id: String
+            let data: EventData?
+        }
+        guard let request = try? makeRequest(
+            path: "/rest/v1/feedback_events",
+            queryItems: [
+                URLQueryItem(name: "feedback_id", value: "in.(\(feedbackIds.joined(separator: ",")))"),
+                URLQueryItem(name: "select", value: "feedback_id,data")
+            ]
+        ),
+            let (data, response) = try? await executeRequest(request),
+            (200...299).contains(response.statusCode),
+            let rows = try? JSONDecoder().decode([Row].self, from: data)
+        else { return [:] }
+
+        var paths: [String: [String]] = [:]
+        for row in rows {
+            guard let event = row.data else { continue }
+            paths[row.feedback_id, default: []] += [
+                event.media_path, event.screenshot_path, event.screenshot_raw_path, event.screenshot_annotated_path
+            ].compactMap { $0 }
+        }
+        return paths
+    }
+
+    /// Best effort: a report that's gone stays gone if its files can't be removed.
+    private func removeStorageObjects(_ paths: [String]) async {
+        let unique = Array(Set(paths))
+        for start in stride(from: 0, to: unique.count, by: 100) {
+            let batch = Array(unique[start..<min(start + 100, unique.count)])
+            guard let body = try? JSONSerialization.data(withJSONObject: ["prefixes": batch]),
+                  let request = try? makeRequest(
+                    path: "/storage/v1/object/feedback-screenshots",
+                    method: "DELETE",
+                    body: body
+                  )
+            else { continue }
+            _ = try? await executeRequest(request)
         }
     }
 
@@ -740,9 +853,7 @@ public final class SupabasePortalClient: ObservableObject {
     }
 
     public func batchDelete(ids: [String]) async throws {
-        for id in ids {
-            try await deleteFeedbackItem(id: id)
-        }
+        try await deleteFeedbackItems(ids: ids)
     }
 
     // MARK: - Storage

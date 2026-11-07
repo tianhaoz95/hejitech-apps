@@ -34,6 +34,7 @@ struct FeedbackPortalMacApp: App {
             .environmentObject(appState)
             .frame(minWidth: 980, minHeight: 640)
             .tint(.blue)
+            .actionErrorAlert(appState)
             .onAppear(perform: installFeedbackKit)
             .onOpenURL { url in
                 PortalDeepLinks.handle(url, client: client)
