@@ -29,7 +29,7 @@ description: Generate Google Flow video and Flow Music audio assets for a HEJI p
   as the edit in `src/<project>-<promo>/` — e.g. `g2digest-launch/` for a promo, `g2digest-demo/` for a
   demo. When the kit or the editing agent names a folder, that folder wins. Never leave assets in `src/`,
   which holds code.
-- Media is git-ignored, so it exists only in the main checkout at `/Volumes/DATA/GitHub/hejitech-apps`.
+- Media is git-ignored, so it exists only in the main checkout at `/Volumes/proj/github/hejitech-apps`.
   From a worktree or any other checkout, still read and write media at that absolute path, never in
   your own checkout's `branding/`.
 

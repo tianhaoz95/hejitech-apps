@@ -3,7 +3,7 @@
 # the spoken ones in order. Writes src/g2digest-demo/voiceover.ts.
 #
 #   <venv>/bin/python -I branding/promo-videos/scripts/g2digest-demo-words.py \
-#     /Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/public/g2digest-demo am_echo \
+#     /Volumes/proj/github/hejitech-apps/branding/promo-videos/public/g2digest-demo am_echo \
 #     branding/promo-videos/src/g2digest-demo/voiceover.ts
 import sys, json, re, importlib.util, numpy as np, soundfile as sf
 from faster_whisper import WhisperModel

@@ -3,7 +3,7 @@
 # mapped onto the spoken ones in order. Writes src/headway-demo/voiceover.ts.
 #
 #   <venv>/bin/python -I branding/promo-videos/scripts/headway-demo-words.py \
-#     /Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/public/headway-demo af_heart \
+#     /Volumes/proj/github/hejitech-apps/branding/promo-videos/public/headway-demo af_heart \
 #     branding/promo-videos/src/headway-demo/voiceover.ts
 import sys, json, re, importlib.util, numpy as np, soundfile as sf
 from faster_whisper import WhisperModel

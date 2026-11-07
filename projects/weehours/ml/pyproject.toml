@@ -16,3 +16,6 @@ test = ["pytest>=8"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["weehours_ml*"]

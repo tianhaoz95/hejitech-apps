@@ -3,7 +3,7 @@
 # mapped onto the spoken ones in order. Writes src/fitloop-demo/voiceover.ts.
 #
 #   <venv>/bin/python -I branding/promo-videos/scripts/fitloop-demo-words.py \
-#     /Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/public/fitloop-demo af_sarah \
+#     /Volumes/proj/github/hejitech-apps/branding/promo-videos/public/fitloop-demo af_sarah \
 #     branding/promo-videos/src/fitloop-demo/voiceover.ts
 import sys, json, re, importlib.util, numpy as np, soundfile as sf
 from faster_whisper import WhisperModel

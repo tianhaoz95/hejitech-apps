@@ -5,7 +5,7 @@
 #   uv venv --python 3.12 <venv> && uv pip install --python <venv>/bin/python "kokoro>=0.9" soundfile "misaki[en]" \
 #     "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
 #   <venv>/bin/python -I branding/promo-videos/scripts/g2digest-demo-vo.py \
-#     /Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/public/g2digest-demo [voice …] [--only id,id]
+#     /Volumes/proj/github/hejitech-apps/branding/promo-videos/public/g2digest-demo [voice …] [--only id,id]
 #
 # Lines: the report's script (Chapters + script). Words are spelled the way they're said ("G two", "M C P").
 import sys, json, numpy as np, soundfile as sf

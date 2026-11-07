@@ -44,19 +44,19 @@ hard cut. Enjoyable comes from motion, rhythm and a little wit in the script, ne
 
 Every agent and the owner use these exact folders, so nobody has to guess where a take landed.
 `<id>` is the demo's id (`<project>-demo`); `<report>` is its report folder (`<date>-<project>-demo-video`).
-The repo is the **main checkout** at `/Volumes/DATA/GitHub/hejitech-apps`. Media is git-ignored, so
+The repo is the **main checkout** at `/Volumes/proj/github/hejitech-apps`. Media is git-ignored, so
 it exists only there: from a worktree or any other checkout (e.g. `/Volumes/DATA/GitHub/hejitech-g2digest-ready`),
 still read and write media at the paths below, never in your own checkout's `branding/`.
 
 | What | Absolute path | Written by |
 |---|---|---|
-| Every source asset the edit uses: Flow shots, images and art, music takes, the owner's device recordings, your recordings (`rec-*.mp4`, event logs), screenshots, voiceover takes | `/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/public/<id>/` (flat, no subfolders; `staticFile("<id>/…")` reads it) | owner drops Flow downloads here; you write the rest |
-| The list of those files, where each came from | `/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/src/<id>/media.md` (tracked) | you, every time a file is added or replaced |
-| The edit (code), voiceover timings | `/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/src/<id>/` (tracked) | you |
-| Recorder, voiceover and SRT scripts | `/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/scripts/<id>-*` (tracked) | you |
-| Raw renders | `/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/out/<composition>.mp4` (ignored) | `npx remotion render` |
-| Final, loudness-normalised renders and SRTs | `/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/out/final/` (ignored) | you |
-| Copies the owner reviews in the report | `/Volumes/DATA/GitHub/hejitech-apps/reports/<report>/site/media/` (`edit/` renders + posters, ignored by convention; `rec/`, `audio/`, `stills/` review copies; `youtube/` thumbnails + SRTs, committed) | you, copied from the folders above, never the only copy |
+| Every source asset the edit uses: Flow shots, images and art, music takes, the owner's device recordings, your recordings (`rec-*.mp4`, event logs), screenshots, voiceover takes | `/Volumes/proj/github/hejitech-apps/branding/promo-videos/public/<id>/` (flat, no subfolders; `staticFile("<id>/…")` reads it) | owner drops Flow downloads here; you write the rest |
+| The list of those files, where each came from | `/Volumes/proj/github/hejitech-apps/branding/promo-videos/src/<id>/media.md` (tracked) | you, every time a file is added or replaced |
+| The edit (code), voiceover timings | `/Volumes/proj/github/hejitech-apps/branding/promo-videos/src/<id>/` (tracked) | you |
+| Recorder, voiceover and SRT scripts | `/Volumes/proj/github/hejitech-apps/branding/promo-videos/scripts/<id>-*` (tracked) | you |
+| Raw renders | `/Volumes/proj/github/hejitech-apps/branding/promo-videos/out/<composition>.mp4` (ignored) | `npx remotion render` |
+| Final, loudness-normalised renders and SRTs | `/Volumes/proj/github/hejitech-apps/branding/promo-videos/out/final/` (ignored) | you |
+| Copies the owner reviews in the report | `/Volumes/proj/github/hejitech-apps/reports/<report>/site/media/` (`edit/` renders + posters, ignored by convention; `rec/`, `audio/`, `stills/` review copies; `youtube/` thumbnails + SRTs, committed) | you, copied from the folders above, never the only copy |
 | Throwaway frames, stills to check, temp audio | the session's scratchpad directory | you; never put an asset the edit needs there |
 
 - Tell the owner the `public/<id>/` path (absolute) in the report's summary and in every Flow/music

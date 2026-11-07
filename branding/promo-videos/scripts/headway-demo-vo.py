@@ -3,7 +3,7 @@
 # line on its step; a re-recorded chapter only needs its own lines again.
 #
 #   <venv>/bin/python -I branding/promo-videos/scripts/headway-demo-vo.py \
-#     /Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/public/headway-demo [voice …] [--only id,id]
+#     /Volumes/proj/github/hejitech-apps/branding/promo-videos/public/headway-demo [voice …] [--only id,id]
 #
 # Lines: the report's script (Chapters + script). Words are spelled phonetically ("Cal train", "E T A", "R one").
 import sys, json, numpy as np, soundfile as sf

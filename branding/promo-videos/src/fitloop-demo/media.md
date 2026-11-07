@@ -2,7 +2,7 @@
 
 The FitLoop walkthrough video (skill `heji-demo-video`). Files live in the main checkout only:
 
-`/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/public/fitloop-demo/` (git-ignored, flat)
+`/Volumes/proj/github/hejitech-apps/branding/promo-videos/public/fitloop-demo/` (git-ignored, flat)
 
 Keep this list in step with the folder so the edit can be rebuilt from a backup (Flow takes can't be
 regenerated exactly). The plan (chapters, step tables, Flow and music prompts) is the report
