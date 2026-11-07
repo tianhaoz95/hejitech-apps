@@ -87,10 +87,13 @@ final class OfflineReportQueueTests: XCTestCase {
         }
     }
 
+    /// The limit is only there to catch a flush that never ends. These tests check what a flush
+    /// did, not how fast, and on CI's simulator the first flush has taken over 50 s (a stubbed
+    /// request takes milliseconds elsewhere). A pass may also use 15 s per report by design.
     private func flushAndWait() {
         let done = expectation(description: "flush")
         OfflineReportQueue.shared.flush { done.fulfill() }
-        wait(for: [done], timeout: 30)
+        wait(for: [done], timeout: 120)
     }
 
     func testFlushSendsQueuedReportsAndRemovesThem() {
