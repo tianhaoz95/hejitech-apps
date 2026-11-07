@@ -59,10 +59,16 @@ public enum FeedbackSubmitter {
         configuration: FeedbackKitConfiguration,
         completion: @escaping @Sendable (Result<Void, FeedbackSubmissionError>) -> Void
     ) {
+        T.m("submit.enter")
         var request = URLRequest(url: configuration.endpointURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        let rid = FeedbackReporterIdentity.current
+        T.m("submit.identity")
+        let u = FeedbackKit.user
+        T.m("submit.user")
+        _ = (rid, u)
         let payload = IngestPayload(
             report: report,
             projectKey: configuration.projectKey,
@@ -74,8 +80,10 @@ public enum FeedbackSubmitter {
             return
         }
         request.httpBody = body
+        T.m("submit.encoded")
 
         session.dataTask(with: request) { _, response, error in
+            T.m("submit.taskDone")
             if let error {
                 completion(.failure(.network(error)))
                 return
@@ -87,6 +95,7 @@ public enum FeedbackSubmitter {
             }
             completion(.success(()))
         }.resume()
+        T.m("submit.resumed")
     }
 }
 

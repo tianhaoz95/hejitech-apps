@@ -125,11 +125,16 @@ public final class OfflineReportQueue: @unchecked Sendable {
     public func flush(completion: (@Sendable () -> Void)? = nil) {
         queue.async { [weak self] in
             guard let self else { completion?(); return }
-            let items = self.loadAllItems().sorted(by: { $0.queuedAt < $1.queuedAt })
+            T.m("flush.start")
+            let loaded = self.loadAllItems()
+            T.m("flush.loaded")
+            let items = loaded.sorted(by: { $0.queuedAt < $1.queuedAt })
             for item in items {
+                T.m("item.begin")
                 let semaphore = DispatchSemaphore(value: 0)
                 let offline = OfflineFlag()
                 FeedbackSubmitter.submitDirect(item.report, configuration: item.configuration) { [weak self] result in
+                    T.m("item.callback")
                     switch result {
                     case .success:
                         self?.deleteItem(id: item.id)
@@ -140,15 +145,20 @@ public final class OfflineReportQueue: @unchecked Sendable {
                     case .failure:
                         break
                     }
+                    T.m("item.handled")
                     semaphore.signal()
                 }
-                _ = semaphore.wait(timeout: .now() + 15)
+                T.m("item.submitReturned")
+                let r = semaphore.wait(timeout: .now() + 15)
+                T.m("item.waitDone timedOut=\(r == .timedOut)")
                 if offline.value { break }
             }
+            T.m("flush.end")
             completion?()
         }
     }
 }
+enum T { static func m(_ s: String) { print("TIMING \(String(format: "%.3f", Date().timeIntervalSince1970)) \(s)") } }
 
 /// Set from the submit callback, read after the semaphore: the wait orders the two.
 private final class OfflineFlag: @unchecked Sendable {

@@ -91,9 +91,11 @@ final class OfflineReportQueueTests: XCTestCase {
     /// did, not how fast, and on CI's simulator the first flush has taken over 50 s (a stubbed
     /// request takes milliseconds elsewhere). A pass may also use 15 s per report by design.
     private func flushAndWait() {
+        T.m("test.flushAndWait")
         let done = expectation(description: "flush")
         OfflineReportQueue.shared.flush { done.fulfill() }
         wait(for: [done], timeout: 120)
+        T.m("test.waitReturned")
     }
 
     func testFlushSendsQueuedReportsAndRemovesThem() {
@@ -153,6 +155,7 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
+        T.m("stub.startLoading")
         let answer = Self.lock.withLock { () -> Answer in
             Self.requestCount += 1
             return Self.answer(request)
