@@ -2,12 +2,15 @@ import XCTest
 @testable import FeedbackKit
 
 final class OfflineReportQueueTests: XCTestCase {
+    private let probe = StallProbe()
     override func setUp() {
         super.setUp()
+        probe.start()
         OfflineReportQueue.shared.clearAll()
     }
 
     override func tearDown() {
+        probe.stopAndPrint(name)
         OfflineReportQueue.shared.clearAll()
         FeedbackKit.configure(nil)
         super.tearDown()
@@ -172,4 +175,45 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
     }
 
     override func stopLoading() {}
+}
+
+/// How late is a 50 ms sleep at each priority, and how long does a small file round trip take?
+final class StallProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var running = false
+    private var results: [String: (n: Int, total: Double, max: Double)] = [:]
+    private func note(_ k: String, _ v: Double) {
+        lock.withLock { var r = results[k] ?? (0, 0, 0); r.n += 1; r.total += v; r.max = max(r.max, v); results[k] = r }
+    }
+    private var isRunning: Bool { lock.withLock { running } }
+    func start() {
+        lock.withLock { running = true; results = [:] }
+        for (name, qos) in [("utility", DispatchQoS.QoSClass.utility), ("default", .default), ("userInitiated", .userInitiated), ("userInteractive", .userInteractive)] {
+            DispatchQueue.global(qos: qos).async { [self] in
+                while isRunning {
+                    let t = Date(); Thread.sleep(forTimeInterval: 0.05)
+                    note("sleep." + name, Date().timeIntervalSince(t) - 0.05)
+                }
+            }
+        }
+        for (name, qos) in [("utility", DispatchQoS.QoSClass.utility), ("userInteractive", .userInteractive)] {
+            DispatchQueue.global(qos: qos).async { [self] in
+                let url = FileManager.default.temporaryDirectory.appendingPathComponent("probe-\(name).bin")
+                let data = Data(repeating: 1, count: 2048)
+                while isRunning {
+                    let t = Date()
+                    try? data.write(to: url, options: .atomic); _ = try? Data(contentsOf: url)
+                    note("disk." + name, Date().timeIntervalSince(t))
+                    Thread.sleep(forTimeInterval: 0.05)
+                }
+            }
+        }
+    }
+    func stopAndPrint(_ test: String) {
+        lock.withLock { running = false }
+        let snapshot = lock.withLock { results }
+        for k in snapshot.keys.sorted() { let r = snapshot[k]!
+            print("PROBE \(test.split(separator: " ").last ?? "") \(k) n=\(r.n) avg=\(String(format: "%.3f", r.total / Double(max(r.n, 1)))) max=\(String(format: "%.3f", r.max))")
+        }
+    }
 }
