@@ -81,11 +81,13 @@ public final class LiveActivityManager {
             nextPred: p.next?.pred,
             stopsLeft: p.stopsLeft,
             cancelled: p.cancelled,
-            arrived: p.arrived
+            arrived: p.arrived,
+            clockOffsetMs: Clock.offset == 0 ? nil : Clock.offset * 1000
         )
 
         // If an activity is already active for this trip, update it.
-        if let current = Activity<TrackActivityAttributes>.activities.first(where: { $0.attributes.tripId == tracked.tripId }) {
+        // Only a live one: an activity this app ended (stopped tracking) stays listed for a while, and updating it shows nothing.
+        if let current = Activity<TrackActivityAttributes>.activities.first(where: { $0.attributes.tripId == tracked.tripId && $0.activityState == .active }) {
             self.currentActivity = current
             await current.update(ActivityContent(state: contentState, staleDate: Date(timeIntervalSinceNow: 180)))
             return
@@ -101,16 +103,16 @@ public final class LiveActivityManager {
             to: p.to.name
         )
 
+        let content = ActivityContent(state: contentState, staleDate: Date(timeIntervalSinceNow: 180))
         do {
-            let activity = try Activity.request(
-                attributes: attributes,
-                content: ActivityContent(state: contentState, staleDate: Date(timeIntervalSinceNow: 180)),
-                pushType: .token
-            )
+            let activity = try Activity.request(attributes: attributes, content: content, pushType: .token)
             self.currentActivity = activity
             monitorActivityPushToken(activity, backend: backend)
         } catch {
-            // Live Activity request can be denied by system or user preference
+            // No push updates possible (a build without the push entitlement, e.g. an unsigned simulator build):
+            // start it anyway; the app updates it on every refresh while it runs. Denied by the user: nothing shows.
+            print("Live Activity with push updates failed: \(error); starting it without")
+            self.currentActivity = try? Activity.request(attributes: attributes, content: content, pushType: nil)
         }
     }
 

@@ -154,6 +154,12 @@ await step("the glasses token reads the commute and tracks a train, and nothing 
   assert.equal(t.body.progress.to.id, "san_francisco");
   const again = await call("/api/me/board", { auth: session });
   assert.equal(again.body.tracked.trip_id, firstTrain.trip_id, "the phone sees what the glasses track");
+  // Share live ETA: the link opens the Worker's page (it once fell through to the static 404 page).
+  const share = await call("/api/me/share", { method: "POST", auth: session, body: { name: "Test" } });
+  assert.equal(share.status, 201, share.text);
+  const page = await fetch(share.body.url.replace(/^https?:\/\/[^/]+/, site));
+  assert.equal(page.status, 200, "the shared ETA page");
+  assert.match(await page.text(), /is on Caltrain|has arrived/);
   assert.equal((await call("/api/track", { method: "POST", auth: device, body: { trip_id: "nope", service_date: "20261027", from: "a", to: "b" } })).status, 400);
   assert.equal((await call("/api/settings", { auth: device })).status, 403);
   assert.equal((await call("/api/pairing-code", { method: "POST", auth: device })).status, 403);
@@ -381,6 +387,15 @@ await step("review sign-in: wrong password refused, right one gets a session on 
 });
 
 // ---------------------------------------------------------------- pages
+await step("the demo clock (local only) moves boards to another moment, and resets", async () => {
+  const set = await call("/api/dev/clock", { method: "PUT", body: { at: "2026-11-09T07:40:00-08:00" } });
+  assert.equal(set.status, 200, set.text);
+  assert.ok(Math.abs(set.body.now - Date.parse("2026-11-09T07:40:00-08:00")) < 5_000);
+  const b = (await call("/api/board?from=mountain_view&to=san_francisco")).body;
+  assert.ok(b.trains.some((t) => t.kind === "EXP"), "a Monday morning has expresses");
+  assert.ok(b.trains.every((t) => t.service_date === "20261109"));
+  assert.equal((await call("/api/dev/clock", { method: "PUT", body: { at: null } })).body.offset_ms, 0);
+});
 await step("pages", async () => {
   for (const p of ["/", "/login/", "/settings/", "/support/", "/privacy/", "/oauth/consent/", "/icon.svg"]) assert.equal((await fetch(`${site}${p}`)).status, 200, p);
   assert.equal((await fetch(`${site}/nope`)).status, 404);

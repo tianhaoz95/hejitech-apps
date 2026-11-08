@@ -591,6 +591,14 @@ public struct EtaShareResponse: Codable, Hashable, Sendable {
 public enum Clock {
     public static let pacific = TimeZone(identifier: "America/Los_Angeles")!
 
+    /// Seconds added to the device clock. Always 0 in production; a Debug build on the local stack copies the
+    /// local Worker's demo clock (GET /api/dev/clock), so the app can be tested and recorded against any
+    /// moment's schedule (a weekday rush on a Sunday night).
+    nonisolated(unsafe) public static var offset: TimeInterval = 0
+
+    /// Now, on the app's clock (the device's, plus `offset`).
+    public static func now() -> Date { Date().addingTimeInterval(offset) }
+
     /// "8:14" in Pacific time.
     public static func time(_ epochMs: Double) -> String {
         let f = DateFormatter()
@@ -601,7 +609,7 @@ public enum Clock {
     }
 
     /// "12m", "now", "1h05".
-    public static func until(_ epochMs: Double, now: Date = Date()) -> String {
+    public static func until(_ epochMs: Double, now: Date = Clock.now()) -> String {
         let m = Int(floor((epochMs / 1000 - now.timeIntervalSince1970) / 60))
         if m <= 0 { return "now" }
         if m < 100 { return "\(m)m" }
@@ -616,4 +624,10 @@ public enum Clock {
     }
 
     public static func hhmm(_ minutes: Int) -> String { String(format: "%02d:%02d", minutes / 60, minutes % 60) }
+}
+
+/// GET /api/dev/clock on the local stack: the Worker's demo clock.
+public struct DevClock: Decodable, Sendable {
+    public let offsetMs: Double
+    enum CodingKeys: String, CodingKey { case offsetMs = "offset_ms" }
 }

@@ -230,17 +230,21 @@ struct WatchTrainRow: View {
                 Text(Clock.time(train.predDep))
                     .font(.subheadline.weight(.semibold).monospacedDigit())
                     .strikethrough(train.status == .cancelled)
+                    .lineLimit(1).fixedSize()
 
-                if train.predDep != train.dep {
+                // Struck out only when the shown minute changed (a live prediction seconds off isn't a change).
+                if Clock.time(train.predDep) != Clock.time(train.dep) {
                     Text(Clock.time(train.dep))
                         .font(.caption2.monospacedDigit())
                         .strikethrough()
                         .foregroundStyle(.secondary)
+                        .lineLimit(1).minimumScaleFactor(0.7)
                 }
 
                 Text("→ \(Clock.time(train.predArr))")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
+                    .lineLimit(1).fixedSize()
 
                 Spacer()
 

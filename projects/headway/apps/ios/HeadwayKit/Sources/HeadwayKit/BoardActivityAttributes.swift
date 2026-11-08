@@ -42,7 +42,7 @@ public struct BoardActivityAttributes: ActivityAttributes {
         }
 
         /// The next `max` trains still to leave on `board` (what core's `boardActivityState` sends).
-        public init(board: Board, now: Date = Date(), max: Int = 3) {
+        public init(board: Board, now: Date = Clock.now(), max: Int = 3) {
             let nowMs = now.timeIntervalSince1970 * 1000
             trains = board.trains.filter { $0.predDep > nowMs }.prefix(max).map {
                 Train(train: $0.train, kind: $0.kind, dep: $0.predDep, arr: $0.predArr, delayMin: $0.delayMin, cancelled: $0.status == .cancelled)

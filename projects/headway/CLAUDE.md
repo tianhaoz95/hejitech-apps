@@ -17,6 +17,7 @@ node projects/headway/scripts/build-timetable.mjs      # new Caltrain timetable 
 echo "SUPABASE_SERVICE_ROLE_KEY=<local service key>" > projects/headway/services/web/.dev.vars
 npm run dev:worker -w @headway/web                     # 127.0.0.1:8792 (+ TRANSIT_511_API_KEY in .dev.vars for live data)
 curl "http://127.0.0.1:8792/cdn-cgi/handler/scheduled?cron=*+*+*+*+*"   # run the cron once
+curl -X PUT 127.0.0.1:8792/api/dev/clock -d '{"at":"2026-11-09T07:40:00-08:00"}'   # local only: pretend it's then ({"at":null} resets)
 node projects/headway/scripts/test-api.mjs             # integration (22 checks: boards, on-train, pairing, push, MCP/OAuth, RLS)
 projects/headway/scripts/glasses-sim.sh [--e2e]        # the plugin in the Even Hub simulator, paired to the seed rider
 npm run package -w @headway/glasses                    # apps/glasses/build/headway.ehpk (version = MARKETING_VERSION)
@@ -72,6 +73,9 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|g
 - `test-api.mjs`'s "Not on it" uses its second user: on the seed rider it hides the card for 20 minutes.
   To simulate a ride on the simulator, `xcrun simctl location booted start --speed=22 --interval=3 lat,lon lat,lon …`
   along the stations of a train running now.
+- Locally, "now" is the Worker's demo clock (`worker/clock.ts`, `/api/dev/clock`): use it to test a weekday rush,
+  a late night or a delay at any time. The Debug app and the plugin read it at launch (relaunch after moving it);
+  restarting the Worker resets it. Server code takes `now(env)`, never `Date.now()`, for anything a rider sees.
 - Times are Pacific everywhere (`core/src/time.ts`); GTFS service days start at noon minus 12 h, and
   trains after midnight belong to the day before.
 - The timetable runs out (`feed_end`; a core test fails 21 days before): rebuild it with

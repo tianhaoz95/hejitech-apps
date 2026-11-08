@@ -86,8 +86,16 @@ async function boot() {
   }
 
   const ui = phonePage(root, Boolean(bridge));
+  // On the local stack only, follow the Worker's demo clock (PUT /api/dev/clock), so the plugin's countdowns
+  // agree with boards computed for another moment. Production never asks.
+  let clockOffset = 0;
+  if (/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(api)) {
+    const c = (await fetch(`${api}/api/dev/clock`).then((r) => (r.ok ? r.json() : null), () => null)) as { offset_ms?: number } | null;
+    clockOffset = c?.offset_ms ?? 0;
+  }
   const app = new HeadwayApp({
     api, store,
+    now: () => Date.now() + clockOffset,
     onLines: (lines) => {
       const text = lines.join("\n");
       ui.mirror.textContent = text;

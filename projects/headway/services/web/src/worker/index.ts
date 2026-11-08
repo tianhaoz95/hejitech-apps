@@ -17,6 +17,7 @@
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { progress, tripProgressStops, type Tracked } from "@headway/core";
 import { handleApi } from "./api.ts";
+import { now as clockNow } from "./clock.ts";
 import { runCron } from "./cron.ts";
 import { renderEtaHtml } from "./eta.ts";
 import { handleMcp, type Caller } from "./mcp.ts";
@@ -36,7 +37,7 @@ const mcpHandler = {
     const props = ctx.props;
     if (!props?.userId) return new Response("unauthorized", { status: 401 });
     const caller: Caller = { userId: props.userId, via: props.via };
-    return handleMcp(req, caller, admin(env));
+    return handleMcp(req, caller, admin(env), clockNow(env));
   },
 };
 
@@ -140,7 +141,7 @@ const app = {
           headers: { "Content-Type": "text/html; charset=utf-8" },
         });
       }
-      const now = Date.now();
+      const now = clockNow(env);
       const tracked: Tracked = { trip_id: row.trip_id, service_date: row.service_date, from: row.from_station, to: row.to_station };
       const snapshot = await loadSnapshot(db);
       const p = progress(tracked, now, snapshot);
@@ -152,10 +153,10 @@ const app = {
       }
       const stops = tripProgressStops(tracked, now, snapshot);
       if (p.arrived) {
-        const exp = new Date(now + 30 * 60_000).toISOString();
+        const exp = new Date(Date.now() + 30 * 60_000).toISOString(); // the link's life is real time
         if (row.expires_at > exp) await updateEtaShareExpiry(db, row.token_hash, exp);
       }
-      const html = renderEtaHtml(token, {
+      const html = renderEtaHtml(token, now, {
         name: row.name,
         train: p.train,
         kind: p.kind,
@@ -218,6 +219,6 @@ function getProvider(env: Env): OAuthProvider<Env> {
 export default {
   fetch: (req: Request, env: Env, ctx: ExecutionContext) => getProvider(env).fetch(req, env, ctx),
   scheduled: (controller: ScheduledController, env: Env, ctx: ExecutionContext) => {
-    ctx.waitUntil(runCron(env, new Date(controller.scheduledTime)).then((r) => console.log("cron", JSON.stringify(r))));
+    ctx.waitUntil(runCron(env, new Date(controller.scheduledTime + (clockNow(env) - Date.now()))).then((r) => console.log("cron", JSON.stringify(r))));
   },
 } satisfies ExportedHandler<Env>;

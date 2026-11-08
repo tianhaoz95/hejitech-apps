@@ -17,6 +17,12 @@ public struct TrackActivityAttributes: ActivityAttributes {
         public var stopsLeft: Int
         public var cancelled: Bool
         public var arrived: Bool
+        /// The app's demo-clock offset (ms; never set in production). The system draws countdowns with its own
+        /// clock, so they count to `countdownArr`, the arrival moved by it; clock times still show `predArr`.
+        public var clockOffsetMs: Double?
+
+        /// What the system's countdowns ("in 12 min") count to.
+        public var countdownArr: Date { Date(timeIntervalSince1970: (predArr - (clockOffsetMs ?? 0)) / 1000) }
 
         public init(
             predArr: Double,
@@ -25,7 +31,8 @@ public struct TrackActivityAttributes: ActivityAttributes {
             nextPred: Double? = nil,
             stopsLeft: Int,
             cancelled: Bool = false,
-            arrived: Bool = false
+            arrived: Bool = false,
+            clockOffsetMs: Double? = nil
         ) {
             self.predArr = predArr
             self.delayMin = delayMin
@@ -34,6 +41,7 @@ public struct TrackActivityAttributes: ActivityAttributes {
             self.stopsLeft = stopsLeft
             self.cancelled = cancelled
             self.arrived = arrived
+            self.clockOffsetMs = clockOffsetMs
         }
 
         enum CodingKeys: String, CodingKey {
@@ -44,6 +52,7 @@ public struct TrackActivityAttributes: ActivityAttributes {
             case stopsLeft = "stops_left"
             case cancelled
             case arrived
+            case clockOffsetMs = "clock_offset_ms"
         }
     }
 

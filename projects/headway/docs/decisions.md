@@ -137,3 +137,22 @@ unless the rider picked a pair (a flip on the watch, or a custom board synced fr
 stored as `WatchStore`'s `ManualPick`. A pick lasts two hours (`ManualPick.lifetime`); the iPhone's
 `customPair` expires the same way, so an evening flip never holds into the next morning. The iPhone's
 commute board, when synced, clears the watch's pick. The watch refreshes whenever it becomes active.
+
+## A demo clock for the local stack (2026-11-08)
+
+Recording the walkthrough needed Caltrain's weekday rush (expresses, a late local) on a Sunday night, and
+everything that shows a time has to agree: boards, alerts, the plugin, the app's countdowns, the Live
+Activity and the shared ETA page. The system clock can't move (the simulator shares it), so the local
+Worker carries an offset instead: `PUT /api/dev/clock {"at": ISO | null}` (`worker/clock.ts`), refused
+unless `PUBLIC_URL` is 127.0.0.1/localhost, kept in the isolate (it resets with the Worker). Requests, cron,
+MCP and the ETA page use `now(env)`; database timestamps (created_at, expiry) stay real. The Debug iPhone app
+on the local stack and the plugin pointed at a local `?api=` read the offset at launch (`Clock.offset`,
+`now` in HeadwayApp). The Live Activity is drawn by the system with the real clock, so its content carries
+`clock_offset_ms` (never set in production) and its countdowns count to the arrival moved back by it, while
+its clock times show the real prediction.
+
+Recording it also found three bugs, fixed the same day: shared ETA links fell through to the static 404
+page (`/eta/*` was missing from `run_worker_first`, in production too); Share live ETA and Stop tracking
+shared a List row without a borderless style, so sharing also stopped tracking; and re-tracking a train
+updated the Live Activity the app had just ended. A Live Activity now also starts without push updates when
+the push-token request fails (an unsigned simulator build), updated by the app while it runs.

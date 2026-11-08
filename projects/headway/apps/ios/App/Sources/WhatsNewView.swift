@@ -26,6 +26,9 @@ struct WhatsNewView: View {
     static let releases: [ReleaseNotes] = [
         ReleaseNotes(version: "1.1.1", date: "November 2026", items: [
             WhatsNewItem(icon: "calendar", title: "Clearer alert days", description: "The days on the Commute tab now sit with your alerts, because that's all they set: which days commute alerts come. The switch to your evening trains happens every day."),
+            WhatsNewItem(icon: "square.and.arrow.up", title: "Sharing your ETA keeps tracking", description: "Tapping Share live ETA no longer also stops tracking your train, and the link you send opens your live ETA again."),
+            WhatsNewItem(icon: "iphone.radiowaves.left.and.right", title: "Live Activity comes back", description: "Tracking a train again after you stopped now brings its Live Activity back to your Lock Screen and Dynamic Island."),
+            WhatsNewItem(icon: "textformat.size", title: "Times on one line", description: "Departure and arrival times on the board and your watch no longer break across two lines; a later time only shows the old one crossed out when the minute really changed."),
         ]),
         ReleaseNotes(version: "1.1.0", date: "November 2026", items: [
             WhatsNewItem(icon: "bicycle", title: "Bike, e-bike or e-scooter to the station", description: "Choose how you get to the station for each commute leg: walk, bike, e-bike, e-scooter or drive. With Location on, leave-by times and spare minutes use that speed, on your glasses too."),

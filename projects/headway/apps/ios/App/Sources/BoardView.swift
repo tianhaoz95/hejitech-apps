@@ -12,7 +12,7 @@ struct BoardView: View {
     }
 
     @State private var picking = false
-    @State private var now = Date()
+    @State private var now = Clock.now()
     @State private var sort: BoardSort = .leaving
     private let tick = Timer.publish(every: 20, on: .main, in: .common).autoconnect()
 
@@ -153,7 +153,7 @@ struct BoardView: View {
                 }
             }
             .sheet(isPresented: $picking) { PairPicker() }
-            .onReceive(tick) { now = $0; Task { await model.refresh() } }
+            .onReceive(tick) { _ in now = Clock.now(); Task { await model.refresh() } }
         }
     }
 }
@@ -333,6 +333,19 @@ struct TrainRow: View {
         .lineLimit(1)
     }
 
+    /// The departure, the timetable time struck out when it differs to the minute, and the arrival.
+    private func timeLine(scheduled: Bool) -> some View {
+        HStack(spacing: 6) {
+            Text(Clock.time(train.predDep)).font(.title3.weight(.semibold).monospacedDigit())
+                .strikethrough(train.status == .cancelled)
+            if scheduled, Clock.time(train.predDep) != Clock.time(train.dep) {
+                Text(Clock.time(train.dep)).font(.subheadline.monospacedDigit()).strikethrough().foregroundStyle(.secondary)
+            }
+            Text("→ \(Clock.time(train.predArr))").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+        }
+        .lineLimit(1)
+    }
+
     private var statusText: String {
         switch train.status {
         case .cancelled: "Cancelled"
@@ -377,13 +390,12 @@ struct TrainRow: View {
             }
             .frame(width: 78, alignment: .leading)
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(Clock.time(train.predDep)).font(.title3.weight(.semibold).monospacedDigit())
-                        .strikethrough(train.status == .cancelled)
-                    if train.predDep != train.dep {
-                        Text(Clock.time(train.dep)).font(.subheadline.monospacedDigit()).strikethrough().foregroundStyle(.secondary)
-                    }
-                    Text("→ \(Clock.time(train.predArr))").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                // Times never wrap ("9:4" over "1"): without room, drop the struck-out timetable time,
+                // then shrink a little.
+                ViewThatFits(in: .horizontal) {
+                    timeLine(scheduled: true).fixedSize()
+                    timeLine(scheduled: false).fixedSize()
+                    timeLine(scheduled: false).lineLimit(1).minimumScaleFactor(0.75)
                 }
                 // One line: without room for "Faster" (the Express badge already says it), drop it
                 // rather than wrapping "7 stops" across two lines.
@@ -571,10 +583,13 @@ struct TrackedRow: View {
                 }
                 .font(.subheadline)
                 .disabled(sharing)
+                // Two buttons in one List row: without a borderless style a tap anywhere in the row fires both
+                // (sharing the ETA also stopped tracking, and ended the Live Activity).
+                .buttonStyle(.borderless)
 
                 Spacer()
 
-                Button("Stop tracking", role: .destructive) { Task { await model.untrack() } }.font(.subheadline)
+                Button("Stop tracking", role: .destructive) { Task { await model.untrack() } }.font(.subheadline).buttonStyle(.borderless)
             }
             .padding(.top, 4)
         }

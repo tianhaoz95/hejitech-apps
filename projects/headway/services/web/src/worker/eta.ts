@@ -27,8 +27,7 @@ const untilStr = (targetMs: number, nowMs: number) => {
   return `${Math.floor(m / 60)}h ${m % 60}m`;
 };
 
-export function renderEtaHtml(token: string, data: EtaPayload): string {
-  const now = Date.now();
+export function renderEtaHtml(token: string, now: number, data: EtaPayload): string {
   const rider = data.name ? `${escapeHtml(data.name)}` : "Your rider";
   const title = data.arrived
     ? `${rider} has arrived`
@@ -252,6 +251,8 @@ export function renderEtaHtml(token: string, data: EtaPayload): string {
 
   <script>
     const token = ${JSON.stringify(token)};
+    // The server's clock at render time, so "in N min" agrees with it even if this device's clock is off.
+    const skew = ${now} - Date.now();
     async function refresh() {
       try {
         const res = await fetch("/api/eta/" + token);
@@ -266,7 +267,7 @@ export function renderEtaHtml(token: string, data: EtaPayload): string {
           location.reload();
           return;
         }
-        const now = Date.now();
+        const now = Date.now() + skew;
         const d = new Date(data.pred_arr);
         const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
         const mLeft = Math.max(0, Math.round((data.pred_arr - now) / 60000));

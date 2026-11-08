@@ -4,6 +4,7 @@
 //   none                          stations, any board, a train's progress, status; POST /api/pair (throttled)
 //   session or glasses token      the user's commute board, the tracked train, the train they're on
 //   Supabase session (web, iPhone) settings, pairing codes, devices, push registration, agent tokens, delete data
+import { devClock, now as clockNow } from "./clock.ts";
 import { appleKey, revokeIfPossible } from "./apple.ts";
 import { board, checkSettings, isTravelMode, clock, commuteBoard, detectOnTrain, newLeg, onTrainCard, stillOnTrain, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type ExpressPreference, type OnTrainSample, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
 import { NOT_BOARD_ACTIVITY, pushConfigured, sendPush } from "./push.ts";
@@ -58,7 +59,8 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   const db = admin(env);
   const path = url.pathname;
-  const now = Date.now();
+  if (path === "/api/dev/clock") return devClock(req, env);
+  const now = clockNow(env);
 
   const expressParam = (url.searchParams.get("express") ?? url.searchParams.get("express_preference")) as ExpressPreference | null;
   const validExpress = expressParam === "all" || expressParam === "prefer_express" || expressParam === "express_only" ? expressParam : undefined;

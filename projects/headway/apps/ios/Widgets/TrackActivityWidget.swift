@@ -24,8 +24,7 @@ public struct TrackActivityWidget: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    let arrDate = Date(timeIntervalSince1970: context.state.predArr / 1000)
-                    Text(arrDate, style: .relative)
+                    Text(context.state.countdownArr, style: .relative)
                         .font(.headline)
                         .foregroundStyle(Color(red: 0.24, green: 0.82, blue: 0.48))
                 }
@@ -70,8 +69,7 @@ public struct TrackActivityWidget: Widget {
                         .foregroundStyle(.white)
                 }
             } compactTrailing: {
-                let arrDate = Date(timeIntervalSince1970: context.state.predArr / 1000)
-                Text(arrDate, style: .relative)
+                Text(context.state.countdownArr, style: .relative)
                     .font(.caption2.bold())
                     .foregroundStyle(Color(red: 0.24, green: 0.82, blue: 0.48))
                     .frame(maxWidth: 40)
@@ -139,7 +137,7 @@ struct LockScreenLiveActivityView: View {
                         Text("arrives · in")
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.7))
-                        Text(arrDate, style: .relative)
+                        Text(state.countdownArr, style: .relative)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.white.opacity(0.9))
                     }

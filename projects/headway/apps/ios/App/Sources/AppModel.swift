@@ -118,6 +118,14 @@ final class AppModel {
     // MARK: launch and routing
 
     func start() async {
+        #if DEBUG
+        // On the local stack, follow the Worker's demo clock (PUT /api/dev/clock) so countdowns agree with
+        // boards computed for another moment. Production builds never ask.
+        if backend.config.site.host == "127.0.0.1",
+           let c: DevClock = try? await backend.call("GET", "/api/dev/clock", auth: false) {
+            Clock.offset = c.offsetMs / 1000
+        }
+        #endif
         watch.activate()
         #if os(iOS) && canImport(ActivityKit)
         LiveActivityManager.shared.startMonitoring(backend: backend)

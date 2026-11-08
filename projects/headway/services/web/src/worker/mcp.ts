@@ -105,8 +105,7 @@ function stationArg(v: unknown, name: string) {
   return s;
 }
 
-async function callTool(name: string, args: Record<string, unknown>, caller: Caller, db: Db): Promise<unknown> {
-  const now = Date.now();
+async function callTool(name: string, args: Record<string, unknown>, caller: Caller, db: Db, now: number): Promise<unknown> {
   switch (name) {
     case "my_commute": {
       const { settings } = await loadSettings(db, caller.userId);
@@ -173,7 +172,7 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
   throw new Error(`unknown tool ${name}`);
 }
 
-export async function handleMcp(req: Request, caller: Caller, db: Db): Promise<Response> {
+export async function handleMcp(req: Request, caller: Caller, db: Db, now = Date.now()): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method === "GET") return json({ name: "headway-mcp", transport: "streamable-http" });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -204,7 +203,7 @@ export async function handleMcp(req: Request, caller: Caller, db: Db): Promise<R
       const name = String(msg.params?.name ?? "");
       const args = (msg.params?.arguments ?? {}) as Record<string, unknown>;
       try {
-        const result = await callTool(name, args, caller, db);
+        const result = await callTool(name, args, caller, db, now);
         return reply({ content: [{ type: "text", text: JSON.stringify(result, null, 2) }], structuredContent: result });
       } catch (e) {
         return reply({ content: [{ type: "text", text: `Error: ${(e as Error).message}` }], isError: true });
