@@ -53,9 +53,10 @@ Run `check` first and let its output decide which steps to do. Don't repeat a st
 
 ### 2. Install the tools
 
-Plug in the drive first. The repo belongs at `/Volumes/proj/github/hejitech-apps`, and `/Volumes/DATA` holds
-scratch and build caches. If this Mac already has a volume named `DATA`, this one mounts as `DATA 1`, which
-breaks those paths, so rename the other volume.
+Plug in the drive first. The repo belongs at `/Volumes/proj/github/hejitech-apps`, and video scratch
+(the Kokoro venv, recordings) at `/Volumes/proj/scratch/heji-video`. If this Mac already has a volume
+named `proj`, this one mounts as `proj 1`, which breaks those paths, so rename the other volume.
+`/Volumes/DATA` (the old drive) is optional: Voxbrief's scripts put build caches there only when it's mounted.
 
 ```sh
 xcode-select --install       # wait for its installer to finish
@@ -160,7 +161,7 @@ Venvs copied with the drive point at uv's Python under the old home folder. Keep
 and run `uv python install 3.12`, or recreate them. Kokoro (the path the video scripts use):
 
 ```sh
-V=/Volumes/DATA/Scratch/heji-video/kokoro-venv
+V=/Volumes/proj/scratch/heji-video/kokoro-venv
 rm -rf "$V" && uv venv --python 3.12 "$V"
 uv pip install --python "$V/bin/python" "kokoro>=0.9" soundfile "misaki[en]" \
   "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"

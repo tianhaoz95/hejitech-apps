@@ -42,11 +42,11 @@ regenerated exactly). The plan (chapters, step tables, Flow and music prompts) i
 
 ```sh
 # Generate voiceover audio
-/Volumes/DATA/Scratch/heji-video/kokoro-venv/bin/python -I branding/promo-videos/scripts/headway-demo-vo.py \
+/Volumes/proj/scratch/heji-video/kokoro-venv/bin/python -I branding/promo-videos/scripts/headway-demo-vo.py \
   branding/promo-videos/public/headway-demo af_heart
 
 # Extract caption timings with faster-whisper
-/Volumes/DATA/Scratch/heji-video/kokoro-venv/bin/python -I branding/promo-videos/scripts/headway-demo-words.py \
+/Volumes/proj/scratch/heji-video/kokoro-venv/bin/python -I branding/promo-videos/scripts/headway-demo-words.py \
   branding/promo-videos/public/headway-demo af_heart branding/promo-videos/src/headway-demo/voiceover.ts
 
 # Copy event logs if needed

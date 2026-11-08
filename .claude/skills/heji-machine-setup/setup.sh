@@ -244,7 +244,7 @@ cmd_check() {
   while IFS= read -r f; do
     local base; base=$(sed -n 's/^home = //p' "$f"); f=$(dirname "$f")
     if [ -x "$base/python3" ] || [ -x "$base/python" ]; then ok "venv ${f/#$REPO\//}"; else warn "venv ${f/#$REPO\//} has lost its Python" "Recreate it: see SKILL.md step 7"; fi
-  done < <(find "$REPO/projects" /Volumes/DATA/Scratch/heji-video -maxdepth 4 -name pyvenv.cfg -not -path '*/node_modules/*' 2>/dev/null)
+  done < <(find "$REPO/projects" /Volumes/proj/scratch/heji-video -maxdepth 4 -name pyvenv.cfg -not -path '*/node_modules/*' 2>/dev/null)
 
   section "Claude Code"
   need_cmd claude "npm install -g @anthropic-ai/claude-code"

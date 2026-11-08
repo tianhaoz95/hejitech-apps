@@ -45,8 +45,8 @@ regenerated exactly). The plan (chapters, step tables, Flow and music prompts) i
 
 ```sh
 # recordings (local stack; see the header of scripts/g2digest-demo-record.mjs), then always `restore`
-/Volumes/DATA/Scratch/heji-video/kokoro-venv/bin/python -I scripts/g2digest-demo-vo.py $PWD/public/g2digest-demo am_echo
-/Volumes/DATA/Scratch/heji-video/kokoro-venv/bin/python -I scripts/g2digest-demo-words.py $PWD/public/g2digest-demo am_echo src/g2digest-demo/voiceover.ts
+/Volumes/proj/scratch/heji-video/kokoro-venv/bin/python -I scripts/g2digest-demo-vo.py $PWD/public/g2digest-demo am_echo
+/Volumes/proj/scratch/heji-video/kokoro-venv/bin/python -I scripts/g2digest-demo-words.py $PWD/public/g2digest-demo am_echo src/g2digest-demo/voiceover.ts
 cp public/g2digest-demo/*.events.json src/g2digest-demo/events/
 npx remotion render g2digest-demo out/g2digest-demo.mp4 --concurrency=2         # then g2digest-demo-short, one at a time
 # two-pass loudnorm (-14 LUFS, TP -1.5, linear) into out/final/<id>.mp4
@@ -56,6 +56,6 @@ node scripts/g2digest-demo-srt.mjs out/final                                   #
 
 Also used (not in `public/`): `still-*.png`, `still-recap-*.jpg` and `edition-reef-*.mp3` (the agent's own
 audio, copied from its build folder) are in `public/g2digest-demo/`; the agent's folder, pty rig and Kokoro
-venv are in `/Volumes/DATA/Scratch/heji-video/`.
+venv are in `/Volumes/proj/scratch/heji-video/`.
 
 Backup: _(not set up yet)_

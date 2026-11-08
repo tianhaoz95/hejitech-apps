@@ -29,7 +29,7 @@ import { join, resolve } from "node:path";
 
 const REPO = resolve(".");
 const OUT = `${REPO}/branding/promo-videos/public/g2digest-demo`;
-const SCRATCH = "/Volumes/DATA/Scratch/heji-video";
+const SCRATCH = "/Volumes/proj/scratch/heji-video";
 const WORK = `${SCRATCH}/g2digest-demo-work`;
 const TERM = `${SCRATCH}/term`;
 const AGENT_DIR = `${SCRATCH}/g2digest-agent`;
