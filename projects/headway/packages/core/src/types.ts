@@ -110,7 +110,8 @@ export interface Leg {
   travel_mode?: TravelMode;
 }
 
-export type TravelMode = "walk" | "drive";
+/** How the rider gets to the station: on foot, by car, bike, e-bike or e-scooter. */
+export type TravelMode = "walk" | "drive" | "bike" | "ebike" | "scooter";
 
 /** A rough door-to-platform estimate from the rider's location (straight line × detour ÷ average speed). */
 export interface TravelEstimate {

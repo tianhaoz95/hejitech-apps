@@ -1,6 +1,6 @@
 // A user's settings: defaults and the one validator the Worker, the web page and the iPhone app's
 // requests all go through.
-import { station } from "./schedule.ts";
+import { isTravelMode, station, TRAVEL_MODES } from "./schedule.ts";
 import { hhmm } from "./time.ts";
 import type { AlertScope, AlertSettings, ExpressPreference, Leg, OnTrainMode, Settings } from "./types.ts";
 
@@ -52,8 +52,8 @@ function checkLeg(leg: unknown, path: string, issues: Issue[]) {
   if (l.express_preference !== undefined && !validPref(l.express_preference)) {
     issues.push({ path: `${path}.express_preference`, message: 'must be "all", "prefer_express", or "express_only"' });
   }
-  if (l.travel_mode !== undefined && l.travel_mode !== "walk" && l.travel_mode !== "drive") {
-    issues.push({ path: `${path}.travel_mode`, message: 'must be "walk" or "drive"' });
+  if (l.travel_mode !== undefined && !isTravelMode(l.travel_mode)) {
+    issues.push({ path: `${path}.travel_mode`, message: `must be one of ${TRAVEL_MODES.map((m) => `"${m}"`).join(", ")}` });
   }
 }
 
@@ -97,7 +97,7 @@ export function normalizeSettings(s: unknown): Settings {
     if (!x.from || !x.to) return null;
     const base = newLeg(x.from, x.to, part);
     const pref = validPref(x.express_preference) ? x.express_preference : globalPref;
-    const travel_mode = x.travel_mode === "drive" ? "drive" : "walk";
+    const travel_mode = isTravelMode(x.travel_mode) ? x.travel_mode : "walk";
     return { ...base, ...x, express_preference: pref, travel_mode, window: { ...base.window, ...(x.window ?? {}) } } as Leg;
   };
   return {

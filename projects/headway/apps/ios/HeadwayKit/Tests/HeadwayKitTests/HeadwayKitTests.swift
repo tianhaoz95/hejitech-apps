@@ -35,6 +35,16 @@ final class HeadwayKitTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(Leg.self, from: Data(json.utf8)).travelMode, .drive)
     }
 
+    func testDecodesEveryTravelModeAndToleratesUnknownOnes() throws {
+        for mode in TravelMode.allCases {
+            XCTAssertEqual(try JSONDecoder().decode(TravelMode.self, from: Data("\"\(mode.rawValue)\"".utf8)), mode)
+        }
+        XCTAssertEqual(TravelMode.allCases.map(\.rawValue), ["walk", "bike", "ebike", "scooter", "drive"])
+        XCTAssertEqual(try JSONDecoder().decode(TravelMode.self, from: Data("\"hoverboard\"".utf8)), .walk)
+        let estimate = try JSONDecoder().decode(TravelEstimate.self, from: Data(#"{"mode":"ebike","distance_m":1600,"minutes":9}"#.utf8))
+        XCTAssertEqual(estimate.mode, .ebike)
+    }
+
     func testDecodesStations() throws {
         let s = try Backend.decoder.decode([Station].self, from: fixture("stations"))
         XCTAssertEqual(s.first?.id, "san_francisco")

@@ -27,7 +27,12 @@ final class AppModel {
     var settingsSaved = false
     var stations: [Station] = []
     /// A pair picked on the Trains tab instead of the commute (nil: the commute for the time of day).
-    var customPair: (from: String, to: String)?
+    var customPair: (from: String, to: String)? {
+        didSet { customPairAt = customPair == nil ? nil : Date() }
+    }
+    /// When `customPair` was picked: after `ManualPick.lifetime` the board goes back to the commute,
+    /// so a flip in the evening doesn't hold the next morning.
+    private var customPairAt: Date?
     var expressPreference: ExpressPreference = .all
     var error: String?
     var loading = false
@@ -274,6 +279,7 @@ final class AppModel {
             await reportRide()
             let here = useLocation ? await location.current() : nil
             let origin = here.map { (lat: $0.coordinate.latitude, lon: $0.coordinate.longitude) }
+            if let at = customPairAt, Date().timeIntervalSince(at) >= ManualPick.lifetime { customPair = nil }
             let r = try await backend.myBoard(from: customPair?.from, to: customPair?.to, express: expressPreference, origin: origin)
             board = r.board
             hasCommute = r.hasCommute

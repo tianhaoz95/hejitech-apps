@@ -21,4 +21,9 @@ final class WatchDelegate: NSObject, WKApplicationDelegate {
     func applicationDidFinishLaunching() {
         model.activate()
     }
+
+    /// Raising the wrist in the morning must show the morning board, not last night's cached one.
+    func applicationDidBecomeActive() {
+        Task { @MainActor in await model.refresh() }
+    }
 }

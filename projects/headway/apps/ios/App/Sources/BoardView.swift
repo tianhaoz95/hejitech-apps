@@ -221,7 +221,7 @@ struct CatchCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     if let t = board.travel {
-                        Label("~\(t.minutes) min \(t.mode.verb) to \(board.from.short) · \(Self.distance(t.distanceM))", systemImage: t.mode == .drive ? "car.fill" : "figure.walk")
+                        Label("~\(t.minutes) min \(t.mode.verb) to \(board.from.short) · \(Self.distance(t.distanceM))", systemImage: t.mode.symbol)
                             .font(.footnote.weight(.medium))
                             .foregroundStyle(.secondary)
                     } else {

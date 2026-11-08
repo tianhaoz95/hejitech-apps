@@ -91,3 +91,52 @@ public enum WatchStore {
         }
     }
 }
+
+/// A pair the rider chose on the watch (flip) instead of the commute leg for the time of day.
+/// Without one, the watch and its complication ask the Worker for "my board" with no stations, so
+/// the morning/evening switch happens on its own. A pick lasts `lifetime`, then the commute is back.
+public struct ManualPick: Codable, Sendable, Equatable {
+    public var from: String
+    public var to: String
+    public var setAt: Double
+
+    public static let lifetime: TimeInterval = 2 * 60 * 60
+
+    public init(from: String, to: String, setAt: Double = Date().timeIntervalSince1970) {
+        self.from = from
+        self.to = to
+        self.setAt = setAt
+    }
+
+    public func isCurrent(at now: Date = Date()) -> Bool {
+        now.timeIntervalSince1970 - setAt < Self.lifetime
+    }
+}
+
+extension WatchStore {
+    public static let manualPickKey = "watch_manual_pick"
+
+    /// The rider's current pick, or nil (none, or it expired).
+    public static func loadManualPick(at now: Date = Date()) -> ManualPick? {
+        guard let data = defaults.data(forKey: manualPickKey),
+              let pick = try? JSONDecoder().decode(ManualPick.self, from: data),
+              pick.isCurrent(at: now) else { return nil }
+        return pick
+    }
+
+    public static func saveManualPick(_ pick: ManualPick?) {
+        if let pick, let data = try? JSONEncoder().encode(pick) {
+            defaults.set(data, forKey: manualPickKey)
+        } else {
+            defaults.removeObject(forKey: manualPickKey)
+        }
+    }
+
+    /// The stations to ask for. Signed in, nil unless the rider picked a pair, so the Worker
+    /// chooses the commute leg for now; signed out (public board), the last board's pair.
+    public static func boardQuery(signedIn: Bool, board: Board?, at now: Date = Date()) -> (from: String, to: String)? {
+        if let pick = loadManualPick(at: now) { return (pick.from, pick.to) }
+        if signedIn { return nil }
+        return board.map { ($0.from.id, $0.to.id) }
+    }
+}

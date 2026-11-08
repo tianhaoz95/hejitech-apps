@@ -79,17 +79,25 @@ public struct LeaveTimeProvider: TimelineProvider {
             let now = Date()
             let state = WatchStore.loadCachedState()
             var board = state?.board
-            let fromStation = board?.from.id ?? "san_francisco"
-            let toStation = board?.to.id ?? "sj_diridon"
             let expressPref = state?.expressPreference ?? .all
+            let signedIn = state?.session != nil
+            // Signed in and nothing picked: no stations, so the Worker gives the commute leg for now
+            // (the morning/evening switch); otherwise the picked or last pair.
+            let pick = WatchStore.boardQuery(signedIn: signedIn, board: board, at: now)
+            let fallback = (from: board?.from.id ?? "san_francisco", to: board?.to.id ?? "sj_diridon")
 
             // Live predictions move: fetch a fresh board, keeping the cached one if offline.
             do {
                 let backend = Backend(config: .production, session: state?.session)
-                if state?.session != nil {
-                    board = try await backend.myBoard(from: fromStation, to: toStation, express: expressPref).board
+                if signedIn {
+                    var fresh = try await backend.myBoard(from: pick?.from, to: pick?.to, express: expressPref).board
+                    if fresh == nil, pick == nil {
+                        fresh = try await backend.myBoard(from: fallback.from, to: fallback.to, express: expressPref).board
+                    }
+                    board = fresh ?? board
                 } else {
-                    board = try await backend.board(from: fromStation, to: toStation, express: expressPref)
+                    let p = pick ?? fallback
+                    board = try await backend.board(from: p.from, to: p.to, express: expressPref)
                 }
             } catch {}
 

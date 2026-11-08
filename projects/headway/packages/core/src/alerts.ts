@@ -14,7 +14,7 @@
 // watch window (and everything about the train you track). `alerts.scope = "all"` adds the rest for
 // your stations, the other way or at other times, on your commute days: quiet, with their own
 // `q:` keys so a train that later becomes priority still gets its normal alert.
-import { departures, progress, relevantAlerts, station, TIMETABLE } from "./schedule.ts";
+import { departures, progress, relevantAlerts, station, TIMETABLE, TRAVEL_WORD } from "./schedule.ts";
 import { atLocal, clock, hhmm, serviceDayStart, zoned } from "./time.ts";
 import type { BoardTrain, Direction, Leg, RealtimeSnapshot, ServiceAlert, Settings, Tracked } from "./types.ts";
 
@@ -197,7 +197,7 @@ function legNotifications(leg: Leg, part: "morning" | "evening", input: AlertInp
         out.push({
           key: `leave:${target.service_date}:${target.trip_id}`, kind: "leave_now", thread: `train:${target.service_date}:${target.trip_id}`,
           title: `Leave now for the ${clock(target.pred_dep)}`,
-          body: `${trainName(target)} leaves ${from.name} ${clock(target.pred_dep)}${late}; ${leg.walk_minutes} min walk. ${route}.`,
+          body: `${trainName(target)} leaves ${from.name} ${clock(target.pred_dep)}${late}; ${leg.walk_minutes} min ${TRAVEL_WORD[leg.travel_mode ?? "walk"] ?? "walk"}. ${route}.`,
         });
       }
     }

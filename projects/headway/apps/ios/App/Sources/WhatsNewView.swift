@@ -20,10 +20,14 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.0.0"
+    static let currentVersion = "1.1.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.1.0", date: "November 2026", items: [
+            WhatsNewItem(icon: "bicycle", title: "Bike, e-bike or e-scooter to the station", description: "Choose how you get to the station for each commute leg: walk, bike, e-bike, e-scooter or drive. With Location on, leave-by times and spare minutes use that speed, on your glasses too."),
+            WhatsNewItem(icon: "arrow.up.arrow.down", title: "Your watch follows your commute", description: "The watch app and watch face now switch to the trip home in the afternoon and back in the morning on their own. A flip lasts two hours, then your commute direction is back, on your iPhone too."),
+        ]),
         ReleaseNotes(version: "1.0.0", date: "November 2026", items: [
             WhatsNewItem(icon: "tram.fill", title: "A card for when you're on the train", description: "Once your location shows you riding, Headway shows your next stop, when you arrive and how many stops are left. Choose in Settings whether it just shows the card, also starts tracking, or also works with the app closed. On your watch and glasses too."),
             WhatsNewItem(icon: "clock.badge.exclamationmark", title: "Late trains stay on the board", description: "A train stays listed until 5 minutes after its time at your station, marked Due or May have left, because real trains are often a few minutes behind."),

@@ -125,11 +125,28 @@ export interface DepartureOptions {
   travelMode?: TravelMode;
 }
 
-/** Average speeds (m/min), detour over the straight line, and fixed minutes (to the platform, parking). */
+/**
+ * Average door-to-door speeds (m/min), detour over the straight line, and fixed minutes (to the
+ * platform, parking or locking up). Rough on purpose; city averages including stops:
+ * walk ~4.8 km/h, bike ~15 km/h, e-bike ~20 km/h (US pedal assist tops out at 20 mph), e-scooter
+ * ~16 km/h (most are limited to 15–20 mph and slow down for kerbs), drive ~30 km/h + parking.
+ */
 export const TRAVEL = {
   walk: { speed: 80, detour: 1.3, extra: 1 },
+  bike: { speed: 250, detour: 1.3, extra: 2 },
+  ebike: { speed: 330, detour: 1.3, extra: 2 },
+  scooter: { speed: 270, detour: 1.3, extra: 2 },
   drive: { speed: 500, detour: 1.4, extra: 5 },
-} as const;
+} as const satisfies Record<TravelMode, { speed: number; detour: number; extra: number }>;
+
+export const TRAVEL_MODES = Object.keys(TRAVEL) as TravelMode[];
+
+export function isTravelMode(v: unknown): v is TravelMode {
+  return typeof v === "string" && Object.hasOwn(TRAVEL, v);
+}
+
+/** Short words for a mode, for one-line text (glasses, pushes): "walk", "e-bike", "scooter". */
+export const TRAVEL_WORD: Record<TravelMode, string> = { walk: "walk", drive: "drive", bike: "bike", ebike: "e-bike", scooter: "scooter" };
 
 const EARTH_M = 6_371_000;
 

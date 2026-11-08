@@ -179,11 +179,43 @@ public struct Board: Codable, Hashable, Sendable {
     }
 }
 
+/// How the rider gets to the station. Mirrors core's `TravelMode`; an unknown value (from a newer
+/// Worker) decodes as `.walk` so a board never fails to load over it.
 public enum TravelMode: String, Codable, CaseIterable, Sendable {
-    case walk, drive
+    case walk, bike, ebike, scooter, drive
 
-    public var title: String { self == .walk ? "Walk" : "Drive" }
-    public var verb: String { self == .walk ? "walk" : "drive" }
+    public init(from decoder: Decoder) throws {
+        self = TravelMode(rawValue: try decoder.singleValueContainer().decode(String.self)) ?? .walk
+    }
+
+    public var title: String {
+        switch self {
+        case .walk: "Walk"
+        case .bike: "Bike"
+        case .ebike: "E-bike"
+        case .scooter: "E-scooter"
+        case .drive: "Drive"
+        }
+    }
+    /// "~8 min <verb> to MV".
+    public var verb: String {
+        switch self {
+        case .walk: "walk"
+        case .bike: "bike ride"
+        case .ebike: "e-bike ride"
+        case .scooter: "scooter ride"
+        case .drive: "drive"
+        }
+    }
+    public var symbol: String {
+        switch self {
+        case .walk: "figure.walk"
+        case .bike: "bicycle"
+        case .ebike: "bicycle"
+        case .scooter: "scooter"
+        case .drive: "car.fill"
+        }
+    }
 }
 
 /// A rough door-to-platform estimate from the rider's location (straight line × detour ÷ average speed).

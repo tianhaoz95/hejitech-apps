@@ -60,6 +60,16 @@ final class WatchModel: NSObject, WCSessionDelegate {
         self.backend = Backend(config: Self.config, session: state.session)
 
         if persist {
+            // The iPhone's board is the latest word on direction: a pair picked there (flip, station
+            // picker) becomes the watch's pick; its commute board clears the watch's.
+            if let b = state.board, b.leg == "custom" {
+                let current = WatchStore.loadManualPick()
+                if current?.from != b.from.id || current?.to != b.to.id {
+                    WatchStore.saveManualPick(ManualPick(from: b.from.id, to: b.to.id))
+                }
+            } else if state.board != nil {
+                WatchStore.saveManualPick(nil)
+            }
             WatchStore.saveCachedState(state)
             #if canImport(WidgetKit)
             WidgetCenter.shared.reloadAllTimelines()
@@ -81,11 +91,14 @@ final class WatchModel: NSObject, WCSessionDelegate {
         // Direct Worker call fallback if we have a session or public board
         do {
             if session != nil {
-                let r = try await backend.myBoard(
-                    from: board?.from.id,
-                    to: board?.to.id,
-                    express: expressPreference
-                )
+                // No stations unless the rider picked a pair: the Worker then picks the commute leg
+                // for the time of day (morning one way, evening the other).
+                let pick = WatchStore.boardQuery(signedIn: true, board: board)
+                var r = try await backend.myBoard(from: pick?.from, to: pick?.to, express: expressPreference)
+                if r.board == nil, pick == nil, let b = board {
+                    // No commute set up: keep showing the pair already on the watch.
+                    r = try await backend.myBoard(from: b.from.id, to: b.to.id, express: expressPreference)
+                }
                 self.board = r.board
                 self.hasCommute = r.hasCommute
                 self.tracked = r.tracked
@@ -122,9 +135,10 @@ final class WatchModel: NSObject, WCSessionDelegate {
             WCSession.default.sendMessage([WatchMessage.kind: WatchMessage.kindFlip], replyHandler: nil)
         }
 
-        // Also fetch directly
+        // Also fetch directly. The flipped pair holds for ManualPick.lifetime, then the commute is back.
         let newFrom = b.to.id
         let newTo = b.from.id
+        WatchStore.saveManualPick(ManualPick(from: newFrom, to: newTo))
         loading = true
         defer { loading = false }
         do {
@@ -132,6 +146,13 @@ final class WatchModel: NSObject, WCSessionDelegate {
             self.board = r.board
             self.tracked = r.tracked
             self.error = nil
+            WatchStore.saveCachedState(WatchSyncState(
+                session: session, board: board, tracked: tracked, onTrain: onTrain,
+                hasCommute: hasCommute, stations: stations, expressPreference: expressPreference
+            ))
+            #if canImport(WidgetKit)
+            WidgetCenter.shared.reloadAllTimelines()
+            #endif
         } catch {
             self.error = error.localizedDescription
         }

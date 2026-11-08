@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  addDays, BOARD_TRAINS, board, boardActivityState, checkSettings, distanceM, travelEstimate, validOrigin, clock, commuteBoard, currentLeg, defaultSettings, departures, findStation, newLeg, normalizeSettings, progress, serviceDayStart, STATIONS, station, TIMETABLE, timetableDaysLeft, zoned,
+  addDays, BOARD_TRAINS, board, boardActivityState, checkSettings, distanceM, travelEstimate, TRAVEL_MODES, validOrigin, clock, commuteBoard, currentLeg, defaultSettings, departures, findStation, newLeg, normalizeSettings, progress, serviceDayStart, STATIONS, station, TIMETABLE, timetableDaysLeft, zoned,
 } from "../src/index.ts";
 import { at, commuter, firstTrain, SATURDAY, snapshot, THANKSGIVING, WEEKDAY } from "./helpers.ts";
 
@@ -316,6 +316,25 @@ describe("travel estimate from the rider's location", () => {
     expect(drive.minutes).toBeLessThanOrEqual(11);
     expect(travelEstimate("walk", mv, mv).minutes).toBe(0);
   });
+  it("bikes at ~15 km/h, e-bikes at ~20, scooters at ~16, each plus a couple of minutes", () => {
+    const walk = travelEstimate("walk", home, mv).minutes, bike = travelEstimate("bike", home, mv).minutes;
+    const ebike = travelEstimate("ebike", home, mv).minutes, scooter = travelEstimate("scooter", home, mv).minutes;
+    expect(bike).toBeGreaterThanOrEqual(9);
+    expect(bike).toBeLessThanOrEqual(13);
+    expect(ebike).toBeLessThan(bike);
+    expect(scooter).toBeLessThanOrEqual(bike);
+    expect(scooter).toBeGreaterThanOrEqual(ebike);
+    expect(walk).toBeGreaterThan(bike * 2);
+    for (const m of ["bike", "ebike", "scooter"] as const) expect(travelEstimate(m, mv, mv).minutes).toBe(0);
+  });
+  it("keeps every travel mode in settings and on the board", () => {
+    for (const m of TRAVEL_MODES) {
+      const s = normalizeSettings({ ...defaultSettings(), morning: { ...newLeg("mountain_view", "san_francisco", "morning"), travel_mode: m } });
+      expect(s.morning?.travel_mode).toBe(m);
+      expect(checkSettings(s)).toEqual([]);
+      expect(commuteBoard(s, at(WEEKDAY, "07:30"), null, undefined, { origin: home })?.travel?.mode).toBe(m);
+    }
+  });
   it("uses the estimate for leave-by times and gives each train its spare minutes", () => {
     const now = at(WEEKDAY, "07:30");
     const b = board("mountain_view", "san_francisco", now, null, "custom", TIMETABLE, { origin: home, travelMode: "drive" })!;
@@ -330,7 +349,7 @@ describe("travel estimate from the rider's location", () => {
     const s = normalizeSettings({ ...defaultSettings(), morning: { ...newLeg("mountain_view", "san_francisco", "morning"), travel_mode: "drive" } });
     expect(s.morning?.travel_mode).toBe("drive");
     expect(commuteBoard(s, at(WEEKDAY, "07:30"), null, undefined, { origin: home })?.travel?.mode).toBe("drive");
-    expect(checkSettings({ ...s, morning: { ...s.morning, travel_mode: "bike" } }).map((i) => i.path)).toContain("morning.travel_mode");
+    expect(checkSettings({ ...s, morning: { ...s.morning, travel_mode: "skateboard" } }).map((i) => i.path)).toContain("morning.travel_mode");
   });
   it("accepts only real coordinates", () => {
     expect(validOrigin("37.39", "-122.08")).toEqual({ lat: 37.39, lon: -122.08 });

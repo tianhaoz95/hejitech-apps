@@ -15,7 +15,7 @@
 //   on train      opens by itself when the phone sees you riding a train: tap tracks it (once tracked,
 //                 refreshes), long press for the menu, double tap back to the board
 import { fitPx, LINE_PX, MAX_LINES, padPx, spreadPx, wrapPx } from "./font.ts";
-import { STATIONS, stationIndex } from "./schedule.ts";
+import { STATIONS, stationIndex, TRAVEL_WORD } from "./schedule.ts";
 import { clock, clockAmPm, minutesUntil } from "./time.ts";
 import type { Board, BoardTrain, OnTrainCard, TrainProgress } from "./types.ts";
 
@@ -129,7 +129,7 @@ export function boardLines(world: World, cursor: number): string[] {
     ? (b.trains.find((t) => t.catch === "leave") ?? b.trains.find((t) => t.catch === "run"))
     : null;
   // From the rider's location the trip is an estimate ("drive ~12m"); otherwise the leg's walk.
-  const trip = b.travel ? `${b.travel.mode} ~${b.travel.minutes}m` : `walk ${b.walk_minutes}`;
+  const trip = b.travel ? `${TRAVEL_WORD[b.travel.mode] ?? b.travel.mode} ~${b.travel.minutes}m` : `walk ${b.walk_minutes}`;
   const short = leaveTrain?.buffer_min != null && leaveTrain.buffer_min < 0 ? -leaveTrain.buffer_min : 0;
   const leaveHint = leaveTrain && leaveTrain.leave_by != null
     ? fitPx(short

@@ -95,7 +95,9 @@ calls made while building, with the reason for each.
   reused for two minutes). The client sends `lat`/`lon` with the board request; core's
   `travelEstimate` takes the straight-line distance to the departure station × a detour factor ÷ an
   average speed (walk 80 m/min ×1.3 +1 min; drive 500 m/min ×1.4 +5 min for parking, capped at 180),
-  per leg `travel_mode` walk | drive. No routing or traffic API: a rough estimate is the point, and
+  per leg `travel_mode` walk | drive. Bike, e-bike and e-scooter added 2026-11-07, same formula with
+  city averages including stops: bike 250 m/min (~15 km/h), e-bike 330 (~20 km/h, US pedal assist
+  stops helping at 20 mph), e-scooter 270 (~16 km/h), each ×1.3 +2 min to lock up or fold. No routing or traffic API: a rough estimate is the point, and
   nothing about location is stored or logged. The board's `walk_minutes` becomes the estimate (so
   leave-by and catch states follow it) and each train gets `buffer_min`. Leave-now pushes still use the
   leg's `walk_minutes`: the cron has no location, by design.
@@ -125,3 +127,13 @@ are quiet and Priority only is the default.
   so nothing that may matter goes quiet because of its wording.
 - **Quiet alerts have their own `q:` keys**, so a train that later becomes priority still gets its normal
   alert. They follow your commute days too: `days` already means "only on these days".
+
+## Watch follows the commute direction (2026-11-07)
+
+The Apple Watch app and its complication used to ask `/api/me/board` for the stations already on
+screen, which the Worker treats as a picked pair (`leg: "custom"`): the morning/evening switch never
+happened on the watch until the iPhone pushed a fresh board. Now, signed in, they send no stations
+unless the rider picked a pair (a flip on the watch, or a custom board synced from the iPhone),
+stored as `WatchStore`'s `ManualPick`. A pick lasts two hours (`ManualPick.lifetime`); the iPhone's
+`customPair` expires the same way, so an evening flip never holds into the next morning. The iPhone's
+commute board, when synced, clears the watch's pick. The watch refreshes whenever it becomes active.
