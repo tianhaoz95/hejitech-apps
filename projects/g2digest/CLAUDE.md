@@ -20,6 +20,11 @@ npm run dev:worker -w @g2digest/web                    # 127.0.0.1:8790, email s
 node projects/g2digest/scripts/test-api.mjs            # integration (21 checks incl. OAuth, pairing, feed, delete)
 npm run package -w @g2digest/glasses                   # build/g2digest.ehpk
 npx evenhub-simulator --automation-port 9898 "http://127.0.0.1:8790/glasses/?pair=<code>"
+
+# iOS companion app
+swift test --package-path projects/g2digest/apps/ios/G2DigestKit
+(cd projects/g2digest/apps/ios && xcodegen generate)
+xcodebuild -project projects/g2digest/apps/ios/G2Digest.xcodeproj -scheme App -destination "generic/platform=iOS Simulator" CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO build
 ```
 
 Local tokens from the seed: agent `g2a_dev_local_token`, glasses `g2d_dev_local_device`, feed

@@ -12,6 +12,7 @@ packages/core      @g2digest/core: types, render (bundle → frames), validator,
 packages/plugin    @g2digest/plugin: the glasses plugin + <G2Preview> + audio + spike (one codebase)
 services/web       @g2digest/web: Worker (API, pairing, podcast feed, MCP + OAuth) and the web app
 apps/glasses       @g2digest/glasses: the packed .ehpk (plugin pointed at the hosted app)
+apps/ios           G2Digest iOS companion app (SwiftUI, AVPlayer, HUD simulator, G2DigestKit)
 pipeline/          the build agent's prompt and how to schedule it
 scripts/           test-api.mjs (integration), publish-bundle.mjs (reference pipeline run),
                    check-no-topics.mjs, sync-guide.mjs

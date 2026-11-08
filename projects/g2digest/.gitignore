@@ -3,3 +3,8 @@ dist
 build
 .wrangler
 .dev.vars
+apps/ios/G2Digest.xcodeproj
+apps/ios/.derived
+apps/ios/.derived-device
+apps/ios/G2DigestKit/.build
+apps/ios/G2DigestKit/.swiftpm
