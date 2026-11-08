@@ -1,0 +1,62 @@
+{
+ "clip": "rec-3-glasses.mp4",
+ "width": 1728,
+ "height": 864,
+ "duration": 20.96,
+ "events": [
+  {
+   "step": "Open the workout",
+   "t": 2.6,
+   "type": "click",
+   "label": "Open the workout"
+  },
+  {
+   "step": "Set done",
+   "t": 5.81,
+   "type": "click",
+   "label": "Set done"
+  },
+  {
+   "step": "Next exercise",
+   "t": 10.01,
+   "type": "down",
+   "label": "Next exercise"
+  },
+  {
+   "step": "Menu",
+   "t": 12.61,
+   "type": "long_press",
+   "label": "Menu"
+  },
+  {
+   "step": "down",
+   "t": 14.63,
+   "type": "down",
+   "label": "down"
+  },
+  {
+   "step": "down",
+   "t": 15.28,
+   "type": "down",
+   "label": "down"
+  },
+  {
+   "step": "down",
+   "t": 15.94,
+   "type": "down",
+   "label": "down"
+  },
+  {
+   "step": "It hurts",
+   "t": 16.59,
+   "type": "down",
+   "label": "It hurts"
+  },
+  {
+   "step": "Tell agent: It hurts",
+   "t": 17.89,
+   "type": "click",
+   "label": "Tell agent: It hurts"
+  }
+ ]
+}

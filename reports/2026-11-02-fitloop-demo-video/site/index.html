@@ -41,7 +41,7 @@
   <header class="bar">
     <a class="brand" href="#top">
       <span class="logo"></span>
-      <span><b>FitLoop walkthrough video</b><small>AI Agent MCP coaching, iPhone & Watch player, Even G2 HUD, and closed-loop replanning</small></span>
+      <span><b>FitLoop walkthrough video</b><small>Your agent writes the plan over MCP · phone · Even G2 + R1 · the agent adapts</small></span>
     </a>
     <div class="seg" role="group" aria-label="Appearance">
       <button data-mode="light">Light</button>
@@ -55,49 +55,50 @@
     <main>
       <!-- Section 1: Summary -->
       <section id="summary" data-toc="Summary">
-        <p class="kicker">Demo video plan · 2026-11-02</p>
-        <h1>Your agent coaches. FitLoop keeps you on the plan.</h1>
-        <p class="lede">FitLoop's comprehensive product walkthrough video is designed, staged, and compiled: <b>1:58 in 16:9 with five YouTube chapters</b>, plus a <b>25-second 9:16 Short</b>. It teaches an athlete the complete four-step loop: connecting their own <b>AI agent via MCP</b> to generate and validate training routines, following workouts with <b>procedural exercise GIFs and live Apple Watch heart rate</b>, tracking sets hands-free on <b>Even G2 glasses with R1 ring gestures</b>, and flagging <b>mid-set pain or diet check-ins</b> so their agent improves tomorrow's plan. The animatic composition, voiceover generation (Kokoro-82M), word timestamps (faster-whisper), and recording scripts are in place.</p>
+        <p class="kicker">Demo video · finished 2026-11-08</p>
+        <h1>Your agent writes the plan. FitLoop keeps you on it.</h1>
+        <p class="lede">FitLoop's walkthrough is rendered and ready to upload: <b>2:18 in 16:9 with six YouTube chapters</b> and a <b>29-second 9:16 Short</b>. Every product frame is a real recording from the local stack: <b>two real Claude Code runs</b> over FitLoop's MCP (sign-in and consent, building and publishing the plan; later reading a note and changing the plan), the <b>iPhone app</b> driven tap by tap on the simulator, and the <b>Even G2 plugin</b> in the Even Hub simulator driven with R1 gestures.</p>
 
         <div class="status">
-          <div><b>Chapters + script</b><span class="ok">Agreed (4 chapters + short)</span></div>
-          <div><b>Voiceover</b><span class="ok">af_sarah (Maya), 25 lines</span></div>
+          <div><b>Chapters + script</b><span class="ok">4 chapters + Short, rewritten to the recordings</span></div>
+          <div><b>Recordings</b><span class="ok">13 clips with event logs</span></div>
           <div><b>Flow art</b><span class="ok">7 of 7 in, all used</span></div>
-          <div><b>Music</b><span class="ok">Driving Tech-Athletic Track in</span></div>
-          <div><b>Recordings</b><span class="ok">iPhone, Watch & Even G2 clips</span></div>
-          <div><b>SRT & Chapters</b><span class="ok">20 cues + 6 chapters</span></div>
-          <div><b>Edit</b><span class="ok">2 cuts rendered (−14.0 LUFS)</span></div>
-          <div><b>YouTube</b><span class="todo">Kit ready (§YouTube): you upload</span></div>
+          <div><b>Voiceover</b><span class="ok">af_sarah, 27 lines</span></div>
+          <div><b>Music</b><span class="ok">Your "Gym Pro Grooves" take, fitted on bar lines</span></div>
+          <div><b>Edit</b><span class="ok">2 cuts, −14.5 LUFS</span></div>
+          <div><b>YouTube kit</b><span class="ok">Titles, descriptions, chapters, SRTs, thumbnails</span></div>
+          <div><b>Upload</b><span class="todo">You upload, then send the link</span></div>
         </div>
 
-        <div class="callout"><b>Next for you:</b> watch <a href="#edit">the two cuts</a> with sound, on a phone too (the mix, voice ducking, and transitions need your ears). Then write any notes and click <b>Copy summary</b>, or upload with <a href="#youtube">§YouTube</a> and send the walkthrough's link for FitLoop's docs and landing pages. Media for this video lives in <code class="path">/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/public/fitloop-demo/</code>.</div>
+        <div class="callout"><b>Next for you:</b> watch <a href="#edit">both cuts</a> with sound, on a phone too. If they're good, upload with <a href="#youtube">the YouTube kit</a> and send the walkthrough's link: I'll embed it in FitLoop's docs and landing page. Notes go in the boxes on this page; <b>Copy summary</b> carries them to any agent. Media: <code class="path">/Volumes/proj/github/hejitech-apps/branding/promo-videos/public/fitloop-demo/</code>.</div>
 
         <div class="cards">
           <div class="card">
-            <h3>What's real</h3>
+            <h3>What changed from the first cut (Nov 3)</h3>
             <ul>
-              <li><b>100% real app screens:</b> iPhone app (Today, Plan, Progress, Feedback, Settings), interactive Workout Player with rest timer countdown, Apple Watch workout session with live HR streaming, and the Even G2 monochrome green HUD simulator with R1 ring gestures.</li>
-              <li><b>Real MCP engine & validator:</b> Live calls to <code>get_plan_guide</code>, <code>validate_plan</code>, and <code>publish_plan</code> with core limits (≤28 chars name, ≤60 chars cues).</li>
-              <li><b>Procedural exercise demonstration media:</b> Real 2D skeletal rigging animation served at <code>/api/exercises/goblet-squat.gif</code>.</li>
-              <li><b>Closed-loop replanning:</b> Real feedback ("It hurts" on reverse lunges) read by agent over MCP, prompting an automatic plan v2 substitution with box step-ups.</li>
+              <li><b>The real UI is the star now.</b> The first cut was the animatic: text cards with the app as small thumbnails. Every step now plays its own recording, large, with the camera following the event log.</li>
+              <li><b>New recordings for every step,</b> from a scripted XCUITest driver (<code>scripts/ios-uidriver</code>) and two live agent runs, replacing the four short promo clips.</li>
+              <li><b>Script rewritten to match what's on screen.</b> The old one promised exercise GIFs, live Watch heart rate and "squats swapped for step-ups"; none of that was in the footage. What the agent actually did: it swapped today's Romanian deadlift for a glute bridge after the "It hurts" note.</li>
+              <li><b>Music fitted, not looped:</b> the track's intro, a 16-bar section repeated on bar lines, then its own ending, so the video ends on the music's ending.</li>
             </ul>
           </div>
           <div class="card">
-            <h3>Key differences from the launch promo</h3>
+            <h3>Worth knowing before you publish</h3>
             <ul>
-              <li><b>Walkthrough vs Promo:</b> The launch promo (30s) was a humorous vignette (Maya vs Theo guessing sets). This walkthrough (1:58) puts the <b>real app on screen &ge; 70% of the time</b>, explaining step-by-step how each surface functions.</li>
-              <li><b>Maya's voice continues:</b> We use Kokoro's <code>af_sarah</code> (the voice profile chosen for Maya in <code>fitloop-launch</code>), maintaining brand vocal continuity.</li>
-              <li><b>Full feature breadth:</b> Highlights MCP tool interactions, procedural 2D rigging GIFs, Apple Watch workout streaming, and nutrition check-ins that couldn't fit in the 30-second teaser.</li>
+              <li><b>The Apple Watch isn't shown.</b> It's named once as a surface (it is one), but no step claims what it does on screen.</li>
+              <li><b>Heart rate on the glasses is demo data</b> sent by the recorder in place of a Watch; the glasses clip says so on screen.</li>
+              <li><b>Claude Code's account banner is covered</b> (plan name, a referral notice); its autocomplete with your own skills is cut.</li>
+              <li><b>The agent's words are its own</b> (Sonnet in Claude Code, on the local stack), including the safety advice in its reply.</li>
             </ul>
           </div>
         </div>
 
         <table class="grid">
           <tr><th>If you want to redo</th><th>What to do</th></tr>
-          <tr><td>A line of the script</td><td>Edit in your notes: re-run <code>fitloop-demo-vo.py --only &lt;id&gt;</code> and <code>fitloop-demo-words.py</code>.</td></tr>
-          <tr><td>The narration voice</td><td>Pass any Kokoro voice (<code>af_heart</code>, <code>af_bella</code>, <code>af_nicole</code>, <code>am_echo</code>): takes &lt; 15 seconds to regenerate all lines.</td></tr>
-          <tr><td>A Flow backdrop or music</td><td>Drop the new file into <code>public/fitloop-demo/</code> and update <code>media.md</code>.</td></tr>
-          <tr><td>Re-record a simulator clip</td><td>Run <code>scripts/fitloop-demo-record.mjs [glasses|workout|agent|loop]</code> with local stack running.</td></tr>
+          <tr><td>A line of the script</td><td>Change it in <code>scripts/fitloop-demo-vo.py</code>, then <code>fitloop-demo-vo.py … --only &lt;id&gt;</code>, <code>fitloop-demo-words.py</code>, render.</td></tr>
+          <tr><td>The voice</td><td>Any Kokoro voice (<code>af_heart</code>, <code>af_bella</code>, <code>af_nicole</code>); all lines take about a minute.</td></tr>
+          <tr><td>A recording</td><td><code>node branding/promo-videos/scripts/fitloop-demo-record.mjs &lt;step&gt;</code> (§Recordings); the camera re-aims itself from the new event log.</td></tr>
+          <tr><td>Length</td><td>2:18 is over the 2:00 aim. The cheapest cut: drop the consent step (c1-3, 6 s) and the meal step (c4-1, 3 s).</td></tr>
         </table>
       </section>
 
@@ -105,59 +106,36 @@
       <section id="edit" data-toc="The edit · review">
         <h2>The edit: two cuts to review</h2>
         <div class="gallery">
-          <figure><video src="media/edit/fitloop-demo.mp4" poster="media/edit/fitloop-demo.jpg" controls playsinline preload="none"></video><figcaption><b>Walkthrough</b> · 16:9, 2:00, −14.0 LUFS<br><a class="dl" href="media/edit/fitloop-demo.mp4" download>fitloop-demo.mp4</a></figcaption></figure>
-          <figure class="tall"><video src="media/edit/fitloop-demo-short.mp4" poster="media/edit/fitloop-demo-short.jpg" controls playsinline preload="none"></video><figcaption><b>Short</b> · 9:16, 0:25, −14.0 LUFS<br><a class="dl" href="media/edit/fitloop-demo-short.mp4" download>fitloop-demo-short.mp4</a></figcaption></figure>
+          <figure><video src="media/edit/fitloop-demo.mp4" poster="media/edit/fitloop-demo.jpg" controls playsinline preload="none"></video><figcaption><b>Walkthrough</b> · 16:9, 2:18, −14.5 LUFS<br><a class="dl" href="media/edit/fitloop-demo.mp4" download>fitloop-demo.mp4</a></figcaption></figure>
+          <figure class="tall"><video src="media/edit/fitloop-demo-short.mp4" poster="media/edit/fitloop-demo-short.jpg" controls playsinline preload="none"></video><figcaption><b>Short</b> · 9:16, 0:29, −14.5 LUFS<br><a class="dl" href="media/edit/fitloop-demo-short.mp4" download>fitloop-demo-short.mp4</a></figcaption></figure>
         </div>
-
         <table class="kv">
-          <tr><th>Full walkthrough</th><td><code>fitloop-demo</code> (1920&times;1080, 2:00 duration, 3,617 frames at 30 fps)</td></tr>
-          <tr><th>Short format</th><td><code>fitloop-demo-short</code> (1080&times;1920 vertical, 25 seconds duration, 755 frames)</td></tr>
-          <tr><th>YouTube thumbnail</th><td><code>fitloop-demo-thumb</code> (1280&times;720 still composition)</td></tr>
+          <tr><th>Compositions</th><td><code>fitloop-demo</code> (1920×1080), <code>fitloop-demo-short</code> (1080×1920), <code>fitloop-demo-thumb</code>, <code>fitloop-demo-short-thumb</code> in <code>branding/promo-videos/src/fitloop-demo/Composition.tsx</code></td></tr>
           <tr><th>Chapters</th><td><pre class="cmd">0:00 Intro
-0:13 1. Bring your agent & generate plan
-0:38 2. Mid-workout on iPhone & Apple Watch
-1:03 3. Hands-free on Even G2 & R1 ring
-1:27 4. The closed loop: instant feedback & plan adaptation
-1:52 Recap</pre></td></tr>
-          <tr><th>Pace & Camera</th><td>Calm tutorial pace (~140 wpm), each UI action held for &ge; 1.2 s after completion. Smooth spring zooms (1.4&ndash;2.0&times;) focused on touched elements, spotlight on targets, ripple clicks.</td></tr>
-          <tr><th>Transitions</th><td>Cross-zooms into device stages, subtle 3D tilt flattening before interaction, seamless chapter dissolves with Flow backdrops.</td></tr>
-          <tr><th>Audio & Loudness</th><td>Kokoro <code>af_sarah</code> voiceover, athletic tech background music ducked smoothly under voice. Loudness normalized with two-pass ffmpeg loudnorm (−14.0 LUFS, true peak −1.5 dB).</td></tr>
+0:15 1 · Your agent writes the plan
+0:58 2 · Train with your phone
+1:15 3 · Hands-free on your glasses
+1:41 4 · Your agent adapts
+2:04 Recap</pre></td></tr>
+          <tr><th>Pace and camera</th><td>One step per narration line; each recording plays from one action to the next at the speed its line needs (a ⏩ badge when faster than 1.6×). The phone camera pans and pushes in on each touched element (from the event log), with a ripple on taps and a spotlight; the step's label appears in large type beside the phone.</td></tr>
+          <tr><th>The agent runs</th><td>Replayed from the saved terminal stream: typing and the start at 1×, the thinking as a time-lapse with a "real time" clock, the publish at 1×. FitLoop's MCP calls (which the terminal collapses into "Called fitloop 6 times") pop in as chips, from Claude Code's own transcript.</td></tr>
+          <tr><th>Legibility</th><td>Phone text ≈ 26–32 px at 1080p, terminal ≈ 27 px, glasses ≈ 40 px. Checked on stills at every step and a 1-frame-per-3-seconds sheet of the render.</td></tr>
+          <tr><th>Sound</th><td>Kokoro <code>af_sarah</code> at 1.06×; music at 0.5, ducked to 0.22 under the voice; two-pass loudnorm to −14.5 LUFS, true peak −1.2 dB. <b>Not yet heard by a person:</b> please listen.</td></tr>
         </table>
       </section>
 
       <!-- Section 3: Chapters & Script -->
       <section id="chapters" data-toc="Chapters & script">
         <h2>Chapters and script</h2>
-        <p>Who this video is for: <b>athletes, lifters, and gym-goers</b> who want customized training without phone distraction. Four chapters take the viewer from initial MCP connection to mid-workout logging and closed-loop plan adaptation.</p>
-
+        <p>For people who already use an AI agent and train in a gym: what FitLoop does, in the order they'd meet it. The script follows the recordings line by line; every claim is on screen.</p>
         <div data-block="path"></div>
-
-        <h3>Chapter 0 · Intro (0:00 &ndash; 0:13)</h3>
-        <p>Hook the viewer: stop guessing sets, weights, and rest times. FitLoop delivers your AI agent's coaching directly to your iPhone, Watch, and Even G2 glasses.</p>
-        <div data-block="ch0"></div>
-
-        <h3>Chapter 1 · Bring your agent & generate plan (0:13 &ndash; 0:38)</h3>
-        <p>Connect any MCP client (Claude, Cursor, Meta Muse). The agent fetches <code>get_plan_guide</code> and profile notes, checks strict character and timer constraints via <code>validate_plan</code>, and publishes version 1.</p>
-        <div data-block="ch1"></div>
-
-        <h3>Chapter 2 · Mid-workout on iPhone & Apple Watch (0:38 &ndash; 1:03)</h3>
-        <p>Today tab displays daily sessions. Tap into exercises for procedural 2D demonstration GIFs. Start the workout player: Apple Watch streams live heart rate, set completion is marked, and rest timers countdown automatically.</p>
-        <div data-block="ch2"></div>
-
-        <h3>Chapter 3 · Hands-free on Even G2 & R1 ring (1:03 &ndash; 1:27)</h3>
-        <p>Pair with a 6-digit code. Experience the crisp 9-line green HUD: active set, weight, reps, and live HR. Use R1 ring gestures: single tap marks set done and auto-starts the rest timer; ring hold opens cues and quick feedback.</p>
-        <div data-block="ch3"></div>
-
-        <h3>Chapter 4 · The closed loop: instant feedback & plan adaptation (1:27 &ndash; 1:52)</h3>
-        <p>When knee pain strikes on reverse lunges, select 'It hurts' mid-set. At lunch, check off meals. The agent reads notes over MCP, explains deloading knee flexion, and publishes plan v2 swapping lunges for box step-ups.</p>
-        <div data-block="ch4"></div>
-
-        <h3>Recap & End Card (1:52 &ndash; 1:58)</h3>
-        <p>Recap the four surfaces in motion: Agent MCP &rarr; iPhone & Watch &rarr; Even G2 HUD &rarr; Closed Loop Replan. End card with app icon and links.</p>
-        <div data-block="recap"></div>
-
-        <h3>The Short (9:16 vertical, 25 seconds)</h3>
-        <p>Fast-paced hook: Stop looking at your phone between gym sets. FitLoop puts your AI agent's workouts in your Even G2 glasses, logs sets with your R1 ring, and adapts tomorrow's plan when something hurts.</p>
+        <h3>Intro</h3><div data-block="ch0"></div>
+        <h3>1 · Your agent writes the plan</h3><div data-block="ch1"></div>
+        <h3>2 · Train with your phone</h3><div data-block="ch2"></div>
+        <h3>3 · Hands-free on your glasses</h3><div data-block="ch3"></div>
+        <h3>4 · Your agent adapts</h3><div data-block="ch4"></div>
+        <h3>Recap and end card</h3><div data-block="recap"></div>
+        <h3>The Short</h3><div data-block="short"></div>
       </section>
 
       <!-- Section 4: Look and feel -->
@@ -187,17 +165,17 @@
 
         <table class="kv">
           <tr><th>Typography</th><td>Inter for UI titles and step explanations; JetBrains Mono for sets, weights, and HUD lines</td></tr>
-          <tr><th>Device Frames</th><td>iPhone 17 Pro titanium frame (soft drop shadow), Apple Watch Ultra wrist frame, Even G2 HUD container (floating with 3D tilt)</td></tr>
-          <tr><th>Transitions</th><td>Cross-zoom into device screens; subtle camera drift during holds; match cuts between glasses menu and phone plan v2</td></tr>
+          <tr><th>Device Frames</th><td>A plain dark phone body rising from the bottom of the frame (the camera pans and pushes in on each touch), a dark window for the web and the terminal (3D tilt that settles flat), the Even G2 display as green-on-black in a floating frame</td></tr>
+          <tr><th>Transitions</th><td>One family: a blur-dissolve between steps and chapters, chapter title cards over each chapter's Flow backdrop; within a recording the camera springs onto each target and back</td></tr>
           <tr><th>Captions</th><td><code>KineticCaption</code> bottom band; spoken word highlights white on black with coral accent marker</td></tr>
-          <tr><th>What never appears</th><td>No AI-generated fake app screens, no medical or injury advice, no unapproved diet claims, no personal user data</td></tr>
+          <tr><th>What never appears</th><td>No AI-generated app screens (every product frame is a recording), no medical advice, no claims the recordings don't show, no account details (Claude Code's banner is covered)</td></tr>
         </table>
       </section>
 
       <!-- Section 5: Flow art -->
       <section id="flow" data-toc="Flow art">
         <h2>Flow art prompts</h2>
-        <p>Prompts for Google Flow. All prompts follow the rule: cinematic 35mm photography, subtle natural lighting, high production value, <b>no logos, no text</b>. Download each file into <code class="path">branding/promo-videos/public/fitloop-demo/</code>.</p>
+        <p>Prompts for Google Flow. All prompts follow the rule: cinematic 35mm photography, subtle natural lighting, high production value, <b>no logos, no text</b>. All seven are in <code class="path">/Volumes/proj/github/hejitech-apps/branding/promo-videos/public/fitloop-demo/</code> and used (file names in <code>src/fitloop-demo/media.md</code>); the prompts stay here so any one can be regenerated.</p>
 
         <div class="card">
           <h3>Flow Generation Settings</h3>
@@ -205,9 +183,9 @@
         </div>
 
         <div class="shot">
-          <span class="tag new">A1 Opener</span>
+          <span class="tag me">Keep</span><span class="tag new">A1 Opener</span>
           <h3>A1 · Athletic training studio</h3>
-          <div class="meta-line">Video / Still · Opening hook (0:00 &ndash; 0:13) · Save as: <code>art-A1_Opener_athletic_studio.jpg</code></div>
+          <div class="meta-line">Video / Still · Opening hook · In use: <code>Athletic_training_studio_interior_02060045_1080p.mp4</code></div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -217,9 +195,9 @@
         </div>
 
         <div class="shot">
-          <span class="tag new">B1 Backdrop</span>
+          <span class="tag me">Keep</span><span class="tag new">B1 Backdrop</span>
           <h3>B1 · Workstation with tablet calendar</h3>
-          <div class="meta-line">Still / Slow Loop · Chapter 1 Backdrop (0:13 &ndash; 0:38) · Save as: <code>art-B1_Agent_desk_tablet.jpg</code></div>
+          <div class="meta-line">Still / Slow Loop · Chapter 1 Backdrop · In use: <code>Minimalist_modern_desk_setup_fac639df_2K.jpg + Espresso_cup_on_modern_desk_b9287a95_1080p.mp4</code></div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -229,9 +207,9 @@
         </div>
 
         <div class="shot">
-          <span class="tag new">B2 Backdrop</span>
+          <span class="tag me">Keep</span><span class="tag new">B2 Backdrop</span>
           <h3>B2 · Workout bench & dumbbells</h3>
-          <div class="meta-line">Still / Slow Loop · Chapter 2 Backdrop (0:38 &ndash; 1:03) · Save as: <code>art-B2_Workout_bench_dumbbells.jpg</code></div>
+          <div class="meta-line">Still / Slow Loop · Chapter 2 Backdrop · In use: <code>Adjustable_leather_workout_bench…_71ffa9b3_2K.jpg + Workout_bench_in_quiet_gym_49b56c2a_1080p.mp4</code></div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -241,9 +219,9 @@
         </div>
 
         <div class="shot">
-          <span class="tag new">B3 Backdrop</span>
+          <span class="tag me">Keep</span><span class="tag new">B3 Backdrop</span>
           <h3>B3 · Athletic POV with emerald HUD glow</h3>
-          <div class="meta-line">Still / Slow Loop · Chapter 3 Backdrop (1:03 &ndash; 1:27) · Save as: <code>art-B3_Glasses_hud_perspective.jpg</code></div>
+          <div class="meta-line">Still / Slow Loop · Chapter 3 Backdrop · In use: <code>Chalked_hands_gripping_pull_up_14681e3e_2K.jpg + …_a1b0e94e_1080p.mp4</code></div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -253,9 +231,9 @@
         </div>
 
         <div class="shot">
-          <span class="tag new">B4 Backdrop</span>
+          <span class="tag me">Keep</span><span class="tag new">B4 Backdrop</span>
           <h3>B4 · Sunlit kitchen & healthy meal</h3>
-          <div class="meta-line">Still / Slow Loop · Chapter 4 Backdrop (1:27 &ndash; 1:52) · Save as: <code>art-B4_Kitchen_healthy_meal.jpg</code></div>
+          <div class="meta-line">Still / Slow Loop · Chapter 4 Backdrop · In use: <code>Chicken_salad_on_kitchen_island_4af1f987_2K.jpg + Kitchen_island_with_healthy_food_805a1d69_1080p.mp4</code></div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -265,9 +243,9 @@
         </div>
 
         <div class="shot">
-          <span class="tag new">A2 Bridge</span>
+          <span class="tag me">Keep</span><span class="tag new">A2 Bridge</span>
           <h3>A2 · Gym floor at sunrise</h3>
-          <div class="meta-line">Video Loop · Bridge / Recap (1:52 &ndash; 1:55) · Save as: <code>art-A2_Bridge_gym_floor.jpg</code></div>
+          <div class="meta-line">Video Loop · Bridge / Recap · In use: <code>Kettlebells_on_gym_floor_sunrise_1ac14484_1080p.mp4</code></div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -277,9 +255,9 @@
         </div>
 
         <div class="shot">
-          <span class="tag new">A3 End Card</span>
+          <span class="tag me">Keep</span><span class="tag new">A3 End Card</span>
           <h3>A3 · Dark fitness studio with indigo glow</h3>
-          <div class="meta-line">Still 2K · End Card Art (1:55 &ndash; 1:58) · Save as: <code>art-A3_Endcard_indigo_glow.jpg</code></div>
+          <div class="meta-line">Still 2K · End Card Art · In use: <code>Empty_gym_interior_at_night_f9e49980_2K.jpg</code></div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -292,48 +270,47 @@
       <!-- Section 6: Recordings + Screenshots -->
       <section id="recordings" data-toc="Recordings & screens">
         <h2>Recordings and screenshots</h2>
-        <p>All screen recordings are generated entirely on the local development stack with deterministic demo data, fixed 9:41 status bar, and companion JSON event logs.</p>
-
+        <p>Recorded 2026-11-08 on the local stack (seed athlete, a demo profile, Sunday Nov 8 as "today"), with <code>scripts/fitloop-demo-record.mjs</code>. Phone clips: the iPhone 18 Pro simulator, driven by <code>scripts/ios-uidriver</code> (XCUITest) while <code>simctl io recordVideo</code> records; a status-bar flash at the start syncs the event log to the video within ~0.1 s. Glasses: the Even Hub simulator's screenshots while R1 gestures are sent.</p>
         <table class="grid">
-          <tr><th>Clip</th><th>Resolution</th><th>Duration</th><th>Description</th></tr>
-          <tr><td><code>rec-1-agent.mp4</code></td><td>1280&times;720</td><td>25.0 s</td><td>MCP terminal: Claude connects via OAuth, calls get_plan_guide, validates constraints, publishes plan v1</td></tr>
-          <tr><td><code>rec-2-workout.mp4</code></td><td>1179&times;2556</td><td>25.0 s</td><td>iPhone & Watch: Today tab, 2D procedural rigging demo GIF, Watch workout HR stream, set done & rest timer</td></tr>
-          <tr><td><code>rec-3-glasses.mp4</code></td><td>1728&times;864</td><td>24.0 s</td><td>Even Hub Simulator: 9-line green HUD, R1 ring single-tap for set done, hold for coaching cues & feedback</td></tr>
-          <tr><td><code>rec-4-loop.mp4</code></td><td>1179&times;2556</td><td>25.0 s</td><td>Closed loop: Flag 'It hurts' on lunges, diet check-in, agent MCP response, Plan v2 swaps for step-ups</td></tr>
+          <tr><th>Clip</th><th>What happens</th><th>Source</th></tr>
+          <tr><td><code>rec-1-connect</code></td><td>FitLoop web Settings → Agents (MCP) → Copy URL</td><td>Playwright, 1280×720 @2×</td></tr>
+          <tr><td><code>rec-1-terminal</code>, <code>-consent</code>, <code>-connected</code></td><td>Claude Code <code>/mcp</code> → fitloop → Authenticate; FitLoop's consent page → Allow; "Authentication successful"</td><td>Live run 1 (pty) + Playwright</td></tr>
+          <tr><td><code>rec-1-agent</code></td><td>"Set up my training plan in FitLoop, starting today." → plan guide, profile, current plan, feedback → validate ×2 → publish v1 → its summary</td><td>Live run 1, replayed (12× in the middle)</td></tr>
+          <tr><td><code>rec-1-today</code></td><td>Today: the agent's note, today's workout</td><td>iPhone simulator</td></tr>
+          <tr><td><code>rec-2-workout</code></td><td>Tap the workout → Goblet squat, cues → Set done → Rest 1:30</td><td>iPhone simulator</td></tr>
+          <tr><td><code>rec-3-pair</code></td><td>Settings → Pair glasses → Get a pairing code</td><td>iPhone simulator</td></tr>
+          <tr><td><code>rec-3-glasses</code></td><td>Paired; today → tap: open (set 2) → tap: set done, REST 1:30 → swipe: next exercise → hold: menu → Tell agent: It hurts</td><td>Even Hub simulator</td></tr>
+          <tr><td><code>rec-4-meal</code></td><td>Today → lunch → Ate it</td><td>iPhone simulator</td></tr>
+          <tr><td><code>rec-4-agent</code></td><td>"I left a note in FitLoop…" → reads it → validate → publish v2 → reply</td><td>Live run 2, replayed (10×)</td></tr>
+          <tr><td><code>rec-4-reply</code>, <code>rec-4-next</code></td><td>Feedback: the note and the agent's reply; today's workout in v2 (Dumbbell glute bridge, Goblet pause squat)</td><td>iPhone simulator</td></tr>
         </table>
-
-        <h3>How to execute screen recordings locally</h3>
-        <pre class="cmd"># 1. Start local Supabase and FitLoop Worker
-supabase start
-npm run dev:worker -w @fitloop/web
-
-# 2. Stage seed data & run recorders
-node branding/promo-videos/scripts/fitloop-demo-record.mjs stage
-node branding/promo-videos/scripts/fitloop-demo-record.mjs glasses
-node branding/promo-videos/scripts/fitloop-demo-record.mjs workout
-node branding/promo-videos/scripts/fitloop-demo-record.mjs loop
-
-# 3. Always restore seed settings afterwards
-node branding/promo-videos/scripts/fitloop-demo-record.mjs restore</pre>
+        <div class="gallery">
+          <figure><img src="media/stills/still-2-workout.png" alt="Workout player" loading="lazy"><figcaption><b>still-2-workout</b> · the rest timer</figcaption></figure>
+          <figure><img src="media/stills/still-3-today.png" alt="Glasses today" loading="lazy"><figcaption><b>still-3-today</b> · the glasses, paired</figcaption></figure>
+          <figure><img src="media/stills/still-4-reply.png" alt="Agent reply" loading="lazy"><figcaption><b>still-4-reply</b> · the agent's reply</figcaption></figure>
+        </div>
+        <h3>Re-recording</h3>
+        <pre class="cmd">supabase start; npm run dev:worker -w @fitloop/web     # Worker on 127.0.0.1:8794
+R=branding/promo-videos/scripts/fitloop-demo-record.mjs
+node $R stage                    # backs up the fitloop rows; demo profile, no plan
+node $R connect; node $R agent1  # a live Claude Code run (answer it through agent-run-1.json.keys if it asks)
+node $R phone1; node $R workout; node $R pair; node $R glasses; node $R meal
+node $R agent2; node $R phone2; node $R term
+node $R restore                  # every fitloop row back as it was</pre>
       </section>
 
       <!-- Section 7: Voiceover & Music -->
       <section id="voiceover" data-toc="Voiceover & music">
         <h2>Voiceover and music</h2>
-        <p>Narration is pre-rendered with Kokoro-82M (Apache 2.0) locally at 24 kHz mono. The selected voice is <b>af_sarah</b> (Maya's voice from <code>fitloop-launch</code>), with exact word timings extracted via <code>faster-whisper</code>.</p>
-
         <table class="kv">
-          <tr><th>Narration Model</th><td>Kokoro-82M (<code>hexgrad/Kokoro-82M</code>) via local Python venv</td></tr>
-          <tr><th>Primary Voice</th><td><code>af_sarah</code> (warm, athletic, coaching tone at 1.05&times; speed)</td></tr>
-          <tr><th>Alternative Takes</th><td><code>af_heart</code>, <code>af_bella</code>, <code>af_nicole</code>, <code>am_echo</code> (generated via <code>fitloop-demo-vo.py</code>)</td></tr>
-          <tr><th>Timing Alignment</th><td><code>faster-whisper</code> (small.en) with custom phoneme dictionary mappings</td></tr>
+          <tr><th>Voice</th><td>Kokoro-82M <code>af_sarah</code> (the promo's voice), 1.06×, one file per line (<code>vo-af_sarah-&lt;id&gt;.wav</code>); word times from faster-whisper (<code>src/fitloop-demo/voiceover.ts</code>)</td></tr>
+          <tr><th>Music</th><td>Your Flow Music take <b>"Gym Pro Grooves"</b> from the promo (103.4 BPM, 59 s). <code>MusicBed</code> plays its intro, repeats a 16-bar section on bar lines, then its own ending, so the 2:18 cut ends on the track's ending without an audible loop point. Ducked under the voice.</td></tr>
+          <tr><th>If you want a dedicated track</th><td>Generate one in Flow Music with the prompt below, save it as <code>music-140s-take1-&lt;title&gt;.mp3</code> in the media folder, and point <code>TRACK</code> in the composition at it.</td></tr>
         </table>
-
-        <h3>Flow Music prompt (for owner)</h3>
         <div class="fields">
           <div class="field" data-max="300">
-            <b>Music Prompt</b>
-            <pre>Warm and driving tech-athletic groove, 102 BPM, 4/4, clean rhythmic synth pulse, muted electric bassline, light organic percussive taps, airy and motivating, open midrange leaving space for speech, clean resolving ending at 115 seconds</pre>
+            <b>Flow Music prompt (optional)</b>
+            <pre>Instrumental, warm and driving tech-athletic groove, 103 BPM, 4/4, clear downbeats every bar, clean synth pulse, muted electric bass, light percussion, long even sections with no big drops, open mids that leave space for a voiceover, soft intro, gentle lift near the end, a clean resolving ending, 2 minutes 30 seconds</pre>
           </div>
         </div>
       </section>
@@ -341,112 +318,89 @@ node branding/promo-videos/scripts/fitloop-demo-record.mjs restore</pre>
       <!-- Section 8: YouTube upload kit -->
       <section id="youtube" data-toc="YouTube kit">
         <h2>YouTube upload kit</h2>
-        <p>Ready to paste when uploading both videos to the official HEJI TECH YouTube channel.</p>
-
         <div class="cards">
           <div class="card">
-            <h3>Full Walkthrough (16:9, Public)</h3>
+            <h3>Walkthrough (16:9, Public)</h3>
             <div class="fields">
-              <div class="field">
-                <b>Title</b>
-                <pre>How to train with your AI agent: FitLoop walkthrough (2 minutes)</pre>
-              </div>
-              <div class="field">
-                <b>Description</b>
-                <pre>FitLoop connects your AI agent (Claude, Cursor, Meta Muse) over MCP to coach workouts and meals across iPhone, Apple Watch, and Even G2 glasses with R1 smart ring gestures.
+              <div class="field"><b>Title</b><pre>How FitLoop works: your AI agent's training plan, on your phone and glasses</pre></div>
+              <div class="field"><b>Description</b><pre>FitLoop lets your own AI agent coach you. Connect any MCP agent (Claude Code is shown), ask it for a plan, and train with it on your iPhone and your Even G2 glasses with the R1 ring. Your check-ins and notes go back to the agent, which changes the plan.
 
-Chapters:
+In this video:
 0:00 Intro
-0:13 1. Bring your agent & generate plan
-0:38 2. Mid-workout on iPhone & Apple Watch
-1:03 3. Hands-free on Even G2 & R1 ring
-1:27 4. The closed loop: instant feedback & plan adaptation
-1:52 Recap
+0:15 1 · Your agent writes the plan
+0:58 2 · Train with your phone
+1:15 3 · Hands-free on your glasses
+1:41 4 · Your agent adapts
+2:04 Recap
 
-App & Docs: https://fitloop.hejitech.workers.dev
-Decisions & Architecture: https://github.com/tianhaoz95/hejitech-apps/tree/main/projects/fitloop
+FitLoop: https://fitloop.hejitech.workers.dev
 
-Disclaimer: Workouts, weights, heart rate, and nutrition shown are demo data on the local developer stack. FitLoop provides no medical advice. Voiceover generated locally with Kokoro-82M. Atmospheric backdrops created with Google Flow.</pre>
-              </div>
-              <div class="field">
-                <b>Tags</b>
-                <pre>FitLoop, AI workout, fitness AI, MCP, Claude, Even G2, smart glasses, R1 ring, Apple Watch, workout tracker, gym</pre>
-              </div>
-            </div>
-
-            <div class="gallery">
-              <figure><img src="media/youtube/fitloop-demo-thumbnail.jpg" alt="Thumbnail: FitLoop Walkthrough" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, real screens over Flow backdrop<br><a class="dl" href="media/youtube/fitloop-demo-thumbnail.jpg" download>fitloop-demo-thumbnail.jpg</a></figcaption></figure>
+Demo data throughout (plan, weights, meals, heart rate). FitLoop and your agent give no medical advice. The agent runs are real Claude Code sessions, shown sped up. Backdrops are AI-generated (Google Flow); the narration is a synthetic voice (Kokoro).</pre></div>
+              <div class="field"><b>Tags</b><pre>FitLoop, AI agent, MCP, Claude Code, workout plan, Even G2, smart glasses, R1 ring, gym, training app, HEJI TECH</pre></div>
             </div>
             <table class="kv">
-              <tr><th>Video file</th><td><a class="dl" href="media/edit/fitloop-demo.mp4" download>fitloop-demo.mp4</a></td></tr>
-              <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/fitloop-demo.srt" download>fitloop-demo.srt</a> (20 cues)</td></tr>
-              <tr><th>Chapters</th><td>In the description above. <a class="dl" href="media/youtube/fitloop-demo-chapters.txt" download>fitloop-demo-chapters.txt</a></td></tr>
-              <tr><th>Playlist</th><td>The existing <b>FitLoop</b> playlist.</td></tr>
+              <tr><th>Video</th><td><a class="dl" href="media/edit/fitloop-demo.mp4" download>fitloop-demo.mp4</a></td></tr>
+              <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/fitloop-demo.srt" download>fitloop-demo.srt</a> (21 cues, English)</td></tr>
+              <tr><th>Thumbnail</th><td><a class="dl" href="media/youtube/fitloop-demo-thumbnail.jpg" download>fitloop-demo-thumbnail.jpg</a> (1280×720)</td></tr>
+              <tr><th>Altered or synthetic content</th><td>No: the AI backdrops show no realistic people or events presented as real, and the voice is a narrator.</td></tr>
+              <tr><th>Playlist</th><td>FitLoop</td></tr>
             </table>
+            <div class="gallery"><figure><img src="media/youtube/fitloop-demo-thumbnail.jpg" alt="Thumbnail" loading="lazy"><figcaption><b>Thumbnail</b> · real screens over the Flow backdrop</figcaption></figure></div>
           </div>
-
           <div class="card">
-            <h3>Short (9:16, Public Short)</h3>
+            <h3>Short (9:16, Public)</h3>
             <div class="fields">
-              <div class="field">
-                <b>Title</b>
-                <pre>Stop checking your phone between gym sets! Train in your glasses #shorts</pre>
-              </div>
-              <div class="field">
-                <b>Description</b>
-                <pre>FitLoop puts your AI agent's workout plan directly in your Even G2 glasses. Tap your R1 ring to log sets and auto-start rest timers hands-free. Mid-set pain flags automatically adjust tomorrow's routine.
+              <div class="field"><b>Title</b><pre>My AI agent's workout, on my glasses #shorts</pre></div>
+              <div class="field"><b>Description</b><pre>Your agent writes the workout. FitLoop puts it on your Even G2 glasses: tap the R1 ring when a set is done, hold it to tell your agent something hurts, and the agent changes the plan.
 
-Get FitLoop: https://fitloop.hejitech.workers.dev</pre>
-              </div>
-            </div>
-
-            <div class="gallery">
-              <figure class="tall"><img src="media/youtube/fitloop-demo-short-thumbnail.jpg" alt="Vertical thumbnail" loading="lazy"><figcaption><b>Cover</b> · 1080×1920 (pick a frame in YouTube app; JPG for posts)<br><a class="dl" href="media/youtube/fitloop-demo-short-thumbnail.jpg" download>fitloop-demo-short-thumbnail.jpg</a></figcaption></figure>
+https://fitloop.hejitech.workers.dev
+Demo data; no medical advice. Synthetic narration, AI-generated backdrop.</pre></div>
             </div>
             <table class="kv">
-              <tr><th>Video file</th><td><a class="dl" href="media/edit/fitloop-demo-short.mp4" download>fitloop-demo-short.mp4</a></td></tr>
-              <tr><th>Format</th><td>Upload as a Short (&le; 60 s, 9:16 vertical).</td></tr>
+              <tr><th>Video</th><td><a class="dl" href="media/edit/fitloop-demo-short.mp4" download>fitloop-demo-short.mp4</a></td></tr>
+              <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/fitloop-demo-short.srt" download>fitloop-demo-short.srt</a></td></tr>
+              <tr><th>Cover (posts)</th><td><a class="dl" href="media/youtube/fitloop-demo-short-thumbnail.jpg" download>fitloop-demo-short-thumbnail.jpg</a></td></tr>
             </table>
           </div>
         </div>
+        <p>After upload: send the walkthrough's link; it goes into <code>projects/fitloop/docs/index.md</code> ("Watch the walkthrough", with chapter links) and the landing page's "How it works" (the promo stays the hero video).</p>
       </section>
 
       <!-- Section 9: Steps, Checklist, Risks -->
       <section id="steps" data-toc="Checklist & risks">
         <h2>Steps, checklist, and risks</h2>
-
         <ul class="checks">
-          <li id="chk-script">Chapters and script drafted, timed, and reviewed</li>
-          <li id="chk-vo">Voiceover lines generated with Kokoro-82M (af_sarah)</li>
-          <li id="chk-words">Word timestamps extracted with faster-whisper into voiceover.ts</li>
-          <li id="chk-animatic">Animatic composition compiled and linted in Remotion</li>
-          <li id="chk-srt">Subtitles (.srt) and YouTube chapter markers generated</li>
-          <li id="chk-flow">Owner generates 7 Flow art backdrops and Flow Music track</li>
-          <li id="chk-rec">Screen recordings executed with local stack and simulator</li>
-          <li id="chk-render">Render full video & short at 30 fps with loudnorm (-14 LUFS)</li>
-          <li id="chk-yt">Upload to YouTube and embed in projects/fitloop/docs/index.md</li>
+          <li><input type="checkbox" id="chk2-watch"><span><b>Watch both cuts with sound</b><small>On a laptop and on a phone. The mix hasn't been heard by a person.</small></span></li>
+          <li><input type="checkbox" id="chk2-facts"><span><b>Check the facts on screen</b><small>The agent's plan and reply are its own words; FitLoop's URL on the end card.</small></span></li>
+          <li><input type="checkbox" id="chk2-upload"><span><b>Upload both (§YouTube kit)</b><small>Walkthrough with chapters + SRT; the Short.</small></span></li>
+          <li><input type="checkbox" id="chk2-link"><span><b>Send the walkthrough link</b><small>For the docs page and the landing page.</small></span></li>
         </ul>
-
-        <h3>Risks & Mitigations</h3>
+        <h3>Risks</h3>
         <table class="grid">
-          <tr><th>Risk</th><th>Mitigation</th></tr>
-          <tr><td>Unknown words in Kokoro dictionary crash macOS espeak fallback</td><td>Phonetic spellings used ("Fit Loop", "M C P", "A I", "R one", "G two", "H U D") and pre-validated.</td></tr>
-          <tr><td>Bluetooth timer updates lag on Even G2</td><td>Glasses timer steps by 5 s above 10 s, keeping display responsive during rest countdowns.</td></tr>
-          <tr><td>Health data privacy for agents</td><td>Health data and vitals are gated by user permission switches (off by default for MCP agents).</td></tr>
+          <tr><th>Risk</th><th>Handling</th></tr>
+          <tr><td>2:18 is longer than the 2:00 aim</td><td>Every step is a real action with its result; the cuts that would save time are listed in §Summary.</td></tr>
+          <tr><td>The agent's run can't be reproduced word for word</td><td>Its byte stream is saved (<code>agent-run-1.json</code>, <code>agent-run-2.json</code>); the replays are rebuilt from those, not re-run.</td></tr>
+          <tr><td>Simulator, not a device</td><td>Scripted runs need the simulator (repeatable, clean status bar); the end card and description say demo data.</td></tr>
+          <tr><td>Health-adjacent advice in the agent's reply</td><td>It's the agent's (cautious) reply, shown as such; the end card and description say neither FitLoop nor the agent gives medical advice.</td></tr>
         </table>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
       </section>
     </main>
   </div>
 
   <footer class="footer">
     <div class="foot-inner">
-      <span>FitLoop Walkthrough Video Report · Port 8834</span>
-      <button class="btn-copy" id="btn-copy-hand-off">Copy summary</button>
+      <span>FitLoop Walkthrough Video Report · Port 8834 · updated 2026-11-08</span>
     </div>
   </footer>
 
-  <script src="js/report.js"></script>
   <script src="js/design.js"></script>
   <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
 </body>
 </html>

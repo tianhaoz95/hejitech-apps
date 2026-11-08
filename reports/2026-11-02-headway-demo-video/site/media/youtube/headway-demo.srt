@@ -1,87 +1,83 @@
 1
-00:00:00,000 --> 00:00:03,580
-Every commuter knows the sprint for Caltrain.
+00:00:00,100 --> 00:00:06,880
+Every Caltrain rider knows the question: is my train on time, and when do I really have to leave?
 
 2
-00:00:03,580 --> 00:00:10,900
-Here is how Headway puts your exact departures, leave-by times, and live alerts on your wrist and your glasses.
+00:00:06,880 --> 00:00:15,510
+Headway answers it on your phone, your watch and your Even G2 glasses, from Caltrain's live feed.
 
 3
-00:00:10,900 --> 00:00:16,050
-Open Headway on your phone, and save your morning and evening commute stations.
+00:00:15,510 --> 00:00:21,890
+Set your commute once: where you get on, where you get off, and how long your walk to the station takes.
 
 4
-00:00:16,050 --> 00:00:21,100
-The Trains tab instantly loads live departures with real-time delays.
+00:00:21,890 --> 00:00:26,300
+The Trains tab shows your next trains, with live delays.
 
 5
-00:00:21,100 --> 00:00:28,250
-Instead of doing platform mental math, the Catch card counts down to the exact minute you must walk out your door.
+00:00:26,300 --> 00:00:31,700
+The Catch card counts down to when you have to leave, walk included.
 
 6
-00:00:28,250 --> 00:00:33,130
-Green means you are on time; if you need to hustle, it warns you to run.
+00:00:33,160 --> 00:00:39,990
+To see it on your glasses, get a pairing code in the Glasses tab, and type it into the Even app, once.
 
 7
-00:00:33,130 --> 00:00:38,280
-To take it hands-free, generate a six-digit pairing code in the Glasses tab.
+00:00:39,990 --> 00:00:45,500
+Now your commute is right in front of you: the next trains, delays, and when to leave.
 
 8
-00:00:38,280 --> 00:00:43,580
-Type it into your Even app once. Now your commute board floats right before your eyes.
+00:00:45,500 --> 00:00:49,280
+Swipe on the R1 ring to move through the trains.
 
 9
-00:00:43,580 --> 00:00:47,760
-Swipe down on your R1 smart ring to browse the next trains.
+00:00:49,280 --> 00:00:53,060
+Tap to flip the direction, for the ride home.
 
 10
-00:00:47,760 --> 00:00:52,610
-Tap the ring to flip directions instantly when you are ready to head back.
+00:00:53,060 --> 00:00:59,040
+Hold for the menu: track a train, pick stations, or read alerts.
 
 11
-00:00:52,610 --> 00:00:58,240
-Hold the ring to open the quick menu and track your train without reaching into your pocket.
-
-12
-00:00:58,240 --> 00:01:03,140
+00:01:00,040 --> 00:01:05,250
 When delays stack up, the next train out is not always the first one home.
 
+12
+00:01:05,250 --> 00:01:10,950
+Headway spots it, and tells you to wait for the 511 Express.
+
 13
-00:01:03,140 --> 00:01:10,410
-Headway compares transit times across all trains and flags the overtake: wait for the 511 Express.
+00:01:10,950 --> 00:01:14,010
+Your glasses show the same advice,
 
 14
-00:01:10,410 --> 00:01:15,510
-The advice appears right on your glasses HUD, saving you four minutes.
+00:01:14,610 --> 00:01:20,570
+and a time-sensitive alert reaches you, before you board the slow one.
 
 15
-00:01:15,510 --> 00:01:21,010
-And a time-sensitive alert notifies you before you step onto the slower train.
+00:01:21,910 --> 00:01:24,570
+Swipe a train and tap Track.
 
 16
-00:01:21,010 --> 00:01:24,190
-Swipe right on your train to track your ride.
+00:01:24,640 --> 00:01:31,050
+Share live ETA sends a private link, so whoever is waiting knows when you will arrive.
 
 17
-00:01:24,190 --> 00:01:30,140
-Your Lock Screen and Dynamic Island update in real time with every passing station.
+00:01:31,050 --> 00:01:36,930
+They see your train and its arrival time, with no app and no sign in.
 
 18
-00:01:30,140 --> 00:01:34,290
-Glance at your Apple Watch for a quick countdown on the platform.
+00:01:36,930 --> 00:01:42,090
+Your ride follows you to the Dynamic Island and the Lock Screen.
 
 19
-00:01:34,290 --> 00:01:40,310
-Tap Share ETA to send friends a private live map link that requires no login.
+00:01:42,090 --> 00:01:47,350
+And five minutes out, a tap tells you it is time to get ready.
 
 20
-00:01:40,310 --> 00:01:46,240
-As you roll in, a gentle five-minute arrival tap reminds you to gather your things.
+00:01:48,970 --> 00:01:53,650
+Know when to leave, see it at a glance, and skip the slow train.
 
 21
-00:01:46,240 --> 00:01:50,390
-Never guess. Never sprint. Caltrain on your schedule.
-
-22
-00:01:50,390 --> 00:01:53,590
+00:01:53,650 --> 00:01:57,490
 Headway. Your next Caltrain, at a glance.

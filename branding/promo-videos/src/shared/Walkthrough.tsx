@@ -1,4 +1,4 @@
-import { Video } from "@remotion/media";
+import { Audio, Video } from "@remotion/media";
 import React from "react";
 import {
   AbsoluteFill,
@@ -105,8 +105,8 @@ export const SteppedClip: React.FC<{
   labels?: boolean;
   spot?: boolean;
   touch?: "cursor" | "tap" | "none";
-  /** Boxes (clip pixels) to blur from clip time `from`: tokens, private URLs. */
-  redact?: { box: Box; from: number }[];
+  /** Boxes (clip pixels) to cover from clip time `from` (until `until`): tokens, private URLs, account banners. */
+  redact?: { box: Box; from: number; until?: number; text?: string }[];
 }> = ({ src, clipW, clipH, a, b, dur, keys, events, theme, labels = true, spot = true, touch = "cursor", redact = [] }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -120,8 +120,8 @@ export const SteppedClip: React.FC<{
     <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
       <div style={{ position: "absolute", left: 0, top: 0, width: clipW, height: clipH, transformOrigin: "0 0", transform: `translate(${tx}px, ${ty}px) scale(${cam.z})` }}>
         <Video src={src} muted trimBefore={Math.round(a * fps)} playbackRate={rate} style={{ width: clipW, height: clipH, display: "block" }} />
-        {redact.filter((r) => t >= r.from).map((r, i) => (
-          <div key={`x${i}`} style={{ position: "absolute", left: r.box.x, top: r.box.y, width: r.box.w, height: r.box.h, borderRadius: 10, background: "#101a14", border: `2px dashed ${theme.accent}66`, display: "flex", alignItems: "center", paddingLeft: 24, fontFamily, fontWeight: 600, fontSize: 30, color: theme.dim }}>private link · hidden</div>
+        {redact.filter((r) => t >= r.from && t < (r.until ?? Infinity)).map((r, i) => (
+          <div key={`x${i}`} style={{ position: "absolute", left: r.box.x, top: r.box.y, width: r.box.w, height: r.box.h, borderRadius: 10, background: "#101a14", border: `2px dashed ${theme.accent}66`, display: "flex", alignItems: "center", paddingLeft: 24, fontFamily, fontWeight: 600, fontSize: 30, color: theme.dim }}>{r.text ?? "private link · hidden"}</div>
         ))}
         {spot && on.slice(-1).map((e) => <Spot key={e.step} box={e.box!} t={t} at={e.t} />)}
         {touch !== "none" && events.filter((e) => e.box && (e.type === "click" || e.type === "select") && t >= e.t - 0.05 && t <= e.t + 0.7).map((e) => (
@@ -142,9 +142,10 @@ const Spot: React.FC<{ box: Box; t: number; at: number }> = ({ box, t, at }) => 
   );
 };
 
-const Ripple: React.FC<{ x: number; y: number; p: number; color: string }> = ({ x, y, p, color }) => {
-  const r = 18 + p * 46;
-  return <div style={{ position: "absolute", left: x - r, top: y - r, width: r * 2, height: r * 2, borderRadius: r, border: `4px solid ${color}`, opacity: Math.max(0, 1 - p) * 0.9 }} />;
+const Ripple: React.FC<{ x: number; y: number; p: number; color: string; big?: boolean }> = ({ x, y, p, color, big }) => {
+  const m = big ? 2.4 : 1;
+  const r = (18 + p * 46) * m;
+  return <div style={{ position: "absolute", left: x - r, top: y - r, width: r * 2, height: r * 2, borderRadius: r, border: `${4 * m}px solid ${color}`, background: `${color}${p < 0.3 ? "33" : "00"}`, opacity: Math.max(0, 1 - p) * 0.9 }} />;
 };
 
 /** A short label beside the target, in the UI's own words; counter-scaled so it reads the same at any zoom. */
@@ -262,3 +263,160 @@ const FadeBox: React.FC<{ dur: number; fade: number; children: React.ReactNode }
   const blur = fade ? interpolate(t, [0, fade, dur - fade, dur], [12, 0, 0, 12], clamp) : 0;
   return <AbsoluteFill style={{ opacity: o, filter: blur > 0.2 ? `blur(${blur}px)` : undefined }}>{children}</AbsoluteFill>;
 };
+
+// ---------------------------------------------------------------------------- music bed
+
+/**
+ * Fits a music track to a cut of `total` seconds on its own bar lines: the track's start, then a section
+ * [loopFrom, loopTo) repeated k times, then the rest of the track to its own ending, so the video ends on
+ * the track's ending and every join falls on a bar line. Picks the section (n bars ending at `loopEndBar`)
+ * and k that land closest to `total`; the remainder shifts the start (a little of the soft intro is skipped).
+ */
+export type Track = { bpm: number; beat0: number; end: number; loopEndBar: number };
+export function musicPlan(t: Track, total: number) {
+  const bar = (60 / t.bpm) * 4;
+  const loopTo = t.beat0 + t.loopEndBar * bar;
+  let best = { n: 4, k: 0, err: Infinity };
+  for (let n = 4; n <= Math.min(16, t.loopEndBar - 2); n++)
+    for (let k = 0; k <= 6; k++) {
+      const len = t.end + k * n * bar;
+      const err = len >= total ? len - total : (total - len) * 4; // prefer slightly long (trim the head) to a gap
+      if (err < best.err) best = { n, k, err };
+    }
+  const loopFrom = loopTo - best.n * bar;
+  const segs: { at: number; from: number; to: number }[] = [];
+  let v = 0;
+  const push = (from: number, to: number) => { segs.push({ at: v, from, to }); v += to - from; };
+  push(0, loopTo);
+  for (let i = 0; i < best.k; i++) push(loopFrom, loopTo);
+  push(loopTo, t.end);
+  const shift = total - v; // ≤ 0: the track starts this far before the video (trims its head)
+  return { segs: segs.map((s) => ({ ...s, at: s.at + shift })), length: v, shift };
+}
+
+/** The track laid out by musicPlan, with short crossfades at the joins, ducked while `talking(t)`. */
+export const MusicBed: React.FC<{ src: string; track: Track; total: number; talking: (t: number) => boolean; loud?: number; under?: number; fadeOut?: number }> = ({ src, track, total, talking, loud = 0.5, under = 0.22, fadeOut = 1.2 }) => {
+  const { fps } = useVideoConfig();
+  const plan = musicPlan(track, total);
+  const xf = 0.12;
+  return (
+    <>
+      {plan.segs.map((s, i) => {
+        const start = Math.max(0, s.at);
+        const skip = s.from + Math.max(0, -s.at);
+        const len = s.to - skip;
+        if (len <= 0) return null;
+        return (
+          <Sequence key={i} from={Math.round(start * fps)} durationInFrames={Math.round((len + xf) * fps)} name={`Music ${i}`} layout="none">
+            <Audio src={src} trimBefore={Math.round(skip * fps)} volume={(f) => {
+              const tl = f / fps, tv = start + tl;
+              const edge = interpolate(tl, [0, xf, len, len + xf], [i === 0 ? 1 : 0, 1, 1, i === plan.segs.length - 1 ? 1 : 0], clamp);
+              const tail = interpolate(tv, [total - fadeOut, total], [1, 0], clamp);
+              const head = interpolate(tv, [0, 0.6], [i === 0 && s.at < 0 ? 0 : 1, 1], clamp);
+              return (talking(tv) ? under : loud) * edge * tail * head;
+            }} />
+          </Sequence>
+        );
+      })}
+    </>
+  );
+};
+
+// ---------------------------------------------------------------------------- phone stage
+
+/**
+ * Phone camera keys from an event log: a phone recording is shown large (rising from the bottom of the
+ * frame), so the camera pans to keep each target in view and pushes in a little while it's touched.
+ * Cam.cy is the clip y shown at the stage's focus line; z multiplies the base scale.
+ */
+export function phoneKeys(events: Ev[], clipH: number, opts: { z?: number; lead?: number; hold?: number; rest?: number } = {}) {
+  const { z = 1.22, lead = 0.6, hold = 1.6 } = opts;
+  const rest: Cam = { z: 1, cx: 0, cy: opts.rest ?? clipH * 0.27 };
+  const keys: [number, Cam][] = [[-1, rest]];
+  const evs = events.filter((e) => e.box);
+  let last = rest;
+  evs.forEach((e, i) => {
+    const c: Cam = { z, cx: 0, cy: e.box!.y + e.box!.h / 2 };
+    keys.push([e.t - lead, last]);
+    keys.push([e.t - 0.05, c]);
+    const next = evs[i + 1];
+    const end = e.t + hold;
+    if (next && next.t - lead - end < 1.2) keys.push([Math.max(e.t, next.t - lead), c]);
+    else { keys.push([end, c]); keys.push([end + 0.7, { ...rest, cy: Math.max(rest.cy, Math.min(c.cy, clipH * 0.55)) }]); }
+    last = keys[keys.length - 1][1];
+  });
+  keys.sort((a, b) => a[0] - b[0]);
+  return keys;
+}
+
+/**
+ * The real phone recording, large, in a plain dark phone body that rises out of the bottom of the frame.
+ * Plays [a, b] of the clip over `dur` seconds; the camera (phoneKeys) keeps the touched element at
+ * `focusY` on screen; touches get a ripple and a soft spotlight. `x` is the phone's centre.
+ */
+export const PhoneStage: React.FC<{
+  src: string; clipW: number; clipH: number; a: number; b: number; dur: number; events: Ev[]; theme: Theme;
+  x?: number; width?: number; focusY?: number; top?: number; keys?: [number, Cam][];
+}> = ({ src, clipW, clipH, a, b, dur, events, theme, x = 1250, width = 600, focusY = 900, top = 120, keys }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const rate = Math.max(0.25, (b - a) / dur);
+  const t = a + (frame / fps) * rate;
+  const k0 = width / clipW;
+  const ks = keys ?? phoneKeys(events, clipH);
+  const cam = camAt(ks, t);
+  const k = k0 * cam.z;
+  // Screen y of the clip's top edge: the phone stays put at `top` and only rises when the camera's target
+  // would fall below `focusY` on screen (so it never slides under the chapter bar for a target in view).
+  const y0 = Math.min(top, focusY - cam.cy * k);
+  const w = clipW * k, h = clipH * k;
+  const bez = 16 * cam.z;
+  const on = events.filter((e) => e.box && t >= e.t - 0.25 && t <= e.t + 1.6).slice(-1);
+  return (
+    <div style={{ position: "absolute", left: x - w / 2 - bez, top: y0 - bez, width: w + bez * 2, height: h + bez * 2, borderRadius: 70 * cam.z, background: "#050608", boxShadow: `0 60px 140px rgba(0,0,0,0.7), 0 0 0 2px #2a2d33, 0 0 80px ${theme.accent}18`, padding: bez }}>
+      <div style={{ position: "relative", width: w, height: h, borderRadius: 56 * cam.z, overflow: "hidden", background: "#000" }}>
+        <div style={{ position: "absolute", left: 0, top: 0, width: clipW, height: clipH, transform: `scale(${k})`, transformOrigin: "0 0" }}>
+          <Video src={src} muted trimBefore={Math.round(a * fps)} playbackRate={rate} style={{ width: clipW, height: clipH, display: "block" }} />
+          {on.map((e) => <Spot key={e.step} box={e.box!} t={t} at={e.t} />)}
+          {events.filter((e) => e.box && (e.type === "tap" || e.type === "longpress") && t >= e.t - 0.05 && t <= e.t + 0.7).map((e) => (
+            <Ripple key={`r${e.step}`} x={e.box!.x + e.box!.w / 2} y={e.box!.y + e.box!.h / 2} p={(t - e.t) / 0.7} color={theme.accent} big />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/** The step's words in large type beside the device: what to touch, in the UI's own words. */
+export const SideNote: React.FC<{ events: Ev[]; a: number; b: number; dur: number; theme: Theme; left?: number; top?: number; width?: number; kicker?: string }> = ({ events, a, b, dur, theme, left = 150, top = 380, width = 680, kicker }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const rate = Math.max(0.25, (b - a) / dur);
+  const t = a + (frame / fps) * rate;
+  const cur = events.filter((e) => e.label && t >= e.t - 0.35).slice(-1)[0];
+  if (!cur) return null;
+  const p = Math.min(1, (t - cur.t + 0.35) / 0.35);
+  return (
+    <div style={{ position: "absolute", left, top, width, fontFamily }}>
+      {kicker ? <div style={{ fontSize: 30, fontWeight: 700, color: theme.dim, marginBottom: 14, textShadow: "0 2px 12px rgba(0,0,0,0.8)" }}>{kicker}</div> : null}
+      <div key={cur.step} style={{ fontSize: 76, fontWeight: 800, letterSpacing: -2, lineHeight: 1.04, color: theme.ink, opacity: p, transform: `translateX(${(1 - p) * -30}px)`, textShadow: "0 6px 30px rgba(0,0,0,0.75)" }}>
+        <span style={{ display: "inline-block", width: 18, height: 64, background: theme.accent, borderRadius: 6, marginRight: 22, verticalAlign: -8 }} />
+        {cur.label}
+      </div>
+    </div>
+  );
+};
+
+/** The R1 ring and what the thumb did, for glasses shots. */
+export const RingGesture: React.FC<{ label: string; p: number; kind: string; theme: Theme; style?: React.CSSProperties }> = ({ label, p, kind, theme, style }) => {
+  const o = interpolate(p, [0, 0.1, 0.85, 1], [0, 1, 1, 0], clamp);
+  const dy = kind === "up" ? -26 * Math.min(1, p * 3) : kind === "down" ? 26 * Math.min(1, p * 3) : 0;
+  const pulse = kind === "long_press" ? 1 + 0.08 * Math.sin(p * 20) : kind === "double_click" || kind === "click" ? 1 + 0.15 * Math.max(0, 1 - p * 4) : 1;
+  return (
+    <div style={{ position: "absolute", bottom: 200, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 22, opacity: o, fontFamily, ...style }}>
+      <div style={{ width: 74, height: 74, borderRadius: 37, border: `9px solid #1a1f1c`, boxShadow: `0 0 0 3px ${theme.accent}, 0 0 26px ${theme.accent}88`, transform: `translateY(${dy}px) scale(${pulse})`, background: "rgba(0,0,0,0.4)" }} />
+      <div style={{ fontSize: 40, fontWeight: 800, color: theme.ink, textShadow: "0 3px 18px rgba(0,0,0,0.8)" }}>{label}</div>
+    </div>
+  );
+};
+export const GESTURE: Record<string, string> = { up: "Swipe up", down: "Swipe down", click: "Tap", long_press: "Hold", double_click: "Double tap" };

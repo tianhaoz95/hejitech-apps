@@ -1,0 +1,97 @@
+{
+ "clip": "rec-4-track.mp4",
+ "width": 1206,
+ "height": 2622,
+ "duration": 33.37,
+ "scale": 3,
+ "events": [
+  {
+   "step": "4.1",
+   "t": 0.6,
+   "type": "swipeLeft",
+   "label": "Swipe 511",
+   "box": {
+    "x": 48,
+    "y": 2079,
+    "w": 1110,
+    "h": 331
+   },
+   "x": 603,
+   "y": 2244.5
+  },
+  {
+   "step": "4.1a",
+   "t": 3.56,
+   "type": "tap",
+   "label": "Track",
+   "box": {
+    "x": 978,
+    "y": 2140,
+    "w": 150,
+    "h": 150
+   },
+   "x": 1053,
+   "y": 2215
+  },
+  {
+   "step": "4.2",
+   "t": 7.34,
+   "type": "mark",
+   "label": "Tracking",
+   "box": {
+    "x": 48,
+    "y": 348,
+    "w": 1110,
+    "h": 121
+   },
+   "x": 603,
+   "y": 408.5
+  },
+  {
+   "step": "4.4",
+   "t": 10.68,
+   "type": "tap",
+   "label": "Share live ETA",
+   "box": {
+    "x": 108,
+    "y": 816,
+    "w": 412,
+    "h": 54
+   },
+   "x": 314,
+   "y": 843
+  },
+  {
+   "step": "4.4a",
+   "t": 16.63,
+   "type": "mark",
+   "label": "A private link",
+   "box": null,
+   "x": null,
+   "y": null
+  },
+  {
+   "step": "4.3",
+   "t": 21.01,
+   "type": "home",
+   "label": "Dynamic Island",
+   "box": null,
+   "x": null,
+   "y": null
+  },
+  {
+   "step": "4.3a",
+   "t": 27.64,
+   "type": "mark",
+   "label": "Live Activity",
+   "box": {
+    "x": 203,
+    "y": 1422,
+    "w": 183,
+    "h": 59
+   },
+   "x": 294.5,
+   "y": 1451.5
+  }
+ ]
+}

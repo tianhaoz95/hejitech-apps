@@ -1,0 +1,37 @@
+{
+ "clip": "rec-4-reply.mp4",
+ "width": 1206,
+ "height": 2622,
+ "duration": 11.5,
+ "scale": 3,
+ "events": [
+  {
+   "step": "4.3",
+   "t": 0.6,
+   "type": "mark",
+   "label": "Your note",
+   "box": {
+    "x": 108,
+    "y": 610,
+    "w": 393,
+    "h": 54
+   },
+   "x": 304.5,
+   "y": 637
+  },
+  {
+   "step": "4.3a",
+   "t": 4.29,
+   "type": "mark",
+   "label": "Your agent's reply",
+   "box": {
+    "x": 116,
+    "y": 682,
+    "w": 982,
+    "h": 1192
+   },
+   "x": 607,
+   "y": 1278
+  }
+ ]
+}

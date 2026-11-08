@@ -1,0 +1,19 @@
+1
+00:00:00,100 --> 00:00:04,550
+My Caltrain is ten minutes late. Should I still take it?
+
+2
+00:00:04,550 --> 00:00:09,780
+Headway says no: wait for the Express. It gets me there first.
+
+3
+00:00:09,780 --> 00:00:12,780
+It is right on my glasses, too.
+
+4
+00:00:13,130 --> 00:00:17,230
+And it pings me, before I board the slow one.
+
+5
+00:00:17,390 --> 00:00:21,230
+Headway. Your next Caltrain, at a glance.

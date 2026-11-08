@@ -1,0 +1,27 @@
+{
+ "clip": "rec-1-terminal.mp4",
+ "width": 1920,
+ "height": 1080,
+ "duration": 8.34,
+ "from_s": 2.808,
+ "to_s": 11.146,
+ "marks": [
+  {
+   "t": 1.2,
+   "run_s": 4,
+   "name": "connect"
+  },
+  {
+   "t": 5.64,
+   "run_s": 8.4,
+   "name": "authenticate"
+  },
+  {
+   "t": 7.14,
+   "run_s": 9.9,
+   "name": "consent"
+  }
+ ],
+ "tools": [],
+ "events": []
+}

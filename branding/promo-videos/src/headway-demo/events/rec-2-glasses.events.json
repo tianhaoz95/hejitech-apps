@@ -1,0 +1,56 @@
+{
+ "clip": "rec-2-glasses.mp4",
+ "width": 1728,
+ "height": 864,
+ "duration": 19.52,
+ "events": [
+  {
+   "step": "Next trains",
+   "t": 3.2,
+   "type": "down",
+   "label": "Next trains"
+  },
+  {
+   "step": "down",
+   "t": 4.91,
+   "type": "down",
+   "label": "down"
+  },
+  {
+   "step": "up",
+   "t": 6.82,
+   "type": "up",
+   "label": "up"
+  },
+  {
+   "step": "up",
+   "t": 8.23,
+   "type": "up",
+   "label": "up"
+  },
+  {
+   "step": "Flip direction",
+   "t": 9.43,
+   "type": "click",
+   "label": "Flip direction"
+  },
+  {
+   "step": "Flip back",
+   "t": 12.44,
+   "type": "click",
+   "label": "Flip back"
+  },
+  {
+   "step": "Menu",
+   "t": 14.64,
+   "type": "long_press",
+   "label": "Menu"
+  },
+  {
+   "step": "Back",
+   "t": 17.84,
+   "type": "double_click",
+   "label": "Back"
+  }
+ ]
+}

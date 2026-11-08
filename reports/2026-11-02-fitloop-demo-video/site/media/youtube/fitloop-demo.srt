@@ -1,79 +1,83 @@
 1
-00:00:00,000 --> 00:00:04,350
-Everyone at the gym is guessing weights and counting sets.
+00:00:00,100 --> 00:00:07,730
+Your AI agent can write you a great training plan. Then you walk into the gym, and it is stuck in a chat window.
 
 2
-00:00:04,350 --> 00:00:13,170
-Here is how FitLoop lets your own AI agent coach your workouts and meals across iPhone, Apple Watch, and Even G2 glasses.
+00:00:07,730 --> 00:00:17,110
+FitLoop puts your agent's plan on your phone, your watch and your Even G2 glasses, and sends back how it went.
 
 3
-00:00:13,170 --> 00:00:18,600
-Connect Claude or any MCP agent to FitLoop with a single tap.
+00:00:17,110 --> 00:00:26,220
+In FitLoop's settings, copy the MCP address, and add it to your agent. Claude Code is shown here; any MCP client works.
 
 4
-00:00:18,600 --> 00:00:24,850
-Your agent fetches the plan guide and your profile to craft a customized weekly routine.
+00:00:26,220 --> 00:00:29,420
+Sign in from your agent, once.
 
 5
-00:00:24,850 --> 00:00:32,300
-FitLoop validates every exercise, rest timer, and rep count against strict glasses-friendly limits.
+00:00:29,970 --> 00:00:36,470
+FitLoop shows exactly what it may do. Allow it, and you are connected.
 
 6
-00:00:32,300 --> 00:00:38,480
-Once validated, your agent publishes the plan, instantly syncing to your devices.
+00:00:37,350 --> 00:00:41,750
+Then just ask: set up my training plan, starting today.
 
 7
-00:00:38,480 --> 00:00:45,160
-On your phone, the Today tab displays your full morning session, from goblet squats to meals.
+00:00:41,750 --> 00:00:51,880
+It reads FitLoop's plan guide and your profile, builds the week, and checks it against FitLoop's rules before it publishes.
 
 8
-00:00:45,160 --> 00:00:51,610
-Tap into any movement to preview procedural exercise animations and coaching cues.
+00:00:51,880 --> 00:00:59,540
+Seconds later, today's workout and meals are on your phone, with a note on what it planned.
 
 9
-00:00:51,610 --> 00:00:57,580
-When you start, your Apple Watch tracks your workout session and streams live heart rate.
+00:01:00,080 --> 00:01:03,780
+At the gym, tap the workout to start it.
 
 10
-00:00:57,580 --> 00:01:03,350
-Check off sets as you finish them, and the rest timer automatically counts down.
+00:01:03,780 --> 00:01:09,480
+Each exercise shows the set, the target, and your agent's form cues.
 
 11
-00:01:03,350 --> 00:01:08,870
-Take your workout completely hands-free by pairing your Even G2 glasses.
+00:01:09,480 --> 00:01:15,960
+Finish a set and tap Set done. The rest timer starts by itself.
 
 12
-00:01:08,870 --> 00:01:15,820
-A crisp nine-line green display shows your active exercise, target reps, and live heart rate.
+00:01:17,060 --> 00:01:23,220
+To go hands-free, get a pairing code in Settings, and type it into the Even app, once.
 
 13
-00:01:15,820 --> 00:01:21,620
-Single tap your R1 smart ring to log your set and trigger the rest countdown.
+00:01:23,220 --> 00:01:28,920
+Now your day is on your Even G2. Tap the R1 ring to open the workout.
 
 14
-00:01:21,620 --> 00:01:27,470
-Hold the ring to view form cues, or tap out instant feedback if something hurts.
+00:01:28,920 --> 00:01:35,320
+Tap again when a set is done. The rest timer runs right in front of you, next to your heart rate.
 
 15
-00:01:27,470 --> 00:01:33,440
-If your knee twinges during lunges, select It hurts right from your glasses or phone.
+00:01:35,320 --> 00:01:41,520
+Something hurts? Hold the ring, and tell your agent, without stopping.
 
 16
-00:01:33,440 --> 00:01:39,240
-At lunch, check off your meal, adjusting whether you ate more, less, or swapped dishes.
+00:01:42,770 --> 00:01:46,150
+Check off your meals as you eat them.
 
 17
-00:01:39,240 --> 00:01:45,970
-Your agent reads your check-ins and notes over MCP, and replies with helpful adjustments.
+00:01:46,150 --> 00:01:53,550
+Later, ask your agent to take a look. It reads your note over MCP, and plays it safe.
 
 18
-00:01:45,970 --> 00:01:52,570
-Tomorrow's plan automatically swaps out squats for step-ups, keeping you safe and on track.
+00:01:53,550 --> 00:01:56,870
+It answers you right in FitLoop,
 
 19
-00:01:52,570 --> 00:01:56,720
-Your agent coaches. FitLoop keeps you on the plan.
+00:01:58,030 --> 00:02:05,490
+and publishes a new plan. Today's Romanian deadlift is now a glute bridge.
 
 20
-00:01:56,720 --> 00:02:00,550
-FitLoop. Smarter training, right in your vision.
+00:02:06,660 --> 00:02:12,920
+Your agent writes the plan. FitLoop keeps you on it, and tells your agent how it went.
+
+21
+00:02:12,920 --> 00:02:17,280
+FitLoop. Your agent's plan, wherever you train.

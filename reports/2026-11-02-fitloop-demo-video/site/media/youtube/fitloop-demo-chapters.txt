@@ -1,6 +1,6 @@
 0:00 Intro
-0:13 1. Bring your agent & generate plan
-0:38 2. Mid-workout on iPhone & Apple Watch
-1:03 3. Hands-free on Even G2 & R1 ring
-1:27 4. The closed loop: instant feedback & plan adaptation
-1:52 Recap
+0:15 1 · Your agent writes the plan
+0:58 2 · Train with your phone
+1:15 3 · Hands-free on your glasses
+1:41 4 · Your agent adapts
+2:04 Recap

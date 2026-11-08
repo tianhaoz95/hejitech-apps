@@ -1,0 +1,79 @@
+{
+ "clip": "rec-2-workout.mp4",
+ "width": 1206,
+ "height": 2622,
+ "duration": 20.17,
+ "scale": 3,
+ "events": [
+  {
+   "step": "2.1",
+   "t": 0.6,
+   "type": "tap",
+   "label": "Lower body and core",
+   "box": {
+    "x": 48,
+    "y": 1308,
+    "w": 1110,
+    "h": 203
+   },
+   "x": 603,
+   "y": 1409.5
+  },
+  {
+   "step": "2.2",
+   "t": 4.17,
+   "type": "mark",
+   "label": "Goblet squat",
+   "box": {
+    "x": 96,
+    "y": 592,
+    "w": 504,
+    "h": 101
+   },
+   "x": 348,
+   "y": 642.5
+  },
+  {
+   "step": "2.2a",
+   "t": 7.96,
+   "type": "mark",
+   "label": "Your agent's cues",
+   "box": {
+    "x": 54,
+    "y": 1210,
+    "w": 276,
+    "h": 58
+   },
+   "x": 192,
+   "y": 1239
+  },
+  {
+   "step": "2.3",
+   "t": 11.94,
+   "type": "tap",
+   "label": "Set done",
+   "box": {
+    "x": 232,
+    "y": 934,
+    "w": 742,
+    "h": 174
+   },
+   "x": 603,
+   "y": 1021
+  },
+  {
+   "step": "2.4",
+   "t": 14.5,
+   "type": "mark",
+   "label": "Rest timer",
+   "box": {
+    "x": 96,
+    "y": 934,
+    "w": 601,
+    "h": 158
+   },
+   "x": 396.5,
+   "y": 1013
+  }
+ ]
+}

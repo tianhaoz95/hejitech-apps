@@ -43,7 +43,7 @@
   <header class="bar">
     <a class="brand" href="#top">
       <span class="logo"></span>
-      <span><b>Headway walkthrough video</b><small>Live Caltrain departures, leave-by times, Even G2 HUD, express overtakes, and real-time tracking</small></span>
+      <span><b>Headway walkthrough video</b><small>When to leave · Even G2 + R1 · wait for the Express · track your ride</small></span>
     </a>
     <div class="seg" role="group" aria-label="Appearance">
       <button data-mode="light">Light</button>
@@ -57,111 +57,79 @@
     <main>
       <!-- Section 1: Summary -->
       <section id="summary" data-toc="Summary">
-        <p class="kicker">Demo video plan · 2026-11-02</p>
-        <h1>Never guess when to leave: Headway walkthrough video</h1>
-        <p class="lede">Headway's product walkthrough video is designed and staged: <b>1:57 in 16:9 with five YouTube chapters</b>, plus a <b>26-second 9:16 Short</b>. It teaches a Caltrain rider the four core tasks: setting up a commute pair with <b>leave-by countdowns</b>, glancing at the <b>Even G2 glasses HUD</b> with <b>R1 ring gestures</b>, avoiding delayed trains with <b>express overtaking advice</b>, and tracking rides with <b>Lock Screen Live Activities, Apple Watch</b>, and private <b>ETA sharing links</b>. The animatic composition, voiceover generation (Kokoro-82M), word timestamps (faster-whisper), and recording scripts are in place.</p>
-
+        <p class="kicker">Demo video · finished 2026-11-08</p>
+        <h1>Your next Caltrain, at a glance.</h1>
+        <p class="lede">Headway's walkthrough is rendered and ready to upload: <b>1:58 in 16:9 with six YouTube chapters</b> and a <b>22-second 9:16 Short</b>. Every product frame is a real recording from the local stack on <b>Caltrain's real Monday-morning timetable</b>, reached with a new dev-only <b>demo clock</b> (no waiting for a weekday): the iPhone app driven tap by tap on the simulator, the Even G2 plugin in the Even Hub simulator, the Live Activity, a pushed alert and the shared ETA page.</p>
         <div class="status">
-          <div><b>Chapters + script</b><span class="ok">Agreed (4 chapters + short)</span></div>
-          <div><b>Voiceover</b><span class="ok">af_heart (Lin), 27 lines</span></div>
-          <div><b>Flow art</b><span class="ok">7 of 7 in, all used</span></div>
-          <div><b>Music</b><span class="ok">Warm Tech-Acoustic Groove in</span></div>
-          <div><b>Recordings</b><span class="ok">Real app & Even G2 HUD clips</span></div>
-          <div><b>SRT & Chapters</b><span class="ok">22 cues + 5 chapters</span></div>
-          <div><b>Edit</b><span class="ok">2 cuts rendered (−14.0 LUFS)</span></div>
-          <div><b>YouTube</b><span class="todo">Kit ready (§YouTube): you upload</span></div>
+          <div><b>Chapters + script</b><span class="ok">4 chapters + Short, matched to the recordings</span></div>
+          <div><b>Recordings</b><span class="ok">10 clips with event logs</span></div>
+          <div><b>Flow art</b><span class="ok">all in, all used</span></div>
+          <div><b>Voiceover</b><span class="ok">af_heart, 26 lines</span></div>
+          <div><b>Music</b><span class="ok">Your promo take, fitted on bar lines</span></div>
+          <div><b>Edit</b><span class="ok">2 cuts, −14.4 / −14.2 LUFS</span></div>
+          <div><b>YouTube kit</b><span class="ok">Titles, descriptions, chapters, SRTs, thumbnails</span></div>
+          <div><b>Upload</b><span class="todo">You upload, then send the link</span></div>
         </div>
-
-        <div class="callout"><b>Next for you:</b> watch <a href="#edit">the two cuts</a> with sound, on a phone too (the mix, voice ducking, and transitions need your ears). Then write any notes and click <b>Copy summary</b>, or upload with <a href="#youtube">§YouTube</a> and send the walkthrough's link for Headway's docs and landing pages. Media for this video lives in <code class="path">/Volumes/DATA/GitHub/hejitech-apps/branding/promo-videos/public/headway-demo/</code>.</div>
-
+        <div class="callout"><b>Next for you:</b> watch <a href="#edit">both cuts</a> with sound, on a phone too, then upload with <a href="#youtube">the YouTube kit</a> and send the walkthrough's link for Headway's docs and landing page. <b>Also:</b> two app fixes and one Worker fix came out of recording this (below); they need a release to reach people, and the ETA-link fix is urgent. Media: <code class="path">/Volumes/proj/github/hejitech-apps/branding/promo-videos/public/headway-demo/</code>.</div>
         <div class="cards">
           <div class="card">
-            <h3>What's real</h3>
+            <h3>Bugs found while recording (fixed, not yet released)</h3>
             <ul>
-              <li><b>100% real app screens:</b> iPhone app (Trains, Commute, Glasses tabs), CatchCard countdown ring, Even G2 glasses monochrome HUD simulator with R1 ring gestures, Lock Screen Dynamic Island Live Activity, and the web-based <code>/eta/:token</code> shared link.</li>
-              <li><b>Real timetable & GTFS-Realtime engine:</b> Delays (+4m, +14m) and live predictions flow through <code>@headway/core</code> and the Worker snapshot.</li>
-              <li><b>Real APNs time-sensitive push notifications:</b> Simulator push payloads generated with real alert engine logic (leave-now, better-train express overtake, and 5-minute arrival heads-up).</li>
+              <li><b>Shared ETA links 404 in production.</b> <code>/eta/*</code> wasn't in the Worker's <code>run_worker_first</code>, so the static site's "Nothing here" page answered every link (checked on headway.hejitech.workers.dev). Fixed in <code>wrangler.jsonc</code>; <code>test-api.mjs</code> now opens a shared link.</li>
+              <li><b>Share live ETA also stopped tracking.</b> Its button shares a List row with Stop tracking; without a borderless style a tap fires both, which also ended the Live Activity. Fixed in <code>BoardView.swift</code>.</li>
+              <li><b>The Live Activity could fail to reappear.</b> Re-tracking a train updated the activity the app had just ended. It now only reuses an active one, and starts without push updates when they aren't available.</li>
             </ul>
           </div>
           <div class="card">
-            <h3>Key differences from the launch promo</h3>
+            <h3>The demo clock (new, local stack only)</h3>
             <ul>
-              <li><b>Walkthrough vs Promo:</b> The launch promo (30 s) was a fast-paced character vignette (Lin and Max). This walkthrough (1:57) puts the <b>real app on screen &ge; 70% of the time</b>, explaining step-by-step how each feature works.</li>
-              <li><b>Lin's voice continues:</b> We use Kokoro's <code>af_heart</code> (the same voice profile chosen for Lin in <code>headway-launch</code>), maintaining brand vocal continuity.</li>
-              <li><b>Full feature breadth:</b> Highlights Leave-By walk countdowns, R1 ring interactions, the Express overtake calculation, and the private web ETA sharing link that weren't in the 30-second teaser.</li>
+              <li><code>PUT /api/dev/clock {"at":"2026-11-09T07:40:00-08:00"}</code> on the local Worker moves boards, alerts, tracking, MCP and the ETA page to that moment; <code>{"at":null}</code> resets. Refused unless <code>PUBLIC_URL</code> is 127.0.0.1/localhost.</li>
+              <li>The Debug iPhone app and the glasses plugin read it at launch, so countdowns agree; the Live Activity's countdown is shifted to match.</li>
+              <li>The recorder sets it per scene: chapter 1 at Monday 7:30, chapters 3–4 at Monday 8:02.</li>
             </ul>
           </div>
         </div>
-
         <table class="grid">
-          <tr><th>If you want to redo</th><th>What to do</th></tr>
-          <tr><td>A line of the script</td><td>Edit in your notes: re-run <code>headway-demo-vo.py --only &lt;id&gt;</code> and <code>headway-demo-words.py</code>.</td></tr>
-          <tr><td>The narration voice</td><td>Pass any Kokoro voice (<code>af_bella</code>, <code>af_nicole</code>, <code>af_sky</code>, <code>am_echo</code>): takes &lt; 15 seconds to regenerate all lines.</td></tr>
-          <tr><td>A Flow backdrop or music</td><td>Drop the new file into <code>public/headway-demo/</code> and update <code>media.md</code>.</td></tr>
-          <tr><td>Re-record a simulator clip</td><td>Run <code>scripts/headway-demo-record.mjs [glasses|phone]</code> with local stack running.</td></tr>
+          <tr><th>Worth knowing</th><th>Detail</th></tr>
+          <tr><td>Simulator prompts</td><td>iOS shows "Do you want to continue to allow Live Activities from Headway?" under the Live Activity on the Lock Screen in this simulator, even after Always Allow; it's visible in chapter 4.</td></tr>
+          <tr><td>Lock Screen date</td><td>The status-bar override can't set the date; the Lock Screen reads "Thu Nov 9" while the trains are Monday's.</td></tr>
+          <tr><td>Pushes</td><td>A simulator can't receive APNs: the two alerts are <code>simctl push</code> with exactly the text the alert engine writes for that moment.</td></tr>
+          <tr><td>Not shown</td><td>The Apple Watch app (named once as a surface).</td></tr>
+          <tr><td>Integration test</td><td><code>test-api.mjs</code>'s "auto tracks when sure" fails at some times of day (it needs a train running now), with or without these changes; the demo clock could make it deterministic.</td></tr>
         </table>
       </section>
 
-      <!-- Section 2: The edit -->
       <section id="edit" data-toc="The edit · review">
         <h2>The edit: two cuts to review</h2>
         <div class="gallery">
-          <figure><video src="media/edit/headway-demo.mp4" poster="media/edit/headway-demo.jpg" controls playsinline preload="none"></video><figcaption><b>Walkthrough</b> · 16:9, 1:54, −14.0 LUFS<br><a class="dl" href="media/edit/headway-demo.mp4" download>headway-demo.mp4</a></figcaption></figure>
-          <figure class="tall"><video src="media/edit/headway-demo-short.mp4" poster="media/edit/headway-demo-short.jpg" controls playsinline preload="none"></video><figcaption><b>Short</b> · 9:16, 0:23, −14.0 LUFS<br><a class="dl" href="media/edit/headway-demo-short.mp4" download>headway-demo-short.mp4</a></figcaption></figure>
+          <figure><video src="media/edit/headway-demo.mp4" poster="media/edit/headway-demo.jpg" controls playsinline preload="none"></video><figcaption><b>Walkthrough</b> · 16:9, 1:58, −14.4 LUFS<br><a class="dl" href="media/edit/headway-demo.mp4" download>headway-demo.mp4</a></figcaption></figure>
+          <figure class="tall"><video src="media/edit/headway-demo-short.mp4" poster="media/edit/headway-demo-short.jpg" controls playsinline preload="none"></video><figcaption><b>Short</b> · 9:16, 0:22, −14.2 LUFS<br><a class="dl" href="media/edit/headway-demo-short.mp4" download>headway-demo-short.mp4</a></figcaption></figure>
         </div>
-
         <table class="kv">
-          <tr><th>Full walkthrough</th><td><code>headway-demo</code> (1920&times;1080, 1:54 duration, 3,408 frames at 30 fps)</td></tr>
-          <tr><th>Short format</th><td><code>headway-demo-short</code> (1080&times;1920 vertical, 23 seconds duration, 681 frames)</td></tr>
-          <tr><th>YouTube thumbnail</th><td><code>headway-demo-thumb</code> (1280&times;720 still composition)</td></tr>
+          <tr><th>Compositions</th><td><code>headway-demo</code>, <code>headway-demo-short</code>, <code>headway-demo-thumb</code>, <code>headway-demo-short-thumb</code> in <code>branding/promo-videos/src/headway-demo/Composition.tsx</code></td></tr>
           <tr><th>Chapters</th><td><pre class="cmd">0:00 Intro
-0:10 1. Commute & leave-by times
-0:33 2. Even G2 glasses & R1 ring
-0:58 3. Wait for the Express
-1:21 4. Track ride & Share ETA
-1:46 Recap</pre></td></tr>
-          <tr><th>Pace & Camera</th><td>Calm tutorial pace (~140 wpm), each UI action held for &ge; 1.2 s after completion. Smooth spring zooms (1.4&ndash;2.0&times;) focused on touched elements, spotlight on targets, ripple clicks.</td></tr>
-          <tr><th>Transitions</th><td>Cross-zooms into device stages, subtle 3D tilt flattening before interaction, seamless chapter dissolves with Flow backdrops.</td></tr>
-          <tr><th>Audio & Loudness</th><td>Kokoro <code>af_heart</code> voiceover, acoustic tech background music ducked smoothly under voice. Loudness normalized with two-pass ffmpeg loudnorm (−14.0 LUFS, true peak −1.5 dB).</td></tr>
+0:13 1 · When to leave
+0:31 2 · On your glasses
+0:58 3 · Wait for the Express
+1:20 4 · Track your ride
+1:47 Recap</pre></td></tr>
+          <tr><th>Pace and camera</th><td>One step per narration line; the phone, large, rises from the bottom of the frame and the camera follows each touch from the event log (ripple on taps, spotlight, the step's label beside the phone). Glasses steps name each R1 gesture.</td></tr>
+          <tr><th>Sound</th><td>Kokoro <code>af_heart</code> (the promo's voice) at 1.06×; music ducked under the voice; two-pass loudnorm with a peak limiter. <b>Not yet heard by a person.</b></td></tr>
         </table>
       </section>
 
-      <!-- Section 3: Chapters & Script -->
       <section id="chapters" data-toc="Chapters & script">
         <h2>Chapters and script</h2>
-        <p>Who this video is for: <b>Bay Area Caltrain commuters and tech workers</b> who want frictionless transit awareness. Four focused chapters show the journey from waking up to arriving at work.</p>
-
-        <div data-block="path"></div>
-
-        <h3>Chapter 0 · Intro (0:00 &ndash; 0:10)</h3>
-        <p>Hook the viewer: platform sprints are stressful and unnecessary when live predictions and leave times are right in your vision.</p>
-        <div data-block="ch0"></div>
-
-        <h3>Chapter 1 · Commute & leave-by times (0:10 &ndash; 0:33)</h3>
-        <p>Save morning and evening station pairs. Show the live departure board and the <b>CatchCard</b> countdown ring that removes mental transit math.</p>
-        <div data-block="ch1"></div>
-
-        <h3>Chapter 2 · Even G2 glasses & R1 ring (0:33 &ndash; 0:58)</h3>
-        <p>Pair with a 6-digit code. Experience the crisp 9-line green HUD and intuitive R1 ring controls: swipe down to browse, tap to flip direction, and hold for the menu.</p>
-        <div data-block="ch2"></div>
-
-        <h3>Chapter 3 · Wait for the Express (0:58 &ndash; 1:21)</h3>
-        <p>When Local 113 is delayed by 14 minutes, Headway notices that Express 511 arrives 4 minutes earlier. Shows the InsightBanner, HUD footer tip, and time-sensitive push alert.</p>
-        <div data-block="ch3"></div>
-
-        <h3>Chapter 4 · Track ride & Share ETA (1:21 &ndash; 1:46)</h3>
-        <p>Swipe right to track. Dynamic Island Live Activity displays station progress, Apple Watch complication shows platform countdown, private <code>/eta/:token</code> link shares live map with family, and a 5-minute arrival tap alerts you before your stop.</p>
-        <div data-block="ch4"></div>
-
-        <h3>Recap & End Card (1:46 &ndash; 1:57)</h3>
-        <div data-block="ch5"></div>
-
-        <h3>The Short (9:16 vertical, 26 seconds)</h3>
-        <p>A fast-paced single-task short demonstrating the leave-by countdown, express overtake advice, and Live Activity arrival tap.</p>
-        <div data-block="short"></div>
+        <p>For Caltrain riders, in the order they'd use it: when to leave, the glasses, the express tip, tracking a ride.</p>
+        <h3>Intro</h3><div data-block="ch0"></div>
+        <h3>1 · When to leave</h3><div data-block="ch1"></div>
+        <h3>2 · On your glasses</h3><div data-block="ch2"></div>
+        <h3>3 · Wait for the Express</h3><div data-block="ch3"></div>
+        <h3>4 · Track your ride</h3><div data-block="ch4"></div>
+        <h3>Recap and end card</h3><div data-block="ch5"></div>
+        <h3>The Short</h3><div data-block="short"></div>
       </section>
 
-      <!-- Section 4: Look and feel -->
       <section id="look" data-toc="Look & feel">
         <h2>Look and feel</h2>
         <p>A refined SaaS product film aesthetic: clean hardware floating over rich, warm natural backdrops. Contrasts morning daylight with the sleek high-tech green HUD.</p>
@@ -188,10 +156,10 @@
 
         <table class="kv">
           <tr><th>Typography</th><td>Inter for UI and title labels, JetBrains Mono for times, train IDs, and HUD lines</td></tr>
-          <tr><th>Device Frames</th><td>iPhone 17 Pro frame (subtle shadow), Apple Watch Ultra wrist frame, Even G2 HUD container (floating with 3D tilt)</td></tr>
-          <tr><th>Transitions</th><td>Cross-zoom into device screens; subtle camera drift during holds; match cuts between phone alert and HUD footer</td></tr>
+          <tr><th>Device Frames</th><td>A plain dark phone body rising from the bottom of the frame (the camera pans and pushes in on each touch), the Even G2 display green-on-black in a floating frame</td></tr>
+          <tr><th>Transitions</th><td>One family: a blur-dissolve between steps and chapters, chapter title cards over each chapter's Flow backdrop; within a recording the camera springs onto each target</td></tr>
           <tr><th>Captions</th><td><code>KineticCaption</code> bottom band; spoken word highlights white on black with red accent marker</td></tr>
-          <tr><th>What never appears</th><td>No AI-generated UI, no mocked features that don't exist in code, no fake trains, no personal user data</td></tr>
+          <tr><th>What never appears</th><td>No AI-generated UI, no feature the recordings don't show; trains are Caltrain's real weekday timetable, only the delays are staged (and said so)</td></tr>
         </table>
       </section>
 
@@ -208,7 +176,7 @@
         <div class="shot">
           <span class="tag new">A1 Opener</span>
           <h3>A1 · Platform at dusk</h3>
-          <div class="meta-line">Video / Still · Opening hook (0:00 &ndash; 0:10) · Save as: <code>art-A1_Platform_dusk_caltrain.jpg</code></div>
+          <div class="meta-line">Video / Still · Opening hook (0:00 &ndash; 0:10) · In <code>public/headway-demo/</code> (see media.md)</div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -220,7 +188,7 @@
         <div class="shot">
           <span class="tag new">B1 Backdrop</span>
           <h3>B1 · Morning desk & coffee</h3>
-          <div class="meta-line">Still / Slow Loop · Chapter 1 Backdrop (0:10 &ndash; 0:33) · Save as: <code>art-B1_Commute_desk_morning.jpg</code></div>
+          <div class="meta-line">Still / Slow Loop · Chapter 1 Backdrop (0:10 &ndash; 0:33) · In <code>public/headway-demo/</code> (see media.md)</div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -232,7 +200,7 @@
         <div class="shot">
           <span class="tag new">B2 Backdrop</span>
           <h3>B2 · Slate surface with emerald HUD glow</h3>
-          <div class="meta-line">Still / Slow Loop · Chapter 2 Backdrop (0:33 &ndash; 0:58) · Save as: <code>art-B2_Glasses_slate_emerald.jpg</code></div>
+          <div class="meta-line">Still / Slow Loop · Chapter 2 Backdrop (0:33 &ndash; 0:58) · In <code>public/headway-demo/</code> (see media.md)</div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -244,7 +212,7 @@
         <div class="shot">
           <span class="tag new">B3 Backdrop</span>
           <h3>B3 · Rail tracks night timelapse</h3>
-          <div class="meta-line">Still / Slow Loop · Chapter 3 Backdrop (0:58 &ndash; 1:21) · Save as: <code>art-B3_Express_night_timelapse.jpg</code></div>
+          <div class="meta-line">Still / Slow Loop · Chapter 3 Backdrop (0:58 &ndash; 1:21) · In <code>public/headway-demo/</code> (see media.md)</div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -256,7 +224,7 @@
         <div class="shot">
           <span class="tag new">B4 Backdrop</span>
           <h3>B4 · Train window reflections</h3>
-          <div class="meta-line">Still / Slow Loop · Chapter 4 Backdrop (1:21 &ndash; 1:46) · Save as: <code>art-B4_Train_window_reflections.jpg</code></div>
+          <div class="meta-line">Still / Slow Loop · Chapter 4 Backdrop (1:21 &ndash; 1:46) · In <code>public/headway-demo/</code> (see media.md)</div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -268,7 +236,7 @@
         <div class="shot">
           <span class="tag new">A2 Bridge</span>
           <h3>A2 · Aerial suburban sunrise</h3>
-          <div class="meta-line">Video Loop · Bridge / Recap (1:46 &ndash; 1:52) · Save as: <code>art-A2_Suburban_peninsula_sunrise.jpg</code></div>
+          <div class="meta-line">Video Loop · Bridge / Recap (1:46 &ndash; 1:52) · In <code>public/headway-demo/</code> (see media.md)</div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -280,7 +248,7 @@
         <div class="shot">
           <span class="tag new">A3 End Card</span>
           <h3>A3 · Terminal morning platform</h3>
-          <div class="meta-line">Still 2K · End Card Art (1:52 &ndash; 1:57) · Save as: <code>art-A3_Terminal_morning_light.jpg</code></div>
+          <div class="meta-line">Still 2K · End Card Art (1:52 &ndash; 1:57) · In <code>public/headway-demo/</code> (see media.md)</div>
           <div class="fields">
             <div class="field" data-max="300">
               <b>Prompt</b>
@@ -293,147 +261,97 @@
       <!-- Section 6: Recordings + Screenshots -->
       <section id="recordings" data-toc="Recordings & screens">
         <h2>Recordings and screenshots</h2>
-        <p>All screen recordings are generated entirely on the local development stack with deterministic demo data, fixed 9:41 status bar, and companion JSON event logs.</p>
-
+        <p>Recorded 2026-11-08 with <code>scripts/headway-demo-record.mjs</code>: the iPhone 18 Pro simulator driven by <code>scripts/ios-uidriver</code> (XCUITest), the Even Hub simulator, Playwright for the ETA page. The seed rider's commute is Mountain View → San Francisco, an 8-minute walk.</p>
         <table class="grid">
-          <tr><th>Clip</th><th>Resolution</th><th>Duration</th><th>Description</th></tr>
-          <tr><td><code>rec-1-commute.mp4</code></td><td>1179&times;2556</td><td>18.0 s</td><td>iPhone: Commute tab setup, Trains live departure list, CatchCard leave-by countdown ring</td></tr>
-          <tr><td><code>rec-2-glasses.mp4</code></td><td>1728&times;864</td><td>15.0 s</td><td>Even Hub Simulator: 9-line green HUD, R1 ring swipe down, tap to flip, hold for menu</td></tr>
-          <tr><td><code>rec-3-overtake.mp4</code></td><td>1179&times;2556</td><td>18.0 s</td><td>iPhone: Local 113 delayed (+14m), InsightBanner overtake advice, time-sensitive APNs push</td></tr>
-          <tr><td><code>rec-4-track.mp4</code></td><td>1179&times;2556</td><td>20.0 s</td><td>iPhone & Watch: swipe to track 511, Dynamic Island Live Activity, Share ETA link, 5m arrival tap</td></tr>
+          <tr><th>Clip</th><th>Demo clock</th><th>What happens</th></tr>
+          <tr><td><code>rec-1-commute</code>, <code>rec-1-board</code></td><td>Mon 7:30</td><td>Commute tab (stations, walk); Trains: live board, Leave in 8m for 111 (2 min late), Express 507 marked RUN</td></tr>
+          <tr><td><code>rec-2-pair</code>, <code>rec-2-glasses</code></td><td>Mon 7:32</td><td>Glasses tab → Get a pairing code; G2 board, swipe, tap to flip, hold for the menu</td></tr>
+          <tr><td><code>rec-3-board</code>, <code>rec-3-hud</code>, <code>rec-3-push</code></td><td>Mon 8:02</td><td>Local 113 10 min late: "Wait for 511 Express … 4 min sooner"; the same tip in the glasses footer; the time-sensitive alert</td></tr>
+          <tr><td><code>rec-4-track</code>, <code>rec-4-arrival</code>, <code>rec-4-eta</code></td><td>Mon 8:02</td><td>Swipe 511 → Track; Share live ETA; Dynamic Island; Lock Screen Live Activity; "San Francisco in 5 min"; the shared page</td></tr>
         </table>
-
-        <h3>How to execute screen recordings locally</h3>
-        <pre class="cmd"># 1. Start local Supabase and Headway Worker
-supabase start
-npm run dev:worker -w @headway/web
-
-# 2. Stage seed data & run recorders
-node branding/promo-videos/scripts/headway-demo-record.mjs stage
-node branding/promo-videos/scripts/headway-demo-record.mjs glasses
-node branding/promo-videos/scripts/headway-demo-record.mjs phone
-
-# 3. Always restore seed settings afterwards
-node branding/promo-videos/scripts/headway-demo-record.mjs restore</pre>
+        <div class="gallery">
+          <figure><img src="media/stills/still-3-board.png" alt="Express tip" loading="lazy"><figcaption><b>still-3-board</b> · the express tip</figcaption></figure>
+          <figure><img src="media/stills/still-3-hud.png" alt="HUD tip" loading="lazy"><figcaption><b>still-3-hud</b> · on the glasses</figcaption></figure>
+          <figure><img src="media/stills/still-4-eta.png" alt="ETA page" loading="lazy"><figcaption><b>still-4-eta</b> · the shared link</figcaption></figure>
+        </div>
+        <h3>Re-recording</h3>
+        <pre class="cmd">supabase start; npm run dev:worker -w @headway/web      # Worker on 127.0.0.1:8792
+R=branding/promo-videos/scripts/headway-demo-record.mjs
+node $R notifications      # once per simulator: fresh install, alerts allowed, Live Activity prompts answered
+node $R phone1; node $R pair; node $R glasses; node $R late; node $R track; node $R eta
+node $R restore            # headway rows back, real clock</pre>
       </section>
 
-      <!-- Section 7: Voiceover & Music -->
       <section id="voiceover" data-toc="Voiceover & music">
         <h2>Voiceover and music</h2>
-        <p>Narration is pre-rendered with Kokoro-82M (Apache 2.0) locally at 24 kHz mono. The selected voice is <b>af_heart</b> (Lin's voice from <code>headway-launch</code>), with exact word timings extracted via <code>faster-whisper</code>.</p>
-
         <table class="kv">
-          <tr><th>Narration Model</th><td>Kokoro-82M (<code>hexgrad/Kokoro-82M</code>) via local Python venv</td></tr>
-          <tr><th>Primary Voice</th><td><code>af_heart</code> (warm, articulate, tech-commuter tone at 1.05&times; speed)</td></tr>
-          <tr><th>Alternative Takes</th><td><code>af_bella</code>, <code>af_nicole</code>, <code>af_sky</code>, <code>am_echo</code> (generated via <code>headway-demo-vo.py</code>)</td></tr>
-          <tr><th>Timing Alignment</th><td><code>faster-whisper</code> (small.en) with custom phoneme dictionary mappings</td></tr>
+          <tr><th>Voice</th><td>Kokoro-82M <code>af_heart</code> (the promo's), 1.06×, one file per line; word times from faster-whisper</td></tr>
+          <tr><th>Music</th><td>Your Flow Music take from the promo (<code>15-sec-music</code>, 99.4 BPM, 68 s), fitted to 1:58 by <code>MusicBed</code>: its intro, a section repeated on bar lines, its own ending.</td></tr>
         </table>
-
-        <h3>Flow Music prompt (for owner)</h3>
-        <div class="fields">
-          <div class="field" data-max="300">
-            <b>Music Prompt</b>
-            <pre>Warm and modern tech-acoustic groove, 102 BPM, 4/4, clean rhythmic acoustic guitar and muted marimba pulse, subtle warm bassline, light electronic percussion, airy and optimistic, open mids leaving room for a clear voiceover, clean resolving ending at 115 seconds</pre>
-          </div>
-        </div>
       </section>
 
-      <!-- Section 8: YouTube upload kit -->
       <section id="youtube" data-toc="YouTube kit">
         <h2>YouTube upload kit</h2>
-        <p>Ready to paste when uploading both videos to the official HEJI TECH YouTube channel.</p>
-
         <div class="cards">
           <div class="card">
-            <h3>Full Walkthrough (16:9, Public)</h3>
+            <h3>Walkthrough (16:9, Public)</h3>
             <div class="fields">
-              <div class="field">
-                <b>Title</b>
-                <pre>How to never miss Caltrain: Headway walkthrough (2 minutes)</pre>
-              </div>
-              <div class="field">
-                <b>Description</b>
-                <pre>Headway gives you Caltrain departures, live delays, exact leave-by countdowns, and Even G2 glasses HUD display with R1 smart ring gestures. 
+              <div class="field"><b>Title</b><pre>How Headway works: when to leave, wait for the Express, track your Caltrain</pre></div>
+              <div class="field"><b>Description</b><pre>Headway shows your next Caltrain on your phone, your watch and your Even G2 glasses: when to leave (walk included), live delays, which train gets you there first, and your ride live on the Lock Screen, with a private ETA link to share.
 
-Chapters:
+In this video:
 0:00 Intro
-0:10 1. Commute & leave-by times
-0:33 2. Even G2 glasses & R1 ring
-0:58 3. Wait for the Express
-1:21 4. Track ride & Share ETA
-1:46 Recap
+0:13 1 · When to leave
+0:31 2 · On your glasses
+0:58 3 · Wait for the Express
+1:20 4 · Track your ride
+1:47 Recap
 
-App & Docs: https://headway.hejitech.workers.dev
-Decisions & Architecture: https://github.com/tianhaoz95/hejitech-apps/tree/main/projects/headway
+Headway: https://headway.hejitech.workers.dev
 
-Disclaimer: Train departures, delays, and notifications shown are demo data on the local developer stack. Voiceover generated locally with Kokoro-82M. Atmospheric backdrops created with Google Flow.</pre>
-              </div>
-              <div class="field">
-                <b>Tags</b>
-                <pre>Caltrain, transit, Even G2, smart glasses, R1 ring, Apple Watch, Live Activity, commute, San Francisco, Silicon Valley</pre>
-              </div>
-            </div>
-
-            <div class="gallery">
-              <figure><img src="media/youtube/headway-demo-thumbnail.jpg" alt="Thumbnail: Headway Walkthrough" loading="lazy"><figcaption><b>Thumbnail</b> · 1280×720, real screens over Flow backdrop<br><a class="dl" href="media/youtube/headway-demo-thumbnail.jpg" download>headway-demo-thumbnail.jpg</a></figcaption></figure>
+Caltrain's real weekday timetable; the delays shown are demo data. Not affiliated with Caltrain. Backdrops are AI-generated (Google Flow); the narration is a synthetic voice (Kokoro).</pre></div>
+              <div class="field"><b>Tags</b><pre>Headway, Caltrain, commute, Bay Area, train times, Even G2, smart glasses, R1 ring, Live Activity, iPhone, HEJI TECH</pre></div>
             </div>
             <table class="kv">
-              <tr><th>Video file</th><td><a class="dl" href="media/edit/headway-demo.mp4" download>headway-demo.mp4</a></td></tr>
-              <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/headway-demo.srt" download>headway-demo.srt</a> (22 cues)</td></tr>
-              <tr><th>Chapters</th><td>In the description above. <a class="dl" href="media/youtube/headway-demo-chapters.txt" download>headway-demo-chapters.txt</a></td></tr>
-              <tr><th>Playlist</th><td>The existing <b>Headway</b> playlist.</td></tr>
+              <tr><th>Video</th><td><a class="dl" href="media/edit/headway-demo.mp4" download>headway-demo.mp4</a></td></tr>
+              <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/headway-demo.srt" download>headway-demo.srt</a></td></tr>
+              <tr><th>Thumbnail</th><td><a class="dl" href="media/youtube/headway-demo-thumbnail.jpg" download>headway-demo-thumbnail.jpg</a></td></tr>
+              <tr><th>Altered or synthetic content</th><td>No</td></tr>
             </table>
+            <div class="gallery"><figure><img src="media/youtube/headway-demo-thumbnail.jpg" alt="Thumbnail" loading="lazy"><figcaption><b>Thumbnail</b> · real screens over the Flow backdrop</figcaption></figure></div>
           </div>
-
           <div class="card">
-            <h3>Short (9:16, Public Short)</h3>
+            <h3>Short (9:16, Public)</h3>
             <div class="fields">
-              <div class="field">
-                <b>Title</b>
-                <pre>Still sprinting for Caltrain? Commute smarter with Headway #shorts</pre>
-              </div>
-              <div class="field">
-                <b>Description</b>
-                <pre>Never do transit mental math on the platform again. Headway calculates your exact walking buffer, tells you when an express beats a delayed local, and taps your wrist 5 minutes before your stop.
+              <div class="field"><b>Title</b><pre>My Caltrain is late. Should I still take it? #shorts</pre></div>
+              <div class="field"><b>Description</b><pre>Headway spots when a later express gets you there first, on your phone and your Even G2 glasses, and pings you before you board the slow one.
 
-Get Headway: https://headway.hejitech.workers.dev</pre>
-              </div>
-            </div>
-
-            <div class="gallery">
-              <figure class="tall"><img src="media/youtube/headway-demo-short-thumbnail.jpg" alt="Vertical thumbnail" loading="lazy"><figcaption><b>Cover</b> · 1080×1920 (pick a frame in YouTube app; JPG for posts)<br><a class="dl" href="media/youtube/headway-demo-short-thumbnail.jpg" download>headway-demo-short-thumbnail.jpg</a></figcaption></figure>
+https://headway.hejitech.workers.dev
+Delays shown are demo data. Not affiliated with Caltrain. Synthetic narration.</pre></div>
             </div>
             <table class="kv">
-              <tr><th>Video file</th><td><a class="dl" href="media/edit/headway-demo-short.mp4" download>headway-demo-short.mp4</a></td></tr>
-              <tr><th>Format</th><td>Upload as a Short (&le; 60 s, 9:16 vertical).</td></tr>
+              <tr><th>Video</th><td><a class="dl" href="media/edit/headway-demo-short.mp4" download>headway-demo-short.mp4</a></td></tr>
+              <tr><th>Subtitles</th><td><a class="dl" href="media/youtube/headway-demo-short.srt" download>headway-demo-short.srt</a></td></tr>
+              <tr><th>Cover (posts)</th><td><a class="dl" href="media/youtube/headway-demo-short-thumbnail.jpg" download>headway-demo-short-thumbnail.jpg</a></td></tr>
             </table>
           </div>
         </div>
       </section>
 
-      <!-- Section 9: Steps, Checklist, Risks -->
       <section id="steps" data-toc="Checklist & risks">
         <h2>Steps, checklist, and risks</h2>
-
         <ul class="checks">
-          <li id="chk-script">Chapters and script drafted, timed, and reviewed</li>
-          <li id="chk-vo">Voiceover lines generated with Kokoro-82M (af_heart)</li>
-          <li id="chk-words">Word timestamps extracted with faster-whisper into voiceover.ts</li>
-          <li id="chk-animatic">Animatic composition compiled and linted in Remotion</li>
-          <li id="chk-srt">Subtitles (.srt) and YouTube chapter markers generated</li>
-          <li id="chk-flow">Owner generates 7 Flow art backdrops and Flow Music track</li>
-          <li id="chk-rec">Screen recordings executed with local stack and simulator</li>
-          <li id="chk-render">Render full video & short at 30 fps with loudnorm (-14 LUFS)</li>
-          <li id="chk-yt">Upload to YouTube and embed in projects/headway/docs/index.md</li>
+          <li><input type="checkbox" id="chk2-watch"><span><b>Watch both cuts with sound</b><small>Laptop and phone.</small></span></li>
+          <li><input type="checkbox" id="chk2-release"><span><b>Release the fixes</b><small>The ETA-link fix (Worker, deploys on push) is urgent; the two app fixes ship with the next TestFlight.</small></span></li>
+          <li><input type="checkbox" id="chk2-upload"><span><b>Upload both (§YouTube kit)</b><small>Walkthrough with chapters + SRT; the Short.</small></span></li>
+          <li><input type="checkbox" id="chk2-link"><span><b>Send the walkthrough link</b><small>For the docs page and the landing page.</small></span></li>
         </ul>
-
-        <h3>Risks & Mitigations</h3>
-        <table class="grid">
-          <tr><th>Risk</th><th>Mitigation</th></tr>
-          <tr><td>Unknown words in Kokoro dictionary crash macOS espeak fallback</td><td>Phonetic spellings used ("Cal train", "E T A", "R one", "five eleven") and verified without fallback crash.</td></tr>
-          <tr><td>GTFS-RT snapshot expires after 10 minutes</td><td>Recording script stages snapshot immediately before recording and verifies feed timestamp.</td></tr>
-          <tr><td>App Store Connect / TestFlight privacy restrictions</td><td>All recordings run on local simulator with zero real PII or live location tracking.</td></tr>
-        </table>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
       </section>
     </main>
   </div>
@@ -441,12 +359,11 @@ Get Headway: https://headway.hejitech.workers.dev</pre>
   <footer class="footer">
     <div class="foot-inner">
       <span>Headway Walkthrough Video Report · Port 8833</span>
-      <button class="btn-copy" id="btn-copy-hand-off">Copy summary</button>
     </div>
   </footer>
 
-  <script src="js/report.js"></script>
   <script src="js/design.js"></script>
   <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
 </body>
 </html>

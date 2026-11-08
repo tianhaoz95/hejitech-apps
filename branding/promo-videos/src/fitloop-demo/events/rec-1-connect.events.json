@@ -1,0 +1,36 @@
+{
+ "clip": "rec-1-connect.mp4",
+ "width": 1920,
+ "height": 1080,
+ "duration": 5.53,
+ "events": [
+  {
+   "step": "1.1",
+   "t": 0.81,
+   "type": "look",
+   "label": "Your MCP server",
+   "box": {
+    "x": 473,
+    "y": 471,
+    "w": 828,
+    "h": 57
+   },
+   "x": 887,
+   "y": 499.5
+  },
+  {
+   "step": "1.1a",
+   "t": 3.3,
+   "type": "click",
+   "label": "Copy URL",
+   "box": {
+    "x": 1312,
+    "y": 473,
+    "w": 135,
+    "h": 52
+   },
+   "x": 1379.5,
+   "y": 499
+  }
+ ]
+}

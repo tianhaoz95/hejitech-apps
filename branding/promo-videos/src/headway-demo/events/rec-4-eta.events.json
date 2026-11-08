@@ -1,0 +1,22 @@
+{
+ "clip": "rec-4-eta.mp4",
+ "width": 1170,
+ "height": 2532,
+ "duration": 5.33,
+ "events": [
+  {
+   "step": "4.4b",
+   "t": 0.73,
+   "type": "look",
+   "label": "What they see",
+   "box": {
+    "x": 0,
+    "y": 0,
+    "w": 1170,
+    "h": 2532
+   },
+   "x": 585,
+   "y": 1266
+  }
+ ]
+}

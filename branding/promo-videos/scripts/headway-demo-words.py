@@ -16,11 +16,8 @@ SHOW = {
     "Cal train": "Caltrain",
     "E T A": "ETA",
     "R one": "R1",
+    "G two": "G2",
     "five eleven": "511",
-    "one thirteen": "113",
-    "H U D": "HUD",
-    "six digit": "six-digit",
-    "five minute": "5-minute",
 }
 
 model = WhisperModel("small.en", device="cpu", compute_type="int8")

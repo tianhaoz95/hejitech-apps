@@ -1,0 +1,68 @@
+{
+ "clip": "rec-1-agent.mp4",
+ "width": 1920,
+ "height": 1080,
+ "duration": 28.07,
+ "from_s": 23.585,
+ "to_s": 141.92,
+ "marks": [
+  {
+   "t": 0.4,
+   "run_s": 24,
+   "name": "prompt"
+  },
+  {
+   "t": 5.4,
+   "run_s": 29,
+   "name": "run"
+  },
+  {
+   "t": 22.22,
+   "run_s": 136.1,
+   "name": "published"
+  }
+ ],
+ "tools": [
+  {
+   "t": 8.79,
+   "run_s": 32.4,
+   "tool": "ToolSearch"
+  },
+  {
+   "t": 9.05,
+   "run_s": 33.8,
+   "tool": "get_plan_guide"
+  },
+  {
+   "t": 9.06,
+   "run_s": 33.8,
+   "tool": "get_profile"
+  },
+  {
+   "t": 9.06,
+   "run_s": 33.9,
+   "tool": "get_current_plan"
+  },
+  {
+   "t": 9.07,
+   "run_s": 34,
+   "tool": "get_feedback"
+  },
+  {
+   "t": 12.33,
+   "run_s": 73.1,
+   "tool": "validate_plan"
+  },
+  {
+   "t": 15.05,
+   "run_s": 105.7,
+   "tool": "validate_plan"
+  },
+  {
+   "t": 23.17,
+   "run_s": 137,
+   "tool": "publish_plan"
+  }
+ ],
+ "events": []
+}

@@ -18,10 +18,7 @@ SHOW = {
     "A I": "AI",
     "R one": "R1",
     "G two": "G2",
-    "H U D": "HUD",
-    "six digit": "six-digit",
-    "nine line": "9-line",
-    "Tomorrows": "Tomorrow's",
+    "dead lift": "deadlift",
 }
 
 model = WhisperModel("small.en", device="cpu", compute_type="int8")

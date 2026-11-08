@@ -1,0 +1,23 @@
+1
+00:00:00,100 --> 00:00:05,030
+My AI agent wrote this workout. Now it is on my glasses.
+
+2
+00:00:05,030 --> 00:00:09,610
+Tap the ring when a set is done, and the rest timer starts.
+
+3
+00:00:09,610 --> 00:00:14,190
+Something hurts? Hold the ring, and tell your agent.
+
+4
+00:00:14,190 --> 00:00:18,770
+It reads the note, answers, and changes the plan.
+
+5
+00:00:18,770 --> 00:00:23,150
+The deadlift is out. A glute bridge is in.
+
+6
+00:00:23,470 --> 00:00:27,830
+FitLoop. Your agent's plan, wherever you train.

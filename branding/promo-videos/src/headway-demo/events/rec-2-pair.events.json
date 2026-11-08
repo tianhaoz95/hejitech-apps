@@ -1,0 +1,37 @@
+{
+ "clip": "rec-2-pair.mp4",
+ "width": 1206,
+ "height": 2622,
+ "duration": 8.2,
+ "scale": 3,
+ "events": [
+  {
+   "step": "2.1",
+   "t": 0.6,
+   "type": "tap",
+   "label": "Get a pairing code",
+   "box": {
+    "x": 48,
+    "y": 625,
+    "w": 1110,
+    "h": 156
+   },
+   "x": 603,
+   "y": 703
+  },
+  {
+   "step": "2.1a",
+   "t": 3.57,
+   "type": "mark",
+   "label": "Type it in the Even app",
+   "box": {
+    "x": 108,
+    "y": 856,
+    "w": 959,
+    "h": 101
+   },
+   "x": 587.5,
+   "y": 906.5
+  }
+ ]
+}

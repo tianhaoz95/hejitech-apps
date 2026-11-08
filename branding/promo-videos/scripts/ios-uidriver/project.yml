@@ -1,0 +1,21 @@
+name: UIDriver
+options:
+  bundleIdPrefix: com.hejitech.uidriver
+  deploymentTarget: { iOS: "18.0" }
+targets:
+  Host:
+    type: application
+    platform: iOS
+    sources: [Host]
+    info: { path: Host/Info.plist, properties: { UILaunchScreen: {} } }
+    settings: { CODE_SIGN_IDENTITY: "-", GENERATE_INFOPLIST_FILE: YES }
+  Driver:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [Driver]
+    dependencies: [{ target: Host }]
+    settings: { CODE_SIGN_IDENTITY: "-", GENERATE_INFOPLIST_FILE: YES, TEST_TARGET_NAME: Host }
+schemes:
+  Driver:
+    build: { targets: { Driver: all } }
+    test: { targets: [Driver] }

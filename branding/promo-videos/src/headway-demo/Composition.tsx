@@ -1,611 +1,431 @@
 import { Audio, Video } from "@remotion/media";
 import React from "react";
-import {
-  AbsoluteFill,
-  Composition,
-  Img,
-  interpolate,
-  Sequence,
-  spring,
-  staticFile,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
+import { AbsoluteFill, Composition, Img, interpolate, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { CaptionBand, DemoLabel, fontFamily, KineticCaption } from "../shared/Caption";
-import {
-  Backdrop,
-  ChapterBar,
-  Theme,
-} from "../shared/Walkthrough";
-import { LINES, Word } from "./voiceover";
+import { Backdrop, ChapterBar, Ev, GESTURE, Hud, MusicBed, PhoneStage, RingGesture, Scene, SideNote, StepTitle, Theme, Track } from "../shared/Walkthrough";
+import { LINES } from "./voiceover";
+import E_COMMUTE from "./events/rec-1-commute.events.json";
+import E_BOARD from "./events/rec-1-board.events.json";
+import E_PAIR from "./events/rec-2-pair.events.json";
+import E_GLASSES from "./events/rec-2-glasses.events.json";
+import E_LATE from "./events/rec-3-board.events.json";
+import E_HUD from "./events/rec-3-hud.events.json";
+import E_PUSH from "./events/rec-3-push.events.json";
+import E_TRACK from "./events/rec-4-track.events.json";
+import E_ETA from "./events/rec-4-eta.events.json";
+import E_ARRIVAL from "./events/rec-4-arrival.events.json";
 
-// Headway walkthrough (reports/2026-11-02-headway-demo-video, skill heji-demo-video):
-// Caltrain departures, live delays, leave-by times, Even G2 glasses HUD, R1 ring gestures,
-// express overtaking advice, and real-time tracking with Live Activities and ETA sharing.
-// Media lives in public/headway-demo/ (media.md).
+// Headway walkthrough (reports/2026-11-02-headway-demo-video, skill heji-demo-video): set your commute and see
+// when to leave, the board on Even G2 glasses with the R1 ring, the tip when a late train is beaten by the
+// next one (an express), and tracking a ride (Share live ETA, the Live Activity, the arrival alert). Every product frame is
+// a real recording from the local stack, on the Worker's demo clock set to a Monday morning (Caltrain's real
+// weekday timetable) and a staged live snapshot (the delays are demo data), the iPhone app driven on the simulator (scripts/headway-demo-record.mjs),
+// the plugin in the Even Hub simulator. Pushes are the alert engine's wording delivered with `simctl push`.
+// Backdrops and bridges are the owner's Google Flow art; the music is the owner's Flow Music take from the
+// promo, fitted on bar lines. Media: public/headway-demo/ (media.md).
 
 const FPS = 30;
 const m = (f: string) => staticFile(`headway-demo/${f}`);
-const T: Theme = { accent: "#e02424", ink: "#f0f4f8", panel: "rgba(18,22,28,0.94)", dim: "#8b9bb4" };
-const HUD_GREEN = "#3dff7a";
-const CALTRAIN_RED = "#e02424";
-const PAD = 0.35; // silence after each narration line
+const T: Theme = { accent: "#e8413c", ink: "#f0f4f8", panel: "rgba(18,22,28,0.94)", dim: "#a9b6c8" };
+const G: Theme = { accent: "#3dff7a", ink: "#e3f2e6", panel: "rgba(7,20,11,0.92)", dim: "#8fb39a" };
+const VOICE = "af_heart";
+const PAD = 0.28;
 
-const BACKDROPS: Record<string, { loop?: string; still?: string }> = {
-  intro: { loop: m("Commuter_waiting_for_train_ad7ded41_1080p.mp4"), still: m("Dawn_breaking_over_train_platform_ef936758_2K.jpg") },
-  commute: { loop: m("Steam_rising_from_coffee_cup_9744a41a_1080p.mp4"), still: m("Coffee_cup_on_wooden_desk_ea1ce458_2K.jpg") },
-  glasses: { loop: m("Creating_futuristic_ambient_vide…_6a5496ec_1080p.mp4"), still: m("Illuminated_dark_stone_textures_c60e1bcc_2K.jpg") },
-  overtake: { loop: m("Night_timelapse_of_railway_tracks_3fdf43be_1080p.mp4"), still: m("Trains_passing_on_railway_tracks_c740b68d_2K.jpg") },
-  track: { loop: m("Train_carriage_passing_city_lights_a31219e1_1080p.mp4"), still: m("Passenger_looking_out_train_window_70f7f078_2K.jpg") },
-  recap: { loop: m("Train_gliding_through_suburban_l…_31da0976_1080p.mp4"), still: m("Dawn_breaking_over_train_platform_ef936758_2K.jpg") },
+type Clip = { clip: string; width: number; height: number; duration: number; events: Ev[] };
+const C = (x: unknown) => x as Clip;
+const CL = {
+  commute: C(E_COMMUTE), board: C(E_BOARD), pair: C(E_PAIR), glasses: C(E_GLASSES), late: C(E_LATE), hud: C(E_HUD), push: C(E_PUSH),
+  track: C(E_TRACK), eta: C(E_ETA), arrival: C(E_ARRIVAL),
+};
+const ev = (c: Clip, step: string, fallback?: number) => {
+  const e = c.events.find((x) => x.step === step);
+  if (!e) { if (fallback !== undefined) return fallback; throw new Error(`no event ${step} in ${c.clip}`); }
+  return e.t;
 };
 
-// ---------------------------------------------------------------------------------------- timeline definition
+// ---------------------------------------------------------------------------------------- the timeline
 
-type Step = {
-  id: string;
-  line: string;
-  screen: string;
-  device: "phone" | "hud" | "watch" | "card";
-  title: string;
-  detail: string;
-  badge?: string;
-  hold?: number;
-};
+type Shot =
+  | { kind: "phone"; c: Clip; a: number; b: number; kicker: string; label?: string }
+  | { kind: "hud"; c: Clip; a: number; b: number; label?: string }
+  | { kind: "card"; node: () => React.ReactNode };
+type Step = { line?: string; extra?: number; dur?: number; shot: Shot };
+type Chapter = { id: string; n?: string; title: string; goal?: string; stop: number; still?: string; loop?: string; bridge?: { src: string; from: number; dur: number }; steps: Step[] };
 
-type ChapterDef = {
-  id: string;
-  n?: string;
-  title: string;
-  goal?: string;
-  stop: number;
-  backdropArt?: string;
-  steps: Step[];
-};
-
-const CHAPTERS: ChapterDef[] = [
+const tr = CL.track;
+const CHAPTERS: Chapter[] = [
   {
-    id: "intro",
-    title: "Intro",
-    stop: -1,
-    backdropArt: "art-A1_Platform_dusk_caltrain.jpg",
-    steps: [
-      { id: "0.1", line: "c0-1", screen: "Platform", device: "card", title: "Caltrain Commute", detail: "The morning rush down the platform." },
-      { id: "0.2", line: "c0-2", screen: "Overview", device: "card", title: "Headway at a glance", detail: "Live departures, leave-by countdowns, glasses HUD, and real-time alerts." },
+    id: "intro", title: "Intro", stop: -1, steps: [
+      { line: "c0-1", extra: 0.4, shot: { kind: "card", node: () => <Opener /> } },
+      { line: "c0-2", extra: 0.4, shot: { kind: "card", node: () => <Surfaces /> } },
     ],
   },
   {
-    id: "commute",
-    n: "1",
-    title: "Commute & leave-by times",
-    goal: "Never guess when to walk out the door: live board with exact walk countdown.",
-    stop: 0,
-    backdropArt: "art-B1_Commute_desk_morning.jpg",
+    id: "commute", n: "1", title: "When to leave", goal: "Your stations and your walk, once. Then a countdown.", stop: 0,
+    still: "Coffee_cup_on_wooden_desk_ea1ce458_2K.jpg", loop: "Steam_rising_from_coffee_cup_9744a41a_1080p.mp4",
     steps: [
-      { id: "1.1", line: "c1-1", screen: "Commute tab", device: "phone", title: "Commute Station Pairs", detail: "Morning: San Francisco → Palo Alto. Evening: Palo Alto → San Francisco.", badge: "Walk buffer: 6m" },
-      { id: "1.2", line: "c1-2", screen: "Trains tab", device: "phone", title: "Live Departure Board", detail: "Train 618 on time (11:55), Train 620 delayed (+4m at 12:15).", badge: "Live 511 GTFS-RT" },
-      { id: "1.3", line: "c1-3", screen: "CatchCard", device: "phone", title: "Leave-By Countdown Ring", detail: "Leave in 12m: accounts for your walking buffer so you arrive with minutes to spare.", badge: "Catch state: LEAVE" },
-      { id: "1.4", line: "c1-4", screen: "Catch state", device: "phone", title: "Hustle Alerts", detail: "Green when on track, pulsing orange RUN alert if departure approaches walk buffer.", badge: "State: RUN / ON TIME" },
+      { line: "c1-1", extra: 0.4, shot: { kind: "phone", c: CL.commute, a: 0.1, b: CL.commute.duration - 0.1, kicker: "Commute" } },
+      { line: "c1-2", extra: 0.4, shot: { kind: "phone", c: CL.board, a: 0.1, b: ev(CL.board, "1.3") - 0.5, kicker: "Trains" } },
+      { line: "c1-3", extra: 1.0, shot: { kind: "phone", c: CL.board, a: ev(CL.board, "1.3") - 0.5, b: CL.board.duration - 0.1, kicker: "Trains" } },
     ],
   },
   {
-    id: "glasses",
-    n: "2",
-    title: "Even G2 glasses & R1 ring",
-    goal: "Live Caltrain HUD right in your vision, controlled with fingertip gestures.",
-    stop: 1,
-    backdropArt: "art-B2_Glasses_slate_emerald.jpg",
+    id: "glasses", n: "2", title: "On your glasses", goal: "Even G2 + the R1 ring: no phone on the platform.", stop: 1,
+    still: "Illuminated_dark_stone_textures_c60e1bcc_2K.jpg", loop: "Creating_futuristic_ambient_vide…_6a5496ec_1080p.mp4",
     steps: [
-      { id: "2.1", line: "c2-1", screen: "Glasses tab", device: "phone", title: "One-Time Pairing", detail: "Generate six-digit code (e.g. 842 195) in app and submit in Even app.", badge: "Code: 842 195" },
-      { id: "2.2", line: "c2-2", screen: "HUD Board", device: "hud", title: "Even G2 Departure Board", detail: "Crisp 9-line green display: 618 ok (11:55), 620 +4m (12:15), leave 12m.", badge: "9-Line Monochrome" },
-      { id: "2.3", line: "c2-3", screen: "HUD Swipe", device: "hud", title: "R1 Ring Swipe Down", detail: "Ring gesture navigates through upcoming trains without reaching for your phone.", badge: "Gesture: Swipe Down" },
-      { id: "2.4", line: "c2-4", screen: "HUD Flip", device: "hud", title: "R1 Ring Tap to Flip", detail: "Single tap flips direction (Palo Alto → San Francisco) for the return commute.", badge: "Gesture: Tap" },
-      { id: "2.5", line: "c2-5", screen: "HUD Menu", device: "hud", title: "R1 Ring Hold Menu", detail: "Hold opens quick actions: Track train, Any Station search, and Alerts.", badge: "Gesture: Hold" },
+      { line: "c2-1", extra: 0.3, shot: { kind: "phone", c: CL.pair, a: 0.1, b: CL.pair.duration - 0.1, kicker: "Glasses" } },
+      { line: "c2-2", extra: 0.2, shot: { kind: "hud", c: CL.glasses, a: 0, b: ev(CL.glasses, "Next trains") - 0.4 } },
+      { line: "c2-3", extra: 0.4, shot: { kind: "hud", c: CL.glasses, a: ev(CL.glasses, "Next trains") - 0.4, b: ev(CL.glasses, "Flip direction") - 0.4 } },
+      { line: "c2-4", extra: 0.6, shot: { kind: "hud", c: CL.glasses, a: ev(CL.glasses, "Flip direction") - 0.4, b: ev(CL.glasses, "Flip back") - 0.2 } },
+      { line: "c2-5", extra: 0.8, shot: { kind: "hud", c: CL.glasses, a: ev(CL.glasses, "Menu") - 0.6, b: CL.glasses.duration - 0.1 } },
     ],
   },
   {
-    id: "overtake",
-    n: "3",
-    title: "Wait for the Express",
-    goal: "Smart transit intelligence that prevents boarding a delayed local when an express is faster.",
-    stop: 2,
-    backdropArt: "art-B3_Express_night_timelapse.jpg",
+    id: "late", n: "3", title: "Wait for the Express", goal: "When a later train gets you there first.", stop: 2,
+    still: "Trains_passing_on_railway_tracks_c740b68d_2K.jpg", loop: "Night_timelapse_of_railway_tracks_3fdf43be_1080p.mp4",
     steps: [
-      { id: "3.1", line: "c3-1", screen: "Delayed Board", device: "phone", title: "Local 113 Delayed", detail: "Local 113 delayed by 14m (departs 8:15). Express 511 departs 8:22.", badge: "113 Delayed +14m" },
-      { id: "3.2", line: "c3-2", screen: "InsightBanner", device: "phone", title: "Express Overtake Advice", detail: "Wait for 511: departs 7 min later, arrives 4 min earlier. Saves travel time.", badge: "Advice: Wait for 511" },
-      { id: "3.3", line: "c3-3", screen: "HUD Tip", device: "hud", title: "HUD Overtake Footer", detail: "Footer alert: 'Wait for 511: beats 113 by 4m' right in your field of view.", badge: "Glasses Footer Tip" },
-      { id: "3.4", line: "c3-4", screen: "Push Alert", device: "phone", title: "Time-Sensitive Alert", detail: "'Take 511 instead: arrives 4m earlier than 113' delivered before departure.", badge: "APNs Push Notification" },
+      { line: "c3-1", extra: 0.4, shot: { kind: "phone", c: CL.late, a: 0.1, b: ev(CL.late, "3.2") - 0.5, kicker: "Trains" } },
+      { line: "c3-2", extra: 1.2, shot: { kind: "phone", c: CL.late, a: ev(CL.late, "3.2") - 0.5, b: CL.late.duration - 0.1, kicker: "Trains" } },
+      { line: "c3-3", extra: 1.0, shot: { kind: "hud", c: CL.hud, a: 0.3, b: CL.hud.duration - 0.1, label: "The same tip, in the footer" } },
+      { line: "c3-4", extra: 1.2, shot: { kind: "phone", c: CL.push, a: Math.max(0.1, ev(CL.push, "3.4") - 1.6), b: CL.push.duration - 0.1, kicker: "A minute later" } },
     ],
   },
   {
-    id: "track",
-    n: "4",
-    title: "Track ride & Share ETA",
-    goal: "Live Activities on Lock Screen & Dynamic Island, Apple Watch glance, and private ETA sharing.",
-    stop: 3,
-    backdropArt: "art-B4_Train_window_reflections.jpg",
+    id: "track", n: "4", title: "Track your ride", goal: "Live on your Lock Screen, and on someone else's phone.", stop: 3,
+    still: "Passenger_looking_out_train_window_70f7f078_2K.jpg", loop: "Train_carriage_passing_city_lights_a31219e1_1080p.mp4",
     steps: [
-      { id: "4.1", line: "c4-1", screen: "Track swipe", device: "phone", title: "Swipe to Track", detail: "Swipe right on Train 511 to begin active trip tracking.", badge: "Action: Track 511" },
-      { id: "4.2", line: "c4-2", screen: "Live Activity", device: "phone", title: "Lock Screen & Dynamic Island", detail: "Real-time stop progress timeline, speed status, and countdown to destination.", badge: "ActivityKit Live Push" },
-      { id: "4.3", line: "c4-3", screen: "Watch glance", device: "watch", title: "Apple Watch Companion", detail: "Glanceable departure countdown complication and on-wrist trip progress.", badge: "watchOS & Complication" },
-      { id: "4.4", line: "c4-4", screen: "Share ETA", device: "phone", title: "Private Shareable ETA Link", detail: "Generates /eta/:token link with 30s live polling for family, no login required.", badge: "Ephemeral Link: /eta/..." },
-      { id: "4.5", line: "c4-5", screen: "Arrival alert", device: "phone", title: "5-Minute Arrival Alert", detail: "'Palo Alto in 5 min — time to gather your things' haptic notification.", badge: "Haptic Arrival Tap" },
+      { line: "c4-1", extra: 0.4, shot: { kind: "phone", c: tr, a: 0.1, b: ev(tr, "4.2") - 0.3, kicker: "Trains" } },
+      { line: "c4-2", extra: 0.6, shot: { kind: "phone", c: tr, a: ev(tr, "4.2") - 0.3, b: ev(tr, "4.3") - 0.5, kicker: "Tracking" } },
+      { line: "c4-3", extra: 1.0, shot: { kind: "phone", c: CL.eta, a: 0.1, b: CL.eta.duration - 0.1, kicker: "What they see", label: "No app, no sign-in" } },
+      { line: "c4-4", extra: 0.8, shot: { kind: "phone", c: tr, a: ev(tr, "4.3") - 0.5, b: tr.duration - 0.1, kicker: "Live Activity" } },
+      { line: "c4-5", extra: 1.0, shot: { kind: "phone", c: CL.arrival, a: Math.max(0.1, ev(CL.arrival, "4.5") - 1.2), b: CL.arrival.duration - 0.1, kicker: "Lock Screen" } },
     ],
   },
   {
-    id: "recap",
-    title: "Recap",
-    stop: -1,
-    backdropArt: "art-A3_Terminal_morning_light.jpg",
+    id: "end", title: "Recap", stop: 3.999, bridge: { src: "Train_gliding_through_suburban_l…_31da0976_1080p.mp4", from: 0.6, dur: 1.8 },
     steps: [
-      { id: "5.1", line: "c5-1", screen: "Montage", device: "card", title: "Commute on your schedule", detail: "Leave countdown • Glasses HUD • Express tips • Live tracking." },
-      { id: "5.2", line: "c5-2", screen: "End card", device: "card", title: "Headway", detail: "Your next Caltrain, at a glance." },
+      { line: "c5-1", extra: 0.6, shot: { kind: "card", node: () => <Recap /> } },
+      { line: "c5-2", extra: 1.8, shot: { kind: "card", node: () => <EndCard /> } },
     ],
   },
 ];
 
-// Calculate start times and durations for all steps and chapters
-type TimedStep = Step & { start: number; dur: number; lineDur: number; words: Word[] };
-type TimedChapter = Omit<ChapterDef, "steps"> & { start: number; dur: number; steps: TimedStep[] };
-
-function buildTimeline(): { chapters: TimedChapter[]; totalDuration: number } {
+const TITLE = 1.6;
+type Placed = Step & { at: number; len: number; ch: Chapter; i: number };
+function layout() {
+  const steps: Placed[] = [];
+  const chapters: { ch: Chapter; at: number; end: number; body: number; bridgeAt?: number }[] = [];
   let t = 0;
-  const chapters: TimedChapter[] = [];
-
   for (const ch of CHAPTERS) {
-    const chStart = t;
-    const timedSteps: TimedStep[] = [];
-
-    for (const step of ch.steps) {
-      const vo = LINES[step.line];
-      const lineDur = vo ? vo.dur : 4.0;
-      const stepDur = Math.max(lineDur + PAD, step.hold ?? 0);
-      timedSteps.push({
-        ...step,
-        start: t,
-        dur: stepDur,
-        lineDur,
-        words: vo ? vo.words : [],
-      });
-      t += stepDur;
-    }
-
-    chapters.push({
-      ...ch,
-      start: chStart,
-      dur: t - chStart,
-      steps: timedSteps,
+    let bridgeAt: number | undefined;
+    if (ch.bridge) { bridgeAt = t; t += ch.bridge.dur; }
+    const chAt = t;
+    if (ch.n) t += TITLE;
+    const body = t;
+    ch.steps.forEach((s, i) => {
+      const len = s.dur ?? LINES[s.line!].dur + PAD + (s.extra ?? 0);
+      steps.push({ ...s, at: t, len, ch, i });
+      t += len;
     });
+    chapters.push({ ch, at: chAt, end: t, body, bridgeAt });
   }
-
-  return { chapters, totalDuration: t };
+  return { steps, chapters, total: t };
 }
+const L = layout();
+export const DURATION = Math.ceil(L.total * FPS);
 
-const { chapters: TIMED_CHAPTERS, totalDuration: TOTAL_DURATION } = buildTimeline();
+// YouTube chapters and the SRT come from here (scripts/headway-demo-srt.mjs).
+export const CHAPTER_LIST = L.chapters.map((c) => ({ title: c.ch.n ? `${c.ch.n} · ${c.ch.title}` : c.ch.title, start: +(c.bridgeAt ?? c.at).toFixed(2) }));
+export const SPEECH = L.steps.filter((s) => s.line).map((s) => ({ id: s.line!, at: +(s.at + 0.1).toFixed(2), words: LINES[s.line!].words }));
+export const SPEECH_BY_ID: Record<string, { cues: { at: number; words: [string, number, number][] }[]; end: number }> = {
+  "headway-demo": { cues: SPEECH, end: L.total },
+};
+const talking = (t: number) => SPEECH.some((s) => t >= s.at - 0.15 && t <= s.at + LINES[s.id].dur + 0.2);
 
-// Build YouTube CHAPTER_LIST
-export const CHAPTER_LIST = TIMED_CHAPTERS.map((ch) => ({
-  id: ch.id,
-  title: ch.n ? `${ch.n}. ${ch.title}` : ch.title,
-  start: Math.round(ch.start * 10) / 10,
-}));
+// The promo's Flow Music take "15-sec-music" (99.4 BPM, 68 s): its intro, a middle section repeated on bar lines, its ending.
+const MUSIC = "music-68s-take1-commute-groove.mp3";
+const TRACK: Track = { bpm: 99.4, beat0: 0.6, end: 67.7, loopEndBar: 24 };
 
-// Build Speech exports for SRT generation
-export const SPEECH_BY_ID: Record<string, { cues: { at: number; words: Word[] }[]; end: number }> = {
-  "headway-demo": {
-    cues: TIMED_CHAPTERS.flatMap((ch) =>
-      ch.steps.map((st) => ({
-        at: st.start,
-        words: st.words,
-      }))
-    ),
-    end: TOTAL_DURATION,
-  },
+// ---------------------------------------------------------------------------------------- shots
+
+const SimLabel: React.FC<{ text: string; left?: number; top?: number }> = ({ text, left, top = 104 }) => (
+  <div style={{ position: "absolute", top, left: left !== undefined ? left - 300 : 0, width: left !== undefined ? 600 : "100%", textAlign: "center", fontFamily, fontWeight: 600, fontSize: 22, color: T.dim, textShadow: "0 2px 10px rgba(0,0,0,0.9)" }}>{text}</div>
+);
+const PhoneShot: React.FC<{ s: Extract<Shot, { kind: "phone" }>; len: number }> = ({ s, len }) => {
+  const evs: Ev[] = s.label ? [{ step: "x", t: s.a, type: "look", label: s.label, box: null }, ...s.c.events] : s.c.events;
+  return (
+    <AbsoluteFill>
+      <SideNote events={evs} a={s.a} b={s.b} dur={len} theme={T} kicker={s.kicker} left={150} top={360} width={720} />
+      <PhoneStage src={m(s.c.clip)} clipW={s.c.width} clipH={s.c.height} a={s.a} b={s.b} dur={len} events={s.c.events} theme={T} x={1290} width={600} />
+      <SimLabel text={s.c === CL.eta ? "A phone's browser · the shared link" : "iPhone app · simulator"} left={1290} />
+      <DemoLabel />
+    </AbsoluteFill>
+  );
 };
 
-// ---------------------------------------------------------------------------------------- step animatic card
-
-const StepCard: React.FC<{ step: TimedStep; ch: TimedChapter }> = ({ step, ch }) => {
+const HUD_W = 1240;
+const HudShot: React.FC<{ s: Extract<Shot, { kind: "hud" }>; len: number }> = ({ s, len }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const stepFrame = frame - Math.round(step.start * fps);
-  const enter = spring({ frame: stepFrame, fps, config: { damping: 14, stiffness: 120 } });
-  const opacity = interpolate(stepFrame, [0, 8], [0, 1], { extrapolateRight: "clamp" });
-
-  const isHud = step.device === "hud";
-  const isWatch = step.device === "watch";
-
+  const rate = Math.max(0.25, (s.b - s.a) / len);
+  const t = s.a + (frame / FPS) * rate;
+  const k = HUD_W / s.c.width;
+  const g = s.c.events.filter((e) => GESTURE[e.type] && t >= e.t - 0.15 && t <= e.t + 1.4).slice(-1)[0];
   return (
-    <AbsoluteFill
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "60px 100px",
-      }}
-    >
-      <div
-        style={{
-          width: 1040,
-          background: isHud ? "rgba(4, 14, 8, 0.95)" : T.panel,
-          border: `2px solid ${isHud ? HUD_GREEN : T.accent}`,
-          borderRadius: 24,
-          padding: 40,
-          color: isHud ? HUD_GREEN : T.ink,
-          boxShadow: isHud
-            ? "0 24px 64px rgba(61, 255, 122, 0.18)"
-            : "0 24px 64px rgba(0, 0, 0, 0.65)",
-          transform: `scale(${interpolate(enter, [0, 1], [0.94, 1])})`,
-          opacity,
-          display: "flex",
-          flexDirection: "column",
-          gap: 20,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span
-              style={{
-                fontFamily: "monospace",
-                fontWeight: 700,
-                fontSize: 16,
-                padding: "4px 12px",
-                borderRadius: 999,
-                background: isHud ? "rgba(61,255,122,0.2)" : "rgba(224,36,36,0.2)",
-                color: isHud ? HUD_GREEN : CALTRAIN_RED,
-              }}
-            >
-              STEP {step.id} · {step.screen.toUpperCase()}
-            </span>
-            {ch.n && (
-              <span style={{ fontSize: 16, color: isHud ? "#70e89c" : T.dim }}>
-                Chapter {ch.n}: {ch.title}
-              </span>
-            )}
-          </div>
-          {step.badge && (
-            <span
-              style={{
-                fontFamily: "monospace",
-                fontSize: 14,
-                padding: "4px 10px",
-                borderRadius: 8,
-                background: "rgba(255,255,255,0.08)",
-                color: isHud ? HUD_GREEN : T.ink,
-              }}
-            >
-              {step.badge}
-            </span>
-          )}
+    <AbsoluteFill style={{ alignItems: "center", justifyContent: "flex-start", paddingTop: 165 }}>
+      <Hud width={HUD_W} height={s.c.height * k} theme={G}>
+        <div style={{ width: s.c.width, height: s.c.height, transform: `scale(${k})`, transformOrigin: "0 0" }}>
+          <Video src={m(s.c.clip)} muted trimBefore={Math.round(s.a * FPS)} playbackRate={rate} style={{ width: s.c.width, height: s.c.height }} />
         </div>
+      </Hud>
+      {g ? <RingGesture label={g.label && g.label !== g.type ? `${GESTURE[g.type]} · ${g.label}` : GESTURE[g.type]} p={(t - g.t) / 1.4} kind={g.type} theme={T} style={{ bottom: 236 }} /> : null}
+      {s.label ? <div style={{ position: "absolute", bottom: 236, left: 0, right: 0, textAlign: "center", fontFamily, fontSize: 40, fontWeight: 800, color: T.ink, textShadow: "0 3px 18px rgba(0,0,0,0.8)" }}>↑ {s.label}</div> : null}
+      <SimLabel text="Even G2 · Even Hub simulator" top={112} />
+      <DemoLabel />
+    </AbsoluteFill>
+  );
+};
 
-        <div>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 36,
-              fontWeight: 800,
-              fontFamily,
-              color: isHud ? HUD_GREEN : T.ink,
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {step.title}
-          </h2>
-          <p
-            style={{
-              margin: "8px 0 0",
-              fontSize: 20,
-              color: isHud ? "#8eedaa" : T.dim,
-              lineHeight: 1.4,
-              fontFamily,
-            }}
-          >
-            {step.detail}
-          </p>
-        </div>
+// ---------------------------------------------------------------------------------------- intro + end
 
-        {/* Visual device simulator representation */}
-        <div
-          style={{
-            height: 250,
-            borderRadius: 16,
-            background: isHud
-              ? "radial-gradient(circle at 50% 50%, #061f10 0%, #020a05 100%)"
-              : "rgba(0,0,0,0.55)",
-            border: `1px solid ${isHud ? "rgba(61,255,122,0.3)" : "rgba(255,255,255,0.12)"}`,
-            padding: 20,
-            display: "flex",
-            flexDirection: "row",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 24,
-            fontFamily: isHud ? "monospace" : fontFamily,
-          }}
-        >
-          {isHud ? (
-            <>
-              <div style={{ flex: 1, textAlign: "left", lineHeight: 1.8, fontSize: 17, color: HUD_GREEN }}>
-                <div style={{ color: "rgba(61,255,122,0.6)", fontSize: 13, textTransform: "uppercase" }}>Even G2 · Heads-Up Display</div>
-                <div style={{ fontWeight: 700, fontSize: 20, marginTop: 4 }}>
-                  SF &gt; PALO ALTO
-                </div>
-                <div style={{ color: "#a5f3bf" }}>
-                  11:55  L-618  ON TIME  [LEAVE 12m]
-                </div>
-                <div style={{ color: "#70e89c", fontSize: 14 }}>
-                  12:15  L-620  +4m LATE
-                </div>
-              </div>
-              <div style={{ width: 340, height: 210, borderRadius: 12, overflow: "hidden", border: `1px solid ${HUD_GREEN}`, background: "#020804" }}>
-                <Video
-                  src={m(step.id.startsWith("2.3") || step.id.startsWith("2.4") ? "rec-glasses-swipe.mp4" : "rec-glasses-board.mp4")}
-                  muted
-                  loop
-                  objectFit="contain"
-                  style={{ width: "100%", height: "100%" }}
-                />
-              </div>
-            </>
-          ) : isWatch ? (
-            <>
-              <div style={{ flex: 1, textAlign: "left", lineHeight: 1.6 }}>
-                <div style={{ fontSize: 14, color: T.dim, textTransform: "uppercase" }}>Apple Watch · Caltrain Complication</div>
-                <div style={{ fontSize: 44, fontWeight: 900, color: CALTRAIN_RED }}>12m</div>
-                <div style={{ fontSize: 16, color: T.ink }}>Train 618 · Leaves 11:55</div>
-              </div>
-              <div style={{ width: 140, height: 210, borderRadius: 12, overflow: "hidden", border: `1px solid ${CALTRAIN_RED}`, background: "#000" }}>
-                <Video
-                  src={m("rec-phone-stop.mp4")}
-                  muted
-                  loop
-                  objectFit="cover"
-                  style={{ width: "100%", height: "100%" }}
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              <div style={{ flex: 1, textAlign: "left", lineHeight: 1.6 }}>
-                <div style={{ fontSize: 14, color: T.dim, textTransform: "uppercase" }}>iPhone App · Live Departure Board</div>
-                <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, color: T.ink }}>
-                  {step.screen}
-                </div>
-                <div style={{ fontSize: 16, color: T.accent, marginTop: 4 }}>
-                  {step.title}
-                </div>
-              </div>
-              <div style={{ width: 140, height: 210, borderRadius: 12, overflow: "hidden", border: `1px solid ${CALTRAIN_RED}`, background: "#000" }}>
-                <Video
-                  src={m(step.id.startsWith("4.") ? "rec-phone-stop.mp4" : "rec-phone-leave.mp4")}
-                  muted
-                  loop
-                  objectFit="cover"
-                  style={{ width: "100%", height: "100%" }}
-                />
-              </div>
-            </>
-          )}
+const Opener: React.FC = () => {
+  const frame = useCurrentFrame();
+  const s = spring({ frame: frame - 12, fps: FPS, config: { damping: 20, stiffness: 90 } });
+  return (
+    <AbsoluteFill>
+      <Video src={m("Commuter_waiting_for_train_ad7ded41_1080p.mp4")} muted objectFit="cover" style={{ width: "100%", height: "100%" }} />
+      <AbsoluteFill style={{ background: "linear-gradient(90deg, rgba(8,10,14,0.78) 0%, rgba(8,10,14,0.25) 55%, rgba(8,10,14,0) 80%)" }} />
+      <AbsoluteFill style={{ justifyContent: "center", padding: "0 150px", fontFamily, opacity: s, transform: `translateY(${(1 - s) * 24}px)` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
+          <Img src={m("icon.png")} style={{ width: 110, height: 110, borderRadius: 26 }} />
+          <div style={{ fontSize: 100, fontWeight: 800, color: T.ink, letterSpacing: -3 }}>Headway</div>
         </div>
+        <div style={{ marginTop: 18, fontSize: 48, fontWeight: 700, color: T.accent }}>How it works, in two minutes</div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+const PhoneStill: React.FC<{ src: string; w: number }> = ({ src, w }) => (
+  <div style={{ width: w, height: w * 2.174, borderRadius: w * 0.14, background: "#050608", padding: 14, boxShadow: "0 50px 120px rgba(0,0,0,0.7), 0 0 0 2px #2a2d33" }}>
+    <Img src={src} style={{ width: w - 28, height: w * 2.174 - 28, borderRadius: w * 0.115, objectFit: "cover", objectPosition: "top" }} />
+  </div>
+);
+const Surfaces: React.FC = () => {
+  const frame = useCurrentFrame();
+  const a = spring({ frame, fps: FPS, config: { damping: 20, stiffness: 90 } });
+  const b = spring({ frame: frame - 14, fps: FPS, config: { damping: 20, stiffness: 90 } });
+  return (
+    <AbsoluteFill>
+      <Backdrop still={m("Dawn_breaking_over_train_platform_ef936758_2K.jpg")} dark={0.5} />
+      <div style={{ position: "absolute", left: 230, top: 110, transform: `translateY(${(1 - a) * 60}px) rotate(-2deg)`, opacity: a }}><PhoneStill src={m("still-1-board.png")} w={420} /></div>
+      <div style={{ position: "absolute", left: 800, top: 260, transform: `translateY(${(1 - b) * 60}px) rotate(1.5deg)`, opacity: b }}>
+        <Hud width={920} height={460} theme={G}><Img src={m("still-2-board.png")} style={{ width: 920, height: 460 }} /></Hud>
+        <div style={{ marginTop: 22, textAlign: "center", fontFamily, fontSize: 30, fontWeight: 700, color: G.ink, textShadow: "0 2px 10px rgba(0,0,0,0.9)" }}>Even G2 glasses + R1 ring</div>
+      </div>
+      <DemoLabel />
+    </AbsoluteFill>
+  );
+};
+
+const RECAP: { f: string; label: string; hud?: boolean }[] = [
+  { f: "still-1-board.png", label: "1 · When to leave" },
+  { f: "still-2-board.png", label: "2 · On your glasses", hud: true },
+  { f: "still-3-board.png", label: "3 · Wait for the Express" },
+  { f: "still-4-lock.png", label: "4 · Track your ride" },
+];
+const Recap: React.FC = () => {
+  const frame = useCurrentFrame();
+  return (
+    <AbsoluteFill>
+      <Backdrop still={m("Dawn_breaking_over_train_platform_ef936758_2K.jpg")} loop={m("Train_gliding_through_suburban_l…_31da0976_1080p.mp4")} dark={0.55} />
+      <AbsoluteFill style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 30, paddingBottom: 150, fontFamily }}>
+        {RECAP.map((r, i) => {
+          const p = spring({ frame: frame - i * 0.4 * FPS, fps: FPS, config: { damping: 18, stiffness: 120 } });
+          return (
+            <div key={r.f} style={{ width: 380, opacity: p, transform: `translateY(${(1 - p) * 40}px)` }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: T.ink, marginBottom: 12, textShadow: "0 2px 10px rgba(0,0,0,0.9)" }}>{r.label}</div>
+              <Img src={m(r.f)} style={{ width: 380, height: 480, objectFit: "cover", objectPosition: r.hud ? "left center" : "top", borderRadius: 18, border: `2px solid ${(r.hud ? G : T).accent}66`, boxShadow: "0 20px 60px rgba(0,0,0,0.6)", background: "#000" }} />
+            </div>
+          );
+        })}
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+const EndCard: React.FC<{ vertical?: boolean }> = ({ vertical }) => {
+  const frame = useCurrentFrame();
+  const s = spring({ frame, fps: FPS, config: { damping: 20, stiffness: 80 } });
+  return (
+    <AbsoluteFill>
+      <Backdrop still={m("Dawn_breaking_over_train_platform_ef936758_2K.jpg")} dark={0.3} drift={0.6} />
+      <AbsoluteFill style={{ background: vertical ? "rgba(8,10,14,0.55)" : "linear-gradient(90deg, rgba(8,10,14,0.9) 0%, rgba(8,10,14,0.6) 50%, rgba(8,10,14,0) 78%)" }} />
+      <AbsoluteFill style={{ justifyContent: "center", alignItems: vertical ? "center" : "flex-start", textAlign: vertical ? "center" : "left", padding: vertical ? "0 60px 420px" : "0 150px", fontFamily, opacity: s, transform: `translateY(${(1 - s) * 30}px)` }}>
+        <div style={{ display: "flex", flexDirection: vertical ? "column" : "row", alignItems: "center", gap: 30 }}>
+          <Img src={m("icon.png")} style={{ width: 130, height: 130, borderRadius: 30 }} />
+          <div style={{ fontSize: 110, fontWeight: 800, color: T.ink, letterSpacing: -3 }}>Headway</div>
+        </div>
+        <div style={{ marginTop: 24, fontSize: 54, fontWeight: 700, color: T.accent, lineHeight: 1.15 }}>Your next Caltrain, at a glance.</div>
+        <div style={{ marginTop: 34, fontSize: 32, fontWeight: 600, color: T.ink }}>headway.hejitech.workers.dev</div>
+        <div style={{ marginTop: 8, fontSize: 28, fontWeight: 500, color: T.dim }}>iPhone · Apple Watch · Even G2 + R1 · Android</div>
+      </AbsoluteFill>
+      <div style={{ position: "absolute", bottom: vertical ? 150 : 40, left: vertical ? 60 : 150, right: vertical ? 60 : undefined, textAlign: vertical ? "center" : "left", fontFamily, fontSize: vertical ? 22 : 20, color: "rgba(240,244,248,0.6)" }}>
+        Caltrain's real timetable; the delays shown are demo data. Not affiliated with Caltrain. Backdrops are AI-generated; the narration is a synthetic voice.
       </div>
     </AbsoluteFill>
   );
 };
 
-// ---------------------------------------------------------------------------------------- main composition
+// ---------------------------------------------------------------------------------------- the video
 
-export const HeadwayDemoWalkthrough: React.FC = () => {
+const STOPS = ["When to leave", "Glasses", "Express", "Track"];
+const Walkthrough: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const curTime = frame / fps;
-
-  // Active chapter and step
-  const activeChapter =
-    TIMED_CHAPTERS.find((ch) => curTime >= ch.start && curTime < ch.start + ch.dur) ??
-    TIMED_CHAPTERS[TIMED_CHAPTERS.length - 1];
-
-  const activeStep =
-    activeChapter.steps.find((st) => curTime >= st.start && curTime < st.start + st.dur) ??
-    activeChapter.steps[activeChapter.steps.length - 1];
-
-  const bg = BACKDROPS[activeChapter.id] ?? BACKDROPS.intro;
-
+  const t = frame / FPS;
+  const cur = L.chapters.filter((c) => c.ch.stop >= 0 && t >= c.at).slice(-1)[0];
+  const idx = cur ? L.chapters.indexOf(cur) : 0;
+  const prevStop = cur ? Math.max(0, L.chapters[idx - 1]?.ch.stop ?? 0) : 0;
+  const at = cur ? interpolate(t, [cur.at, cur.at + 1], [prevStop, cur.ch.stop], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) : 0;
+  const barOn = cur && cur.ch.id !== "end" ? interpolate(t, [L.chapters[1].at - 0.2, L.chapters[1].at + 0.4], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) : 0;
   return (
-    <AbsoluteFill style={{ background: "#0a0c10", color: T.ink, fontFamily }}>
-      {/* Background with real Flow backdrop */}
-      <Backdrop loop={bg.loop} still={bg.still} dark={0.45} />
-
-      {/* Background music */}
-      <Audio src={m("music.mp3")} volume={0.16} loop />
-
-      {/* Voiceover audio sequences */}
-      {TIMED_CHAPTERS.map((ch) =>
-        ch.steps.map((st) => (
-          <Sequence
-            key={st.line}
-            from={Math.round(st.start * fps)}
-            durationInFrames={Math.round(st.dur * fps)}
-          >
-            <Audio src={m(`vo-af_heart-${st.line}.wav`)} volume={1.0} />
+    <AbsoluteFill style={{ background: "#080a0e" }}>
+      {L.chapters.map(({ ch, at: chAt, end, body, bridgeAt }) => (
+        <React.Fragment key={ch.id}>
+          {ch.bridge && bridgeAt !== undefined ? (
+            <Scene from={bridgeAt} dur={ch.bridge.dur + 0.4} name={`${ch.id}: bridge`}>
+              <Video src={m(ch.bridge.src)} muted trimBefore={Math.round(ch.bridge.from * FPS)} objectFit="cover" style={{ width: "100%", height: "100%" }} />
+            </Scene>
+          ) : null}
+          {ch.still || ch.loop ? (
+            <Scene from={chAt} dur={end - chAt + 0.4} name={`${ch.id}: backdrop`}>
+              <Backdrop still={ch.still ? m(ch.still) : undefined} loop={ch.loop ? m(ch.loop) : undefined} dark={0.42} />
+            </Scene>
+          ) : null}
+          {ch.n ? (
+            <Scene from={chAt} dur={body - chAt + 0.3} name={`${ch.id}: title`}>
+              <StepTitle n={`Step ${ch.n}`} title={ch.title} goal={ch.goal} theme={T} />
+            </Scene>
+          ) : null}
+        </React.Fragment>
+      ))}
+      {L.steps.map((s, j) => {
+        const prev = L.steps[j - 1];
+        const sameClip = prev && prev.ch === s.ch && "c" in prev.shot && "c" in s.shot && prev.shot.c === s.shot.c;
+        const sh = s.shot;
+        return (
+          <Scene key={`${s.ch.id}-${s.i}`} from={s.at} dur={s.len + (sameClip ? 0 : 0.3)} fade={sameClip ? 0 : 0.35} name={`${s.ch.id} ${s.i}: ${s.line ?? ""}`}>
+            {sh.kind === "phone" ? <PhoneShot s={sh} len={s.len} /> : null}
+            {sh.kind === "hud" ? <HudShot s={sh} len={s.len} /> : null}
+            {sh.kind === "card" ? sh.node() : null}
+          </Scene>
+        );
+      })}
+      <ChapterBar stops={STOPS} at={at} theme={T} opacity={barOn} />
+      <CaptionBand />
+      {SPEECH.map((s, i) => (
+        <React.Fragment key={s.id}>
+          <Sequence from={Math.round(s.at * FPS)} name={`VO ${s.id}`}>
+            <Audio src={m(`vo-${VOICE}-${s.id}.wav`)} volume={1} />
           </Sequence>
-        ))
-      )}
-
-      {/* Render active step card */}
-      <StepCard step={activeStep} ch={activeChapter} />
-
-      {/* Top Chapter Progress Bar */}
-      {activeChapter.stop >= 0 && (
-        <ChapterBar
-          stops={TIMED_CHAPTERS.filter((c) => c.stop >= 0).map((c) => c.title)}
-          at={activeChapter.stop}
-          theme={{ accent: CALTRAIN_RED, ink: T.ink, panel: T.panel, dim: T.dim }}
-        />
-      )}
-
-      {/* Captions */}
-      <CaptionBand />
-      {TIMED_CHAPTERS.map((ch) =>
-        ch.steps.map((st) => (
-          <KineticCaption
-            key={st.line}
-            words={st.words}
-            offset={st.start}
-          />
-        ))
-      )}
-
-      {/* Demo data label in corner */}
-      <DemoLabel />
-    </AbsoluteFill>
-  );
-};
-
-// ---------------------------------------------------------------------------------------- short composition (9:16)
-
-export const HeadwayDemoShort: React.FC = () => {
-  const SHORT_STEPS = [
-    { line: "s-1", title: "Still sprinting for Caltrain?", badge: "Caltrain Commute", dur: LINES["s-1"].dur + PAD },
-    { line: "s-2", title: "Exact Leave-By Countdown", badge: "Leave in 12m", dur: LINES["s-2"].dur + PAD },
-    { line: "s-3", title: "Wait for the Express", badge: "Express Overtake Advice", dur: LINES["s-3"].dur + PAD },
-    { line: "s-4", title: "Live Activity & 5-min Tap", badge: "Dynamic Island + Haptics", dur: LINES["s-4"].dur + PAD },
-    { line: "s-5", title: "Your Next Caltrain, at a Glance", badge: "Headway", dur: LINES["s-5"].dur + PAD },
-  ];
-
-  let t = 0;
-  const timed = SHORT_STEPS.map((s) => {
-    const st = { ...s, start: t };
-    t += s.dur;
-    return st;
-  });
-
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const curTime = frame / fps;
-  const cur = timed.find((s) => curTime >= s.start && curTime < s.start + s.dur) ?? timed[timed.length - 1];
-
-  return (
-    <AbsoluteFill style={{ background: "#06090e", color: "#fff", fontFamily }}>
-      <Backdrop
-        loop={m("Commuter_waiting_for_train_ad7ded41_1080p.mp4")}
-        still={m("Dawn_breaking_over_train_platform_ef936758_2K.jpg")}
-        dark={0.45}
-      />
-      <Audio src={m("music.mp3")} volume={0.18} loop />
-      <Backdrop dark={0.4} />
-
-      {timed.map((s) => (
-        <Sequence
-          key={s.line}
-          from={Math.round(s.start * fps)}
-          durationInFrames={Math.round(s.dur * fps)}
-        >
-          <Audio src={m(`vo-af_heart-${s.line}.wav`)} volume={1.0} />
-        </Sequence>
+          <KineticCaption words={s.words} offset={s.at} before={SPEECH[i + 1]?.at} />
+        </React.Fragment>
       ))}
-
-      <div
-        style={{
-          position: "absolute",
-          top: "35%",
-          left: 60,
-          right: 60,
-          padding: 40,
-          background: T.panel,
-          border: `2px solid ${CALTRAIN_RED}`,
-          borderRadius: 28,
-          textAlign: "center",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.8)",
-        }}
-      >
-        <div style={{ fontSize: 18, color: CALTRAIN_RED, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-          {cur.badge}
-        </div>
-        <div style={{ fontSize: 44, fontWeight: 800, marginTop: 12, lineHeight: 1.2 }}>
-          {cur.title}
-        </div>
-      </div>
-
-      <CaptionBand />
-      {timed.map((s) => (
-        <KineticCaption
-          key={s.line}
-          words={LINES[s.line].words}
-          offset={s.start}
-        />
-      ))}
-      <DemoLabel />
+      <MusicBed src={m(MUSIC)} track={TRACK} total={L.total} talking={talking} />
     </AbsoluteFill>
   );
 };
 
-// ---------------------------------------------------------------------------------------- thumbnail composition
+// ---------------------------------------------------------------------------------------- the short (9:16)
 
-export const HeadwayDemoThumb: React.FC = () => {
+// One task: a badly late train, Headway's tip on the phone and the glasses, the alert. Lines s-1…s-5.
+const SHORT: { line: string; extra?: number; part: "phone" | "hud" | "push" | "end"; a?: number; b?: number }[] = [
+  { line: "s-1", extra: 0.4, part: "phone", a: 0.1, b: ev(CL.late, "3.2") - 0.4 },
+  { line: "s-2", extra: 0.8, part: "phone", a: ev(CL.late, "3.2") - 0.4, b: CL.late.duration - 0.1 },
+  { line: "s-3", extra: 0.8, part: "hud", a: 0.3, b: CL.hud.duration - 0.1 },
+  { line: "s-4", extra: 1.0, part: "push", a: Math.max(0.1, ev(CL.push, "3.4") - 1.2), b: CL.push.duration - 0.1 },
+  { line: "s-5", extra: 1.6, part: "end" },
+];
+const SL = (() => { let t = 0; return SHORT.map((x) => { const len = LINES[x.line].dur + PAD + (x.extra ?? 0); const r = { ...x, at: t, len }; t += len; return r; }); })();
+const SHORT_TOTAL = SL[SL.length - 1].at + SL[SL.length - 1].len;
+export const SHORT_DURATION = Math.ceil(SHORT_TOTAL * FPS);
+SPEECH_BY_ID["headway-demo-short"] = { cues: SL.map((x) => ({ at: +(x.at + 0.1).toFixed(2), words: LINES[x.line].words })), end: SHORT_TOTAL };
+const talkingShort = (t: number) => SL.some((x) => t >= x.at && t <= x.at + 0.1 + LINES[x.line].dur + 0.2);
+
+const ShortHud: React.FC<{ a: number; b: number; len: number }> = ({ a, b, len }) => {
+  const rate = Math.max(0.25, (b - a) / len);
+  const w = 1020, k = w / CL.hud.width;
   return (
-    <AbsoluteFill
-      style={{
-        background: "linear-gradient(135deg, #0b111a 0%, #171d28 100%)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        color: "#fff",
-        fontFamily,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 20,
-          marginBottom: 20,
-        }}
-      >
-        <Img src={m("icon.png")} style={{ width: 100, height: 100, borderRadius: 24 }} />
-        <span style={{ fontSize: 56, fontWeight: 900, letterSpacing: "-0.03em" }}>Headway</span>
+    <AbsoluteFill style={{ alignItems: "center", paddingTop: 560 }}>
+      <Hud width={w} height={CL.hud.height * k} theme={G}>
+        <div style={{ width: CL.hud.width, height: CL.hud.height, transform: `scale(${k})`, transformOrigin: "0 0" }}>
+          <Video src={m(CL.hud.clip)} muted trimBefore={Math.round(a * FPS)} playbackRate={rate} style={{ width: CL.hud.width, height: CL.hud.height }} />
+        </div>
+      </Hud>
+      <SimLabel text="Even G2 · Even Hub simulator" top={510} />
+    </AbsoluteFill>
+  );
+};
+const Short: React.FC = () => (
+  <AbsoluteFill style={{ background: "#080a0e" }}>
+    <Scene from={0} dur={SHORT_TOTAL - SL[SL.length - 1].len + 0.4} fade={0}>
+      <Backdrop still={m("Trains_passing_on_railway_tracks_c740b68d_2K.jpg")} loop={m("Night_timelapse_of_railway_tracks_3fdf43be_1080p.mp4")} dark={0.5} />
+    </Scene>
+    {SL.map((x, i) => {
+      const prev = SL[i - 1];
+      const same = prev && prev.part === x.part;
+      const clip = x.part === "push" ? CL.push : CL.late;
+      return (
+        <Scene key={x.line} from={x.at} dur={x.len + (same ? 0 : 0.3)} fade={same ? 0 : 0.3}>
+          {x.part === "phone" || x.part === "push" ? (
+            <AbsoluteFill>
+              <PhoneStage src={m(clip.clip)} clipW={clip.width} clipH={clip.height} a={x.a!} b={x.b!} dur={x.len} events={clip.events} theme={T} x={540} width={860} focusY={1200} top={160} />
+            </AbsoluteFill>
+          ) : null}
+          {x.part === "hud" ? <ShortHud a={x.a!} b={x.b!} len={x.len} /> : null}
+          {x.part === "end" ? <EndCard vertical /> : null}
+          {x.part !== "end" ? <DemoLabel /> : null}
+        </Scene>
+      );
+    })}
+    <CaptionBand />
+    {SL.map((x, i) => (
+      <React.Fragment key={`vo-${x.line}`}>
+        <Sequence from={Math.round((x.at + 0.1) * FPS)}><Audio src={m(`vo-${VOICE}-${x.line}.wav`)} /></Sequence>
+        {x.part !== "end" ? <KineticCaption words={LINES[x.line].words} offset={x.at + 0.1} before={SL[i + 1] ? SL[i + 1].at + 0.1 : undefined} /> : null}
+      </React.Fragment>
+    ))}
+    <Audio src={m(MUSIC)} trimBefore={Math.round(Math.max(0, TRACK.end - SHORT_TOTAL - 0.3) * FPS)} volume={(f) => (talkingShort(f / FPS) ? 0.22 : 0.5) * Math.min(1, f / 8)} />
+  </AbsoluteFill>
+);
+
+// ---------------------------------------------------------------------------------------- thumbnails
+
+const Thumb: React.FC = () => {
+  const { width, height } = useVideoConfig();
+  const v = height > width;
+  return (
+    <AbsoluteFill style={{ fontFamily }}>
+      <Backdrop still={m("Trains_passing_on_railway_tracks_c740b68d_2K.jpg")} dark={0.4} drift={0} />
+      <div style={{ position: "absolute", left: v ? 60 : 64, top: v ? 150 : 70, fontSize: v ? 120 : 96, fontWeight: 800, lineHeight: 0.98, letterSpacing: -3, color: T.ink, textShadow: "0 6px 30px rgba(0,0,0,0.8)" }}>
+        When to<br /><span style={{ color: T.accent }}>leave</span>
       </div>
-      <div style={{ fontSize: 36, fontWeight: 700, color: CALTRAIN_RED, marginBottom: 12 }}>
-        Caltrain, at a glance
+      <div style={{ position: "absolute", left: v ? 560 : 840, top: v ? 520 : 40, transform: "rotate(3deg)" }}><PhoneStill src={m("still-3-board.png")} w={v ? 440 : 300} /></div>
+      <div style={{ position: "absolute", left: v ? 40 : 56, top: v ? 1180 : 290, transform: "rotate(-2deg)" }}>
+        <Hud width={v ? 700 : 640} height={v ? 350 : 320} theme={G}><Img src={m("still-2-board.png")} style={{ width: "100%", height: "100%" }} /></Hud>
       </div>
-      <div style={{ fontSize: 24, color: T.dim }}>
-        Leave-By Times · Even G2 HUD · Live Tracking
+      <div style={{ position: "absolute", left: v ? 60 : 64, bottom: v ? 150 : 22, display: "flex", alignItems: "center", gap: 16 }}>
+        <Img src={m("icon.png")} style={{ width: v ? 96 : 60, height: v ? 96 : 60, borderRadius: 16 }} />
+        <span style={{ fontSize: v ? 54 : 38, fontWeight: 800, color: T.ink, textShadow: "0 2px 12px rgba(0,0,0,0.8)" }}>Headway</span>
       </div>
     </AbsoluteFill>
   );
 };
 
-// ---------------------------------------------------------------------------------------- Root registration
-
-export const HeadwayDemo: React.FC = () => {
-  return (
-    <>
-      <Composition
-        id="headway-demo"
-        component={HeadwayDemoWalkthrough}
-        durationInFrames={Math.ceil(TOTAL_DURATION * FPS)}
-        fps={FPS}
-        width={1920}
-        height={1080}
-      />
-      <Composition
-        id="headway-demo-short"
-        component={HeadwayDemoShort}
-        durationInFrames={Math.ceil(
-          (LINES["s-1"].dur + LINES["s-2"].dur + LINES["s-3"].dur + LINES["s-4"].dur + LINES["s-5"].dur + PAD * 5) * FPS
-        )}
-        fps={FPS}
-        width={1080}
-        height={1920}
-      />
-      <Composition
-        id="headway-demo-thumb"
-        component={HeadwayDemoThumb}
-        durationInFrames={1}
-        fps={FPS}
-        width={1280}
-        height={720}
-      />
-    </>
-  );
-};
+export const HeadwayDemo: React.FC = () => (
+  <>
+    <Composition id="headway-demo" component={Walkthrough} durationInFrames={DURATION} fps={FPS} width={1920} height={1080} />
+    <Composition id="headway-demo-short" component={Short} durationInFrames={SHORT_DURATION} fps={FPS} width={1080} height={1920} />
+    <Composition id="headway-demo-thumb" component={Thumb} durationInFrames={1} fps={FPS} width={1280} height={720} />
+    <Composition id="headway-demo-short-thumb" component={Thumb} durationInFrames={1} fps={FPS} width={1080} height={1920} />
+  </>
+);

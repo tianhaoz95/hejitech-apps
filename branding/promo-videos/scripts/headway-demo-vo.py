@@ -16,42 +16,41 @@ from kokoro import KPipeline
 
 SR = 24000
 LINES = {
-  # Intro (0:00 - 0:08)
-  "c0-1": "Every commuter knows the sprint for Cal train.",
-  "c0-2": "Here is how Headway puts your exact departures, leave-by times, and live alerts on your wrist and your glasses.",
-  # 1 · Your commute & leave-by times (0:08 - 0:30)
-  "c1-1": "Open Headway on your phone, and save your morning and evening commute stations.",
-  "c1-2": "The Trains tab instantly loads live departures with real-time delays.",
-  "c1-3": "Instead of doing platform mental math, the Catch card counts down to the exact minute you must walk out your door.",
-  "c1-4": "Green means you are on time; if you need to hustle, it warns you to run.",
-  # 2 · Even G2 glasses & R1 ring (0:30 - 0:52)
-  "c2-1": "To take it hands-free, generate a six-digit pairing code in the Glasses tab.",
-  "c2-2": "Type it into your Even app once. Now your commute board floats right before your eyes.",
-  "c2-3": "Swipe down on your R one smart ring to browse the next trains.",
-  "c2-4": "Tap the ring to flip directions instantly when you are ready to head back.",
-  "c2-5": "Hold the ring to open the quick menu and track your train without reaching into your pocket.",
-  # 3 · Wait for the Express (0:52 - 1:12)
+  # Intro
+  "c0-1": "Every Cal train rider knows the question: is my train on time, and when do I really have to leave?",
+  "c0-2": "Headway answers it on your phone, your watch and your Even G two glasses, from Cal train's live feed.",
+  # 1 Your commute, and when to leave
+  "c1-1": "Set your commute once: where you get on, where you get off, and how long your walk to the station takes.",
+  "c1-2": "The Trains tab shows your next trains, with live delays.",
+  "c1-3": "The Catch card counts down to when you have to leave, walk included.",
+  # 2 On your glasses
+  "c2-1": "To see it on your glasses, get a pairing code in the Glasses tab, and type it into the Even app, once.",
+  "c2-2": "Now your commute is right in front of you: the next trains, delays, and when to leave.",
+  "c2-3": "Swipe on the R one ring to move through the trains.",
+  "c2-4": "Tap to flip the direction, for the ride home.",
+  "c2-5": "Hold for the menu: track a train, pick stations, or read alerts.",
+  # 3 When your train runs late
   "c3-1": "When delays stack up, the next train out is not always the first one home.",
-  "c3-2": "Headway compares transit times across all trains and flags the overtake: wait for the five eleven Express.",
-  "c3-3": "The advice appears right on your glasses H U D, saving you four minutes.",
-  "c3-4": "And a time-sensitive alert notifies you before you step onto the slower train.",
-  # 4 · Track your train & Live Activities (1:12 - 1:36)
-  "c4-1": "Swipe right on your train to track your ride.",
-  "c4-2": "Your Lock Screen and Dynamic Island update in real time with every passing station.",
-  "c4-3": "Glance at your Apple Watch for a quick countdown on the platform.",
-  "c4-4": "Tap Share E T A to send friends a private live map link that requires no login.",
-  "c4-5": "As you roll in, a gentle five-minute arrival tap reminds you to gather your things.",
-  # Recap + end (1:36 - 1:48)
-  "c5-1": "Never guess. Never sprint. Cal train on your schedule.",
+  "c3-2": "Headway spots it, and tells you to wait for the five eleven Express.",
+  "c3-3": "Your glasses show the same advice,",
+  "c3-4": "and a time-sensitive alert reaches you, before you board the slow one.",
+  # 4 Track your ride
+  "c4-1": "Swipe a train and tap Track.",
+  "c4-2": "Share live E T A sends a private link, so whoever is waiting knows when you will arrive.",
+  "c4-3": "They see your train and its arrival time, with no app and no sign in.",
+  "c4-4": "Your ride follows you to the Dynamic Island and the Lock Screen.",
+  "c4-5": "And five minutes out, a tap tells you it is time to get ready.",
+  # Recap + end
+  "c5-1": "Know when to leave, see it at a glance, and skip the slow train.",
   "c5-2": "Headway. Your next Cal train, at a glance.",
   # The short (9:16)
-  "s-1": "Still sprinting for Cal train? Here is how to commute smarter.",
-  "s-2": "Headway gives you an exact leave-by countdown with your walking buffer.",
-  "s-3": "When a local train is delayed, it tells you to wait for the Express that beats it.",
-  "s-4": "Swipe to track for live Lock Screen progress, and a five-minute arrival tap.",
+  "s-1": "My Cal train is ten minutes late. Should I still take it?",
+  "s-2": "Headway says no: wait for the Express. It gets me there first.",
+  "s-3": "It is right on my glasses, too.",
+  "s-4": "And it pings me, before I board the slow one.",
   "s-5": "Headway. Your next Cal train, at a glance.",
 }
-SPEED = 1.05
+SPEED = 1.06
 args = sys.argv[1:]
 only = None
 if "--only" in args:

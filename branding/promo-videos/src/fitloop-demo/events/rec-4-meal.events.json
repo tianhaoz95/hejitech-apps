@@ -1,0 +1,32 @@
+{
+ "clip": "rec-4-meal.mp4",
+ "width": 1206,
+ "height": 2622,
+ "duration": 7.83,
+ "scale": 3,
+ "events": [
+  {
+   "step": "4.1",
+   "t": 0.6,
+   "type": "scroll",
+   "label": "",
+   "box": null,
+   "x": null,
+   "y": null
+  },
+  {
+   "step": "4.2",
+   "t": 2.98,
+   "type": "tap",
+   "label": "Ate it",
+   "box": {
+    "x": 108,
+    "y": 1008,
+    "w": 167,
+    "h": 84
+   },
+   "x": 191.5,
+   "y": 1050
+  }
+ ]
+}

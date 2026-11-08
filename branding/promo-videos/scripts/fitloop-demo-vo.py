@@ -16,40 +16,42 @@ from kokoro import KPipeline
 
 SR = 24000
 LINES = {
-  # Intro (0:00 - 0:08)
-  "c0-1": "Everyone at the gym is guessing weights and counting sets.",
-  "c0-2": "Here is how Fit Loop lets your own A I agent coach your workouts and meals across iPhone, Apple Watch, and Even G2 glasses.",
-  # 1 · Bring your agent & generate plan (0:08 - 0:32)
-  "c1-1": "Connect Claude or any M C P agent to Fit Loop with a single tap.",
-  "c1-2": "Your agent fetches the plan guide and your profile to craft a customized weekly routine.",
-  "c1-3": "Fit Loop validates every exercise, rest timer, and rep count against strict glasses-friendly limits.",
-  "c1-4": "Once validated, your agent publishes the plan, instantly syncing to your devices.",
-  # 2 · Mid-workout on iPhone & Apple Watch (0:32 - 0:56)
-  "c2-1": "On your phone, the Today tab displays your full morning session, from goblet squats to meals.",
-  "c2-2": "Tap into any movement to preview procedural exercise animations and coaching cues.",
-  "c2-3": "When you start, your Apple Watch tracks your workout session and streams live heart rate.",
-  "c2-4": "Check off sets as you finish them, and the rest timer automatically counts down.",
-  # 3 · Hands-free on Even G2 glasses & R1 ring (0:56 - 1:20)
-  "c3-1": "Take your workout completely hands-free by pairing your Even G2 glasses.",
-  "c3-2": "A crisp nine-line green display shows your active exercise, target reps, and live heart rate.",
-  "c3-3": "Single tap your R one smart ring to log your set and trigger the rest countdown.",
-  "c3-4": "Hold the ring to view form cues, or tap out instant feedback if something hurts.",
-  # 4 · The closed loop: instant feedback & plan adaptation (1:20 - 1:44)
-  "c4-1": "If your knee twinges during lunges, select It hurts right from your glasses or phone.",
-  "c4-2": "At lunch, check off your meal, adjusting whether you ate more, less, or swapped dishes.",
-  "c4-3": "Your agent reads your check-ins and notes over M C P, and replies with helpful adjustments.",
-  "c4-4": "Tomorrows plan automatically swaps out squats for step-ups, keeping you safe and on track.",
-  # Recap + end (1:44 - 1:55)
-  "c5-1": "Your agent coaches. Fit Loop keeps you on the plan.",
-  "c5-2": "Fit Loop. Smarter training, right in your vision.",
+  # Intro
+  "c0-1": "Your A I agent can write you a great training plan. Then you walk into the gym, and it is stuck in a chat window.",
+  "c0-2": "Fit Loop puts your agent's plan on your phone, your watch and your Even G two glasses, and sends back how it went.",
+  # 1 Your agent writes the plan
+  "c1-1": "In Fit Loop's settings, copy the M C P address, and add it to your agent. Claude Code is shown here; any M C P client works.",
+  "c1-2": "Sign in from your agent, once.",
+  "c1-3": "Fit Loop shows exactly what it may do. Allow it, and you are connected.",
+  "c1-4": "Then just ask: set up my training plan, starting today.",
+  "c1-5": "It reads Fit Loop's plan guide and your profile, builds the week, and checks it against Fit Loop's rules before it publishes.",
+  "c1-6": "Seconds later, today's workout and meals are on your phone, with a note on what it planned.",
+  # 2 Train with your phone
+  "c2-1": "At the gym, tap the workout to start it.",
+  "c2-2": "Each exercise shows the set, the target, and your agent's form cues.",
+  "c2-3": "Finish a set and tap Set done. The rest timer starts by itself.",
+  # 3 Hands-free on your glasses
+  "c3-1": "To go hands-free, get a pairing code in Settings, and type it into the Even app, once.",
+  "c3-2": "Now your day is on your Even G two. Tap the R one ring to open the workout.",
+  "c3-3": "Tap again when a set is done. The rest timer runs right in front of you, next to your heart rate.",
+  "c3-4": "Something hurts? Hold the ring, and tell your agent, without stopping.",
+  # 4 The loop closes
+  "c4-1": "Check off your meals as you eat them.",
+  "c4-2": "Later, ask your agent to take a look. It reads your note over M C P, and plays it safe.",
+  "c4-3": "It answers you right in Fit Loop,",
+  "c4-4": "and publishes a new plan. Today's Romanian dead lift is now a glute bridge.",
+  # Recap + end
+  "c5-1": "Your agent writes the plan. Fit Loop keeps you on it, and tells your agent how it went.",
+  "c5-2": "Fit Loop. Your agent's plan, wherever you train.",
   # The short (9:16)
-  "s-1": "Tired of looking at your phone between every gym set?",
-  "s-2": "Fit Loop puts your A I agent plan directly in your Even G2 glasses.",
-  "s-3": "Tap your R one ring to log a set and start your rest timer hands-free.",
-  "s-4": "If an exercise hurts, flag it mid-set, and your agent updates tomorrows routine.",
-  "s-5": "Your agent coaches. Fit Loop keeps you on the plan.",
+  "s-1": "My A I agent wrote this workout. Now it is on my glasses.",
+  "s-2": "Tap the ring when a set is done, and the rest timer starts.",
+  "s-3": "Something hurts? Hold the ring, and tell your agent.",
+  "s-4": "It reads the note, answers, and changes the plan.",
+  "s-5": "The dead lift is out. A glute bridge is in.",
+  "s-6": "Fit Loop. Your agent's plan, wherever you train.",
 }
-SPEED = 1.05
+SPEED = 1.06
 args = sys.argv[1:]
 only = None
 if "--only" in args:

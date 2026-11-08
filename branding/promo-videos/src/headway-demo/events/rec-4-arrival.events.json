@@ -1,0 +1,32 @@
+{
+ "clip": "rec-4-arrival.mp4",
+ "width": 1206,
+ "height": 2622,
+ "duration": 7.61,
+ "scale": 3,
+ "events": [
+  {
+   "step": "4.5s",
+   "t": 0.6,
+   "type": "signal",
+   "label": "",
+   "box": null,
+   "x": null,
+   "y": null
+  },
+  {
+   "step": "4.5",
+   "t": 1.93,
+   "type": "mark",
+   "label": "Arrival alert",
+   "box": {
+    "x": 59,
+    "y": 1935,
+    "w": 1088,
+    "h": 275
+   },
+   "x": 603,
+   "y": 2072.5
+  }
+ ]
+}

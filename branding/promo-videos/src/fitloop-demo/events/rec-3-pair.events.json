@@ -1,0 +1,51 @@
+{
+ "clip": "rec-3-pair.mp4",
+ "width": 1206,
+ "height": 2622,
+ "duration": 11.65,
+ "scale": 3,
+ "events": [
+  {
+   "step": "3.1",
+   "t": 0.6,
+   "type": "tap",
+   "label": "Pair glasses",
+   "box": {
+    "x": 48,
+    "y": 578,
+    "w": 1110,
+    "h": 156
+   },
+   "x": 603,
+   "y": 656
+  },
+  {
+   "step": "3.1a",
+   "t": 3.88,
+   "type": "tap",
+   "label": "Get a pairing code",
+   "box": {
+    "x": 48,
+    "y": 504,
+    "w": 1110,
+    "h": 156
+   },
+   "x": 603,
+   "y": 582
+  },
+  {
+   "step": "3.1b",
+   "t": 7,
+   "type": "mark",
+   "label": "",
+   "box": {
+    "x": 108,
+    "y": 549,
+    "w": 816,
+    "h": 144
+   },
+   "x": 516,
+   "y": 621
+  }
+ ]
+}

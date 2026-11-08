@@ -1,0 +1,78 @@
+{
+ "clip": "rec-4-agent.mp4",
+ "width": 1920,
+ "height": 1080,
+ "duration": 25.85,
+ "from_s": 3.432,
+ "to_s": 91.992,
+ "marks": [
+  {
+   "t": 0.4,
+   "run_s": 3.8,
+   "name": "prompt"
+  },
+  {
+   "t": 7.25,
+   "run_s": 10.7,
+   "name": "run"
+  },
+  {
+   "t": 18.83,
+   "run_s": 85,
+   "name": "published"
+  },
+  {
+   "t": 20.96,
+   "run_s": 87.1,
+   "name": "replied"
+  }
+ ],
+ "tools": [
+  {
+   "t": 7.95,
+   "run_s": 13.2,
+   "tool": "ToolSearch"
+  },
+  {
+   "t": 8.09,
+   "run_s": 14.6,
+   "tool": "get_plan_guide"
+  },
+  {
+   "t": 8.1,
+   "run_s": 14.7,
+   "tool": "get_feedback"
+  },
+  {
+   "t": 8.12,
+   "run_s": 14.9,
+   "tool": "get_profile"
+  },
+  {
+   "t": 8.12,
+   "run_s": 14.9,
+   "tool": "get_current_plan"
+  },
+  {
+   "t": 8.13,
+   "run_s": 15,
+   "tool": "get_progress"
+  },
+  {
+   "t": 12.04,
+   "run_s": 54.1,
+   "tool": "validate_plan"
+  },
+  {
+   "t": 19.68,
+   "run_s": 85.8,
+   "tool": "publish_plan"
+  },
+  {
+   "t": 22.28,
+   "run_s": 88.4,
+   "tool": "respond_to_feedback"
+  }
+ ],
+ "events": []
+}
