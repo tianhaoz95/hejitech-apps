@@ -20,10 +20,13 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.1.0"
+    static let currentVersion = "1.1.1"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.1.1", date: "November 2026", items: [
+            WhatsNewItem(icon: "calendar", title: "Clearer alert days", description: "The days on the Commute tab now sit with your alerts, because that's all they set: which days commute alerts come. The switch to your evening trains happens every day."),
+        ]),
         ReleaseNotes(version: "1.1.0", date: "November 2026", items: [
             WhatsNewItem(icon: "bicycle", title: "Bike, e-bike or e-scooter to the station", description: "Choose how you get to the station for each commute leg: walk, bike, e-bike, e-scooter or drive. With Location on, leave-by times and spare minutes use that speed, on your glasses too."),
             WhatsNewItem(icon: "arrow.up.arrow.down", title: "Your watch follows your commute", description: "The watch app and watch face now switch to the trip home in the afternoon and back in the morning on their own. A flip lasts two hours, then your commute direction is back, on your iPhone too."),

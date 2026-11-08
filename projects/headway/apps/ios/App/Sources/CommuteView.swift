@@ -15,11 +15,10 @@ struct CommuteView: View {
                 LegSection(title: "Evening", leg: $draft.evening, make: Leg.evening)
                 Section {
                     TimeField(title: "Switch to evening at", hhmm: $draft.switchAt)
-                    DaysRow(days: $draft.days)
                 } footer: {
-                    Text("Before the switch time the glasses and the Trains tab open on your morning trains, after it on your evening ones. Commute alerts come only on these days.")
+                    Text("Every day, before this time the Trains tab, your watch and your glasses open on your morning trains, and after it on your evening ones.")
                 }
-                AlertsSection(alerts: $draft.alerts)
+                AlertsSection(alerts: $draft.alerts, days: $draft.days)
                 Section {
                     HStack {
                         Text("Display name")
@@ -149,9 +148,14 @@ struct DaysRow: View {
 
 struct AlertsSection: View {
     @Binding var alerts: AlertSettings
+    @Binding var days: [Int]
 
     var body: some View {
         Section {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Alert days")
+                DaysRow(days: $days)
+            }
             Toggle("Delays", isOn: $alerts.delay)
             if alerts.delay { Stepper("At least \(alerts.delayThreshold) min late", value: $alerts.delayThreshold, in: 1...60) }
             Toggle("Cancellations", isOn: $alerts.cancellation)
@@ -163,7 +167,7 @@ struct AlertsSection: View {
         } header: {
             Text("Alerts")
         } footer: {
-            Text("\"Faster train alerts\" tells you when a later express reaches your destination first. \"Before my stop\" follows the train you track (here or with a long press on the R1 ring), any day.")
+            Text("Commute alerts come only on your alert days, inside each leg's watch window. \"Faster train alerts\" tells you when a later express reaches your destination first. \"Before my stop\" follows the train you track (here or with a long press on the R1 ring), any day.")
         }
     }
 }
