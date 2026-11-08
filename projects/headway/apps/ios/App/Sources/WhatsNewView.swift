@@ -20,10 +20,13 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.1.1"
+    static let currentVersion = "1.1.2"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.1.2", date: "November 2026", items: [
+            WhatsNewItem(icon: "applewatch.watchface", title: "Dual Train & Station ETAs on Watch Face", description: "Watch face complications now show both the train departure time and your personal arrival ETA at the station, with walk minutes and spare buffer."),
+        ]),
         ReleaseNotes(version: "1.1.1", date: "November 2026", items: [
             WhatsNewItem(icon: "calendar", title: "Clearer alert days", description: "The days on the Commute tab now sit with your alerts, because that's all they set: which days commute alerts come. The switch to your evening trains happens every day."),
             WhatsNewItem(icon: "square.and.arrow.up", title: "Sharing your ETA keeps tracking", description: "Tapping Share live ETA no longer also stops tracking your train, and the link you send opens your live ETA again."),

@@ -31,6 +31,24 @@ public struct LeaveTimeEntry: TimelineEntry {
         self.walkMinutes = walkMinutes
         self.statusMessage = statusMessage
     }
+
+    public var trainDepartureDate: Date? {
+        guard let train = train else { return nil }
+        return Date(timeIntervalSince1970: train.predDep / 1000)
+    }
+
+    public var userStationArrivalDate: Date? {
+        date.addingTimeInterval(Double(walkMinutes * 60))
+    }
+
+    public var travelMode: TravelMode {
+        board?.travel?.mode ?? .walk
+    }
+
+    public var bufferMinutes: Int {
+        guard let trainDate = trainDepartureDate, let arrivalDate = userStationArrivalDate else { return 0 }
+        return Int(round(trainDate.timeIntervalSince(arrivalDate) / 60))
+    }
 }
 
 public struct LeaveTimeProvider: TimelineProvider {
@@ -180,7 +198,9 @@ public struct LeaveTimeComplicationView: View {
     // MARK: - Rectangular (Modular / Ultra Modular)
     private var rectangularView: some View {
         VStack(alignment: .leading, spacing: 2) {
-            if let train = entry.train {
+            if let train = entry.train,
+               let trainDate = entry.trainDepartureDate,
+               let stnDate = entry.userStationArrivalDate {
                 HStack(spacing: 4) {
                     Image(systemName: "tram.fill")
                         .font(.caption2)
@@ -188,10 +208,17 @@ public struct LeaveTimeComplicationView: View {
                     Text("#\(train.train) \(train.kind)")
                         .font(.caption2.bold())
                     Spacer()
-                    let depDate = Date(timeIntervalSince1970: train.predDep / 1000)
-                    Text(depDate, format: .dateTime.hour().minute())
+                    Text("Trn")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                    Text(trainDate, format: .dateTime.hour().minute())
+                        .font(.caption2.monospacedDigit().bold())
+                        .foregroundStyle(.primary)
+                    if let delay = train.delayMin, delay >= 2 {
+                        Text("+\(delay)m")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.orange)
+                    }
                 }
 
                 if entry.isUrgent {
@@ -205,7 +232,7 @@ public struct LeaveTimeComplicationView: View {
                     }
                 } else if let leaveByDate = entry.leaveByDate {
                     HStack(spacing: 4) {
-                        Image(systemName: "figure.walk")
+                        Image(systemName: entry.travelMode.symbol)
                             .font(.caption.bold())
                             .foregroundStyle(accentEmerald)
                         Text("Leave in")
@@ -216,25 +243,32 @@ public struct LeaveTimeComplicationView: View {
                             .foregroundStyle(accentEmerald)
                     }
                 } else {
-                    let depDate = Date(timeIntervalSince1970: train.predDep / 1000)
                     HStack(spacing: 4) {
                         Text("Departs in")
                             .font(.subheadline)
-                        Text("\(minutesUntil(depDate, from: entry.date)) min")
+                        Text("\(minutesUntil(trainDate, from: entry.date)) min")
                             .font(.headline.bold())
                             .foregroundStyle(accentEmerald)
                     }
                 }
 
-                HStack(spacing: 4) {
-                    Text("To \(entry.destinationShort) · \(entry.walkMinutes)m walk")
+                HStack(spacing: 3) {
+                    Text("Stn")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    if let delay = train.delayMin, delay >= 2 {
-                        Text("+\(delay)m")
-                            .font(.caption2.bold())
-                            .foregroundStyle(.orange)
-                    }
+                    Text(stnDate, format: .dateTime.hour().minute())
+                        .font(.caption2.monospacedDigit().bold())
+                        .foregroundStyle(.primary)
+                    let modeDesc = entry.travelMode == .walk ? "walk" : entry.travelMode.title.lowercased()
+                    Text("(\(entry.walkMinutes)m \(modeDesc))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer()
+                    let buf = entry.bufferMinutes
+                    Text(buf >= 0 ? "+\(buf)m buf" : "\(buf)m")
+                        .font(.caption2.bold())
+                        .foregroundStyle(buf < 2 ? .orange : accentEmerald)
                 }
             } else {
                 HStack(spacing: 4) {
@@ -253,6 +287,7 @@ public struct LeaveTimeComplicationView: View {
 
     // MARK: - Circular (Infograph / Metropolitan)
     // Minutes only, no icon: the circle is small and longer text gets clipped.
+    // Slots supporting widgetLabel show the dual Train & Station ETAs along the curve.
     private var circularView: some View {
         ZStack {
             AccessoryWidgetBackground()
@@ -280,19 +315,30 @@ public struct LeaveTimeComplicationView: View {
             }
             .lineLimit(1)
         }
+        .widgetLabel {
+            if let trainDate = entry.trainDepartureDate, let stnDate = entry.userStationArrivalDate {
+                Text("Trn \(trainDate, format: .dateTime.hour().minute()) · Stn \(stnDate, format: .dateTime.hour().minute())")
+            }
+        }
         .widgetURL(URL(string: "headway://board"))
     }
 
     // MARK: - Inline (Top text on Modular)
     private var inlineView: some View {
         HStack(spacing: 4) {
-            if let train = entry.train {
-                if entry.isUrgent {
-                    Text("Leave now · #\(train.train)")
-                } else if let leaveByDate = entry.leaveByDate {
-                    Text("Leave in \(minutesUntil(leaveByDate, from: entry.date)) min · #\(train.train)")
-                } else {
-                    Text("#\(train.train) to \(entry.destinationShort)")
+            if let train = entry.train,
+               let trainDate = entry.trainDepartureDate,
+               let stnDate = entry.userStationArrivalDate {
+                ViewThatFits {
+                    if entry.isUrgent {
+                        Text("GO! Trn \(trainDate, format: .dateTime.hour().minute()) · Stn \(stnDate, format: .dateTime.hour().minute())")
+                    } else if let leaveByDate = entry.leaveByDate {
+                        Text("Trn \(trainDate, format: .dateTime.hour().minute()) · Stn \(stnDate, format: .dateTime.hour().minute()) (Leave \(minutesUntil(leaveByDate, from: entry.date))m)")
+                        Text("Trn \(trainDate, format: .dateTime.hour().minute()) · Stn \(stnDate, format: .dateTime.hour().minute())")
+                        Text("Leave \(minutesUntil(leaveByDate, from: entry.date))m · Trn \(trainDate, format: .dateTime.hour().minute())")
+                    } else {
+                        Text("Trn \(trainDate, format: .dateTime.hour().minute()) · Stn \(stnDate, format: .dateTime.hour().minute())")
+                    }
                 }
             } else {
                 Text(entry.statusMessage ?? "Headway")
@@ -315,6 +361,13 @@ public struct LeaveTimeComplicationView: View {
         .font(.system(size: 18, weight: .bold, design: .rounded))
         .monospacedDigit()
         .minimumScaleFactor(0.5)
+        .widgetLabel {
+            if let trainDate = entry.trainDepartureDate, let stnDate = entry.userStationArrivalDate {
+                Text("Trn \(trainDate, format: .dateTime.hour().minute()) · Stn \(stnDate, format: .dateTime.hour().minute())")
+            } else {
+                Text("Headway")
+            }
+        }
         .widgetURL(URL(string: "headway://board"))
     }
 }
@@ -329,7 +382,7 @@ public struct LeaveTimeComplication: Widget {
             LeaveTimeComplicationView(entry: entry)
         }
         .configurationDisplayName("Leave in X Countdown")
-        .description("Live countdown showing when to leave the door for your next Caltrain.")
+        .description("Live countdown showing when to leave the door for your next Caltrain, with train and station ETAs.")
         .supportedFamilies([
             .accessoryRectangular,
             .accessoryCircular,
