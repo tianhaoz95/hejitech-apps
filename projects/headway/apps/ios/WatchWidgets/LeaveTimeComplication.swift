@@ -285,35 +285,27 @@ public struct LeaveTimeComplicationView: View {
         .widgetURL(URL(string: "headway://board"))
     }
 
-    // MARK: - Circular (Infograph / Metropolitan)
-    // Minutes only, no icon: the circle is small and longer text gets clipped.
-    // Slots supporting widgetLabel show the dual Train & Station ETAs along the curve.
+    // MARK: - Circular (Infograph / Metropolitan / the small round slots)
+    // Two numbers inside the circle, stacked: minutes until the train departs on top, minutes for you to
+    // get to the station (walk or drive, from now) below in green, orange once the buffer is under 2
+    // minutes. Tiny glyphs say which is which when there's room; otherwise they go first.
     private var circularView: some View {
         ZStack {
             AccessoryWidgetBackground()
-            VStack(spacing: -2) {
-                if entry.train != nil, let leaveDate = entry.leaveByDate {
-                    if entry.isUrgent {
-                        Text("GO")
-                            .font(.system(size: 18, weight: .heavy, design: .rounded))
-                            .foregroundStyle(.orange)
-                    } else {
-                        Text("\(minutesUntil(leaveDate, from: entry.date))")
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .monospacedDigit()
-                            .minimumScaleFactor(0.5)
-                            .foregroundStyle(accentEmerald)
-                    }
-                    Text(entry.isUrgent ? "leave" : "min")
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("--")
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundStyle(.secondary)
+            if entry.train != nil, let trainDate = entry.trainDepartureDate, let stnDate = entry.userStationArrivalDate {
+                let late = entry.isUrgent || entry.bufferMinutes < 2
+                ViewThatFits(in: .horizontal) {
+                    circularTimes(train: trainDate, station: stnDate, late: late, glyphs: true)
+                    circularTimes(train: trainDate, station: stnDate, late: late, glyphs: false)
+                    circularTimes(train: trainDate, station: stnDate, late: late, glyphs: false, fixed: false)
+                        .minimumScaleFactor(0.7)
                 }
+                .padding(.horizontal, 5)
+            } else {
+                Text("--")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(.secondary)
             }
-            .lineLimit(1)
         }
         .widgetLabel {
             if let trainDate = entry.trainDepartureDate, let stnDate = entry.userStationArrivalDate {
@@ -321,6 +313,37 @@ public struct LeaveTimeComplicationView: View {
             }
         }
         .widgetURL(URL(string: "headway://board"))
+    }
+
+    @ViewBuilder
+    private func circularTimes(train: Date, station: Date, late: Bool, glyphs: Bool, fixed: Bool = true) -> some View {
+        let v = circularStack(train: train, station: station, late: late, glyphs: glyphs)
+        if fixed { v.fixedSize() } else { v }
+    }
+
+    private func circularStack(train: Date, station: Date, late: Bool, glyphs: Bool) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 1) {
+                if glyphs { Image(systemName: "tram.fill").font(.system(size: 7, weight: .bold)).foregroundStyle(.secondary) }
+                Text(Self.minutes(train.timeIntervalSince(entry.date)))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+            }
+            Rectangle().fill(.secondary.opacity(0.5)).frame(width: 16, height: 1).padding(.vertical, 1)
+            HStack(spacing: 1) {
+                if glyphs { Image(systemName: entry.travelMode.symbol).font(.system(size: 7, weight: .bold)).foregroundStyle(.secondary) }
+                Text(Self.minutes(station.timeIntervalSince(entry.date)))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(late ? Color.orange : accentEmerald)
+            }
+        }
+        .monospacedDigit()
+        .lineLimit(1)
+    }
+
+    /// "29" (minutes, rounded up so "1" means within the minute); "2h" from 100 minutes on.
+    static func minutes(_ seconds: TimeInterval) -> String {
+        let m = max(0, Int(ceil(seconds / 60)))
+        return m < 100 ? "\(m)" : "\(m / 60)h"
     }
 
     // MARK: - Inline (Top text on Modular)
