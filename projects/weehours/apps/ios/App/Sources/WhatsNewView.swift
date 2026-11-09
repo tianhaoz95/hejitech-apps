@@ -71,6 +71,13 @@ struct WhatsNewView: View {
             ],
             improvementsAndFixes: [
                 WhatsNewItem(
+                    icon: "bolt.fill",
+                    tint: Theme.accent,
+                    title: "Faster voice logging and on-device model run",
+                    description: "Voice entries reuse the live preview after you finish speaking and evaluate Laya's decision questions together in one batched pass.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
                     icon: "waveform",
                     tint: Theme.feed,
                     title: "\"Ninety mils\" keeps its amount",

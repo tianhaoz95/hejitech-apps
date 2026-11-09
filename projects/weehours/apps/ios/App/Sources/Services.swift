@@ -38,6 +38,7 @@ final class Recorder: NSObject, @unchecked Sendable {
     private var engine: AVAudioEngine?
     private let lock = NSLock()
     private var liveSamples: [Float] = []
+    private var lastSpeechSampleCount: Int = 0
     private(set) var url: URL?
 
     func start() throws {
@@ -54,6 +55,7 @@ final class Recorder: NSObject, @unchecked Sendable {
 
         lock.lock()
         liveSamples.removeAll(keepingCapacity: true)
+        lastSpeechSampleCount = 0
         lock.unlock()
         startTap()
     }
@@ -79,9 +81,18 @@ final class Recorder: NSObject, @unchecked Sendable {
                 return pcm
             }
             if error == nil, let channel = out.floatChannelData?[0], out.frameLength > 0 {
-                let buf = UnsafeBufferPointer(start: channel, count: Int(out.frameLength))
+                let n = Int(out.frameLength)
+                let buf = UnsafeBufferPointer(start: channel, count: n)
+                var sumSq: Float = 0
+                for s in buf { sumSq += s * s }
+                let rms = sqrt(sumSq / Float(n))
+                let db = 20 * log10(max(rms, 1e-5))
+                let norm = max(0, min(1, (db + 50) / 50))
                 self.lock.lock()
                 self.liveSamples.append(contentsOf: buf)
+                if norm > 0.14 {
+                    self.lastSpeechSampleCount = self.liveSamples.count
+                }
                 self.lock.unlock()
             }
         }
@@ -101,11 +112,23 @@ final class Recorder: NSObject, @unchecked Sendable {
         self.engine = nil
     }
 
-    func samples() -> [Float] {
+    func snapshot() -> (samples: [Float], lastSpeechSampleCount: Int) {
         lock.lock()
         let copy = liveSamples
+        let speechCount = lastSpeechSampleCount
         lock.unlock()
-        if !copy.isEmpty { return copy }
+        if !copy.isEmpty {
+            return (copy, speechCount > 0 ? speechCount : copy.count)
+        }
+        let fallback = samplesFromWAV()
+        return (fallback, fallback.count)
+    }
+
+    func samples() -> [Float] {
+        snapshot().samples
+    }
+
+    private func samplesFromWAV() -> [Float] {
         // Fallback: read raw 16-bit PCM samples directly from the active WAV file (skipping the 44-byte header)
         guard let url, let data = try? Data(contentsOf: url), data.count > 44 else { return [] }
         let pcm = data.subdata(in: 44..<data.count)
@@ -132,7 +155,13 @@ final class Recorder: NSObject, @unchecked Sendable {
     func level() -> Float {
         guard let recorder else { return 0 }
         recorder.updateMeters()
-        return max(0, min(1, (recorder.averagePower(forChannel: 0) + 50) / 50))
+        let lvl = max(0, min(1, (recorder.averagePower(forChannel: 0) + 50) / 50))
+        if lvl > 0.14 {
+            lock.lock()
+            lastSpeechSampleCount = liveSamples.count
+            lock.unlock()
+        }
+        return lvl
     }
 }
 
@@ -246,8 +275,17 @@ actor WhisperTranscriber: Transcriber {
     private var pipe: (key: String, kit: WhisperKit)?
     private var loading: (key: String, task: Task<WhisperKit, Error>)?
     let model: String
+    nonisolated(unsafe) private var previewCancelled = false
 
     init(model: String = "base.en") { self.model = model }
+
+    nonisolated func cancelPreview() {
+        previewCancelled = true
+    }
+
+    nonisolated func resetPreviewCancellation() {
+        previewCancelled = false
+    }
 
     func warmUp() async { _ = try? await loaded(for: VoiceLanguage.current) }
 
@@ -324,9 +362,39 @@ actor WhisperTranscriber: Transcriber {
         return (Self.join(try await p.transcribe(audioPath: fileURL.path, decodeOptions: pipelineOptions(p, language))), said)
     }
 
-    /// Dictated notes: the words as spoken, in the phone's voice language (never translated).
-    func transcribeVerbatim(fileURL: URL) async throws -> String {
+    /// Final phone transcription directly from in-memory 16 kHz mono samples (falling back to the WAV file only if empty).
+    /// Also accepts an already-completed verbatim preview transcript when silence auto-stop already covered all speech samples.
+    func transcribeSpoken(samples: [Float], fileURL: URL, completedPreview: String? = nil) async throws -> (english: String, spoken: String?) {
         let language = VoiceLanguage.current
+        if let preview = completedPreview?.trimmingCharacters(in: .whitespacesAndNewlines), !preview.isEmpty {
+            guard language.translates else {
+                return (preview, nil)
+            }
+            if let english = await VoiceTranslator.english(preview, from: language) {
+                return (english, preview)
+            }
+        }
+        guard !samples.isEmpty else {
+            return try await transcribeSpoken(fileURL: fileURL)
+        }
+        let p = try await loaded(for: language)
+        guard language.translates else {
+            return (Self.join(try await p.transcribe(audioArray: samples, decodeOptions: pipelineOptions(p, language))), nil)
+        }
+        let said = Self.join(try await p.transcribe(audioArray: samples, decodeOptions: verbatimOptions(p, language)))
+        if said.isEmpty { return ("", nil) }
+        if let english = await VoiceTranslator.english(said, from: language) { return (english, said) }
+        return (Self.join(try await p.transcribe(audioArray: samples, decodeOptions: pipelineOptions(p, language))), said)
+    }
+
+    /// Dictated notes: the words as spoken, in the phone's voice language (never translated).
+    func transcribeVerbatim(samples: [Float] = [], fileURL: URL) async throws -> String {
+        let language = VoiceLanguage.current
+        if !samples.isEmpty {
+            let p = try await loaded(for: language)
+            let opts = language.translates ? verbatimOptions(p, language) : pipelineOptions(p, language)
+            return Self.cleanLiveText(Self.join(try await p.transcribe(audioArray: samples, decodeOptions: opts)))
+        }
         guard language.translates else { return try await transcribe(fileURL: fileURL) }
         let p = try await loaded(for: language)
         return Self.cleanLiveText(Self.join(try await p.transcribe(audioPath: fileURL.path, decodeOptions: verbatimOptions(p, language))))
@@ -335,11 +403,16 @@ actor WhisperTranscriber: Transcriber {
     /// Live preview transcription directly from in-memory 16 kHz mono samples while recording.
     /// Other languages show what's being said, untranslated (translating every 750 ms would flicker).
     func transcribe(samples: [Float]) async throws -> String {
-        guard samples.count >= 8_000 else { return "" }
+        guard samples.count >= 8_000, !previewCancelled else { return "" }
         let language = VoiceLanguage.current
         let p = try await loaded(for: language)
+        guard !previewCancelled else { return "" }
         let options = language.translates ? verbatimOptions(p, language) : pipelineOptions(p, language)
-        let results = try await p.transcribe(audioArray: samples, decodeOptions: options)
+        let results = try await p.transcribe(audioArray: samples, decodeOptions: options, callback: { [weak self] _ in
+            guard let self else { return false }
+            return !self.previewCancelled
+        })
+        guard !previewCancelled else { throw CancellationError() }
         return Self.cleanLiveText(results.map(\.text).joined(separator: " "))
     }
 

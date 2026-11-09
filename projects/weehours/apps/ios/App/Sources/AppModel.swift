@@ -95,6 +95,8 @@ final class AppModel: ObservableObject {
     private var watch: WatchBridge?
     private var notifications: NotificationHandler?
     private var livePreviewTask: Task<Void, Never>?
+    private var lastPreviewedSpeechSamples: Int = 0
+    private var completedPreviewTranscript: String = ""
     private let presence = PresenceChannel()
     private var changedSync: Task<Void, Never>?
 
@@ -856,9 +858,10 @@ final class AppModel: ObservableObject {
     }
 
     func finishDictation() async -> String? {
+        let samples = recorder.samples()
         guard let url = recorder.stop() else { return nil }
         defer { try? FileManager.default.removeItem(at: url) }
-        return try? await transcriber.transcribeVerbatim(fileURL: url)
+        return try? await transcriber.transcribeVerbatim(samples: samples, fileURL: url)
     }
 
     /// Settings → Voice → Language: fetch the multilingual model the first time a language other
@@ -880,6 +883,9 @@ final class AppModel: ObservableObject {
         }
         do {
             liveTranscript = ""
+            lastPreviewedSpeechSamples = 0
+            completedPreviewTranscript = ""
+            transcriber.resetPreviewCancellation()
             try recorder.start()
             recording = true
             // load both models while the parent is still talking
@@ -891,10 +897,15 @@ final class AppModel: ObservableObject {
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .milliseconds(750))
                     guard !Task.isCancelled, let self, self.recording else { break }
-                    let samples = recorder.samples()
-                    guard samples.count >= 8_000 else { continue }
-                    if let partial = try? await transcriber.transcribe(samples: samples), !partial.isEmpty, self.recording {
+                    let snap = recorder.snapshot()
+                    guard snap.samples.count >= 8_000 else { continue }
+                    if snap.lastSpeechSampleCount > 0 && self.lastPreviewedSpeechSamples >= snap.lastSpeechSampleCount {
+                        continue
+                    }
+                    if let partial = try? await transcriber.transcribe(samples: snap.samples), !partial.isEmpty, !Task.isCancelled, self.recording {
                         self.liveTranscript = partial
+                        self.completedPreviewTranscript = partial
+                        self.lastPreviewedSpeechSamples = snap.samples.count
                     }
                 }
             }
@@ -904,15 +915,27 @@ final class AppModel: ObservableObject {
     func stopVoice() {
         guard recording else { return }
         recording = false
+        let snap = recorder.snapshot()
+        let reusablePreview: String? = (snap.lastSpeechSampleCount > 0 && lastPreviewedSpeechSamples >= snap.lastSpeechSampleCount && !completedPreviewTranscript.isEmpty)
+            ? completedPreviewTranscript
+            : nil
+        if reusablePreview == nil {
+            transcriber.cancelPreview()
+        }
         livePreviewTask?.cancel()
         livePreviewTask = nil
         let capturedAt = Date()
         guard let url = recorder.stop() else { return }
         thinking = true
         Task {
-            defer { thinking = false; liveTranscript = "" }
+            defer {
+                thinking = false
+                liveTranscript = ""
+                completedPreviewTranscript = ""
+                lastPreviewedSpeechSamples = 0
+            }
             do {
-                let text = try await transcriber.transcribeSpoken(fileURL: url)
+                let text = try await transcriber.transcribeSpoken(samples: snap.samples, fileURL: url, completedPreview: reusablePreview)
                 try? FileManager.default.removeItem(at: url)   // audio never leaves the phone
                 await handle(transcript: text.english, spoken: text.spoken, capturedAt: capturedAt, surface: .phone)
             } catch { self.error = "Could not transcribe: \(error.localizedDescription)" }
@@ -923,9 +946,12 @@ final class AppModel: ObservableObject {
     func cancelVoice() {
         guard recording else { return }
         recording = false
+        transcriber.cancelPreview()
         livePreviewTask?.cancel()
         livePreviewTask = nil
         liveTranscript = ""
+        completedPreviewTranscript = ""
+        lastPreviewedSpeechSamples = 0
         if let url = recorder.stop() { try? FileManager.default.removeItem(at: url) }
     }
 

@@ -6,10 +6,14 @@ public enum LayaPrompt {
     /// Column of the per-token head output used for each question type (choice, score, noul).
     public static let choiceColumn = 0
 
+    /// Strips literal `[MASK]` markers from user or option text before rendering.
+    public static func clean(_ s: String) -> String {
+        s.replacingOccurrences(of: "[MASK]", with: " ")
+    }
+
     /// The GGUF `tokenizer.chat_template.systemone` template for a `choice` question:
     /// `[CLS]choice question: {instructions}[SEP]([MASK] key: description)*[SEP]{state}[SEP]`
     public static func render(state: String, question: DecisionQuestion) -> String {
-        func clean(_ s: String) -> String { s.replacingOccurrences(of: "[MASK]", with: " ") }
         var out = "[CLS]choice question: \(clean(question.instructions))[SEP]"
         for o in question.options {
             out += "[MASK] \(clean(o.key))"
@@ -22,6 +26,11 @@ public enum LayaPrompt {
     public struct Layout: Equatable {
         public let tokens: [Int32]
         public let markers: [Int]
+
+        public init(tokens: [Int32], markers: [Int]) {
+            self.tokens = tokens
+            self.markers = markers
+        }
     }
 
     public enum LayoutError: Error { case unexpected }
