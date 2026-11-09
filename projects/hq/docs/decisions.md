@@ -23,19 +23,24 @@ v0.1 (the owner said "use your best judgement"; each is easy to change).
 
 | # | Question | Chosen | Why |
 |---|---|---|---|
-| Q1 | Pushed PRs or local branches? | **Configurable, off by default** (`push: false` in the root `HQ.md`). Builds land on local `hq/<card>` branches in worktrees under `~/.hq/worktrees`. | The repo is public and `heji-build-next` keeps builds local today; flipping `push: true` makes the runner push and open a PR. |
+| Q1 | Pushed PRs or local branches? | **Configurable, off by default** (`push: false` in the root `HQ.md`). Builds land on local `hq/<card>` branches in worktrees in `../.hq-worktrees` next to the repo. | The repo is public and `heji-build-next` keeps builds local today; flipping `push: true` makes the runner push and open a PR. |
 | Q2 | Surface new project ideas? | **Allowed as cards** (kind `portfolio`), never built unasked. | The CEO prompt doesn't generate ideas; a scout can be added for it. |
 | Q3 | May HQ run releases? | **No: release verbs are L3** everywhere. You start them from a card (dry run first). | Releases reach users. |
 | Q4 | Weekly budget | **$40** (`weekly_budget_usd`). The first real scout run cost $0.60. | A cap to start from; scouts pause when it's reached, builds finish. |
 | Q5 | Name | **HQ** | |
-| Q6 | Store | **Cloudflare D1** (+ R2 for screenshots), `BACKEND=none` for Supabase. | HQ is single-tenant and Worker-only; it stays off the shared Supabase project entirely, so it can never touch another project's data. |
+| Q6 | Store | **Shared Supabase project** (2026-11-09; v0.1 used D1): schema `hq`, bucket `hq`, RLS by workspace membership. | HQ became a product with many workspaces and members; Supabase gives sign-in and per-workspace isolation, and HQ graduates to its own project like any other (`scripts/graduation_check.sh hq` passes). |
 | Q7 | Where the code lives | **`projects/hq/`**, written to move (coupling check, fixture-repo tests). | |
 
 ## Other v0.1 choices
 
-- **Single owner per deployment**, signed in with the `HQ_OWNER_TOKEN` secret (portal, iOS app,
-  MCP consent). Runners and headless agents use tokens the owner mints (`hq_run_…`, `hq_agt_…`),
-  stored hashed. MCP clients that support OAuth connect at `/mcp` and the owner approves them.
+- **A product, one workspace per repo** (2026-11-09, replacing v0.1's single owner per
+  deployment). A workspace is one repository and its members; HQ is opinionated that it's a
+  monorepo. Roles: admin (members, invites, tokens, kill switch, policy), approver (approve, reject,
+  ship, run any verb including L3), viewer (read, comment). Invites are single-use links that
+  expire. Sign-in through the shared Supabase project: Google and Apple now, GitHub once its
+  provider is enabled. Runners and agents use workspace tokens; each workspace runs its own runners
+  and pays its own agent costs. OAuth MCP clients are approved by an admin or approver, for one
+  workspace, and stop working if that person leaves.
 - **Every project starts at tier ceiling L1** (no L0 auto-merges yet). Promotion is an L3 edit to
   `HQ.md` after a track record.
 - **Inbox cap** = cards waiting for a decision at once (5), not new cards per day: the CEO's ranking

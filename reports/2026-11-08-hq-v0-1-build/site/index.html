@@ -29,7 +29,7 @@
 
     <main>
       <section id="summary" data-toc="Summary">
-        <p class="kicker">Build report · 2026-11-08 · HQ v0.1</p>
+        <p class="kicker">Build report · 2026-11-08, updated 2026-11-09 (workspaces, §1)</p>
         <h1>HQ v0.1 is built and running on this Mac</h1>
         <p class="lede">Everything in the PRD's phases 1–4 exists and works end to end on a local stack: <b>the Worker</b> (portal, API, MCP server, scheduler), <b>the <code>hq</code> CLI and runner</b>, <b>the iPhone app</b>, and <b><code>.hq/</code> folders for the repo and all 15 projects</b>. Two real Claude Code runs went through it: a scout filed a genuine reliability card for $0.60, and an executor built, tested and committed an approved fix for $0.67, then a second agent reviewed it. Nothing is pushed or deployed: it's all on the local branch <code>hq/initial</code>.</p>
 
@@ -39,7 +39,7 @@
           <div><b>CLI + runner</b><span class="ok">7 tests; real scout, build, review runs</span></div>
           <div><b>Portal</b><span class="ok">Desktop + phone, light + dark</span></div>
           <div><b>iPhone app</b><span class="todo">Simulator only (device signing needs you)</span></div>
-          <div><b>Deploy</b><span class="todo">Not deployed (§7)</span></div>
+          <div><b>Deploy</b><span class="todo">Not deployed (§8)</span></div>
         </div>
 
         <div class="cards">
@@ -61,7 +61,32 @@
             </ul>
           </div>
         </div>
-        <div class="callout"><b>To review:</b> open the portal on your phone (URL in the chat message), look at the two real cards, then read §6 (decisions I made for you) and tick the checklist in §7.</div>
+        <div class="callout"><b>To review:</b> start it locally (§8), look at the two real cards, then read §7 (decisions) and tick the checklist in §8.</div>
+      </section>
+
+
+      <section id="workspaces">
+        <h2>Update 2026-11-09: a product with workspaces</h2>
+        <p>After review, HQ changed from "one owner, one token" to a product any team signs up for: <b>a workspace is one repository and the people who work on it</b> (PRD v2 §10). Data moved from D1 to the shared Supabase project (schema <code>hq</code>, bucket <code>hq</code>) with row-level security per workspace.</p>
+        <table class="grid">
+          <tr><th>What</th><th>Now</th></tr>
+          <tr><td><b>Sign-in</b></td><td>GitHub, Google or Apple through the shared Supabase project (GitHub needs its provider enabled; §8). Email for local accounts in development only.</td></tr>
+          <tr><td><b>Workspaces</b></td><td>Create one for <code>owner/repo</code>; the synced <code>.hq/</code> policy must name the same repo. Switch between workspaces in the header (web) or Settings (iPhone).</td></tr>
+          <tr><td><b>Members</b></td><td>Single-use invite links that expire. <b>admin</b>: members, tokens, kill switch · <b>approver</b>: approve, reject, ship, run any verb · <b>viewer</b>: read and comment.</td></tr>
+          <tr><td><b>Agents</b></td><td>Workspace tokens for runners and headless agents; OAuth MCP clients are approved by an admin or approver for one workspace and stop working if that person leaves.</td></tr>
+          <tr><td><b>Isolation</b></td><td>Every row carries <code>workspace_id</code>; the Worker checks the role on every write; RLS limits direct reads to members. <code>scripts/graduation_check.sh hq</code> passes: HQ's migration replays alone.</td></tr>
+        </table>
+        <div class="shots">
+          <figure><img src="media/v2-portal-01-signin.png" alt="Portal sign-in: Continue with GitHub, Google or Apple, plus a local email form in development"><figcaption>Sign-in (web).</figcaption></figure>
+          <figure><img src="media/v2-portal-02-onboarding.png" alt="Set up your workspace: name and owner/repo, with a note that HQ is built for a monorepo"><figcaption>First run: create a workspace for a repo.</figcaption></figure>
+          <figure><img src="media/v2-portal-03-settings.png" alt="Settings: members with role selectors and invite links, kill switch, tokens, audit log"><figcaption>Members, invites, tokens, audit log.</figcaption></figure>
+        </div>
+        <div class="shots">
+          <figure><img src="media/v2-portal-05-inbox.png" alt="Inbox in the HEJI workspace with the scout's card to decide and the executor's card ready to ship, workspace switcher in the header"><figcaption>The re-imported real cards, workspace switcher in the header.</figcaption></figure>
+          <figure><img src="media/v2-ios-signin.png" alt="iPhone sign-in: GitHub, Google, Sign in with Apple, and the Debug-only email form"><figcaption>Sign-in (iPhone).</figcaption></figure>
+          <figure><img src="media/v2-ios-settings.png" alt="iPhone settings: workspace picker, repository, your role, members with an Invite someone menu, kill switch"><figcaption>Workspace, members and invites (iPhone).</figcaption></figure>
+        </div>
+        <p>Tests: the integration test now signs up four people across two workspaces and checks the loop plus roles and isolation (22 steps, including direct RLS reads); core has 13 tests with the role matrix. The two real cards were re-imported through the API with their evidence and real run costs.</p>
       </section>
 
       <section id="tour">
@@ -100,7 +125,7 @@
           <li>Added assertions to the integration test, showed them failing, fixed <code>need()</code> in <code>api.ts</code>, got 18/18, committed <code>c330b869</code> (2 files, +16 −3).</li>
           <li>Attached its evidence through MCP. The runner then ran <code>.hq/bin/verify</code> itself (typecheck + tests, exit 0) and queued the reviewer.</li>
         </ol>
-        <p>It also reported, unprompted, that its <code>pkill -f "wrangler dev"</code> had killed my dev Worker for a minute. That's now blocked (§5).</p>
+        <p>It also reported, unprompted, that its <code>pkill -f "wrangler dev"</code> had killed my dev Worker for a minute. That's now blocked (§6).</p>
         <div data-block="reviewVerdict"></div>
       </section>
 
@@ -165,7 +190,8 @@ npm run -s hq -- lint                   <span class="c"># all 16 .hq/ folders; -
         <h2>What's left for you</h2>
         <p class="progress" id="progress"></p>
         <ul class="checks">
-          <li><input type="checkbox" id="c-try"><span><b>Try it on your phone</b><small>Portal URL and owner token are in the chat message; the token is in <code>projects/hq/services/web/.dev.vars</code>.</small></span></li>
+          <li><input type="checkbox" id="c-try"><span><b>Try it locally</b><small><code>supabase start</code>, then <code>npm run dev:worker -w @hq/web</code> and open 127.0.0.1:8799 (local email account).</small></span></li>
+          <li><input type="checkbox" id="c-github"><span><b>Enable GitHub sign-in on the shared Supabase project</b><small>A GitHub OAuth App; <code>projects/hq/docs/DEPLOY.md</code> §2.</small></span></li>
           <li><input type="checkbox" id="c-card"><span><b>Decide the scout's card</b><small>Approve to watch a real build, or reject with a reason.</small></span></li>
           <li><input type="checkbox" id="c-merge"><span><b>Look at the executor's fix and merge it into <code>hq/initial</code> if you like it</b><small><code>git diff hq/initial hq/hq-20261109-rqhh</code></small></span></li>
           <li><input type="checkbox" id="c-device"><span><b>Install on your iPhone</b><small><code>cd projects/hq/apps/ios &amp;&amp; xcodegen generate &amp;&amp; open HQ.xcodeproj</code>, run on the device, allow keychain access once.</small></span></li>

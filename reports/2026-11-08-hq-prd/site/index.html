@@ -15,7 +15,7 @@
   <header class="bar">
     <a class="brand" href="#top">
       <span class="logo"></span>
-      <span><b>HQ — product requirements (draft)</b><small>Draft PRD for review: read the three contracts, answer Q1–Q7, then Copy summary</small></span>
+      <span><b>HQ — product requirements (draft)</b><small>PRD v2: a product teams sign up for, one workspace per monorepo</small></span>
     </a>
     <div class="seg" role="group" aria-label="Appearance">
       <button data-mode="light">Light</button>
@@ -29,14 +29,14 @@
 
     <main>
       <section id="summary" data-toc="Summary">
-        <p class="kicker">PRD draft · 2026-11-08 · for owner review</p>
+        <p class="kicker">PRD v2 · 2026-11-09 · workspaces added (§10)</p>
         <h1>HQ: the autopilot CEO of a repo</h1>
         <p class="lede"><b>HQ is a new, self-contained product</b> that runs scheduled agents to find maintenance, reliability, performance and opportunity work across a repo, turns what they find into evidence-backed proposal cards, and builds, verifies and ships the approved ones. You spend about <b>10 minutes a day</b> in a web and iOS inbox approving, rejecting or discussing. Brand-new product ideas stay with you; everything else is managed.</p>
 
         <div class="status">
           <div><b>Shape of the product</b><span class="ok">Agreed in discussion</span></div>
           <div><b>Three contracts</b><span class="todo">Drafted here (§4–§6), need your review</span></div>
-          <div><b>Open decisions</b><span class="todo">7 questions (§14)</span></div>
+          <div><b>Open decisions</b><span class="todo">7 questions (§15; Q6 now decided)</span></div>
           <div><b>Code</b><span class="todo">Nothing built yet</span></div>
         </div>
 
@@ -48,6 +48,7 @@
               <li><b>HQ owns control, not capabilities.</b> It decides when things run, where results land and who approves. Skills and scripts keep doing the work.</li>
               <li><b>Opinionated, not coupled.</b> Built-in opinions (card schema, tiers, evidence rule); no knowledge of project paths or tools.</li>
               <li><b>Agent-agnostic.</b> Claude, Antigravity or another agent can be the CEO; one entry point, <code>hq.get_context</code>.</li>
+              <li><b>A product, not a self-hosted tool</b> (v2). Any team signs up; <b>one workspace = one repo + its members</b>. HQ is opinionated that the repo is a monorepo (§10).</li>
               <li><b>Guardrails live in HQ's code</b>, never in prose an agent might misread.</li>
             </ul>
           </div>
@@ -96,7 +97,7 @@
           <tr><td><b>Control, not capabilities</b></td><td>HQ owns scheduling, the queue, tiers, budget, approvals and the inbox. Skills, scripts and CI keep doing the work and stay usable by hand.</td></tr>
           <tr><td><b>Self-contained</b></td><td>Own Worker, own store, own CI, own <code>CLAUDE.md</code>. Delete HQ and every product still builds and ships.</td></tr>
           <tr><td><b>Portable</b></td><td>Repo-specific knowledge lives in the repo's <code>.hq/</code>, never in HQ's code.</td></tr>
-          <tr><td><b>Opinionated, not coupled</b></td><td>Opinions are built in and the same everywhere. HQ never references project names, paths or tools; a CI check enforces it (§11).</td></tr>
+          <tr><td><b>Opinionated, not coupled</b></td><td>Opinions are built in and the same everywhere. HQ never references project names, paths or tools; a CI check enforces it (§12).</td></tr>
           <tr><td><b>Enforced in code</b></td><td>Tiers, budgets, WIP limits and the kill switch are checked by HQ's server before anything runs. Prose guides agents; it never guards anything.</td></tr>
           <tr><td><b>Agent-agnostic</b></td><td>The CEO and executors are swappable through small adapters. Swapping agents can change the quality of proposals but not what's allowed.</td></tr>
           <tr><td><b>Evidence or no card</b></td><td>A proposal without links, numbers or logs is rejected by the server.</td></tr>
@@ -185,7 +186,24 @@
           <tr><td><b>Controls</b></td><td>✓</td><td>✓</td><td>Kill switch, pause per project, budget and WIP sliders.</td></tr>
           <tr><td><b>Watch / glasses</b></td><td></td><td>later</td><td>Pending count complication; Even G2 plugin as a dogfood option.</td></tr>
         </table>
-        <p>Sign-in is the owner only at first (single-tenant per repo), using the Worker OAuth pattern the other projects' MCPs use.</p>
+        <p>Sign-in with GitHub, Google or Apple; each person sees the workspaces they belong to, with their role (§10). Agents connect through the Worker's own OAuth server (the pattern the other projects' MCPs use) or workspace tokens.</p>
+      </section>
+
+
+      <section id="workspaces">
+        <h2>Workspaces, members and sign-in (v2)</h2>
+        <p>HQ is a product any team can adopt, not a tool each team deploys. Its one opinion about tenancy: <b>a workspace is one repository and the people who work on it</b>, and HQ is built for that repository to be a monorepo (one root <code>.hq/</code>, one <code>.hq/</code> per project inside). A single-project repo works too (root <code>.hq/</code> only). Teams with several repositories either consolidate or create one workspace per repository; workspaces share nothing.</p>
+        <table class="grid">
+          <tr><th>Concept</th><th>Rule</th></tr>
+          <tr><td><b>Workspace</b></td><td>One repo (<code>owner/name</code>), its synced <code>.hq/</code> policy, its cards, runs, health, tokens and audit log. Everything HQ stores carries a <code>workspace_id</code>.</td></tr>
+          <tr><td><b>Members</b></td><td>People with a role in that workspace. Whoever creates it is its first admin; others join through an invite link.</td></tr>
+          <tr><td><b>Roles</b></td><td><b>admin</b>: members, invites, tokens, kill switch, policy sync · <b>approver</b>: approve, reject, ship, build again, run any verb including L3, start runs · <b>viewer</b>: read and comment (a comment still asks the agent to answer).</td></tr>
+          <tr><td><b>Sign-in</b></td><td>Through the shared Supabase project: Google and Apple now, GitHub once its provider is enabled (every workspace is a GitHub repo, so it's the natural default). One person can belong to several workspaces and switches between them.</td></tr>
+          <tr><td><b>Runners and agents</b></td><td>Tokens belong to a workspace (<code>hq_run_…</code>, <code>hq_agt_…</code>). Each workspace runs its own runners and pays its own agent costs; HQ never holds its code-signing or deploy keys.</td></tr>
+          <tr><td><b>Isolation</b></td><td>Row-level security: a signed-in person reads only rows of workspaces they belong to. Writes go through the Worker, which checks the role first. A workspace token can't see or touch another workspace.</td></tr>
+          <tr><td><b>Repo connection</b></td><td>v2: <code>hq sync</code> with a workspace runner token. Later: a GitHub App installed on the repo (sync, CI status, PRs without a checkout).</td></tr>
+        </table>
+        <div class="unknown"><b>Not yet decided:</b> billing and plans, and whether membership should mirror the repo's GitHub collaborators once the GitHub App exists.</div>
       </section>
 
       <section id="guardrails">
@@ -208,12 +226,13 @@
         <h2>Where it runs</h2>
         <table class="grid">
           <tr><th>Piece</th><th>Runs on</th><th>Why</th></tr>
-          <tr><td>Portal, API, MCP, scheduler, store</td><td>HQ's Cloudflare Worker + its own store</td><td>Same pattern as the other projects; always on</td></tr>
-          <tr><td>Scouts, CEO, cloud executors</td><td>Cloud scheduled agent sessions</td><td>Cheap, isolated, no access to your Mac</td></tr>
+          <tr><td>Portal, API, MCP, scheduler</td><td>HQ's Cloudflare Worker</td><td>Same pattern as the other projects; always on</td></tr>
+          <tr><td>Accounts, data, files</td><td>The shared Supabase project: sign-in, the <code>hq</code> schema with row-level security per workspace, the <code>hq</code> bucket</td><td>Sign-in and per-workspace isolation come built in; graduates to its own project like any other</td></tr>
+          <tr><td>Scouts, CEO, executors</td><td>Each workspace's own runners (its machines, its agent keys)</td><td>HQ never holds a customer's code, signing keys or agent bills; like GitHub's self-hosted runners</td></tr>
           <tr><td>iOS builds, device tests, signing, Spark models</td><td>Your Mac as a self-hosted runner</td><td>Signing identities and devices live there; same model as <code>setup-agent-runner</code></td></tr>
         </table>
         <p>Verbs declare <code>runs_on</code> in <code>HQ.md</code>, so HQ routes each job to the cloud or to the Mac runner.</p>
-        <p><b>HQ's own data</b> (cards, decisions, audit log) lives in HQ's own store and never reads another project's database. HQ touches projects only through the repo, CI status, verbs and public APIs. This exception, a project whose job is to open PRs everywhere while holding no runtime coupling to any project, should be written into <code>supabase/GRADUATION.md</code>.</p>
+        <p><b>HQ's own data</b> (cards, decisions, audit log) lives in its own <code>hq</code> schema and never reads another project's database. HQ touches projects only through the repo, CI status, verbs and public APIs. This exception, a project whose job is to open PRs everywhere while holding no runtime coupling to any project, should be written into <code>supabase/GRADUATION.md</code>.</p>
         <h3>Isolation check</h3>
         <ul>
           <li>CI greps HQ's code for <code>projects/</code>, product names and <code>cut_release</code>; any hit fails.</li>
@@ -245,7 +264,7 @@
           <tr><td>Q3</td><td>May HQ run <code>cut_release.sh</code> for TestFlight/Beta on its own?</td><td>L3 at first; consider L1 (one tap) after phase 3</td></tr>
           <tr><td>Q4</td><td>Weekly budget?</td><td>Your number; HQ pauses scouts at the cap</td></tr>
           <tr><td>Q5</td><td>Name?</td><td>HQ (alternatives: Helm, Boardroom)</td></tr>
-          <tr><td>Q6</td><td>HQ's store: own schema on the shared Supabase, or Cloudflare D1?</td><td>D1: HQ is single-tenant and Worker-only, and it keeps HQ off the shared project entirely</td></tr>
+          <tr><td>Q6</td><td>HQ's store: own schema on the shared Supabase, or Cloudflare D1?</td><td><b>Decided (v2): shared Supabase</b>, schema <code>hq</code>, RLS by workspace membership. (v1 chose D1 for a single owner; that no longer fits.)</td></tr>
           <tr><td>Q7</td><td>Where HQ's code lives: <code>projects/hq/</code> or its own repo?</td><td>Start in <code>projects/hq/</code>, written as if it will move; its own code changes are L3</td></tr>
         </table>
       </section>
@@ -259,8 +278,9 @@
           <li><input type="checkbox" id="c-hq"><span><b><code>.hq/</code> spec (§5): layout, frontmatter and verbs</b></span></li>
           <li><input type="checkbox" id="c-headless"><span><b>Headless skill contract (§6) and which skills count as generic</b></span></li>
           <li><input type="checkbox" id="c-tiers"><span><b>Tier table (§8) and Tradeboard's L1 ceiling</b></span></li>
-          <li><input type="checkbox" id="c-migration"><span><b>Migration order (§12)</b></span></li>
-          <li><input type="checkbox" id="c-questions"><span><b>Answers to Q1–Q7 (§14)</b><small>Write them in Your notes</small></span></li>
+          <li><input type="checkbox" id="c-migration"><span><b>Migration order (§13)</b></span></li>
+          <li><input type="checkbox" id="c-workspaces"><span><b>Workspaces, roles and sign-in (§10)</b><small>v2: one workspace per monorepo</small></span></li>
+          <li><input type="checkbox" id="c-questions"><span><b>Answers to Q1–Q7 (§15)</b><small>Write them in Your notes</small></span></li>
         </ul>
       </section>
 

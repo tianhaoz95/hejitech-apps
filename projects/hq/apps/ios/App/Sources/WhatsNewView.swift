@@ -9,10 +9,11 @@ enum WhatsNew {
             "Your inbox: approve, reject with a reason, or discuss what HQ's agents propose.",
             "Every card shows its evidence, the plan and how HQ will know it worked.",
             "Health for every project, recent runs, and a kill switch.",
+            "Sign in with GitHub, Google or Apple; one workspace per repo, shared with your team (admin, approver, viewer).",
         ]),
     ]
     private static let key = "hq.whats-new-seen"
-    static var shouldShow: Bool { UserDefaults.standard.string(forKey: key) != currentVersion && Connection.isConfigured }
+    static var shouldShow: Bool { UserDefaults.standard.string(forKey: key) != currentVersion && Backend.shared.session != nil }
     static func markSeen() { UserDefaults.standard.set(currentVersion, forKey: key) }
 }
 

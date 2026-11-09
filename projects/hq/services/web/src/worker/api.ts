@@ -1,11 +1,18 @@
-// REST API for the portal (owner), the iOS app (owner) and runners (`hq_run_` tokens).
-// Agents use the MCP server instead; the few routes they may also call are marked.
-import { REJECT_REASONS, type Evidence, type Status } from "@hq/core";
+// REST API. People (the portal, the iOS app) send their Supabase session; runners and agents send a
+// workspace token (hq_run_…, hq_agt_…).
+//
+//   GET  /api/me                          the person and their workspaces
+//   POST /api/workspaces                  create one (you become its admin)
+//   POST /api/invites/accept              join with an invite code
+//   …    /api/w/<workspace>/<route>       everything else, scoped to a workspace (people need a role)
+//   …    /api/<route>                     the same routes for tokens (their workspace is implied)
+import { REJECT_REASONS, type Evidence, type MemberRole, type Status } from "@hq/core";
 import {
-  attachEvidence, auditLog, cardDetail, claimRun, comment, createProposal, createToken, decide, digest, finishRun,
-  getContext, getPolicy, getRun, healthBoard, HttpError, inbox, listCards, listRuns, listTokens, putHealth, requestVerb,
-  revokeToken, schedule, setSetting, setStatus, syncPolicy, withdraw, enqueueRun, audit, now,
-  type Caller, type Env,
+  acceptInvite, admin, attachEvidence, auditLog, cardDetail, changeStatus, claimRun, comment, createInvite, createProposal, createToken,
+  createWorkspace, decide, digest, finishRun, getContext, getFile, getPolicy, getRun, getWorkspace, healthBoard, HttpError, inbox, listCards,
+  listMembers, listRuns, listTokens, memberRole, myWorkspaces, need, putFile, putHealth, removeMember, requestVerb, resolveToken, revokeToken,
+  scheduleWorkspace, setMemberRole, setPaused, startRun, supabaseUser, syncPolicy,
+  type Caller, type Ctx, type Env, type User,
 } from "./store.ts";
 
 export const json = (body: unknown, status = 200, headers: HeadersInit = {}) =>
@@ -19,151 +26,186 @@ const body = async <T = Record<string, unknown>>(req: Request): Promise<T> => {
   }
 };
 
-const need = (caller: Caller, ...roles: Caller["role"][]) => {
-  if (!roles.includes(caller.role)) throw new HttpError(403, `needs a ${roles.join(" or ")} token`);
-};
+export const bearer = (req: Request) => req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? "";
 
 const MAX_FILE = 10 * 1024 * 1024;
 
-export async function handleApi(req: Request, env: Env, url: URL, caller: Caller | null): Promise<Response> {
-  const p = url.pathname.replace(/\/+$/, "");
+/** Who's calling: a workspace token, or a signed-in person (no workspace yet). */
+export async function authenticate(x: Ctx, req: Request): Promise<{ token?: Caller; user?: User }> {
+  const t = bearer(req);
+  if (!t) return {};
+  if (t.startsWith("hq_")) {
+    const c = await resolveToken(x, t);
+    return c ? { token: c } : {};
+  }
+  const user = await supabaseUser(x.env, t);
+  return user ? { user } : {};
+}
+
+export async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
+  const x: Ctx = { env, db: admin(env) };
   const m = req.method;
   try {
+    const p = url.pathname.replace(/\/+$/, "");
     if (p === "/api/health-check") return json({ ok: true, service: "hq" });
-    if (!caller) return json({ error: "sign in required: send Authorization: Bearer <token>" }, 401);
+    const who = await authenticate(x, req);
+    if (!who.token && !who.user) return json({ error: "sign in required: send Authorization: Bearer <session or token>" }, 401);
 
-    if (p === "/api/me" && m === "GET") return json({ role: caller.role, name: caller.name });
-
-    // ── policy & context
-    if (p === "/api/config" && m === "GET") return json(await getPolicy(env));
-    if (p === "/api/config" && m === "PUT") {
-      need(caller, "owner", "runner");
-      const b = await body<{ policy: never; commit?: string }>(req);
-      await syncPolicy(env, caller, b.policy, b.commit ?? null);
-      return json({ ok: true });
-    }
-    if (p === "/api/context" && m === "GET") return json(await getContext(env, url.searchParams.get("project")));
-
-    // ── cards
-    if (p === "/api/inbox" && m === "GET") { need(caller, "owner"); return json({ ...(await inbox(env)), reject_reasons: REJECT_REASONS }); }
-    if (p === "/api/cards" && m === "GET") {
-      const status = url.searchParams.get("status")?.split(",").filter(Boolean);
-      return json(await listCards(env, { status, project: url.searchParams.get("project") ?? undefined, limit: Number(url.searchParams.get("limit") ?? 100) }));
-    }
-    if (p === "/api/cards" && m === "POST") return json(await createProposal(env, caller, await body(req)), 201);
-    let mm = p.match(/^\/api\/cards\/([\w-]+)$/);
-    if (mm && m === "GET") return json(await cardDetail(env, mm[1]));
-    mm = p.match(/^\/api\/cards\/([\w-]+)\/decision$/);
-    if (mm && m === "POST") {
-      need(caller, "owner");
-      const b = await body<{ decision: string; reason?: string }>(req);
-      if (b.decision !== "approved" && b.decision !== "rejected") throw new HttpError(400, "decision: approved or rejected");
-      await decide(env, caller, mm[1], b.decision, b.reason?.trim() || null);
-      return json(await cardDetail(env, mm[1]));
-    }
-    mm = p.match(/^\/api\/cards\/([\w-]+)\/comments$/);
-    if (mm && m === "POST") return json(await comment(env, caller, mm[1], String((await body(req)).body ?? "")));
-    mm = p.match(/^\/api\/cards\/([\w-]+)\/status$/);
-    if (mm && m === "POST") {
-      const b = await body<{ status: Status; branch?: string; pr_url?: string; reason?: string }>(req);
-      if (b.status === "withdrawn") return json(await withdraw(env, caller, mm[1], b.reason ?? ""));
-      await setStatus(env, caller, mm[1], b.status, { branch: b.branch, pr_url: b.pr_url });
-      if (caller.role === "owner" && b.status === "approved") {
-        // Sent back for another build ("do it again" from in_review or failed).
-        const card = (await cardDetail(env, mm[1])).card;
-        await enqueueRun(env, { kind: "build", card_id: card.id, project: card.project, requested_by: "owner" });
+    // ── a person's own routes
+    if (who.user) {
+      const user = who.user;
+      if (p === "/api/me" && m === "GET") return json({ user, workspaces: await myWorkspaces(x, user) });
+      if (p === "/api/workspaces" && m === "POST") {
+        const b = await body<{ name: string; repo: string }>(req);
+        return json(await createWorkspace(x, user, b.name, b.repo), 201);
       }
-      if (caller.role === "owner" && b.status === "shipped") await audit(env, caller, "card.ship", mm[1]);
-      return json(await cardDetail(env, mm[1]));
+      if (p === "/api/invites/accept" && m === "POST") return json(await acceptInvite(x, user, String((await body(req)).code ?? "")));
     }
-    mm = p.match(/^\/api\/cards\/([\w-]+)\/evidence$/);
-    if (mm && m === "POST") {
-      const b = await body<{ phase?: string; evidence: Evidence }>(req);
-      return json(await attachEvidence(env, caller, mm[1], b.phase ?? "build", b.evidence));
-    }
-    mm = p.match(/^\/api\/cards\/([\w-]+)\/files$/);
-    if (mm && m === "POST") {
-      need(caller, "runner", "agent", "owner");
-      const len = Number(req.headers.get("content-length") ?? 0);
-      if (len > MAX_FILE) throw new HttpError(413, "files up to 10 MB");
-      const name = (url.searchParams.get("name") ?? "file").replace(/[^\w.-]/g, "_").slice(0, 80);
-      const type = req.headers.get("content-type") ?? "application/octet-stream";
-      const data = await req.arrayBuffer();
-      if (data.byteLength > MAX_FILE) throw new HttpError(413, "files up to 10 MB");
-      const key = `cards/${mm[1]}/${now().replace(/[:.]/g, "")}-${name}`;
-      await env.FILES.put(key, data, { httpMetadata: { contentType: type } });
-      const kind = type.startsWith("image/") ? "screenshot" : "file";
-      await attachEvidence(env, caller, mm[1], url.searchParams.get("phase") ?? "build", { type: kind, ref: key, text: url.searchParams.get("caption") ?? name }, key);
-      return json({ key }, 201);
-    }
-    mm = p.match(/^\/api\/files\/(.+)$/);
-    if (mm && m === "GET") {
-      const obj = await env.FILES.get(decodeURIComponent(mm[1]));
-      if (!obj) throw new HttpError(404, "no such file");
-      return new Response(obj.body, { headers: { "Content-Type": obj.httpMetadata?.contentType ?? "application/octet-stream", "Cache-Control": "private, max-age=3600" } });
+    if (who.token && p === "/api/me" && m === "GET") {
+      const w = await getWorkspace(x, who.token.workspaceId);
+      return json({ token: { role: who.token.role, name: who.token.name }, workspace: { id: w.id, name: w.name, repo: w.repo } });
     }
 
-    // ── verbs (owner from the portal; agents use hq.run_verb)
-    if (p === "/api/verbs" && m === "POST") {
-      const b = await body<{ project: string; verb: string; dry_run?: boolean; card_id?: string }>(req);
-      return json(await requestVerb(env, caller, b.project, b.verb, b.dry_run !== false ? !!b.dry_run : false, b.card_id ?? null), 202);
+    // ── workspace routes
+    let caller: Caller;
+    let rest: string;
+    const wm = p.match(/^\/api\/w\/([0-9a-f-]{36})(\/.*)?$/);
+    if (wm) {
+      rest = wm[2] ?? "/";
+      if (who.token) {
+        if (who.token.workspaceId !== wm[1]) return json({ error: "this token belongs to another workspace" }, 403);
+        caller = who.token;
+      } else {
+        const role = await memberRole(x, wm[1], who.user!.id);
+        if (!role) return json({ error: "you're not a member of this workspace" }, 403);
+        caller = { role, name: who.user!.email ?? who.user!.id, workspaceId: wm[1], userId: who.user!.id };
+      }
+    } else if (who.token) {
+      caller = who.token;
+      rest = p.replace(/^\/api/, "") || "/";
+    } else {
+      return json({ error: "not found (workspace routes are /api/w/<workspace>/…)" }, 404);
     }
-
-    // ── runs (runner)
-    if (p === "/api/runs" && m === "GET") return json(await listRuns(env, Number(url.searchParams.get("limit") ?? 50)));
-    if (p === "/api/runs" && m === "POST") {
-      need(caller, "owner");
-      const b = await body<{ kind: string; scout?: string; project?: string }>(req);
-      if (!["scout", "ceo", "health"].includes(b.kind)) throw new HttpError(400, "kind: scout, ceo or health");
-      if (b.kind === "scout" && !b.scout) throw new HttpError(400, "scout: required");
-      const policy = (await getPolicy(env))?.policy;
-      const agent = b.kind === "ceo" ? policy?.agents.ceo : b.kind === "scout" ? policy?.agents.scout : null;
-      const id = await enqueueRun(env, { kind: b.kind, scout: b.scout ?? null, project: b.project ?? (b.kind === "scout" ? "repo-wide" : null), agent, requested_by: "owner", args: { card_limit: 3 } });
-      return json({ run_id: id }, 202);
-    }
-    mm = p.match(/^\/api\/runs\/([\w-]+)$/);
-    if (mm && m === "GET") return json(await getRun(env, mm[1]));
-    if (p === "/api/runs/claim" && m === "POST") {
-      need(caller, "runner", "owner");
-      const b = await body<{ runner?: string; capabilities?: string[] }>(req);
-      return json(await claimRun(env, caller, b.runner ?? caller.name, b.capabilities ?? ["any"]));
-    }
-    mm = p.match(/^\/api\/runs\/([\w-]+)\/finish$/);
-    if (mm && m === "POST") {
-      need(caller, "runner", "owner");
-      return json(await finishRun(env, caller, mm[1], await body(req)));
-    }
-    if (p === "/api/schedule" && m === "POST") { need(caller, "owner", "runner"); return json(await schedule(env)); }
-
-    // ── health & digest
-    if (p === "/api/health" && m === "GET") return json(await healthBoard(env));
-    if (p === "/api/health" && m === "PUT") {
-      const b = await body<{ project: string; data: Record<string, unknown> }>(req);
-      if (!b.project) throw new HttpError(400, "project: required");
-      return json(await putHealth(env, caller, b.project, b.data ?? {}));
-    }
-    if (p === "/api/digest" && m === "GET") return json(await digest(env, Number(url.searchParams.get("hours") ?? 24)));
-
-    // ── owner controls
-    if (p === "/api/settings" && m === "POST") {
-      need(caller, "owner");
-      const b = await body<{ paused?: boolean }>(req);
-      if (typeof b.paused === "boolean") await setSetting(env, caller, "paused", b.paused ? "1" : "0");
-      return json({ ok: true });
-    }
-    if (p === "/api/tokens" && m === "GET") { need(caller, "owner"); return json(await listTokens(env)); }
-    if (p === "/api/tokens" && m === "POST") {
-      const b = await body<{ name: string; role: "runner" | "agent" }>(req);
-      return json(await createToken(env, caller, b.name, b.role), 201);
-    }
-    mm = p.match(/^\/api\/tokens\/([\w-]+)$/);
-    if (mm && m === "DELETE") { await revokeToken(env, caller, mm[1]); return json({ ok: true }); }
-    if (p === "/api/audit" && m === "GET") { need(caller, "owner"); return json(await auditLog(env, Number(url.searchParams.get("limit") ?? 100))); }
-
-    return json({ error: "not found" }, 404);
+    return await workspaceRoute(x, req, url, caller, rest);
   } catch (e) {
     if (e instanceof HttpError) return json({ error: e.message, details: e.details }, e.status);
     console.error(e);
     return json({ error: "internal error" }, 500);
   }
+}
+
+async function workspaceRoute(x: Ctx, req: Request, url: URL, c: Caller, p: string): Promise<Response> {
+  const m = req.method;
+  const q = url.searchParams;
+
+  if (p === "/" && m === "GET") {
+    need(c, "read");
+    const w = await getWorkspace(x, c.workspaceId);
+    return json({ id: w.id, name: w.name, repo: w.repo, paused: w.paused, synced_at: w.synced_at, commit_sha: w.commit_sha, role: c.role });
+  }
+
+  // policy & context
+  if (p === "/config" && m === "GET") { need(c, "read"); return json(await getPolicy(x, c.workspaceId)); }
+  if (p === "/config" && m === "PUT") {
+    const b = await body<{ policy: never; commit?: string }>(req);
+    await syncPolicy(x, c, b.policy, b.commit ?? null);
+    return json({ ok: true });
+  }
+  if (p === "/context" && m === "GET") return json(await getContext(x, c, q.get("project")));
+
+  // cards
+  if (p === "/inbox" && m === "GET") { need(c, "read"); return json({ ...(await inbox(x, c)), reject_reasons: REJECT_REASONS }); }
+  if (p === "/cards" && m === "GET") return json(await listCards(x, c, { status: q.get("status")?.split(",").filter(Boolean), project: q.get("project") ?? undefined, limit: Number(q.get("limit") ?? 100) }));
+  if (p === "/cards" && m === "POST") return json(await createProposal(x, c, await body(req)), 201);
+  let mm = p.match(/^\/cards\/([\w-]+)$/);
+  if (mm && m === "GET") return json(await cardDetail(x, c, mm[1]));
+  mm = p.match(/^\/cards\/([\w-]+)\/decision$/);
+  if (mm && m === "POST") {
+    const b = await body<{ decision: string; reason?: string }>(req);
+    if (b.decision !== "approved" && b.decision !== "rejected") throw new HttpError(400, "decision: approved or rejected");
+    await decide(x, c, mm[1], b.decision, b.reason?.trim() || null);
+    return json(await cardDetail(x, c, mm[1]));
+  }
+  mm = p.match(/^\/cards\/([\w-]+)\/comments$/);
+  if (mm && m === "POST") return json(await comment(x, c, mm[1], String((await body(req)).body ?? "")));
+  mm = p.match(/^\/cards\/([\w-]+)\/status$/);
+  if (mm && m === "POST") {
+    const b = await body<{ status: Status; branch?: string; pr_url?: string; reason?: string }>(req);
+    await changeStatus(x, c, mm[1], b.status, b);
+    return json(await cardDetail(x, c, mm[1]));
+  }
+  mm = p.match(/^\/cards\/([\w-]+)\/evidence$/);
+  if (mm && m === "POST") {
+    const b = await body<{ phase?: string; evidence: Evidence }>(req);
+    return json(await attachEvidence(x, c, mm[1], b.phase ?? "build", b.evidence));
+  }
+  mm = p.match(/^\/cards\/([\w-]+)\/files$/);
+  if (mm && m === "POST") {
+    if (Number(req.headers.get("content-length") ?? 0) > MAX_FILE) throw new HttpError(413, "files up to 10 MB");
+    const data = await req.arrayBuffer();
+    if (data.byteLength > MAX_FILE) throw new HttpError(413, "files up to 10 MB");
+    const name = (q.get("name") ?? "file").replace(/[^\w.-]/g, "_").slice(0, 80);
+    return json(await putFile(x, c, mm[1], name, req.headers.get("content-type") ?? "application/octet-stream", data, q.get("phase") ?? "build", q.get("caption")), 201);
+  }
+  mm = p.match(/^\/files\/(.+)$/);
+  if (mm && m === "GET") {
+    const blob = await getFile(x, c, decodeURIComponent(mm[1]));
+    return new Response(blob, { headers: { "Content-Type": blob.type || "application/octet-stream", "Cache-Control": "private, max-age=3600" } });
+  }
+
+  // verbs
+  if (p === "/verbs" && m === "POST") {
+    const b = await body<{ project: string; verb: string; dry_run?: boolean; card_id?: string }>(req);
+    return json(await requestVerb(x, c, b.project, b.verb, b.dry_run === true, b.card_id ?? null), 202);
+  }
+
+  // runs
+  if (p === "/runs" && m === "GET") return json(await listRuns(x, c, Number(q.get("limit") ?? 50)));
+  if (p === "/runs" && m === "POST") {
+    const b = await body<{ kind: string; scout?: string; project?: string }>(req);
+    return json({ run_id: await startRun(x, c, b.kind, b.scout ?? null, b.project ?? null) }, 202);
+  }
+  if (p === "/runs/claim" && m === "POST") {
+    const b = await body<{ runner?: string; capabilities?: string[] }>(req);
+    return json(await claimRun(x, c, b.runner ?? c.name, b.capabilities ?? ["any"]));
+  }
+  mm = p.match(/^\/runs\/([\w-]+)$/);
+  if (mm && m === "GET") return json(await getRun(x, c, mm[1]));
+  mm = p.match(/^\/runs\/([\w-]+)\/finish$/);
+  if (mm && m === "POST") return json(await finishRun(x, c, mm[1], await body(req)));
+  if (p === "/schedule" && m === "POST") { need(c, "start_run"); return json(await scheduleWorkspace(x, c.workspaceId)); }
+
+  // health & digest
+  if (p === "/health" && m === "GET") return json(await healthBoard(x, c));
+  if (p === "/health" && m === "PUT") {
+    const b = await body<{ project: string; data: Record<string, unknown> }>(req);
+    if (!b.project) throw new HttpError(400, "project: required");
+    return json(await putHealth(x, c, b.project, b.data ?? {}));
+  }
+  if (p === "/digest" && m === "GET") return json(await digest(x, c, Number(q.get("hours") ?? 24)));
+
+  // workspace administration
+  if (p === "/settings" && m === "POST") {
+    const b = await body<{ paused?: boolean }>(req);
+    if (typeof b.paused === "boolean") await setPaused(x, c, b.paused);
+    return json({ ok: true });
+  }
+  if (p === "/members" && m === "GET") return json(await listMembers(x, c));
+  mm = p.match(/^\/members\/([0-9a-f-]{36})$/);
+  if (mm && m === "PATCH") { await setMemberRole(x, c, mm[1], String((await body(req)).role) as MemberRole); return json(await listMembers(x, c)); }
+  if (mm && m === "DELETE") { await removeMember(x, c, mm[1]); return json({ ok: true }); }
+  if (p === "/invites" && m === "POST") {
+    const b = await body<{ role?: MemberRole; days?: number }>(req);
+    return json(await createInvite(x, c, b.role ?? "approver", b.days ?? 7), 201);
+  }
+  if (p === "/tokens" && m === "GET") return json(await listTokens(x, c));
+  if (p === "/tokens" && m === "POST") {
+    const b = await body<{ name: string; role: "runner" | "agent" }>(req);
+    return json(await createToken(x, c, b.name, b.role), 201);
+  }
+  mm = p.match(/^\/tokens\/([\w-]+)$/);
+  if (mm && m === "DELETE") { await revokeToken(x, c, mm[1]); return json({ ok: true }); }
+  if (p === "/audit" && m === "GET") return json(await auditLog(x, c, Number(q.get("limit") ?? 100)));
+
+  return json({ error: "not found" }, 404);
 }

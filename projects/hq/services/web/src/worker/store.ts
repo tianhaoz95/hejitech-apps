@@ -1,45 +1,77 @@
-// HQ's domain operations on D1, shared by the REST API (portal, iOS, runner) and the MCP server.
-// Every rule that matters is enforced here, whoever calls: the card gate, the tier ceiling, who may
-// move a card, verb checks, the budget, the kill switch, WIP limits. Prose never guards anything.
+// HQ's domain operations, shared by the REST API (portal, iOS, runners) and the MCP server. Data
+// lives in the `hq` schema of the Supabase project (service-role client: RLS is for reads by
+// members; every write happens here after the checks). Every operation is scoped to the caller's
+// workspace, and every rule that matters is enforced here, whoever calls: roles, the card gate,
+// tier ceilings, who may move a card, verb checks, the budget, the kill switch, WIP limits.
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   buildContext,
+  can,
   canTransition,
   checkCardAgainstPolicy,
   checkVerb,
   defaultPriority,
   isDue,
+  isMember,
+  MEMBER_ROLES,
   OPEN_STATUSES,
   overBudget,
   validateCard,
   validateEvidence,
+  type Action,
   type Actor,
   type Card,
   type Context,
   type Decision,
   type Evidence,
+  type MemberRole,
   type RepoPolicy,
+  type Role,
   type Status,
 } from "@hq/core";
 
 export interface Env {
-  DB: D1Database;
-  FILES: R2Bucket;
   OAUTH_KV: KVNamespace;
   ASSETS: Fetcher;
+  /** This site's origin; the OAuth MCP resource is `${PUBLIC_URL}/mcp`. */
   PUBLIC_URL: string;
-  HQ_OWNER_TOKEN: string;
+  SUPABASE_URL: string;
+  /** Publishable key: validates people's Supabase sessions. */
+  SUPABASE_ANON_KEY: string;
+  /** Secret. Server-side only; bypasses RLS for every project in the shared Supabase project. */
+  SUPABASE_SERVICE_ROLE_KEY: string;
 }
 
-export type Role = "owner" | "runner" | "agent";
+export const SCHEMA = "hq";
+export const BUCKET = "hq";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Db = SupabaseClient<any, any, any>;
+
+export function admin(env: Env): Db {
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false }, db: { schema: SCHEMA } });
+}
+
+/** Who is calling, and in which workspace. People act with their member role; tokens as runner/agent. */
 export interface Caller {
   role: Role;
-  /** "owner", the token's name, or the OAuth client's name. */
+  /** A person's email (or user id), a token's name, or an OAuth client's name. */
   name: string;
+  workspaceId: string;
+  userId?: string;
+}
+
+export interface Ctx {
+  env: Env;
+  db: Db;
 }
 
 export class HttpError extends Error {
-  constructor(public status: number, message: string, public details?: string[]) {
+  status: number;
+  details?: string[];
+  constructor(status: number, message: string, details?: string[]) {
     super(message);
+    this.status = status;
+    this.details = details;
   }
 }
 
@@ -57,503 +89,656 @@ export async function sha256(s: string): Promise<string> {
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** Constant-time string comparison for the owner token. */
-export function safeEqual(a: string, b: string): boolean {
-  if (!a || !b || a.length !== b.length) return false;
-  let r = 0;
-  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return r === 0;
+/** Throws on a Supabase error; returns the data. */
+function must<T>(r: { data: T; error: { message: string } | null }, what: string): T {
+  if (r.error) {
+    console.error(what, r.error.message);
+    throw new HttpError(500, `database error (${what})`);
+  }
+  return r.data;
 }
 
-export const actorOf = (c: Caller): Actor => (c.role === "owner" ? "owner" : c.role === "runner" ? "runner" : "agent");
-const who = (c: Caller) => (c.role === "owner" ? "owner" : `${c.role}:${c.name}`);
-
-// ── rows ───────────────────────────────────────────────────────────────────────────────────────
-
-interface CardRow {
-  id: string; repo: string; project: string; kind: string; title: string; why: string; evidence_json: string;
-  plan: string; verify: string; tier: string; effort: string; risk: string; risk_reason: string | null;
-  verbs_json: string; source_json: string; dedupe_key: string | null; status: string; priority: number;
-  decided_by: string | null; branch: string | null; pr_url: string | null; created_at: string; updated_at: string;
+export function need(c: Caller, action: Action) {
+  if (!can(c.role, action)) throw new HttpError(403, `your role (${c.role}) can't ${action.replace(/_/g, " ")} in this workspace`);
 }
 
-const toCard = (r: CardRow): Card => ({
-  id: r.id, repo: r.repo, project: r.project, kind: r.kind as Card["kind"], title: r.title, why: r.why,
-  evidence: JSON.parse(r.evidence_json), plan: r.plan, verify: r.verify, tier: r.tier as Card["tier"],
-  effort: r.effort as Card["effort"], risk: r.risk as Card["risk"], risk_reason: r.risk_reason,
-  verbs: JSON.parse(r.verbs_json), source: JSON.parse(r.source_json), dedupe_key: r.dedupe_key,
-  status: r.status as Status, priority: r.priority, decided_by: r.decided_by, branch: r.branch, pr_url: r.pr_url,
-  created_at: r.created_at, updated_at: r.updated_at,
-});
+/** The lifecycle's actor for a caller: people who may decide act as "owner". */
+export const actorOf = (c: Caller): Actor => (isMember(c.role) ? (can(c.role, "decide") ? "owner" : "agent") : c.role === "runner" ? "runner" : "agent");
+const who = (c: Caller) => (isMember(c.role) ? c.name : `${c.role}:${c.name}`);
 
-export interface Run {
-  id: string; kind: string; project: string | null; scout: string | null; card_id: string | null; verb: string | null;
-  args: Record<string, unknown>; runs_on: string; agent: string | null; status: string; requested_by: string;
-  runner: string | null; created_at: string; started_at: string | null; finished_at: string | null;
-  summary: string | null; output: string | null; cost_usd: number; session: string | null;
-}
-const toRun = (r: Record<string, unknown>): Run => ({ ...(r as unknown as Run), args: JSON.parse((r.args_json as string) || "{}") });
+// ── people and workspaces ────────────────────────────────────────────────────────────────────
 
-export async function audit(env: Env, caller: Caller | string, action: string, target: string | null, detail?: unknown) {
-  await env.DB.prepare("INSERT INTO audit (at, actor, action, target, detail) VALUES (?, ?, ?, ?, ?)")
-    .bind(now(), typeof caller === "string" ? caller : who(caller), action, target, detail === undefined ? null : JSON.stringify(detail).slice(0, 4000))
-    .run();
+export interface User {
+  id: string;
+  email: string | null;
 }
 
-// ── config & settings ──────────────────────────────────────────────────────────────────────────
-
-export async function getPolicy(env: Env): Promise<{ policy: RepoPolicy; commit_sha: string | null; synced_at: string } | null> {
-  const row = await env.DB.prepare("SELECT policy_json, commit_sha, synced_at FROM config WHERE id = 1").first<{ policy_json: string; commit_sha: string | null; synced_at: string }>();
-  return row ? { policy: JSON.parse(row.policy_json), commit_sha: row.commit_sha, synced_at: row.synced_at } : null;
+/** Validates a Supabase access token with Supabase Auth. */
+export async function supabaseUser(env: Env, token: string): Promise<User | null> {
+  if (!token || token.startsWith("hq_")) return null;
+  const res = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, { headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } });
+  if (!res.ok) return null;
+  const u = (await res.json()) as { id?: string; email?: string };
+  return u.id ? { id: u.id, email: u.email ?? null } : null;
 }
 
-export async function requirePolicy(env: Env): Promise<RepoPolicy> {
-  const p = await getPolicy(env);
-  if (!p) throw new HttpError(409, "HQ has no policy yet: run `hq sync` in the repo to upload its .hq/ folders");
+export async function memberRole(x: Ctx, workspaceId: string, userId: string): Promise<MemberRole | null> {
+  if (!/^[0-9a-f-]{36}$/.test(workspaceId)) return null;
+  const r = must(await x.db.from("members").select("role").eq("workspace_id", workspaceId).eq("user_id", userId).maybeSingle(), "member");
+  return (r?.role as MemberRole) ?? null;
+}
+
+export async function myWorkspaces(x: Ctx, user: User) {
+  const rows = must(await x.db.from("members").select("role, workspaces(id, name, repo, paused, synced_at)").eq("user_id", user.id), "my workspaces") as unknown as {
+    role: MemberRole;
+    workspaces: { id: string; name: string; repo: string; paused: boolean; synced_at: string | null };
+  }[];
+  return rows.map((r) => ({ ...r.workspaces, role: r.role })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function createWorkspace(x: Ctx, user: User, name: string, repo: string) {
+  name = String(name ?? "").trim();
+  repo = String(repo ?? "").trim().replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "").replace(/\/$/, "");
+  if (!name || name.length > 80) throw new HttpError(400, "name: 1–80 characters");
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) throw new HttpError(400, "repo: owner/name of the GitHub repository");
+  const ws = must(await x.db.from("workspaces").insert({ name, repo, created_by: user.id }).select("id, name, repo").single(), "create workspace") as { id: string; name: string; repo: string };
+  must(await x.db.from("members").insert({ workspace_id: ws.id, user_id: user.id, role: "admin", email: user.email }), "add admin");
+  await audit(x, { role: "admin", name: user.email ?? user.id, workspaceId: ws.id, userId: user.id }, "workspace.create", ws.repo);
+  return { ...ws, role: "admin" as const };
+}
+
+export async function getWorkspace(x: Ctx, id: string) {
+  const r = must(await x.db.from("workspaces").select("id, name, repo, paused, policy, commit_sha, synced_at").eq("id", id).maybeSingle(), "workspace");
+  if (!r) throw new HttpError(404, "no such workspace");
+  return r as { id: string; name: string; repo: string; paused: boolean; policy: RepoPolicy | null; commit_sha: string | null; synced_at: string | null };
+}
+
+export async function listMembers(x: Ctx, c: Caller) {
+  need(c, "read");
+  return must(await x.db.from("members").select("user_id, role, email, created_at").eq("workspace_id", c.workspaceId).order("created_at"), "members");
+}
+
+async function adminCount(x: Ctx, ws: string) {
+  const r = await x.db.from("members").select("user_id", { count: "exact", head: true }).eq("workspace_id", ws).eq("role", "admin");
+  return r.count ?? 0;
+}
+
+export async function setMemberRole(x: Ctx, c: Caller, userId: string, role: MemberRole) {
+  need(c, "members");
+  if (!MEMBER_ROLES.includes(role)) throw new HttpError(400, `role: one of ${MEMBER_ROLES.join(", ")}`);
+  const cur = await memberRole(x, c.workspaceId, userId);
+  if (!cur) throw new HttpError(404, "not a member");
+  if (cur === "admin" && role !== "admin" && (await adminCount(x, c.workspaceId)) <= 1) throw new HttpError(409, "a workspace needs at least one admin");
+  must(await x.db.from("members").update({ role }).eq("workspace_id", c.workspaceId).eq("user_id", userId), "set role");
+  await audit(x, c, "member.role", userId, { from: cur, to: role });
+}
+
+export async function removeMember(x: Ctx, c: Caller, userId: string) {
+  if (userId !== c.userId) need(c, "members");
+  const cur = await memberRole(x, c.workspaceId, userId);
+  if (!cur) throw new HttpError(404, "not a member");
+  if (cur === "admin" && (await adminCount(x, c.workspaceId)) <= 1) throw new HttpError(409, "a workspace needs at least one admin");
+  must(await x.db.from("members").delete().eq("workspace_id", c.workspaceId).eq("user_id", userId), "remove member");
+  await audit(x, c, userId === c.userId ? "member.leave" : "member.remove", userId);
+}
+
+export async function createInvite(x: Ctx, c: Caller, role: MemberRole, days = 7) {
+  need(c, "members");
+  if (!MEMBER_ROLES.includes(role)) throw new HttpError(400, `role: one of ${MEMBER_ROLES.join(", ")}`);
+  const code = `hqi_${rand(24)}`;
+  const expires = new Date(Date.now() + Math.min(Math.max(days, 1), 30) * 86400_000).toISOString();
+  must(await x.db.from("invites").insert({ workspace_id: c.workspaceId, code_hash: await sha256(code), role, created_by: c.userId ?? null, expires_at: expires }), "invite");
+  await audit(x, c, "invite.create", role, { expires });
+  return { code, role, expires_at: expires };
+}
+
+export async function acceptInvite(x: Ctx, user: User, code: string) {
+  const inv = must(await x.db.from("invites").select("id, workspace_id, role, expires_at, used_at").eq("code_hash", await sha256(String(code ?? "").trim())).maybeSingle(), "invite") as
+    | { id: string; workspace_id: string; role: MemberRole; expires_at: string; used_at: string | null }
+    | null;
+  if (!inv || inv.used_at || Date.parse(inv.expires_at) < Date.now()) throw new HttpError(404, "this invite link is invalid, used or expired: ask for a new one");
+  const existing = await memberRole(x, inv.workspace_id, user.id);
+  if (!existing) must(await x.db.from("members").insert({ workspace_id: inv.workspace_id, user_id: user.id, role: inv.role, email: user.email }), "join");
+  must(await x.db.from("invites").update({ used_by: user.id, used_at: now() }).eq("id", inv.id), "use invite");
+  await audit(x, { role: inv.role, name: user.email ?? user.id, workspaceId: inv.workspace_id, userId: user.id }, "member.join", user.email ?? user.id, { role: existing ?? inv.role });
+  const ws = await getWorkspace(x, inv.workspace_id);
+  return { id: ws.id, name: ws.name, repo: ws.repo, role: existing ?? inv.role };
+}
+
+// ── audit, policy, settings ──────────────────────────────────────────────────────────────────
+
+export async function audit(x: Ctx, c: Caller | { workspaceId: string; name: string; role: "system" }, action: string, target: string | null, detail?: unknown) {
+  const actor = c.role === "system" ? c.name : who(c as Caller);
+  const d = detail === undefined ? null : JSON.parse(JSON.stringify(detail));
+  await x.db.from("audit").insert({ workspace_id: c.workspaceId, actor, action, target, detail: d });
+}
+
+export async function getPolicy(x: Ctx, ws: string) {
+  const w = await getWorkspace(x, ws);
+  return w.policy ? { policy: w.policy, commit_sha: w.commit_sha, synced_at: w.synced_at, repo: w.repo } : null;
+}
+
+export async function requirePolicy(x: Ctx, ws: string): Promise<RepoPolicy> {
+  const p = await getPolicy(x, ws);
+  if (!p) throw new HttpError(409, "this workspace has no policy yet: run `hq sync` in the repo with a runner token");
   return p.policy;
 }
 
-export async function syncPolicy(env: Env, caller: Caller, policy: RepoPolicy, commit: string | null) {
-  if (caller.role === "agent") throw new HttpError(403, "agents can't change policy; .hq/ changes are L3 (owner)");
+export async function syncPolicy(x: Ctx, c: Caller, policy: RepoPolicy, commit: string | null) {
+  need(c, "sync");
   if (!policy || typeof policy.repo !== "string" || typeof policy.projects !== "object") throw new HttpError(400, "policy: expected the output of buildPolicy()");
-  const before = await getPolicy(env);
-  await env.DB.prepare("INSERT INTO config (id, policy_json, commit_sha, synced_at) VALUES (1, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET policy_json = excluded.policy_json, commit_sha = excluded.commit_sha, synced_at = excluded.synced_at")
-    .bind(JSON.stringify(policy), commit, now())
-    .run();
-  await audit(env, caller, "policy.sync", policy.repo, { commit, projects: Object.keys(policy.projects), changed: before ? JSON.stringify(before.policy) !== JSON.stringify(policy) : true });
+  const ws = await getWorkspace(x, c.workspaceId);
+  if (policy.repo.toLowerCase() !== ws.repo.toLowerCase()) throw new HttpError(409, `this workspace is for ${ws.repo}, but .hq/HQ.md says repo: ${policy.repo}`);
+  const changed = JSON.stringify(ws.policy) !== JSON.stringify(policy);
+  must(await x.db.from("workspaces").update({ policy, commit_sha: commit, synced_at: now() }).eq("id", c.workspaceId), "sync");
+  await audit(x, c, "policy.sync", policy.repo, { commit, projects: Object.keys(policy.projects), changed });
 }
 
-export async function getSetting(env: Env, key: string): Promise<string | null> {
-  const r = await env.DB.prepare("SELECT value FROM settings WHERE key = ?").bind(key).first<{ value: string }>();
-  return r?.value ?? null;
+export async function setPaused(x: Ctx, c: Caller, paused: boolean) {
+  need(c, "pause");
+  must(await x.db.from("workspaces").update({ paused }).eq("id", c.workspaceId), "pause");
+  await audit(x, c, paused ? "workspace.pause" : "workspace.resume", null);
 }
-export async function setSetting(env: Env, caller: Caller, key: string, value: string) {
-  if (caller.role !== "owner") throw new HttpError(403, "only the owner changes settings");
-  await env.DB.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").bind(key, value).run();
-  await audit(env, caller, "settings.set", key, value);
-}
-export const isPaused = async (env: Env) => (await getSetting(env, "paused")) === "1";
+const isPaused = async (x: Ctx, ws: string) => (await getWorkspace(x, ws)).paused;
 
 /** Monday 00:00 UTC of the current week. */
 export function weekStart(d = new Date()): string {
-  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  x.setUTCDate(x.getUTCDate() - ((x.getUTCDay() + 6) % 7));
-  return x.toISOString();
+  const w = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  w.setUTCDate(w.getUTCDate() - ((w.getUTCDay() + 6) % 7));
+  return w.toISOString();
 }
-export async function spentThisWeek(env: Env): Promise<number> {
-  const r = await env.DB.prepare("SELECT COALESCE(SUM(cost_usd), 0) AS s FROM runs WHERE created_at >= ?").bind(weekStart()).first<{ s: number }>();
-  return +(r?.s ?? 0).toFixed(4);
+export async function spentThisWeek(x: Ctx, ws: string): Promise<number> {
+  const rows = must(await x.db.from("runs").select("cost_usd").eq("workspace_id", ws).gte("created_at", weekStart()), "spend") as { cost_usd: number | string }[];
+  return +rows.reduce((s, r) => s + Number(r.cost_usd || 0), 0).toFixed(4);
 }
 
-// ── context ────────────────────────────────────────────────────────────────────────────────────
+const count = async (q: PromiseLike<{ count: number | null }>) => (await q).count ?? 0;
 
-export async function getContext(env: Env, project: string | null): Promise<Context> {
-  const policy = await requirePolicy(env);
+// ── context ──────────────────────────────────────────────────────────────────────────────────
+
+export async function getContext(x: Ctx, c: Caller, project: string | null): Promise<Context> {
+  need(c, "read");
+  const ws = c.workspaceId;
+  const policy = await requirePolicy(x, ws);
   if (project && project !== "repo-wide" && !policy.projects[project]) throw new HttpError(404, `unknown project ${project}`);
-  const open = await env.DB.prepare(`SELECT id, project, title, status, tier, kind, priority, dedupe_key FROM cards WHERE status IN (${OPEN_STATUSES.map(() => "?").join(",")}) ORDER BY priority DESC LIMIT 200`)
-    .bind(...OPEN_STATUSES)
-    .all<Context["state"]["open_cards"][number]>();
-  const decisions = await env.DB.prepare("SELECT d.card_id, c.title, c.project, c.kind, d.decision, d.reason, d.at FROM decisions d JOIN cards c ON c.id = d.card_id ORDER BY d.at DESC LIMIT 60").all<Decision>();
-  const prs = await env.DB.prepare("SELECT COUNT(*) AS n FROM cards WHERE pr_url IS NOT NULL AND status IN ('building', 'in_review')").first<{ n: number }>();
-  return buildContext(policy, project, {
-    paused: await isPaused(env),
-    spent_this_week_usd: await spentThisWeek(env),
-    open_cards: open.results,
-    open_prs: prs?.n ?? 0,
-    recent_decisions: decisions.results,
-  });
+  const open = must(
+    await x.db.from("cards").select("id, project, title, status, tier, kind, priority, dedupe_key").eq("workspace_id", ws).in("status", [...OPEN_STATUSES]).order("priority", { ascending: false }).limit(200),
+    "open cards"
+  ) as Context["state"]["open_cards"];
+  const dec = must(await x.db.from("decisions").select("card_id, decision, reason, at, cards(title, project, kind)").eq("workspace_id", ws).order("at", { ascending: false }).limit(60), "decisions") as unknown as {
+    card_id: string; decision: "approved" | "rejected"; reason: string | null; at: string; cards: { title: string; project: string; kind: string } | null;
+  }[];
+  const decisions: Decision[] = dec.map((d) => ({ card_id: d.card_id, decision: d.decision, reason: d.reason, at: d.at, title: d.cards?.title ?? "", project: d.cards?.project ?? "", kind: d.cards?.kind ?? "" }));
+  const prs = await count(x.db.from("cards").select("id", { count: "exact", head: true }).eq("workspace_id", ws).not("pr_url", "is", null).in("status", ["building", "in_review"]));
+  return buildContext(policy, project, { paused: await isPaused(x, ws), spent_this_week_usd: await spentThisWeek(x, ws), open_cards: open, open_prs: prs, recent_decisions: decisions });
 }
 
-// ── cards ──────────────────────────────────────────────────────────────────────────────────────
+// ── cards ────────────────────────────────────────────────────────────────────────────────────
 
-export async function getCard(env: Env, id: string): Promise<Card> {
-  const r = await env.DB.prepare("SELECT * FROM cards WHERE id = ?").bind(id).first<CardRow>();
+const toCard = (r: Record<string, unknown>): Card => ({ ...(r as unknown as Card), evidence: (r.evidence as Evidence[]) ?? [], verbs: (r.verbs as string[]) ?? [], source: (r.source as Card["source"]) ?? {} });
+
+export async function getCard(x: Ctx, c: Caller, id: string): Promise<Card> {
+  const r = must(await x.db.from("cards").select("*").eq("workspace_id", c.workspaceId).eq("id", id).maybeSingle(), "card");
   if (!r) throw new HttpError(404, `no card ${id}`);
   return toCard(r);
 }
 
-export async function cardDetail(env: Env, id: string) {
-  const card = await getCard(env, id);
+export async function cardDetail(x: Ctx, c: Caller, id: string) {
+  need(c, "read");
+  const card = await getCard(x, c, id);
   const [comments, decisions, attachments, runs] = await Promise.all([
-    env.DB.prepare("SELECT id, author, body, created_at FROM comments WHERE card_id = ? ORDER BY id").bind(id).all(),
-    env.DB.prepare("SELECT decision, reason, by, at FROM decisions WHERE card_id = ? ORDER BY id").bind(id).all(),
-    env.DB.prepare("SELECT id, phase, evidence_json, file_key, by, at FROM attachments WHERE card_id = ? ORDER BY id").bind(id).all<{ id: number; phase: string; evidence_json: string; file_key: string | null; by: string; at: string }>(),
-    env.DB.prepare("SELECT id, kind, status, agent, created_at, finished_at, summary, cost_usd FROM runs WHERE card_id = ? ORDER BY created_at").bind(id).all(),
+    x.db.from("comments").select("id, author, body, created_at").eq("card_id", id).order("id"),
+    x.db.from("decisions").select("decision, reason, by, at").eq("card_id", id).order("id"),
+    x.db.from("attachments").select("id, phase, evidence, file_key, by, at").eq("card_id", id).order("id"),
+    x.db.from("runs").select("id, kind, status, agent, created_at, finished_at, summary, cost_usd").eq("card_id", id).order("created_at"),
   ]);
   return {
     card,
-    comments: comments.results,
-    decisions: decisions.results,
-    attachments: attachments.results.map((a) => ({ id: a.id, phase: a.phase, evidence: JSON.parse(a.evidence_json), file_key: a.file_key, by: a.by, at: a.at })),
-    runs: runs.results,
+    comments: must(comments, "comments"),
+    decisions: must(decisions, "decisions"),
+    attachments: must(attachments, "attachments"),
+    runs: (must(runs, "runs") as { cost_usd: unknown }[]).map((r) => ({ ...r, cost_usd: Number(r.cost_usd) })),
   };
 }
 
-export async function listCards(env: Env, opts: { status?: string[]; project?: string; limit?: number }): Promise<Card[]> {
-  const where: string[] = [];
-  const args: unknown[] = [];
-  if (opts.status?.length) { where.push(`status IN (${opts.status.map(() => "?").join(",")})`); args.push(...opts.status); }
-  if (opts.project) { where.push("project = ?"); args.push(opts.project); }
-  const sql = `SELECT * FROM cards ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY priority DESC, created_at DESC LIMIT ?`;
-  const r = await env.DB.prepare(sql).bind(...args, Math.min(opts.limit ?? 100, 500)).all<CardRow>();
-  return r.results.map(toCard);
+export async function listCards(x: Ctx, c: Caller, opts: { status?: string[]; project?: string; limit?: number }): Promise<Card[]> {
+  need(c, "read");
+  let q = x.db.from("cards").select("*").eq("workspace_id", c.workspaceId);
+  if (opts.status?.length) q = q.in("status", opts.status);
+  if (opts.project) q = q.eq("project", opts.project);
+  const r = must(await q.order("priority", { ascending: false }).order("created_at", { ascending: false }).limit(Math.min(opts.limit ?? 100, 500)), "cards");
+  return (r as Record<string, unknown>[]).map(toCard);
 }
 
-/** The owner's inbox: what needs a human, capped so it stays a few minutes a day (PRD §9). */
-export async function inbox(env: Env) {
-  const policy = await requirePolicy(env);
-  const proposed = await listCards(env, { status: ["proposed"], limit: 500 });
-  const discussing = await listCards(env, { status: ["discussing"] });
-  const ready = await listCards(env, { status: ["in_review"] });
-  const cap = policy.inbox_cap;
-  return {
-    cap,
-    decide: proposed.slice(0, cap),
-    backlog: proposed.slice(cap),
-    discussing,
-    ready,
-    working: await listCards(env, { status: ["approved", "building"] }),
-  };
+/** The inbox: what needs a person, capped so it stays a few minutes a day (PRD §9). */
+export async function inbox(x: Ctx, c: Caller) {
+  const policy = await requirePolicy(x, c.workspaceId);
+  const [proposed, discussing, ready, working] = await Promise.all([
+    listCards(x, c, { status: ["proposed"], limit: 500 }),
+    listCards(x, c, { status: ["discussing"] }),
+    listCards(x, c, { status: ["in_review"] }),
+    listCards(x, c, { status: ["approved", "building"] }),
+  ]);
+  return { cap: policy.inbox_cap, decide: proposed.slice(0, policy.inbox_cap), backlog: proposed.slice(policy.inbox_cap), discussing, ready, working };
 }
 
-export async function createProposal(env: Env, caller: Caller, input: unknown) {
+export async function createProposal(x: Ctx, c: Caller, input: unknown) {
+  need(c, "propose");
   const v = validateCard(input);
   if (!v.ok) throw new HttpError(422, "card refused", v.errors);
-  const policy = await requirePolicy(env);
+  const ws = c.workspaceId;
+  const policy = await requirePolicy(x, ws);
   const problems = checkCardAgainstPolicy(v.value, policy);
   if (problems.length) throw new HttpError(422, "card refused by policy", problems);
-  const c = v.value;
-  if (c.dedupe_key) {
-    const dup = await env.DB.prepare(`SELECT id, status FROM cards WHERE dedupe_key = ? AND status IN (${OPEN_STATUSES.map(() => "?").join(",")})`).bind(c.dedupe_key, ...OPEN_STATUSES).first<{ id: string; status: string }>();
-    if (dup) return { id: dup.id, status: dup.status, duplicate: true, note: `an open card already has dedupe_key ${c.dedupe_key}; comment on it instead` };
-    const rejected = await env.DB.prepare("SELECT c.id, d.reason, d.at FROM cards c JOIN decisions d ON d.card_id = c.id WHERE c.dedupe_key = ? AND c.status = 'rejected' AND d.decision = 'rejected' ORDER BY d.at DESC LIMIT 1").bind(c.dedupe_key).first<{ id: string; reason: string | null; at: string }>();
-    if (rejected && Date.now() - Date.parse(rejected.at) < 30 * 86400_000) {
-      return { id: rejected.id, status: "rejected", duplicate: true, note: `the owner rejected this ${rejected.at.slice(0, 10)}${rejected.reason ? ` ("${rejected.reason}")` : ""}; not re-proposed within 30 days` };
+  const card = v.value;
+  if (card.dedupe_key) {
+    const dup = must(await x.db.from("cards").select("id, status").eq("workspace_id", ws).eq("dedupe_key", card.dedupe_key).in("status", [...OPEN_STATUSES]).limit(1).maybeSingle(), "dedupe") as { id: string; status: string } | null;
+    if (dup) return { id: dup.id, status: dup.status, duplicate: true, note: `an open card already has dedupe_key ${card.dedupe_key}; comment on it instead` };
+    const rej = must(
+      await x.db.from("decisions").select("card_id, reason, at, cards!inner(dedupe_key, status)").eq("workspace_id", ws).eq("decision", "rejected").eq("cards.dedupe_key", card.dedupe_key).eq("cards.status", "rejected").order("at", { ascending: false }).limit(1).maybeSingle(),
+      "rejected dedupe"
+    ) as { card_id: string; reason: string | null; at: string } | null;
+    if (rej && Date.now() - Date.parse(rej.at) < 30 * 86400_000) {
+      return { id: rej.card_id, status: "rejected", duplicate: true, note: `rejected ${rej.at.slice(0, 10)}${rej.reason ? ` ("${rej.reason}")` : ""}; not re-proposed within 30 days` };
     }
   }
   const id = newCardId();
   const t = now();
-  // L0 = just do it: approved by policy, reported in the digest afterwards.
-  const status: Status = c.tier === "L0" ? "approved" : "proposed";
-  const source = { ...c.source, agent: c.source?.agent ?? caller.name };
-  await env.DB.prepare(
-    `INSERT INTO cards (id, repo, project, kind, title, why, evidence_json, plan, verify, tier, effort, risk, risk_reason, verbs_json, source_json, dedupe_key, status, priority, decided_by, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  )
-    .bind(id, policy.repo, c.project, c.kind, c.title, c.why, JSON.stringify(c.evidence), c.plan, c.verify, c.tier, c.effort ?? "M", c.risk ?? "medium", c.risk_reason ?? null,
-      JSON.stringify(c.verbs ?? []), JSON.stringify(source), c.dedupe_key ?? null, status, defaultPriority(c), status === "approved" ? "auto" : null, t, t)
-    .run();
+  const status: Status = card.tier === "L0" ? "approved" : "proposed";
+  must(
+    await x.db.from("cards").insert({
+      id, workspace_id: ws, repo: policy.repo, project: card.project, kind: card.kind, title: card.title, why: card.why, evidence: card.evidence, plan: card.plan,
+      verify: card.verify, tier: card.tier, effort: card.effort ?? "M", risk: card.risk ?? "medium", risk_reason: card.risk_reason ?? null, verbs: card.verbs ?? [],
+      source: { ...card.source, agent: card.source?.agent ?? c.name }, dedupe_key: card.dedupe_key ?? null, status, priority: defaultPriority(card),
+      decided_by: status === "approved" ? "auto" : null, created_at: t, updated_at: t,
+    }),
+    "create card"
+  );
   if (status === "approved") {
-    await env.DB.prepare("INSERT INTO decisions (card_id, decision, reason, by, at) VALUES (?, 'approved', 'L0: approved by policy', 'auto', ?)").bind(id, t).run();
-    await enqueueBuild(env, id, c.project, "system");
+    must(await x.db.from("decisions").insert({ workspace_id: ws, card_id: id, decision: "approved", reason: "L0: approved by policy", by: "auto" }), "auto decision");
+    await enqueueRun(x, ws, { kind: "build", card_id: id, project: card.project, agent: policy.agents.executor, requested_by: "system" });
   }
-  await audit(env, caller, "card.create", id, { tier: c.tier, project: c.project, status });
+  await audit(x, c, "card.create", id, { tier: card.tier, project: card.project, status });
   return { id, status, duplicate: false };
 }
 
-export async function setStatus(env: Env, caller: Caller | "system", id: string, to: Status, patch: { branch?: string; pr_url?: string } = {}) {
-  const card = await getCard(env, id);
-  const actor: Actor = caller === "system" ? "system" : actorOf(caller);
-  if (!canTransition(card.status, to, actor)) throw new HttpError(409, `${actor} can't move ${id} from ${card.status} to ${to}`);
-  await env.DB.prepare("UPDATE cards SET status = ?, branch = COALESCE(?, branch), pr_url = COALESCE(?, pr_url), updated_at = ? WHERE id = ?")
-    .bind(to, patch.branch ?? null, patch.pr_url ?? null, now(), id)
-    .run();
-  await audit(env, caller === "system" ? "system" : caller, "card.status", id, { from: card.status, to, ...patch });
+export async function setStatus(x: Ctx, c: Caller | "system", ws: string, id: string, to: Status, patch: { branch?: string; pr_url?: string } = {}) {
+  const sys: Caller = { role: "runner", name: "system", workspaceId: ws };
+  const card = await getCard(x, c === "system" ? sys : c, id);
+  const actor: Actor = c === "system" ? "system" : actorOf(c);
+  if (!canTransition(card.status, to, actor) && !(c === "system" && to === "discussing" && card.status === "proposed")) {
+    throw new HttpError(409, `${c === "system" ? "system" : c.role} can't move ${id} from ${card.status} to ${to}`);
+  }
+  const upd: Record<string, unknown> = { status: to, updated_at: now() };
+  if (patch.branch) upd.branch = patch.branch;
+  if (patch.pr_url) upd.pr_url = patch.pr_url;
+  must(await x.db.from("cards").update(upd).eq("workspace_id", ws).eq("id", id), "status");
+  await audit(x, c === "system" ? { role: "system", name: "system", workspaceId: ws } : c, "card.status", id, { from: card.status, to, ...patch });
   return { ...card, status: to };
 }
 
-export async function decide(env: Env, caller: Caller, id: string, decision: "approved" | "rejected", reason: string | null) {
-  if (caller.role !== "owner") throw new HttpError(403, "only the owner approves or rejects; agents can't approve cards");
-  const card = await setStatus(env, caller, id, decision);
-  await env.DB.prepare("INSERT INTO decisions (card_id, decision, reason, by, at) VALUES (?, ?, ?, 'owner', ?)").bind(id, decision, reason, now()).run();
-  await env.DB.prepare("UPDATE cards SET decided_by = 'owner' WHERE id = ?").bind(id).run();
-  if (decision === "approved") await enqueueBuild(env, id, card.project, "owner");
-  else await env.DB.prepare("UPDATE runs SET status = 'cancelled', finished_at = ? WHERE card_id = ? AND status = 'queued'").bind(now(), id).run();
-  return getCard(env, id);
-}
-
-export async function comment(env: Env, caller: Caller, id: string, body: string) {
-  if (!body?.trim()) throw new HttpError(400, "body: required");
-  const card = await getCard(env, id);
-  await env.DB.prepare("INSERT INTO comments (card_id, author, body, created_at) VALUES (?, ?, ?, ?)").bind(id, who(caller), body.trim().slice(0, 8000), now()).run();
-  if (caller.role === "owner") {
-    // The owner asked something: the card waits, and the agent that wrote it is asked to answer.
-    if (card.status === "proposed") await setStatus(env, caller, id, "discussing");
-    await enqueueRun(env, { kind: "reply", card_id: id, project: card.project, requested_by: "owner", agent: card.source.agent ?? null, session: card.source.session ?? null });
-  } else if (card.status === "discussing") {
-    await setStatus(env, caller, id, "proposed");
+export async function decide(x: Ctx, c: Caller, id: string, decision: "approved" | "rejected", reason: string | null) {
+  need(c, "decide");
+  const card = await setStatus(x, c, c.workspaceId, id, decision);
+  must(await x.db.from("decisions").insert({ workspace_id: c.workspaceId, card_id: id, decision, reason, by: c.name }), "decision");
+  must(await x.db.from("cards").update({ decided_by: c.name }).eq("id", id), "decided_by");
+  if (decision === "approved") {
+    const policy = await requirePolicy(x, c.workspaceId);
+    await enqueueRun(x, c.workspaceId, { kind: "build", card_id: id, project: card.project, agent: policy.agents.executor, requested_by: c.name });
+  } else {
+    must(await x.db.from("runs").update({ status: "cancelled", finished_at: now() }).eq("card_id", id).eq("status", "queued"), "cancel runs");
   }
-  await audit(env, caller, "card.comment", id);
-  return cardDetail(env, id);
+  return getCard(x, c, id);
 }
 
-export async function rankCards(env: Env, caller: Caller, ranks: { id: string; priority: number; reason?: string }[]) {
-  if (caller.role === "runner") throw new HttpError(403, "ranking is the CEO's job");
+export async function changeStatus(x: Ctx, c: Caller, id: string, to: Status, patch: { branch?: string; pr_url?: string; reason?: string }) {
+  if (to === "withdrawn") return withdraw(x, c, id, patch.reason ?? "");
+  if (isMember(c.role)) need(c, "set_status");
+  else if (c.role !== "runner") throw new HttpError(403, "agents can't change a card's status (withdraw_card is the exception)");
+  const card = await setStatus(x, c, c.workspaceId, id, to, patch);
+  if (isMember(c.role) && to === "approved") await enqueueRun(x, c.workspaceId, { kind: "build", card_id: id, project: card.project, requested_by: c.name });
+  return card;
+}
+
+export async function comment(x: Ctx, c: Caller, id: string, body: string) {
+  need(c, "comment");
+  if (!body?.trim()) throw new HttpError(400, "body: required");
+  const card = await getCard(x, c, id);
+  must(await x.db.from("comments").insert({ workspace_id: c.workspaceId, card_id: id, author: who(c), body: body.trim().slice(0, 8000) }), "comment");
+  if (isMember(c.role)) {
+    // A person asked something: the card waits, and the agent that wrote it is asked to answer.
+    if (card.status === "proposed") await setStatus(x, "system", c.workspaceId, id, "discussing");
+    await enqueueRun(x, c.workspaceId, { kind: "reply", card_id: id, project: card.project, requested_by: c.name, agent: card.source.agent ?? null, session: card.source.session ?? null });
+  } else if (card.status === "discussing") {
+    await setStatus(x, c, c.workspaceId, id, "proposed");
+  }
+  await audit(x, c, "card.comment", id);
+  return cardDetail(x, c, id);
+}
+
+export async function rankCards(x: Ctx, c: Caller, ranks: { id: string; priority: number }[]) {
+  need(c, "rank");
   if (!Array.isArray(ranks) || ranks.length > 200) throw new HttpError(400, "ranks: a list of { id, priority }");
   for (const r of ranks) {
     if (typeof r.id !== "string" || !Number.isFinite(r.priority)) throw new HttpError(400, "each rank needs id and a numeric priority");
-    await env.DB.prepare("UPDATE cards SET priority = ?, updated_at = ? WHERE id = ? AND status IN ('proposed', 'discussing')").bind(Math.round(r.priority), now(), r.id).run();
+    must(await x.db.from("cards").update({ priority: Math.round(r.priority), updated_at: now() }).eq("workspace_id", c.workspaceId).eq("id", r.id).in("status", ["proposed", "discussing"]), "rank");
   }
-  await audit(env, caller, "card.rank", null, ranks.map((r) => `${r.id}=${r.priority}`));
+  await audit(x, c, "card.rank", null, ranks.map((r) => `${r.id}=${r.priority}`));
   return { ranked: ranks.length };
 }
 
-export async function withdraw(env: Env, caller: Caller, id: string, reason: string) {
-  await setStatus(env, caller, id, "withdrawn");
-  await env.DB.prepare("INSERT INTO comments (card_id, author, body, created_at) VALUES (?, ?, ?, ?)").bind(id, who(caller), `Withdrawn: ${reason || "no reason given"}`, now()).run();
-  return getCard(env, id);
+export async function withdraw(x: Ctx, c: Caller, id: string, reason: string) {
+  if (c.role === "viewer") throw new HttpError(403, "viewers can't withdraw cards");
+  await setStatus(x, c, c.workspaceId, id, "withdrawn");
+  must(await x.db.from("comments").insert({ workspace_id: c.workspaceId, card_id: id, author: who(c), body: `Withdrawn: ${reason || "no reason given"}` }), "withdraw note");
+  return getCard(x, c, id);
 }
 
-export async function attachEvidence(env: Env, caller: Caller, id: string, phase: string, evidence: Evidence, fileKey: string | null = null) {
-  await getCard(env, id);
+export async function attachEvidence(x: Ctx, c: Caller, id: string, phase: string, evidence: Evidence, fileKey: string | null = null) {
+  need(c, "attach");
+  await getCard(x, c, id);
   if (!["build", "review", "proposal", "verb"].includes(phase)) throw new HttpError(400, "phase: build, review, proposal or verb");
   const errs = validateEvidence(evidence);
   if (errs.length && !fileKey) throw new HttpError(422, "evidence refused", errs);
-  await env.DB.prepare("INSERT INTO attachments (card_id, phase, evidence_json, file_key, by, at) VALUES (?, ?, ?, ?, ?, ?)")
-    .bind(id, phase, JSON.stringify(evidence), fileKey, who(caller), now())
-    .run();
+  must(await x.db.from("attachments").insert({ workspace_id: c.workspaceId, card_id: id, phase, evidence, file_key: fileKey, by: who(c) }), "attach");
   return { ok: true };
 }
 
-// ── runs ───────────────────────────────────────────────────────────────────────────────────────
+export async function putFile(x: Ctx, c: Caller, cardId: string, name: string, type: string, data: ArrayBuffer, phase: string, caption: string | null) {
+  need(c, "attach");
+  await getCard(x, c, cardId);
+  const key = `${c.workspaceId}/cards/${cardId}/${now().replace(/[:.]/g, "")}-${name}`;
+  const up = await x.db.storage.from(BUCKET).upload(key, data, { contentType: type, upsert: false });
+  if (up.error) throw new HttpError(500, `storage: ${up.error.message}`);
+  await attachEvidence(x, c, cardId, phase, { type: type.startsWith("image/") ? "screenshot" : "file", ref: key, text: caption ?? name }, key);
+  return { key };
+}
 
-export async function enqueueRun(env: Env, r: { kind: string; project?: string | null; scout?: string | null; card_id?: string | null; verb?: string | null; args?: Record<string, unknown>; runs_on?: string; agent?: string | null; requested_by: string; session?: string | null }) {
-  // One queued run per (kind, scout, project, card): re-enqueueing is a no-op.
-  // Verb runs also differ by their arguments: a real run must never merge into a queued dry run.
-  const dup = await env.DB.prepare("SELECT id FROM runs WHERE status IN ('queued', 'running') AND kind = ? AND COALESCE(scout, '') = ? AND COALESCE(project, '') = ? AND COALESCE(card_id, '') = ? AND COALESCE(verb, '') = ? AND (kind != 'verb' OR args_json = ?)")
-    .bind(r.kind, r.scout ?? "", r.project ?? "", r.card_id ?? "", r.verb ?? "", JSON.stringify(r.args ?? {}))
-    .first<{ id: string }>();
+export async function getFile(x: Ctx, c: Caller, key: string) {
+  need(c, "read");
+  if (!key.startsWith(`${c.workspaceId}/`)) throw new HttpError(404, "no such file");
+  const r = await x.db.storage.from(BUCKET).download(key);
+  if (r.error || !r.data) throw new HttpError(404, "no such file");
+  return r.data;
+}
+
+// ── runs ─────────────────────────────────────────────────────────────────────────────────────
+
+export interface Run {
+  id: string; workspace_id: string; kind: string; project: string | null; scout: string | null; card_id: string | null; verb: string | null;
+  args: Record<string, unknown>; runs_on: string; agent: string | null; status: string; requested_by: string; runner: string | null;
+  created_at: string; started_at: string | null; finished_at: string | null; summary: string | null; output: string | null; cost_usd: number; session: string | null;
+}
+const toRun = (r: Record<string, unknown>): Run => ({ ...(r as unknown as Run), cost_usd: Number(r.cost_usd ?? 0), args: (r.args as Record<string, unknown>) ?? {} });
+
+export async function enqueueRun(
+  x: Ctx,
+  ws: string,
+  r: { kind: string; project?: string | null; scout?: string | null; card_id?: string | null; verb?: string | null; args?: Record<string, unknown>; runs_on?: string; agent?: string | null; requested_by: string; session?: string | null }
+) {
+  // One queued run per (kind, scout, project, card, verb, args): re-enqueueing is a no-op. Verb runs
+  // differ by their arguments too: a real run must never merge into a queued dry run.
+  const open = must(await x.db.from("runs").select("id, scout, project, card_id, verb, args").eq("workspace_id", ws).eq("kind", r.kind).in("status", ["queued", "running"]), "dedupe runs") as {
+    id: string; scout: string | null; project: string | null; card_id: string | null; verb: string | null; args: Record<string, unknown>;
+  }[];
+  const args = r.args ?? {};
+  const dup = open.find((o) => (o.scout ?? "") === (r.scout ?? "") && (o.project ?? "") === (r.project ?? "") && (o.card_id ?? "") === (r.card_id ?? "") && (o.verb ?? "") === (r.verb ?? "") && (r.kind !== "verb" || JSON.stringify(o.args) === JSON.stringify(args)));
   if (dup) return dup.id;
   const id = newRunId();
-  await env.DB.prepare("INSERT INTO runs (id, kind, project, scout, card_id, verb, args_json, runs_on, agent, status, requested_by, created_at, session) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?)")
-    .bind(id, r.kind, r.project ?? null, r.scout ?? null, r.card_id ?? null, r.verb ?? null, JSON.stringify(r.args ?? {}), r.runs_on ?? "any", r.agent ?? null, r.requested_by, now(), r.session ?? null)
-    .run();
+  must(
+    await x.db.from("runs").insert({ id, workspace_id: ws, kind: r.kind, project: r.project ?? null, scout: r.scout ?? null, card_id: r.card_id ?? null, verb: r.verb ?? null, args, runs_on: r.runs_on ?? "any", agent: r.agent ?? null, status: "queued", requested_by: r.requested_by, session: r.session ?? null }),
+    "enqueue"
+  );
   return id;
 }
 
-async function enqueueBuild(env: Env, cardId: string, project: string, by: string) {
-  const policy = await requirePolicy(env);
-  return enqueueRun(env, { kind: "build", card_id: cardId, project, agent: policy.agents.executor, requested_by: by });
+export async function startRun(x: Ctx, c: Caller, kind: string, scout: string | null, project: string | null) {
+  need(c, "start_run");
+  if (!["scout", "ceo", "health"].includes(kind)) throw new HttpError(400, "kind: scout, ceo or health");
+  if (kind === "scout" && !scout) throw new HttpError(400, "scout: required");
+  const policy = (await getPolicy(x, c.workspaceId))?.policy;
+  const agent = kind === "ceo" ? policy?.agents.ceo : kind === "scout" ? policy?.agents.scout : null;
+  return enqueueRun(x, c.workspaceId, { kind, scout, project: project ?? (kind === "scout" ? "repo-wide" : null), agent, requested_by: c.name, args: { card_limit: 3 } });
 }
 
-export async function requestVerb(env: Env, caller: Caller, project: string, verb: string, dryRun: boolean, cardId: string | null) {
-  const policy = await requirePolicy(env);
-  const card = cardId ? await getCard(env, cardId) : null;
-  const check = checkVerb({ project, verb, dryRun, card: card && { tier: card.tier, status: card.status, project: card.project } }, policy, actorOf(caller) === "system" ? "runner" : (actorOf(caller) as "owner" | "agent" | "runner"));
-  await audit(env, caller, check.allowed ? "verb.request" : "verb.refused", `${project}/${verb}`, { dryRun, cardId, reason: check.reason });
+export async function requestVerb(x: Ctx, c: Caller, project: string, verb: string, dryRun: boolean, cardId: string | null) {
+  need(c, "run_verb");
+  const ws = c.workspaceId;
+  const policy = await requirePolicy(x, ws);
+  const card = cardId ? await getCard(x, c, cardId) : null;
+  const actor = can(c.role, "run_l3_verb") ? "owner" : c.role === "runner" ? "runner" : "agent";
+  const check = checkVerb({ project, verb, dryRun, card: card && { tier: card.tier, status: card.status, project: card.project } }, policy, actor);
+  await audit(x, c, check.allowed ? "verb.request" : "verb.refused", `${project}/${verb}`, { dryRun, cardId, reason: check.reason });
   if (!check.allowed) throw new HttpError(403, `refused: ${check.reason}`);
-  if (!dryRun && (await isPaused(env)) && caller.role !== "owner") throw new HttpError(423, "HQ is paused");
-  const id = await enqueueRun(env, { kind: "verb", project, verb, card_id: cardId, args: { dry_run: dryRun }, runs_on: check.policy?.runs_on ?? "any", requested_by: who(caller) });
+  if (!dryRun && (await isPaused(x, ws)) && actor !== "owner") throw new HttpError(423, "HQ is paused in this workspace");
+  const id = await enqueueRun(x, ws, { kind: "verb", project, verb, card_id: cardId, args: { dry_run: dryRun }, runs_on: check.policy?.runs_on ?? "any", requested_by: who(c) });
   return { run_id: id, reason: check.reason };
 }
 
-/** A runner asks for work. Respects the kill switch, the budget (scouts only) and WIP limits. */
-export async function claimRun(env: Env, caller: Caller, runner: string, capabilities: string[]) {
-  if (caller.role !== "runner" && caller.role !== "owner") throw new HttpError(403, "runner token required");
-  const asRunner: Caller = { role: "runner", name: runner };
-  const paused = await isPaused(env);
-  const policy = await requirePolicy(env);
-  const spent = await spentThisWeek(env);
-  const queued = await env.DB.prepare("SELECT * FROM runs WHERE status = 'queued' ORDER BY CASE kind WHEN 'verb' THEN 0 WHEN 'reply' THEN 1 WHEN 'review' THEN 2 WHEN 'build' THEN 3 WHEN 'health' THEN 4 WHEN 'ceo' THEN 5 ELSE 6 END, created_at LIMIT 50").all<Record<string, unknown>>();
+const KIND_ORDER = ["verb", "reply", "review", "build", "health", "ceo", "scout"];
+
+/** A runner asks for work in its workspace. Respects the kill switch, the budget (scouts and the CEO only) and WIP limits. */
+export async function claimRun(x: Ctx, c: Caller, runner: string, capabilities: string[]) {
+  need(c, "claim");
+  const ws = c.workspaceId;
+  const asRunner: Caller = { role: "runner", name: runner, workspaceId: ws };
+  const w = await getWorkspace(x, ws);
+  const policy = await requirePolicy(x, ws);
+  const spent = await spentThisWeek(x, ws);
+  const queued = (must(await x.db.from("runs").select("*").eq("workspace_id", ws).eq("status", "queued").order("created_at").limit(100), "queue") as Record<string, unknown>[])
+    .map(toRun)
+    .sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
   const caps = new Set([...capabilities, "any"]);
-  for (const row of queued.results) {
-    const r = toRun(row);
+  for (const r of queued) {
     if (!caps.has(r.runs_on)) continue;
-    // Paused: only the owner's own verb runs go ahead.
-    if (paused && !(r.kind === "verb" && r.requested_by === "owner")) continue;
+    // Paused: only verb runs a person started go ahead.
+    if (w.paused && !(r.kind === "verb" && !r.requested_by.includes(":"))) continue;
     if ((r.kind === "scout" || r.kind === "ceo") && overBudget(spent, policy)) continue;
     if (r.kind === "build" && r.project) {
-      const busy = await env.DB.prepare("SELECT COUNT(*) AS n FROM cards WHERE project = ? AND status = 'building'").bind(r.project).first<{ n: number }>();
-      if ((busy?.n ?? 0) >= policy.wip_per_project) continue;
-      const prs = await env.DB.prepare("SELECT COUNT(*) AS n FROM cards WHERE status IN ('building', 'in_review')").first<{ n: number }>();
-      if ((prs?.n ?? 0) >= policy.max_open_prs) continue;
+      const busy = await count(x.db.from("cards").select("id", { count: "exact", head: true }).eq("workspace_id", ws).eq("project", r.project).eq("status", "building"));
+      if (busy >= policy.wip_per_project) continue;
+      const prs = await count(x.db.from("cards").select("id", { count: "exact", head: true }).eq("workspace_id", ws).in("status", ["building", "in_review"]));
+      if (prs >= policy.max_open_prs) continue;
     }
-    const ok = await env.DB.prepare("UPDATE runs SET status = 'running', runner = ?, started_at = ? WHERE id = ? AND status = 'queued'").bind(runner, now(), r.id).run();
-    if (!ok.meta.changes) continue;
+    const got = must(await x.db.from("runs").update({ status: "running", runner, started_at: now() }).eq("id", r.id).eq("status", "queued").select("id"), "claim") as { id: string }[];
+    if (!got.length) continue;
     if (r.kind === "build" && r.card_id) {
-      const card = await getCard(env, r.card_id);
+      const card = await getCard(x, asRunner, r.card_id);
       if (card.status !== "approved") {
-        await finishRun(env, asRunner, r.id, { status: "cancelled", summary: `card is ${card.status}, not approved` });
+        await finishRun(x, asRunner, r.id, { status: "cancelled", summary: `card is ${card.status}, not approved` });
         continue;
       }
-      await setStatus(env, asRunner, r.card_id, "building");
+      await setStatus(x, asRunner, ws, r.card_id, "building");
     }
-    await audit(env, caller, "run.claim", r.id, { kind: r.kind, runner });
-    const context = await getContext(env, r.project);
-    const card = r.card_id ? await cardDetail(env, r.card_id) : null;
+    await audit(x, c, "run.claim", r.id, { kind: r.kind, runner });
+    const context = await getContext(x, asRunner, r.project);
+    const card = r.card_id ? await cardDetail(x, asRunner, r.card_id) : null;
     return { run: { ...r, status: "running", runner }, context, card, policy };
   }
-  return { run: null, paused, over_budget: overBudget(spent, policy) };
+  return { run: null, paused: w.paused, over_budget: overBudget(spent, policy) };
 }
 
-export async function finishRun(env: Env, caller: Caller, id: string, r: { status: string; summary?: string; output?: string; cost_usd?: number; session?: string; branch?: string; pr_url?: string; card_status?: Status }) {
-  if (caller.role === "agent") throw new HttpError(403, "runner token required");
-  caller = { role: "runner", name: caller.name };
+export async function finishRun(x: Ctx, c: Caller, id: string, r: { status: string; summary?: string; output?: string; cost_usd?: number; session?: string; branch?: string; pr_url?: string }) {
+  need(c, "claim");
+  const ws = c.workspaceId;
+  const asRunner: Caller = { role: "runner", name: c.name, workspaceId: ws };
   if (!["done", "failed", "cancelled"].includes(r.status)) throw new HttpError(400, "status: done, failed or cancelled");
-  const run = await env.DB.prepare("SELECT * FROM runs WHERE id = ?").bind(id).first<Record<string, unknown>>();
-  if (!run) throw new HttpError(404, `no run ${id}`);
+  const row = must(await x.db.from("runs").select("*").eq("workspace_id", ws).eq("id", id).maybeSingle(), "run");
+  if (!row) throw new HttpError(404, `no run ${id}`);
+  const run = toRun(row);
   const cost = Math.max(0, Number(r.cost_usd ?? 0)) || 0;
-  await env.DB.prepare("UPDATE runs SET status = ?, finished_at = ?, summary = ?, output = ?, cost_usd = ?, session = COALESCE(?, session) WHERE id = ?")
-    .bind(r.status, now(), (r.summary ?? "").slice(0, 2000), (r.output ?? "").slice(-20000), cost, r.session ?? null, id)
-    .run();
-  const kind = run.kind as string;
-  const cardId = run.card_id as string | null;
-  if (cardId && kind === "build") {
-    const card = await getCard(env, cardId);
+  const upd: Record<string, unknown> = { status: r.status, finished_at: now(), summary: (r.summary ?? "").slice(0, 2000), output: (r.output ?? "").slice(-20000), cost_usd: cost };
+  if (r.session) upd.session = r.session;
+  must(await x.db.from("runs").update(upd).eq("id", id), "finish");
+  if (run.card_id && run.kind === "build") {
+    const card = await getCard(x, asRunner, run.card_id);
     if (card.status === "building") {
       if (r.status === "done") {
-        await setStatus(env, caller, cardId, "in_review", { branch: r.branch, pr_url: r.pr_url });
-        const policy = await requirePolicy(env);
-        await enqueueRun(env, { kind: "review", card_id: cardId, project: card.project, agent: policy.agents.reviewer, requested_by: "system" });
+        await setStatus(x, asRunner, ws, run.card_id, "in_review", { branch: r.branch, pr_url: r.pr_url });
+        const policy = await requirePolicy(x, ws);
+        await enqueueRun(x, ws, { kind: "review", card_id: run.card_id, project: card.project, agent: policy.agents.reviewer, requested_by: "system" });
       } else {
-        await setStatus(env, caller, cardId, "failed");
+        await setStatus(x, asRunner, ws, run.card_id, "failed");
       }
     }
   }
-  if (cardId && kind === "reply" && r.session) {
-    const card = await getCard(env, cardId);
-    await env.DB.prepare("UPDATE cards SET source_json = ? WHERE id = ?").bind(JSON.stringify({ ...card.source, session: r.session }), cardId).run();
+  if (run.card_id && run.kind === "reply" && r.session) {
+    const card = await getCard(x, asRunner, run.card_id);
+    must(await x.db.from("cards").update({ source: { ...card.source, session: r.session } }).eq("id", run.card_id), "session");
   }
-  await audit(env, caller, "run.finish", id, { kind, status: r.status, cost });
+  await audit(x, c, "run.finish", id, { kind: run.kind, status: r.status, cost });
   return { ok: true };
 }
 
-export async function listRuns(env: Env, limit = 50) {
-  const r = await env.DB.prepare("SELECT id, kind, project, scout, card_id, verb, runs_on, agent, status, requested_by, runner, created_at, started_at, finished_at, summary, cost_usd FROM runs ORDER BY created_at DESC LIMIT ?").bind(Math.min(limit, 200)).all();
-  return r.results;
+export async function listRuns(x: Ctx, c: Caller, limit = 50) {
+  need(c, "read");
+  const r = must(
+    await x.db.from("runs").select("id, kind, project, scout, card_id, verb, runs_on, agent, status, requested_by, runner, created_at, started_at, finished_at, summary, cost_usd").eq("workspace_id", c.workspaceId).order("created_at", { ascending: false }).limit(Math.min(limit, 200)),
+    "runs"
+  ) as Record<string, unknown>[];
+  return r.map((row) => ({ ...row, cost_usd: Number(row.cost_usd ?? 0) }));
 }
 
-export async function getRun(env: Env, id: string) {
-  const r = await env.DB.prepare("SELECT * FROM runs WHERE id = ?").bind(id).first<Record<string, unknown>>();
+export async function getRun(x: Ctx, c: Caller, id: string) {
+  need(c, "read");
+  const r = must(await x.db.from("runs").select("*").eq("workspace_id", c.workspaceId).eq("id", id).maybeSingle(), "run");
   if (!r) throw new HttpError(404, `no run ${id}`);
   return toRun(r);
 }
 
-// ── scheduler (cron) ───────────────────────────────────────────────────────────────────────────
+// ── scheduler (cron) ─────────────────────────────────────────────────────────────────────────
 
-/** Enqueues every due scout, the CEO and the health check. Called hourly by the cron trigger. */
-export async function schedule(env: Env, at = new Date()) {
-  const p = await getPolicy(env);
-  if (!p) return { enqueued: [], reason: "no policy" };
-  if (await isPaused(env)) return { enqueued: [], reason: "paused" };
-  const policy = p.policy;
-  const over = overBudget(await spentThisWeek(env), policy);
+/** Enqueues every due scout, the CEO and the health check in one workspace. */
+export async function scheduleWorkspace(x: Ctx, ws: string, at = new Date()) {
+  const w = await getWorkspace(x, ws);
+  if (!w.policy) return { enqueued: [] as string[], reason: "no policy" };
+  if (w.paused) return { enqueued: [] as string[], reason: "paused" };
+  const policy = w.policy;
+  const over = overBudget(await spentThisWeek(x, ws), policy);
   const enqueued: string[] = [];
   const last = async (kind: string, scout: string | null, project: string | null) => {
-    const r = await env.DB.prepare("SELECT created_at FROM runs WHERE kind = ? AND COALESCE(scout, '') = ? AND COALESCE(project, '') = ? AND status != 'cancelled' ORDER BY created_at DESC LIMIT 1")
-      .bind(kind, scout ?? "", project ?? "")
-      .first<{ created_at: string }>();
+    let q = x.db.from("runs").select("created_at").eq("workspace_id", ws).eq("kind", kind).neq("status", "cancelled");
+    q = scout === null ? q.is("scout", null) : q.eq("scout", scout);
+    q = project === null ? q.is("project", null) : q.eq("project", project);
+    const r = must(await q.order("created_at", { ascending: false }).limit(1).maybeSingle(), "last run") as { created_at: string } | null;
     return r ? new Date(r.created_at) : null;
   };
   if (!over) {
-    const scouts: { name: string; schedule: Parameters<typeof isDue>[0]; card_limit: number; project: string }[] = [
-      ...policy.scouts.map((s) => ({ ...s, project: "repo-wide" })),
-      ...Object.values(policy.projects).flatMap((pp) => pp.scouts.map((s) => ({ ...s, project: pp.name }))),
-    ];
+    const scouts = [...policy.scouts.map((s) => ({ ...s, project: "repo-wide" })), ...Object.values(policy.projects).flatMap((p) => p.scouts.map((s) => ({ ...s, project: p.name })))];
     for (const s of scouts) {
       if (isDue(s.schedule, await last("scout", s.name, s.project), at)) {
-        await enqueueRun(env, { kind: "scout", scout: s.name, project: s.project, args: { card_limit: s.card_limit }, agent: policy.agents.scout, requested_by: "schedule" });
+        await enqueueRun(x, ws, { kind: "scout", scout: s.name, project: s.project, args: { card_limit: s.card_limit }, agent: policy.agents.scout, requested_by: "schedule" });
         enqueued.push(`scout ${s.name} (${s.project})`);
       }
     }
     if (isDue(policy.ceo_schedule, await last("ceo", null, null), at)) {
-      await enqueueRun(env, { kind: "ceo", agent: policy.agents.ceo, requested_by: "schedule" });
+      await enqueueRun(x, ws, { kind: "ceo", agent: policy.agents.ceo, requested_by: "schedule" });
       enqueued.push("ceo");
     }
   }
   if (isDue("hourly", await last("health", null, null), at)) {
-    await enqueueRun(env, { kind: "health", requested_by: "schedule" });
+    await enqueueRun(x, ws, { kind: "health", requested_by: "schedule" });
     enqueued.push("health");
   }
   // Runs stuck "running" for 6 hours are failed so their card frees up.
-  const stale = new Date(at.getTime() - 6 * 3600_000).toISOString();
-  const stuck = await env.DB.prepare("SELECT id FROM runs WHERE status = 'running' AND started_at < ?").bind(stale).all<{ id: string }>();
-  for (const s of stuck.results) await finishRun(env, { role: "runner", name: "scheduler" }, s.id, { status: "failed", summary: "timed out after 6 hours" });
-  if (enqueued.length) await audit(env, "scheduler", "schedule", null, enqueued);
+  const stuck = must(await x.db.from("runs").select("id").eq("workspace_id", ws).eq("status", "running").lt("started_at", new Date(at.getTime() - 6 * 3600_000).toISOString()), "stuck") as { id: string }[];
+  for (const s of stuck) await finishRun(x, { role: "runner", name: "scheduler", workspaceId: ws }, s.id, { status: "failed", summary: "timed out after 6 hours" });
+  if (enqueued.length) await audit(x, { role: "system", name: "scheduler", workspaceId: ws }, "schedule", null, enqueued);
   return { enqueued, over_budget: over };
 }
 
-// ── health, digest ─────────────────────────────────────────────────────────────────────────────
+/** The hourly cron: every workspace that has synced a policy. */
+export async function scheduleAll(x: Ctx, at = new Date()) {
+  const rows = must(await x.db.from("workspaces").select("id").not("policy", "is", null).eq("paused", false), "workspaces") as { id: string }[];
+  const out: Record<string, string[]> = {};
+  for (const r of rows) out[r.id] = (await scheduleWorkspace(x, r.id, at)).enqueued;
+  return out;
+}
 
-export async function putHealth(env: Env, caller: Caller, project: string, data: Record<string, unknown>) {
-  if (caller.role === "agent") throw new HttpError(403, "runner token required");
-  const ok = data && typeof data === "object" && data.ok !== false ? 1 : 0;
-  await env.DB.prepare("INSERT INTO health (project, data_json, ok, at) VALUES (?, ?, ?, ?) ON CONFLICT (project) DO UPDATE SET data_json = excluded.data_json, ok = excluded.ok, at = excluded.at")
-    .bind(project, JSON.stringify(data).slice(0, 20000), ok, now())
-    .run();
+// ── health, digest ───────────────────────────────────────────────────────────────────────────
+
+export async function putHealth(x: Ctx, c: Caller, project: string, data: Record<string, unknown>) {
+  need(c, "claim");
+  const ok = !(data && typeof data === "object" && data.ok === false);
+  must(await x.db.from("health").upsert({ workspace_id: c.workspaceId, project, data, ok, at: now() }), "health");
   return { ok: true };
 }
 
-export async function healthBoard(env: Env) {
-  const policy = (await getPolicy(env))?.policy;
-  const h = await env.DB.prepare("SELECT project, data_json, ok, at FROM health").all<{ project: string; data_json: string; ok: number; at: string }>();
-  const by = Object.fromEntries(h.results.map((r) => [r.project, { data: JSON.parse(r.data_json), ok: !!r.ok, at: r.at }]));
-  const counts = await env.DB.prepare(`SELECT project, COUNT(*) AS n FROM cards WHERE status IN (${OPEN_STATUSES.map(() => "?").join(",")}) GROUP BY project`).bind(...OPEN_STATUSES).all<{ project: string; n: number }>();
-  const open = Object.fromEntries(counts.results.map((r) => [r.project, r.n]));
+export async function healthBoard(x: Ctx, c: Caller) {
+  need(c, "read");
+  const ws = c.workspaceId;
+  const w = await getWorkspace(x, ws);
+  const policy = w.policy;
+  const h = must(await x.db.from("health").select("project, data, ok, at").eq("workspace_id", ws), "health") as { project: string; data: Record<string, unknown>; ok: boolean; at: string }[];
+  const by = Object.fromEntries(h.map((r) => [r.project, { data: r.data, ok: r.ok, at: r.at }]));
+  const open = must(await x.db.from("cards").select("project").eq("workspace_id", ws).in("status", [...OPEN_STATUSES]), "open") as { project: string }[];
+  const openBy: Record<string, number> = {};
+  for (const o of open) openBy[o.project] = (openBy[o.project] ?? 0) + 1;
   const names = ["repo-wide", ...Object.keys(policy?.projects ?? {})];
   for (const k of Object.keys(by)) if (!names.includes(k)) names.push(k);
   return {
-    projects: names.map((n) => ({
-      project: n,
-      tier_ceiling: n === "repo-wide" ? policy?.tier_ceiling ?? null : policy?.projects[n]?.tier_ceiling ?? null,
-      health: by[n] ?? null,
-      open_cards: open[n] ?? 0,
-    })),
-    spent_this_week_usd: await spentThisWeek(env),
+    projects: names.map((n) => ({ project: n, tier_ceiling: n === "repo-wide" ? policy?.tier_ceiling ?? null : policy?.projects[n]?.tier_ceiling ?? null, health: by[n] ?? null, open_cards: openBy[n] ?? 0 })),
+    spent_this_week_usd: await spentThisWeek(x, ws),
     weekly_budget_usd: policy?.weekly_budget_usd ?? null,
-    paused: await isPaused(env),
+    paused: w.paused,
   };
 }
 
-export async function digest(env: Env, hours = 24) {
+export async function digest(x: Ctx, c: Caller, hours = 24) {
+  need(c, "read");
+  const ws = c.workspaceId;
   const since = new Date(Date.now() - hours * 3600_000).toISOString();
-  const one = async (sql: string, ...a: unknown[]) => (await env.DB.prepare(sql).bind(...a).first<{ n: number }>())?.n ?? 0;
-  const ib = await inbox(env).catch(() => null);
+  const cards = (s: string) => x.db.from("cards").select("id", { count: "exact", head: true }).eq("workspace_id", ws).eq("status", s).gte("updated_at", since);
+  const ib = await inbox(x, c).catch(() => null);
   return {
     since,
-    shipped_auto: await one("SELECT COUNT(*) AS n FROM cards WHERE status = 'shipped' AND decided_by = 'auto' AND updated_at >= ?", since),
-    shipped: await one("SELECT COUNT(*) AS n FROM cards WHERE status = 'shipped' AND updated_at >= ?", since),
-    proposed: await one("SELECT COUNT(*) AS n FROM cards WHERE created_at >= ?", since),
-    failed: await one("SELECT COUNT(*) AS n FROM cards WHERE status = 'failed' AND updated_at >= ?", since),
-    runs_failed: await one("SELECT COUNT(*) AS n FROM runs WHERE status = 'failed' AND finished_at >= ?", since),
+    shipped_auto: await count(cards("shipped").eq("decided_by", "auto")),
+    shipped: await count(cards("shipped")),
+    proposed: await count(x.db.from("cards").select("id", { count: "exact", head: true }).eq("workspace_id", ws).gte("created_at", since)),
+    failed: await count(cards("failed")),
+    runs_failed: await count(x.db.from("runs").select("id", { count: "exact", head: true }).eq("workspace_id", ws).eq("status", "failed").gte("finished_at", since)),
     needs_you: ib ? ib.decide.length + ib.discussing.length + ib.ready.length : 0,
-    spent_this_week_usd: await spentThisWeek(env),
-    paused: await isPaused(env),
+    spent_this_week_usd: await spentThisWeek(x, ws),
+    paused: (await getWorkspace(x, ws)).paused,
   };
 }
 
-// ── tokens ─────────────────────────────────────────────────────────────────────────────────────
+// ── tokens ───────────────────────────────────────────────────────────────────────────────────
 
 export const TOKEN_PREFIX = { runner: "hq_run_", agent: "hq_agt_" } as const;
 
-export async function createToken(env: Env, caller: Caller, name: string, role: "runner" | "agent") {
-  if (caller.role !== "owner") throw new HttpError(403, "only the owner creates tokens");
+export async function createToken(x: Ctx, c: Caller, name: string, role: "runner" | "agent") {
+  need(c, "tokens");
   if (!name?.trim()) throw new HttpError(400, "name: required");
   if (role !== "runner" && role !== "agent") throw new HttpError(400, "role: runner or agent");
   const token = TOKEN_PREFIX[role] + rand(32);
   const id = `tok-${rand(8)}`;
-  await env.DB.prepare("INSERT INTO tokens (id, name, role, hash, created_at) VALUES (?, ?, ?, ?, ?)").bind(id, name.trim().slice(0, 60), role, await sha256(token), now()).run();
-  await audit(env, caller, "token.create", id, { name, role });
+  must(await x.db.from("tokens").insert({ id, workspace_id: c.workspaceId, name: name.trim().slice(0, 60), role, hash: await sha256(token), created_by: c.userId ?? null }), "token");
+  await audit(x, c, "token.create", id, { name, role });
   return { id, token, name, role };
 }
 
-export async function resolveToken(env: Env, token: string): Promise<Caller | null> {
+/** A runner or agent token → its workspace and role. */
+export async function resolveToken(x: Ctx, token: string): Promise<Caller | null> {
   if (!token.startsWith(TOKEN_PREFIX.runner) && !token.startsWith(TOKEN_PREFIX.agent)) return null;
-  const r = await env.DB.prepare("SELECT id, name, role FROM tokens WHERE hash = ? AND revoked_at IS NULL").bind(await sha256(token)).first<{ id: string; name: string; role: Role }>();
+  const r = must(await x.db.from("tokens").select("id, name, role, workspace_id").eq("hash", await sha256(token)).is("revoked_at", null).maybeSingle(), "token") as { id: string; name: string; role: "runner" | "agent"; workspace_id: string } | null;
   if (!r) return null;
-  await env.DB.prepare("UPDATE tokens SET last_used_at = ? WHERE id = ?").bind(now(), r.id).run();
-  return { role: r.role, name: r.name };
+  await x.db.from("tokens").update({ last_used_at: now() }).eq("id", r.id);
+  return { role: r.role, name: r.name, workspaceId: r.workspace_id };
 }
 
-export async function listTokens(env: Env) {
-  return (await env.DB.prepare("SELECT id, name, role, created_at, last_used_at, revoked_at FROM tokens ORDER BY created_at DESC").all()).results;
-}
-export async function revokeToken(env: Env, caller: Caller, id: string) {
-  if (caller.role !== "owner") throw new HttpError(403, "only the owner revokes tokens");
-  await env.DB.prepare("UPDATE tokens SET revoked_at = ? WHERE id = ?").bind(now(), id).run();
-  await audit(env, caller, "token.revoke", id);
+export async function listTokens(x: Ctx, c: Caller) {
+  need(c, "tokens");
+  return must(await x.db.from("tokens").select("id, name, role, created_at, last_used_at, revoked_at").eq("workspace_id", c.workspaceId).order("created_at", { ascending: false }), "tokens");
 }
 
-export async function auditLog(env: Env, limit = 100) {
-  return (await env.DB.prepare("SELECT at, actor, action, target, detail FROM audit ORDER BY id DESC LIMIT ?").bind(Math.min(limit, 500)).all()).results;
+export async function revokeToken(x: Ctx, c: Caller, id: string) {
+  need(c, "tokens");
+  must(await x.db.from("tokens").update({ revoked_at: now() }).eq("workspace_id", c.workspaceId).eq("id", id), "revoke");
+  await audit(x, c, "token.revoke", id);
+}
+
+export async function auditLog(x: Ctx, c: Caller, limit = 100) {
+  need(c, "audit");
+  return must(await x.db.from("audit").select("at, actor, action, target, detail").eq("workspace_id", c.workspaceId).order("id", { ascending: false }).limit(Math.min(limit, 500)), "audit");
 }

@@ -4,42 +4,111 @@ import UserNotifications
 
 @main
 struct HQApp: App {
-    @State private var connected = Connection.isConfigured
+    @State private var model = AppModel()
     @State private var showWhatsNew = WhatsNew.shouldShow
 
     init() {
-        Self.applyLaunchArguments()
         DigestNotifier.register()
     }
 
     var body: some Scene {
         WindowGroup {
             Group {
-                if connected {
-                    RootTabs(connected: $connected)
+                switch model.phase {
+                case .loading:
+                    ProgressView()
+                case .signedOut:
+                    SignInView()
+                case .noWorkspace:
+                    NavigationStack { WorkspaceSetupView(first: true) }
+                case .ready:
+                    RootTabs()
                         .sheet(isPresented: $showWhatsNew) { WhatsNewView() }
-                } else {
-                    ConnectView(connected: $connected)
                 }
             }
-            .onAppear { connected = Connection.isConfigured }
+            .environment(model)
+            .task { await model.load() }
+            .onOpenURL { url in Task { await model.open(url) } }
+        }
+    }
+}
+
+/// Who's signed in, their workspaces, and which one the app shows.
+@Observable @MainActor
+final class AppModel {
+    enum Phase { case loading, signedOut, noWorkspace, ready }
+    var phase: Phase = .loading
+    var workspaces: [Workspace] = []
+    var email: String?
+    var error: String?
+
+    var current: Workspace? { workspaces.first { $0.id == SessionStore.workspaceId } }
+    var canDecide: Bool { ["admin", "approver"].contains(current?.role ?? "") }
+    var isAdmin: Bool { current?.role == "admin" }
+
+    init() {
+        #if DEBUG
+        // Debug hooks so screens can be reached without taps: -signInEmail <e> -signInPassword <p>
+        // (local accounts) and -screen inbox|health|runs|settings|card:<id>.
+        if UserDefaults.standard.string(forKey: "screen") != nil { WhatsNew.markSeen() }
+        #endif
+    }
+
+    func load() async {
+        #if DEBUG
+        let d = UserDefaults.standard
+        if Backend.shared.session == nil, let e = d.string(forKey: "signInEmail"), let p = d.string(forKey: "signInPassword") {
+            try? await Backend.shared.signIn(email: e, password: p)
+        }
+        #endif
+        guard Backend.shared.session != nil else { phase = .signedOut; return }
+        do {
+            let me = try await HQClient().me()
+            email = me.user.email
+            workspaces = me.workspaces
+            if current == nil { SessionStore.workspaceId = workspaces.first?.id ?? "" }
+            phase = workspaces.isEmpty ? .noWorkspace : .ready
+        } catch let e as APIError where e.isUnauthorized {
+            Backend.shared.signOut()
+            phase = .signedOut
+        } catch {
+            self.error = error.localizedDescription
+            phase = workspaces.isEmpty ? .signedOut : .ready
         }
     }
 
-    /// Debug hooks so screens can be reached and screenshotted without taps:
-    /// `-serverURL <url> -ownerToken <token> -screen inbox|health|runs|settings|card:<id>`.
-    private static func applyLaunchArguments() {
-        #if DEBUG
-        let d = UserDefaults.standard
-        if let u = d.string(forKey: "serverURL") { Connection.serverURL = u }
-        if let t = d.string(forKey: "ownerToken") { Connection.token = t }
-        if d.string(forKey: "screen") != nil { WhatsNew.markSeen() }
-        #endif
+    func select(_ id: String) {
+        SessionStore.workspaceId = id
+        workspaces = workspaces // notify
+    }
+
+    func signOut() {
+        Backend.shared.signOut()
+        workspaces = []
+        phase = .signedOut
+    }
+
+    /// hq://join/<code> opens an invite.
+    func open(_ url: URL) async {
+        guard url.scheme == "hq", url.host == "join" else { return }
+        let code = url.lastPathComponent
+        guard Backend.shared.session != nil else { UserDefaults.standard.set(code, forKey: "hq.pending-join"); return }
+        await join(code)
+    }
+
+    func join(_ code: String) async {
+        do {
+            let ws = try await HQClient().acceptInvite(code)
+            SessionStore.workspaceId = ws.id
+            await load()
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 }
 
 struct RootTabs: View {
-    @Binding var connected: Bool
+    @Environment(AppModel.self) private var model
     @State private var tab = UserDefaults.standard.string(forKey: "screen") ?? "inbox"
 
     var body: some View {
@@ -50,14 +119,15 @@ struct RootTabs: View {
             .tabItem { Label("Inbox", systemImage: "tray.full") }.tag(tab.hasPrefix("card:") ? tab : "inbox")
             NavigationStack { HealthView() }.tabItem { Label("Health", systemImage: "heart.text.square") }.tag("health")
             NavigationStack { RunsView() }.tabItem { Label("Runs", systemImage: "gearshape.2") }.tag("runs")
-            NavigationStack { SettingsView(connected: $connected) }.tabItem { Label("Settings", systemImage: "slider.horizontal.3") }.tag("settings")
+            NavigationStack { SettingsView() }.tabItem { Label("Settings", systemImage: "slider.horizontal.3") }.tag("settings")
         }
+        .id(SessionStore.workspaceId) // switching workspace reloads every tab
         .tint(Color.accentColor)
     }
 }
 
-/// A daily-ish background check that posts "N cards need you" as a local notification. Push via
-/// APNs is a later step (docs/decisions.md).
+/// A background check that posts "N cards need you" as a local notification. Push via APNs is a
+/// later step (docs/decisions.md).
 enum DigestNotifier {
     static let taskID = "com.hejitech.hq.digest"
 
@@ -65,7 +135,7 @@ enum DigestNotifier {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: taskID, using: nil) { task in
             schedule()
             let work = Task {
-                guard Connection.isConfigured, let d = try? await HQClient().digest() else { task.setTaskCompleted(success: false); return }
+                guard Backend.shared.session != nil, !SessionStore.workspaceId.isEmpty, let d = try? await HQClient().digest() else { task.setTaskCompleted(success: false); return }
                 await notify(d)
                 task.setTaskCompleted(success: true)
             }

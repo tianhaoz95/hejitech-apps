@@ -9,6 +9,7 @@ on:
     paths:
       - "projects/hq/**"
       - "projects/*/.hq/**"
+      - "supabase/**"
       - ".hq/**"
       - "package.json"
       - "package-lock.json"
@@ -18,6 +19,7 @@ on:
     paths:
       - "projects/hq/**"
       - "projects/*/.hq/**"
+      - "supabase/**"
       - ".hq/**"
       - "package.json"
       - "package-lock.json"
@@ -53,31 +55,32 @@ jobs:
         run: npm run -s hq -- lint --no-run
 
   worker:
-    name: Worker integration (the whole loop against a fresh local D1)
+    name: Worker + shared Supabase schema (the whole loop, roles, workspace isolation, RLS)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Start the Worker
+      - run: supabase start -x studio,imgproxy,vector,logflare,supavisor,mailpit,edge-runtime
+      - name: Start the Worker against the local stack
         working-directory: projects/hq/services/web
         run: |
-          echo "HQ_OWNER_TOKEN=ci-owner-token" > .dev.vars
-          npx vite build --mode development
-          npx wrangler d1 migrations apply hq --local
-          npx wrangler dev > /tmp/worker.log 2>&1 &
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > .dev.vars
+          npm run dev:worker > /tmp/worker.log 2>&1 &
           for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8799/api/health-check && break; sleep 1; done
           curl -sf -o /dev/null http://127.0.0.1:8799/api/health-check || { cat /tmp/worker.log; exit 1; }
       - run: node projects/hq/scripts/test-api.mjs
-        env:
-          HQ_URL: http://127.0.0.1:8799
-          HQ_OWNER_TOKEN: ci-owner-token
       - if: failure()
         run: cat /tmp/worker.log || true
+      - if: always()
+        run: supabase stop
 
   ios:
     name: iOS app (simulator build)

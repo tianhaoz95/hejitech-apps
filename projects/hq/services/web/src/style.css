@@ -106,3 +106,15 @@ pre.log { background: var(--bg); padding: .8rem; border-radius: 10px; max-height
 .toast.bad { background: var(--bad); }
 .spinner { width: 28px; height: 28px; margin: 3rem auto; border: 3px solid var(--line); border-top-color: var(--gold); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+#ws select.ws { background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.2); padding: .35rem .5rem; border-radius: 9px; font-size: .88rem; max-width: 46vw; }
+#ws select.ws option { color: #1c2230; }
+.btn.provider { justify-content: center; gap: .6rem; width: 100%; }
+.btn.provider svg { width: 18px; height: 18px; }
+.signin .stack { width: 100%; }
+.signin form.dev { border-top: 1px dashed var(--line); padding-top: .8rem; margin-top: .4rem; }
+.error { color: var(--bad); font-size: .9rem; }
+.member { display: flex; align-items: center; gap: .5rem; padding: .35rem 0; border-bottom: 1px solid var(--line); }
+.member select { padding: .25rem .4rem; font-size: .85rem; }
+ol.steps { display: grid; gap: .6rem; padding-left: 1.2rem; line-height: 1.5; }
+ol.steps code { word-break: break-all; }

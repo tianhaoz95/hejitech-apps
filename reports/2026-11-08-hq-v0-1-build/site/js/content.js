@@ -1,6 +1,6 @@
 // The report's config and its design blocks.
 window.REPORT = {
-  key: "2026-11-08-hq-v0-1-build-v1", dir: "reports/2026-11-08-hq-v0-1-build", repo: "tianhaoz95/hejitech-apps", port: 8836,
+  key: "2026-11-08-hq-v0-1-build-v2", dir: "reports/2026-11-08-hq-v0-1-build", repo: "tianhaoz95/hejitech-apps", port: 8836,
   title: "HQ v0.1: what's built and how to try it",
   project: "projects/hq",
   context: ["projects/hq/CLAUDE.md", "projects/hq/docs/decisions.md", "projects/hq/docs/DEPLOY.md", ".hq/HQ.md", "reports/2026-11-08-hq-prd"],

@@ -1,7 +1,6 @@
-// HQ's API as the iPhone app uses it (the owner's side of projects/hq/services/web/src/worker/api.ts).
+// HQ's API models as the iPhone app uses them (projects/hq/services/web/src/worker/api.ts).
 // Models mirror @hq/core's card schema (projects/hq/packages/core/src/card.ts).
 import Foundation
-import Security
 
 struct Evidence: Codable, Hashable {
     var type: String
@@ -157,100 +156,66 @@ enum JSONValue: Codable, Hashable, CustomStringConvertible {
     }
 }
 
-struct APIError: LocalizedError {
-    var status: Int
-    var message: String
-    var errorDescription: String? { message }
+struct Workspace: Codable, Identifiable, Hashable {
+    var id: String
+    var name: String
+    var repo: String
+    var role: String
+    var paused: Bool?
+    var synced_at: String?
 }
 
-/// The owner's connection: server URL in UserDefaults, token in the Keychain.
-enum Connection {
-    private static let urlKey = "hq.server-url"
-    private static let service = "com.hejitech.hq"
-
-    static var serverURL: String {
-        get { UserDefaults.standard.string(forKey: urlKey) ?? "" }
-        set { UserDefaults.standard.set(newValue.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "/")), forKey: urlKey) }
-    }
-
-    static var token: String {
-        get {
-            let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: "owner", kSecReturnData as String: true]
-            var out: AnyObject?
-            guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let d = out as? Data else { return "" }
-            return String(decoding: d, as: UTF8.self)
-        }
-        set {
-            let base: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: "owner"]
-            SecItemDelete(base as CFDictionary)
-            guard !newValue.isEmpty else { return }
-            var add = base
-            add[kSecValueData as String] = Data(newValue.utf8)
-            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-            SecItemAdd(add as CFDictionary, nil)
-        }
-    }
-
-    static var isConfigured: Bool { !serverURL.isEmpty && !token.isEmpty }
+struct Me: Codable {
+    struct User: Codable { var id: String; var email: String? }
+    var user: User
+    var workspaces: [Workspace]
 }
 
+struct Member: Codable, Identifiable, Hashable {
+    var user_id: String
+    var role: String
+    var email: String?
+    var id: String { user_id }
+}
+
+struct Invite: Codable {
+    var code: String
+    var role: String
+    var expires_at: String
+}
+
+/// HQ's API for the signed-in person, in the current workspace ("~/…").
 struct HQClient {
-    var baseURL: String = Connection.serverURL
-    var token: String = Connection.token
+    private var b: Backend { .shared }
 
-    private func request(_ method: String, _ path: String, body: [String: Any]? = nil) async throws -> Data {
-        guard let url = URL(string: baseURL + path) else { throw APIError(status: 0, message: "Invalid server URL") }
-        var req = URLRequest(url: url, timeoutInterval: 20)
-        req.httpMethod = method
-        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        if let body {
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            req.httpBody = try JSONSerialization.data(withJSONObject: body)
-        }
-        let (data, resp) = try await URLSession.shared.data(for: req)
-        let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else {
-            let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            var msg = obj?["error"] as? String ?? "HTTP \(status)"
-            if let details = obj?["details"] as? [String], !details.isEmpty { msg += ": " + details.joined(separator: "; ") }
-            throw APIError(status: status, message: msg)
-        }
-        return data
+    func me() async throws -> Me { try await b.get("/api/me") }
+    func createWorkspace(name: String, repo: String) async throws -> Workspace {
+        try JSONDecoder().decode(Workspace.self, from: try await b.request("POST", "/api/workspaces", body: ["name": name, "repo": repo]))
     }
-
-    private func get<T: Decodable>(_ path: String) async throws -> T {
-        try JSONDecoder().decode(T.self, from: try await request("GET", path))
+    func acceptInvite(_ code: String) async throws -> Workspace {
+        try JSONDecoder().decode(Workspace.self, from: try await b.request("POST", "/api/invites/accept", body: ["code": code]))
     }
-
-    func me() async throws -> String {
-        let obj = try JSONSerialization.jsonObject(with: try await request("GET", "/api/me")) as? [String: Any]
-        return obj?["role"] as? String ?? ""
-    }
-    func inbox() async throws -> Inbox { try await get("/api/inbox") }
-    func digest() async throws -> Digest { try await get("/api/digest") }
-    func card(_ id: String) async throws -> CardDetail { try await get("/api/cards/\(id)") }
-    func health() async throws -> HealthBoard { try await get("/api/health") }
-    func runs() async throws -> [RunRow] { try await get("/api/runs?limit=40") }
+    func inbox() async throws -> Inbox { try await b.get("~/inbox") }
+    func digest() async throws -> Digest { try await b.get("~/digest") }
+    func card(_ id: String) async throws -> CardDetail { try await b.get("~/cards/\(id)") }
+    func health() async throws -> HealthBoard { try await b.get("~/health") }
+    func runs() async throws -> [RunRow] { try await b.get("~/runs?limit=40") }
+    func members() async throws -> [Member] { try await b.get("~/members") }
 
     func decide(_ id: String, approve: Bool, reason: String? = nil) async throws {
-        var b: [String: Any] = ["decision": approve ? "approved" : "rejected"]
-        if let reason { b["reason"] = reason }
-        _ = try await request("POST", "/api/cards/\(id)/decision", body: b)
+        var body: [String: Any] = ["decision": approve ? "approved" : "rejected"]
+        if let reason { body["reason"] = reason }
+        _ = try await b.request("POST", "~/cards/\(id)/decision", body: body)
     }
-    func comment(_ id: String, _ body: String) async throws {
-        _ = try await request("POST", "/api/cards/\(id)/comments", body: ["body": body])
-    }
-    func setStatus(_ id: String, _ status: String) async throws {
-        _ = try await request("POST", "/api/cards/\(id)/status", body: ["status": status])
-    }
-    func setPaused(_ paused: Bool) async throws {
-        _ = try await request("POST", "/api/settings", body: ["paused": paused])
-    }
-    func startRun(kind: String) async throws {
-        _ = try await request("POST", "/api/runs", body: ["kind": kind])
+    func comment(_ id: String, _ text: String) async throws { _ = try await b.request("POST", "~/cards/\(id)/comments", body: ["body": text]) }
+    func setStatus(_ id: String, _ status: String) async throws { _ = try await b.request("POST", "~/cards/\(id)/status", body: ["status": status]) }
+    func setPaused(_ paused: Bool) async throws { _ = try await b.request("POST", "~/settings", body: ["paused": paused]) }
+    func startRun(kind: String) async throws { _ = try await b.request("POST", "~/runs", body: ["kind": kind]) }
+    func invite(role: String) async throws -> Invite {
+        try JSONDecoder().decode(Invite.self, from: try await b.request("POST", "~/invites", body: ["role": role]))
     }
     func file(_ key: String) async throws -> Data {
-        try await request("GET", "/api/files/\(key.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? key)")
+        try await b.request("GET", "~/files/\(key.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? key)")
     }
 }
 

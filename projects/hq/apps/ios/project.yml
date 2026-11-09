@@ -61,6 +61,11 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
 
+    entitlements:
+      path: App/App.entitlements
+      properties:
+        com.apple.developer.applesignin: [Default]
+
 schemes:
   App:
     build:

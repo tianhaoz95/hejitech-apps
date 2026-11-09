@@ -163,3 +163,24 @@ describe("context", () => {
     expect(buildContext(r.value, null, state).state.open_cards).toHaveLength(2);
   });
 });
+
+import { can, isMember } from "../src/index.ts";
+
+describe("roles", () => {
+  it("admins administer, approvers decide, viewers read and comment", () => {
+    expect(can("admin", "members") && can("admin", "tokens") && can("admin", "pause")).toBe(true);
+    expect(can("approver", "decide") && can("approver", "run_l3_verb") && can("approver", "connect_agent")).toBe(true);
+    expect(can("approver", "members") || can("approver", "tokens") || can("approver", "pause")).toBe(false);
+    expect(can("viewer", "read") && can("viewer", "comment")).toBe(true);
+    expect(can("viewer", "decide") || can("viewer", "run_verb") || can("viewer", "propose")).toBe(false);
+  });
+  it("tokens never decide or run L3 verbs; only runners claim and sync; only agents rank", () => {
+    for (const r of ["runner", "agent"] as const) {
+      expect(can(r, "decide") || can(r, "run_l3_verb") || can(r, "members") || can(r, "pause")).toBe(false);
+      expect(isMember(r)).toBe(false);
+    }
+    expect(can("runner", "claim") && can("runner", "sync")).toBe(true);
+    expect(can("agent", "claim") || can("agent", "sync")).toBe(false);
+    expect(can("agent", "rank") && !can("runner", "rank")).toBe(true);
+  });
+});

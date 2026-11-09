@@ -1,11 +1,18 @@
-// The owner's portal: inbox (decide, ready to ship, discussing, working, backlog), card detail with
-// evidence and discussion, health board, runs, and controls (pause, tokens, connected agents, audit).
-// Single page, hash routes: #/ · #/card/<id> · #/health · #/runs · #/settings.
+// The portal: sign in, pick a workspace (one repo + its members), then the inbox (decide, ready to
+// ship, discussing, working, backlog), card detail with evidence and discussion, health, runs, and
+// settings (members and invites, kill switch, tokens, connected agents, audit).
+// Single page, hash routes: #/ · #/card/<id> · #/health · #/runs · #/run/<id> · #/settings ·
+// #/new (create a workspace) · #/join/<code> (accept an invite).
 import "./style.css";
-import { ago, api, ApiError, el, fileUrl, setToken, spinner, toast, token } from "./lib.ts";
+import { ago, api, ApiError, currentWorkspaceId, el, fileUrl, session, setCurrentWorkspace, signInView, spinner, supabase, toast, type Workspace } from "./lib.ts";
 
 const root = document.getElementById("app")!;
 const nav = document.getElementById("nav")!;
+const wsSlot = document.getElementById("ws")!;
+let workspaces: Workspace[] = [];
+let current: Workspace | null = null;
+const canDecide = () => current?.role === "admin" || current?.role === "approver";
+const isAdmin = () => current?.role === "admin";
 
 type Card = {
   id: string; project: string; kind: string; title: string; why: string; plan: string; verify: string; tier: string;
@@ -28,10 +35,7 @@ function view(...nodes: (Node | false | null)[]) {
 }
 
 function fail(e: unknown) {
-  if (e instanceof ApiError && e.status === 401) {
-    setToken("");
-    return signIn();
-  }
+  if (e instanceof ApiError && e.status === 401) return signIn();
   const msg = e instanceof ApiError ? e.message : String(e);
   view(el("div", { class: "panel" }, el("h1", {}, "Something went wrong"), el("p", { class: "muted" }, msg), el("a", { class: "btn", href: "#/" }, "Back to inbox")));
 }
@@ -40,28 +44,8 @@ function fail(e: unknown) {
 
 function signIn() {
   nav.hidden = true;
-  const input = el("input", { type: "password", placeholder: "Owner token", autocomplete: "current-password", "aria-label": "Owner token" });
-  const go = async (e: Event) => {
-    e.preventDefault();
-    setToken(input.value.trim());
-    try {
-      const me = await api<{ role: string }>("/api/me");
-      if (me.role !== "owner") throw new ApiError(403, "That's an agent or runner token; the portal needs the owner token.");
-      route();
-    } catch (err) {
-      setToken("");
-      toast(err instanceof ApiError ? err.message : "Couldn't sign in", true);
-    }
-  };
-  view(
-    el("form", { class: "panel signin", onsubmit: go },
-      el("div", { class: "logo big" }, "HQ"),
-      el("h1", {}, "Sign in to HQ"),
-      el("p", { class: "muted" }, "HQ has one owner. Paste the owner token (the HQ_OWNER_TOKEN secret)."),
-      input,
-      el("button", { class: "btn primary", type: "submit" }, "Sign in"))
-  );
-  input.focus();
+  wsSlot.replaceChildren();
+  view(signInView({ title: "Sign in to HQ", message: "Your repo's autopilot: agents propose, your team decides.", redirectTo: location.href, onSignedIn: route }));
 }
 
 // ── inbox ────────────────────────────────────────────────────────────────────────────────────
@@ -86,7 +70,7 @@ function section(title: string, cards: Card[], empty: string, note?: string) {
 
 async function inbox() {
   view(spinner());
-  const [ib, dg] = await Promise.all([api("/api/inbox"), api("/api/digest")]);
+  const [ib, dg] = await Promise.all([api("~/inbox"), api("~/digest")]);
   const needs = ib.decide.length + ib.ready.length + ib.discussing.length;
   view(
     el("div", { class: "digest" },
@@ -127,9 +111,9 @@ async function attachmentView(a: { phase: string; evidence: Evidence; file_key: 
 
 async function card(id: string) {
   view(spinner());
-  const d = await api(`/api/cards/${id}`);
+  const d = await api(`~/cards/${id}`);
   const c: Card = d.card;
-  const reasons: string[] = (await api("/api/inbox").catch(() => ({ reject_reasons: [] }))).reject_reasons;
+  const reasons: string[] = (await api("~/inbox").catch(() => ({ reject_reasons: [] }))).reject_reasons;
   const reload = () => card(id);
 
   const act = async (fn: () => Promise<unknown>, msg: string) => {
@@ -144,37 +128,39 @@ async function card(id: string) {
 
   const rejectBox = el("div", { class: "reject", hidden: true },
     el("p", { class: "small muted" }, "Why? Your reason teaches the scouts."),
-    el("div", { class: "chips" }, reasons.map((r) => el("button", { class: "chip btnchip", type: "button", onclick: () => act(() => api(`/api/cards/${id}/decision`, { method: "POST", json: { decision: "rejected", reason: r } }), "Rejected") }, r))),
+    el("div", { class: "chips" }, reasons.map((r) => el("button", { class: "chip btnchip", type: "button", onclick: () => act(() => api(`~/cards/${id}/decision`, { method: "POST", json: { decision: "rejected", reason: r } }), "Rejected") }, r))),
     (() => {
       const t = el("input", { placeholder: "Or write a reason…", "aria-label": "Reject reason" });
-      return el("form", { class: "inline", onsubmit: (e: Event) => { e.preventDefault(); act(() => api(`/api/cards/${id}/decision`, { method: "POST", json: { decision: "rejected", reason: t.value } }), "Rejected"); } }, t, el("button", { class: "btn danger", type: "submit" }, "Reject"));
+      return el("form", { class: "inline", onsubmit: (e: Event) => { e.preventDefault(); act(() => api(`~/cards/${id}/decision`, { method: "POST", json: { decision: "rejected", reason: t.value } }), "Rejected"); } }, t, el("button", { class: "btn danger", type: "submit" }, "Reject"));
     })());
 
   const actions: Node[] = [];
-  if (c.status === "proposed" || c.status === "discussing") {
+  if (!canDecide()) {
+    // Viewers read and comment.
+  } else if (c.status === "proposed" || c.status === "discussing") {
     actions.push(
-      el("button", { class: "btn primary", onclick: () => act(() => api(`/api/cards/${id}/decision`, { method: "POST", json: { decision: "approved" } }), "Approved: an executor will pick it up") }, "Approve"),
+      el("button", { class: "btn primary", onclick: () => act(() => api(`~/cards/${id}/decision`, { method: "POST", json: { decision: "approved" } }), "Approved: an executor will pick it up") }, "Approve"),
       el("button", { class: "btn", onclick: () => { rejectBox.hidden = !rejectBox.hidden; } }, "Reject…"),
       el("button", { class: "btn ghost", onclick: () => { document.getElementById("discuss")?.scrollIntoView({ behavior: "smooth" }); setTimeout(() => commentBox.focus(), 300); } }, "Discuss"));
   }
-  if (c.status === "in_review") {
+  if (canDecide() && c.status === "in_review") {
     actions.push(
-      el("button", { class: "btn primary", onclick: () => act(() => api(`/api/cards/${id}/status`, { method: "POST", json: { status: "shipped" } }), "Marked shipped") }, c.pr_url ? "Mark merged & shipped" : "Mark shipped"),
-      el("button", { class: "btn", onclick: () => act(() => api(`/api/cards/${id}/status`, { method: "POST", json: { status: "approved" } }), "Sent back for another build") }, "Build again"),
+      el("button", { class: "btn primary", onclick: () => act(() => api(`~/cards/${id}/status`, { method: "POST", json: { status: "shipped" } }), "Marked shipped") }, c.pr_url ? "Mark merged & shipped" : "Mark shipped"),
+      el("button", { class: "btn", onclick: () => act(() => api(`~/cards/${id}/status`, { method: "POST", json: { status: "approved" } }), "Sent back for another build") }, "Build again"),
       el("button", { class: "btn", onclick: () => { rejectBox.hidden = !rejectBox.hidden; } }, "Reject…"));
   }
-  if (c.status === "failed") {
-    actions.push(el("button", { class: "btn primary", onclick: () => act(() => api(`/api/cards/${id}/status`, { method: "POST", json: { status: "approved" } }), "Retrying") }, "Retry build"));
+  if (canDecide() && c.status === "failed") {
+    actions.push(el("button", { class: "btn primary", onclick: () => act(() => api(`~/cards/${id}/status`, { method: "POST", json: { status: "approved" } }), "Retrying") }, "Retry build"));
   }
 
   const attachments = await Promise.all(d.attachments.map(attachmentView));
   const commentBox = el("textarea", { placeholder: "Ask a question or suggest a change. The agent that wrote this card answers here.", rows: 3, "aria-label": "Comment" });
 
-  const verbBar = c.verbs.length
+  const verbBar = c.verbs.length && canDecide()
     ? el("div", { class: "verbs" }, el("span", { class: "small muted" }, "Verbs: "),
         c.verbs.map((v) => el("span", { class: "verb" }, el("code", {}, v),
-          el("button", { class: "btn tiny", onclick: () => act(() => api("/api/verbs", { method: "POST", json: { project: c.project, verb: v, dry_run: true, card_id: id } }), `Dry run of ${v} queued`) }, "dry run"),
-          el("button", { class: "btn tiny", onclick: () => confirm(`Run ${v} for ${c.project} for real?`) && act(() => api("/api/verbs", { method: "POST", json: { project: c.project, verb: v, dry_run: false, card_id: id } }), `${v} queued`) }, "run"))))
+          el("button", { class: "btn tiny", onclick: () => act(() => api("~/verbs", { method: "POST", json: { project: c.project, verb: v, dry_run: true, card_id: id } }), `Dry run of ${v} queued`) }, "dry run"),
+          el("button", { class: "btn tiny", onclick: () => confirm(`Run ${v} for ${c.project} for real?`) && act(() => api("~/verbs", { method: "POST", json: { project: c.project, verb: v, dry_run: false, card_id: id } }), `${v} queued`) }, "run"))))
     : null;
 
   view(
@@ -196,7 +182,7 @@ async function card(id: string) {
       el("h2", {}, "Discussion"),
       d.comments.length ? el("div", { class: "thread" }, d.comments.map((m: { author: string; body: string; created_at: string }) =>
         el("div", { class: `msg ${m.author === "owner" ? "me" : ""}` }, el("div", { class: "small muted" }, m.author === "owner" ? "You" : m.author, " · ", ago(m.created_at)), el("div", { class: "prose" }, m.body)))) : el("p", { class: "empty" }, "No discussion yet."),
-      el("form", { class: "comment", onsubmit: (e: Event) => { e.preventDefault(); if (!commentBox.value.trim()) return; act(() => api(`/api/cards/${id}/comments`, { method: "POST", json: { body: commentBox.value } }), "Sent: the agent will answer"); } },
+      el("form", { class: "comment", onsubmit: (e: Event) => { e.preventDefault(); if (!commentBox.value.trim()) return; act(() => api(`~/cards/${id}/comments`, { method: "POST", json: { body: commentBox.value } }), "Sent: the agent will answer"); } },
         commentBox, el("button", { class: "btn", type: "submit" }, "Send"))),
     el("section", { class: "panel" },
       el("h2", {}, "History"),
@@ -211,7 +197,7 @@ async function card(id: string) {
 
 async function health() {
   view(spinner());
-  const h = await api("/api/health");
+  const h = await api("~/health");
   view(
     el("h1", {}, "Health"),
     el("p", { class: "muted" }, `Spend this week: $${h.spent_this_week_usd.toFixed(2)}${h.weekly_budget_usd ? ` of $${h.weekly_budget_usd}` : ""}. Each project's .hq/bin/health reports here hourly.`),
@@ -228,13 +214,13 @@ async function health() {
 
 async function runs() {
   view(spinner());
-  const [list, cfg] = await Promise.all([api("/api/runs?limit=60"), api("/api/config")]);
+  const [list, cfg] = await Promise.all([api("~/runs?limit=60"), api("~/config")]);
   const policy = cfg?.policy;
   const scouts: { name: string; project: string }[] = policy
     ? [...policy.scouts.map((s: { name: string }) => ({ name: s.name, project: "repo-wide" })),
        ...Object.values(policy.projects as Record<string, { name: string; scouts: { name: string }[] }>).flatMap((p) => p.scouts.map((s) => ({ name: s.name, project: p.name })))]
     : [];
-  const start = (body: unknown, msg: string) => api("/api/runs", { method: "POST", json: body }).then(() => { toast(msg); runs(); }).catch((e) => toast(String(e.message ?? e), true));
+  const start = (body: unknown, msg: string) => api("~/runs", { method: "POST", json: body }).then(() => { toast(msg); runs(); }).catch((e) => toast(String(e.message ?? e), true));
   view(
     el("h1", {}, "Runs"),
     el("p", { class: "muted" }, policy ? `Policy from ${policy.repo}, synced ${ago(cfg.synced_at)}${cfg.commit_sha ? ` at ${cfg.commit_sha.slice(0, 8)}` : ""}.` : "No policy yet: run `hq sync` in the repo."),
@@ -254,7 +240,7 @@ async function runs() {
 
 async function run(id: string) {
   view(spinner());
-  const r = await api(`/api/runs/${id}`);
+  const r = await api(`~/runs/${id}`);
   view(
     el("a", { class: "back", href: "#/runs" }, "← Runs"),
     el("article", { class: "panel" },
@@ -271,52 +257,161 @@ async function run(id: string) {
 
 async function settings() {
   view(spinner());
-  const [h, tokens, grants, log] = await Promise.all([api("/api/health"), api("/api/tokens"), api("/api/grants"), api("/api/audit?limit=60")]);
+  const admin = isAdmin();
+  const [h, members, tokens, grants, log] = await Promise.all([
+    api("~/health"),
+    api("~/members"),
+    admin ? api("~/tokens") : Promise.resolve([]),
+    api("/api/grants").catch(() => []),
+    admin ? api("~/audit?limit=60") : Promise.resolve([]),
+  ]);
+  const me = (await session())?.user.id;
+  const ws = current!;
+  const inviteRole = el("select", { "aria-label": "Invite role" }, el("option", { value: "approver" }, "approver"), el("option", { value: "viewer" }, "viewer"), el("option", { value: "admin" }, "admin"));
+  const inviteOut = el("div");
   const name = el("input", { placeholder: "Name, e.g. mac-runner or codex", "aria-label": "Token name" });
   const role = el("select", { "aria-label": "Token role" }, el("option", { value: "runner" }, "runner (claims work, runs verbs)"), el("option", { value: "agent" }, "agent (MCP: propose, comment)"));
   const created = el("div");
+  const roleSelect = (m: { user_id: string; role: string }) => {
+    const sel = el("select", { "aria-label": "Role", onchange: async (e: Event) => {
+      try { await api(`~/members/${m.user_id}`, { method: "PATCH", json: { role: (e.target as HTMLSelectElement).value } }); toast("Role changed"); }
+      catch (err) { toast(String((err as Error).message), true); settings(); }
+    } }, ["admin", "approver", "viewer"].map((r) => el("option", { value: r }, r)));
+    (sel as HTMLSelectElement).value = m.role;
+    return sel;
+  };
   view(
     el("h1", {}, "Settings"),
+    el("p", { class: "muted" }, `${ws.name} · `, el("code", {}, ws.repo), ` · you're ${ws.role === "admin" ? "an" : "an"} ${ws.role}`),
+    el("section", { class: "panel" },
+      el("h2", {}, "Members"),
+      el("ul", { class: "list-plain" },
+        members.map((m: { user_id: string; role: string; email: string | null; created_at: string }) =>
+          el("li", { class: "member" }, el("span", { class: "grow" }, m.email ?? m.user_id, m.user_id === me ? el("span", { class: "muted" }, " (you)") : null),
+            admin ? roleSelect(m) : el("span", { class: "chip soft" }, m.role),
+            admin || m.user_id === me ? el("button", { class: "btn tiny", onclick: async () => {
+              if (!confirm(m.user_id === me ? "Leave this workspace?" : `Remove ${m.email ?? "this member"}?`)) return;
+              try { await api(`~/members/${m.user_id}`, { method: "DELETE" }); if (m.user_id === me) { setCurrentWorkspace(""); route(); } else settings(); }
+              catch (err) { toast(String((err as Error).message), true); }
+            } }, m.user_id === me ? "Leave" : "Remove") : null))),
+      admin ? el("form", { class: "inline", onsubmit: async (e: Event) => {
+        e.preventDefault();
+        const inv = await api("~/invites", { method: "POST", json: { role: (inviteRole as HTMLSelectElement).value } });
+        const link = `${location.origin}/#/join/${inv.code}`;
+        inviteOut.replaceChildren(el("div", { class: "banner" }, `Invite link for one ${inv.role}, valid until ${inv.expires_at.slice(0, 10)}: `, el("code", { class: "select" }, link)));
+        navigator.clipboard?.writeText(link).then(() => toast("Invite link copied"), () => {});
+      } }, el("span", { class: "small muted" }, "Invite someone as"), inviteRole, el("button", { class: "btn", type: "submit" }, "Create invite link")) : null,
+      inviteOut,
+      el("p", { class: "small muted" }, "admin: members, tokens, kill switch · approver: approve, reject, ship, run verbs · viewer: read and comment")),
     el("section", { class: "panel" },
       el("h2", {}, "Kill switch"),
-      el("p", { class: "muted" }, h.paused ? "HQ is paused: no scouts, no builds, no verbs except ones you start." : "HQ is running."),
-      el("button", { class: `btn ${h.paused ? "primary" : "danger"}`, onclick: () => api("/api/settings", { method: "POST", json: { paused: !h.paused } }).then(() => { toast(h.paused ? "Resumed" : "Paused"); settings(); }) }, h.paused ? "Resume HQ" : "Pause everything")),
+      el("p", { class: "muted" }, h.paused ? "HQ is paused in this workspace: no scouts, no builds, no verbs except ones a person starts." : "HQ is running."),
+      admin ? el("button", { class: `btn ${h.paused ? "primary" : "danger"}`, onclick: () => api("~/settings", { method: "POST", json: { paused: !h.paused } }).then(() => { toast(h.paused ? "Resumed" : "Paused"); settings(); }) }, h.paused ? "Resume HQ" : "Pause everything") : el("p", { class: "small muted" }, "Only admins can pause.")),
     el("section", { class: "panel" },
-      el("h2", {}, "Connect agents"),
+      el("h2", {}, "Connect agents and runners"),
       el("p", {}, "MCP server: ", el("code", {}, `${location.origin}/mcp`)),
-      el("p", { class: "muted small" }, "Assistants that support OAuth connect with that URL and you approve them here. Runners and headless agents use a token instead."),
-      el("form", { class: "inline", onsubmit: async (e: Event) => {
+      el("p", { class: "muted small" }, "Assistants that support OAuth connect with that URL; an admin or approver picks this workspace and approves. Runners and headless agents use a token."),
+      admin ? el("form", { class: "inline", onsubmit: async (e: Event) => {
         e.preventDefault();
         try {
-          const t = await api("/api/tokens", { method: "POST", json: { name: name.value, role: (role as HTMLSelectElement).value } });
+          const t = await api("~/tokens", { method: "POST", json: { name: name.value, role: (role as HTMLSelectElement).value } });
           created.replaceChildren(el("div", { class: "banner" }, "Copy it now; it isn't shown again: ", el("code", { class: "select" }, t.token)));
           name.value = "";
         } catch (err) { toast(String((err as Error).message), true); }
-      } }, name, role, el("button", { class: "btn", type: "submit" }, "Create token")),
+      } }, name, role, el("button", { class: "btn", type: "submit" }, "Create token")) : null,
       created,
       el("ul", { class: "small list-plain" },
         tokens.map((t: { id: string; name: string; role: string; last_used_at: string | null; revoked_at: string | null }) =>
           el("li", {}, el("b", {}, t.name), ` ${t.role} · ${t.revoked_at ? "revoked" : t.last_used_at ? "used " + ago(t.last_used_at) : "never used"} `,
-            !t.revoked_at && el("button", { class: "btn tiny", onclick: () => api(`/api/tokens/${t.id}`, { method: "DELETE" }).then(settings) }, "Revoke"))),
-        grants.map((g: { id: string; client_name: string | null; created_at: string }) =>
-          el("li", {}, el("b", {}, g.client_name ?? "MCP client"), ` OAuth · connected ${ago(g.created_at)} `,
+            !t.revoked_at && el("button", { class: "btn tiny", onclick: () => api(`~/tokens/${t.id}`, { method: "DELETE" }).then(settings) }, "Revoke"))),
+        grants.filter((g: { workspace: string | null }) => g.workspace === ws.id).map((g: { id: string; client_name: string | null; created_at: string }) =>
+          el("li", {}, el("b", {}, g.client_name ?? "MCP client"), ` connected by you · ${ago(g.created_at)} `,
             el("button", { class: "btn tiny", onclick: () => api(`/api/grants/${encodeURIComponent(g.id)}`, { method: "DELETE" }).then(settings) }, "Disconnect"))))),
-    el("section", { class: "panel" },
+    admin ? el("section", { class: "panel" },
       el("h2", {}, "Audit log"),
-      el("ul", { class: "small mono audit" }, log.map((a: { at: string; actor: string; action: string; target: string | null }) => el("li", {}, `${a.at.slice(5, 16).replace("T", " ")} ${a.actor} ${a.action} ${a.target ?? ""}`)))),
-    el("p", {}, el("button", { class: "btn ghost", onclick: () => { setToken(""); signIn(); } }, "Sign out"))
+      el("ul", { class: "small mono audit" }, log.map((a: { at: string; actor: string; action: string; target: string | null }) => el("li", {}, `${a.at.slice(5, 16).replace("T", " ")} ${a.actor} ${a.action} ${a.target ?? ""}`)))) : null,
+    el("p", { class: "actions" },
+      el("a", { class: "btn ghost", href: "#/new" }, "New workspace"),
+      el("button", { class: "btn ghost", onclick: async () => { await supabase.auth.signOut(); setCurrentWorkspace(""); signIn(); } }, "Sign out"))
   );
+}
+
+// ── workspaces: create, join, switch ─────────────────────────────────────────────────────────
+
+function newWorkspace(first: boolean) {
+  nav.hidden = !current;
+  const name = el("input", { placeholder: "Name, e.g. Acme", "aria-label": "Workspace name", required: true });
+  const repo = el("input", { placeholder: "owner/repo on GitHub", "aria-label": "Repository", required: true });
+  view(el("form", { class: "panel signin", onsubmit: async (e: Event) => {
+    e.preventDefault();
+    try {
+      const ws = await api<Workspace>("/api/workspaces", { method: "POST", json: { name: name.value, repo: repo.value } });
+      setCurrentWorkspace(ws.id);
+      location.hash = "#/settings";
+      route();
+    } catch (err) { toast(String((err as Error).message), true); }
+  } },
+    el("div", { class: "logo big" }, "HQ"),
+    el("h1", {}, first ? "Set up your workspace" : "New workspace"),
+    el("p", { class: "muted" }, "A workspace is one repository and the people who work on it. HQ is built for a monorepo: one ", el("code", {}, ".hq/"), " at the root and one per project."),
+    name, repo,
+    el("button", { class: "btn primary", type: "submit" }, "Create workspace"),
+    first ? el("p", { class: "small muted" }, "Joining a team instead? Open the invite link they sent you.") : el("a", { href: "#/" }, "Cancel")));
+  name.focus();
+}
+
+async function join(code: string) {
+  view(spinner());
+  try {
+    const ws = await api<Workspace>("/api/invites/accept", { method: "POST", json: { code } });
+    setCurrentWorkspace(ws.id);
+    toast(`You joined ${ws.name} as ${ws.role}`);
+    location.hash = "#/";
+  } catch (e) {
+    view(el("div", { class: "panel signin" }, el("h1", {}, "Can't join"), el("p", { class: "muted" }, (e as Error).message), el("a", { class: "btn", href: "#/" }, "Continue")));
+  }
+}
+
+function switcher() {
+  if (!current) return wsSlot.replaceChildren();
+  const sel = el("select", { "aria-label": "Workspace", class: "ws", onchange: (e: Event) => {
+    const v = (e.target as HTMLSelectElement).value;
+    if (v === "+") { location.hash = "#/new"; return; }
+    setCurrentWorkspace(v);
+    location.hash = "#/";
+    route();
+  } },
+    workspaces.map((w) => el("option", { value: w.id }, `${w.name} · ${w.repo}`)),
+    el("option", { value: "+" }, "+ New workspace"));
+  (sel as HTMLSelectElement).value = current.id;
+  wsSlot.replaceChildren(sel);
 }
 
 // ── router ───────────────────────────────────────────────────────────────────────────────────
 
 async function route() {
-  if (!token()) return signIn();
-  nav.hidden = false;
   const h = location.hash.replace(/^#/, "") || "/";
+  if (!(await session())) {
+    if (h.startsWith("/join/")) sessionStorage.setItem("hq.pending-join", h.slice(6));
+    return signIn();
+  }
+  const pending = sessionStorage.getItem("hq.pending-join");
+  if (pending) { sessionStorage.removeItem("hq.pending-join"); return join(pending); }
+  let m;
+  if ((m = h.match(/^\/join\/(.+)$/))) return join(m[1]);
+  try {
+    workspaces = (await api<{ workspaces: Workspace[] }>("/api/me")).workspaces;
+  } catch (e) {
+    return fail(e);
+  }
+  current = workspaces.find((w) => w.id === currentWorkspaceId()) ?? workspaces[0] ?? null;
+  setCurrentWorkspace(current?.id ?? "");
+  switcher();
+  if (!current || h === "/new") return newWorkspace(!current);
+  nav.hidden = false;
+  if (!current.synced_at && h !== "/settings") return notSynced();
   for (const a of nav.querySelectorAll("a")) a.classList.toggle("on", a.getAttribute("href") === `#${h}` || (h.startsWith("/card") && a.getAttribute("href") === "#/"));
   try {
-    let m;
     if ((m = h.match(/^\/card\/([\w-]+)/))) await card(m[1]);
     else if ((m = h.match(/^\/run\/([\w-]+)/))) await run(m[1]);
     else if (h === "/health") await health();
@@ -324,9 +419,24 @@ async function route() {
     else if (h === "/settings") await settings();
     else await inbox();
   } catch (e) {
+    if (e instanceof ApiError && e.status === 409 && /no policy yet/.test(e.message)) return notSynced();
     fail(e);
   }
 }
 
+/** A new workspace before its first `hq sync`: what to do next. */
+function notSynced() {
+  view(el("section", { class: "panel" },
+    el("h1", {}, `Connect ${current!.repo}`),
+    el("p", { class: "muted" }, "HQ hasn't seen this repo's policy yet. Three steps:"),
+    el("ol", { class: "steps" },
+      el("li", {}, "Add ", el("code", {}, ".hq/HQ.md"), " at the repo root (", el("code", {}, `hq init --repo ${current!.repo}`), " writes one), and one per project you want HQ to manage."),
+      el("li", {}, isAdmin() ? el("span", {}, "Create a runner token and an agent token in ", el("a", { href: "#/settings" }, "Settings"), ".") : "Ask an admin for a runner token."),
+      el("li", {}, "In the repo: ", el("code", {}, "HQ_URL=" + location.origin + " HQ_TOKEN=hq_run_… hq sync"), ", then start ", el("code", {}, "hq runner"), " on a machine that has the repo checked out."))));
+}
+
+supabase.auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_IN" || event === "SIGNED_OUT") route();
+});
 window.addEventListener("hashchange", route);
 route();

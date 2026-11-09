@@ -1,36 +1,34 @@
-// HQ's Worker: the portal (Vite-built pages in ./dist), the API (/api/*) for the portal, the iOS app
-// and runners, the MCP server at /mcp guarded by OAuth 2.1 (@cloudflare/workers-oauth-provider) and
-// tokens (`hq_agt_…`, `hq_run_…`), and the hourly cron that enqueues due scouts, the CEO and health.
-//
-// HQ is single-tenant: one owner per deployment, identified by the HQ_OWNER_TOKEN secret.
+// HQ's Worker: the portal (Vite-built pages in ./dist), the API (/api/*) for people (Supabase
+// sessions) and runners/agents (workspace tokens), the MCP server at /mcp guarded by OAuth 2.1
+// (@cloudflare/workers-oauth-provider) and workspace tokens, and the hourly cron that enqueues due
+// scouts, the CEO and health checks in every workspace.
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
-import { handleApi, json } from "./api.ts";
+import { can } from "@hq/core";
+import { bearer, handleApi, json } from "./api.ts";
 import { handleMcp } from "./mcp.ts";
-import { audit, resolveToken, safeEqual, schedule, type Caller, type Env as BaseEnv } from "./store.ts";
+import { admin, audit, memberRole, resolveToken, scheduleAll, supabaseUser, type Ctx, type Env as BaseEnv } from "./store.ts";
 
 export interface Env extends BaseEnv {
   OAUTH_PROVIDER: OAuthHelpers;
 }
 
+/** What an OAuth grant carries: the agent acts in one workspace, approved by one member. */
 interface Props {
-  role: "agent" | "runner";
+  workspaceId: string;
   name: string;
+  userId: string;
 }
 
-const bearer = (req: Request) => req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? "";
-
-async function callerFor(req: Request, env: Env): Promise<Caller | null> {
-  const t = bearer(req);
-  if (!t) return null;
-  if (env.HQ_OWNER_TOKEN && safeEqual(t, env.HQ_OWNER_TOKEN)) return { role: "owner", name: "owner" };
-  return resolveToken(env, t);
-}
+const ctx = (env: Env): Ctx => ({ env, db: admin(env) });
 
 const mcpHandler = {
-  async fetch(req: Request, env: Env, ctx: ExecutionContext & { props?: Props }): Promise<Response> {
-    const p = ctx.props;
-    if (!p?.role) return new Response("unauthorized", { status: 401 });
-    return handleMcp(req, { role: p.role, name: p.name }, env);
+  async fetch(req: Request, env: Env, ec: ExecutionContext & { props?: Props }): Promise<Response> {
+    const p = ec.props;
+    if (!p?.workspaceId) return new Response("unauthorized", { status: 401 });
+    // The person who connected the agent must still be allowed to: leaving or losing the role ends it.
+    const role = await memberRole(ctx(env), p.workspaceId, p.userId);
+    if (!role || !can(role, "connect_agent")) return json({ error: "invalid_token", error_description: "the member who connected this agent no longer can" }, 401);
+    return handleMcp(req, { role: "agent", name: p.name, workspaceId: p.workspaceId }, env);
   },
 };
 
@@ -40,7 +38,7 @@ function withoutLocation(headers: Headers): Headers {
   return h;
 }
 
-/** OAuth consent for MCP clients: the portal's consent page approves with the owner's token. */
+/** OAuth consent for MCP clients: a member who may connect agents picks the workspace and approves. */
 async function authorize(req: Request, env: Env): Promise<Response> {
   const oauth = env.OAUTH_PROVIDER;
   try {
@@ -59,26 +57,29 @@ async function authorize(req: Request, env: Env): Promise<Response> {
       return new Response(null, { status: 302, headers: consent.headers });
     }
     if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
-    const body = (await req.json().catch(() => ({}))) as { handle?: string; decision?: string };
+    const body = (await req.json().catch(() => ({}))) as { handle?: string; decision?: string; workspace?: string };
     const handle = String(body.handle ?? "");
     if (body.decision === "deny") {
       const denied = await oauth.denyConsent(req, handle);
       return json({ redirectTo: denied.headers.get("Location") }, 200, withoutLocation(denied.headers));
     }
     if (body.decision !== "approve") return json({ error: "decision must be approve or deny" }, 400);
-    const caller = await callerFor(req, env);
-    if (caller?.role !== "owner") return json({ error: "Only HQ's owner can connect an agent. Sign in with the owner token first." }, 401);
+    const user = await supabaseUser(env, bearer(req));
+    if (!user) return json({ error: "Your session expired. Sign in again." }, 401);
+    const workspaceId = String(body.workspace ?? "");
+    const role = await memberRole(ctx(env), workspaceId, user.id);
+    if (!role || !can(role, "connect_agent")) return json({ error: "Only an admin or approver of that workspace can connect an agent." }, 403);
     const approved = await oauth.approveConsent(req, handle, { scope: ["mcp"] });
     const clientName = (await oauth.lookupClient(approved.request.clientId).catch(() => null))?.clientName ?? "MCP client";
-    const props: Props = { role: "agent", name: clientName };
+    const props: Props = { workspaceId, name: clientName, userId: user.id };
     const { redirectTo } = await oauth.completeAuthorization({
       request: approved.request,
-      userId: "owner",
-      metadata: { client: clientName },
+      userId: user.id,
+      metadata: { client: clientName, workspace: workspaceId },
       scope: approved.request.scope,
       props,
     });
-    await audit(env, caller, "oauth.grant", clientName);
+    await audit(ctx(env), { role, name: user.email ?? user.id, workspaceId, userId: user.id }, "oauth.grant", clientName);
     return json({ redirectTo }, 200, approved.headers);
   } catch (error) {
     if (error instanceof AuthorizationError) {
@@ -93,16 +94,18 @@ async function authorize(req: Request, env: Env): Promise<Response> {
   }
 }
 
+/** The signed-in person's connected agents (OAuth grants), across their workspaces. */
 async function grants(req: Request, env: Env, url: URL): Promise<Response> {
-  const caller = await callerFor(req, env);
-  if (caller?.role !== "owner") return json({ error: "owner only" }, 401);
+  const user = await supabaseUser(env, bearer(req));
+  if (!user) return json({ error: "sign in required" }, 401);
   const oauth = env.OAUTH_PROVIDER;
   if (req.method === "GET" && url.pathname === "/api/grants") {
-    const { items } = await oauth.listUserGrants("owner");
+    const { items } = await oauth.listUserGrants(user.id);
     const rows = await Promise.all(
       items.map(async (g) => ({
         id: g.id,
         client_name: (await oauth.lookupClient(g.clientId).catch(() => null))?.clientName ?? null,
+        workspace: (g.metadata as { workspace?: string } | undefined)?.workspace ?? null,
         created_at: new Date(g.createdAt * 1000).toISOString(),
       }))
     );
@@ -110,11 +113,13 @@ async function grants(req: Request, env: Env, url: URL): Promise<Response> {
   }
   const m = url.pathname.match(/^\/api\/grants\/([^/]+)$/);
   if (req.method === "DELETE" && m) {
-    await oauth.revokeGrant(decodeURIComponent(m[1]), "owner");
+    await oauth.revokeGrant(decodeURIComponent(m[1]), user.id);
     return json({ ok: true });
   }
   return json({ error: "not found" }, 404);
 }
+
+const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS" };
 
 const app = {
   async fetch(req: Request, env: Env): Promise<Response> {
@@ -122,8 +127,8 @@ const app = {
     if (url.pathname === "/authorize") return authorize(req, env);
     if (url.pathname === "/api/grants" || url.pathname.startsWith("/api/grants/")) return grants(req, env, url);
     if (url.pathname.startsWith("/api/")) {
-      if (req.method === "OPTIONS") return new Response(null, { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS" } });
-      return handleApi(req, env, url, await callerFor(req, env));
+      if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+      return handleApi(req, env, url);
     }
     return env.ASSETS.fetch(req);
   },
@@ -148,34 +153,27 @@ function getProvider(env: Env): OAuthProvider<Env> {
     resourceMetadata: { resource, authorization_servers: [env.PUBLIC_URL], resource_name: "HQ" },
     accessTokenTTL: 3600,
     refreshTokenTTL: 90 * 86400,
-    resolveExternalToken: async ({ token, env: e }) => {
-      const caller = await resolveToken(e as Env, token);
-      if (!caller || caller.role === "owner") return null;
-      const props: Props = { role: caller.role, name: caller.name };
-      return { props, audience: resource };
-    },
   });
   return provider;
 }
 
 /**
- * HQ's own tokens (hq_agt_…, hq_run_…) are checked against HQ's D1 directly, so they work at any
- * address this Worker is reached by (workers.dev, a custom domain, a dev Worker over Tailscale).
- * OAuth access tokens from MCP clients go through the provider, bound to PUBLIC_URL.
+ * Workspace tokens (hq_agt_…, hq_run_…) are checked against HQ's tables directly, so they work at
+ * any address this Worker is reached by. OAuth access tokens go through the provider (PUBLIC_URL).
  */
 async function ownTokenMcp(req: Request, env: Env): Promise<Response | null> {
   const url = new URL(req.url);
   if (url.pathname !== "/mcp" && !url.pathname.startsWith("/mcp/")) return null;
   const t = bearer(req);
   if (!t.startsWith("hq_agt_") && !t.startsWith("hq_run_")) return null;
-  const caller = await resolveToken(env, t);
+  const caller = await resolveToken(ctx(env), t);
   if (!caller) return json({ error: "invalid_token", error_description: "unknown or revoked HQ token" }, 401);
   return handleMcp(req, caller, env);
 }
 
 export default {
-  fetch: async (req: Request, env: Env, ctx: ExecutionContext) => (await ownTokenMcp(req, env)) ?? getProvider(env).fetch(req, env, ctx),
-  scheduled: async (_event: ScheduledController, env: Env, ctx: ExecutionContext) => {
-    ctx.waitUntil(schedule(env).then((r) => console.log("schedule", JSON.stringify(r))));
+  fetch: async (req: Request, env: Env, ec: ExecutionContext) => (await ownTokenMcp(req, env)) ?? getProvider(env).fetch(req, env, ec),
+  scheduled: async (_event: ScheduledController, env: Env, ec: ExecutionContext) => {
+    ec.waitUntil(scheduleAll(ctx(env)).then((r) => console.log("schedule", JSON.stringify(r))));
   },
 } satisfies ExportedHandler<Env>;

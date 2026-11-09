@@ -1,8 +1,9 @@
 # HQ
 
-The autopilot "CEO" for a repository. Scheduled agents scout for maintenance, reliability,
+The autopilot "CEO" for a repository, as a product teams sign up for: a workspace is one repo
+(HQ is built for monorepos) and the people who work on it. Scheduled agents scout for maintenance, reliability,
 performance and opportunity work and propose it as evidence-backed cards; you approve, reject or
-discuss them in a web portal or the iPhone app in a few minutes a day; executors build what you
+discuss them in a web portal or the iPhone app in a few minutes a day, each with their role (admin, approver, viewer); executors build what you
 approve on branches, a second agent reviews the result, and you ship it. New product ideas stay
 yours.
 

@@ -1,7 +1,7 @@
 // The report's config and its design blocks. The page text lives in index.html; this file holds
 // what report.js needs to build the hand-off, plus diagrams/charts/tables drawn by design.js.
 window.REPORT = {
-  key: "2026-11-08-hq-prd-v1", dir: "reports/2026-11-08-hq-prd", repo: "tianhaoz95/hejitech-apps", port: 8835,
+  key: "2026-11-08-hq-prd-v2", dir: "reports/2026-11-08-hq-prd", repo: "tianhaoz95/hejitech-apps", port: 8835,
   title: "HQ — product requirements (draft)",
   project: "repo-wide (proposed new project: HQ)",
   context: ["CLAUDE.md", "README.md", "supabase/GRADUATION.md", "scripts/cut_release.sh", ".claude/skills/heji-build-next/SKILL.md", ".claude/skills/heji-fix-ci/SKILL.md", ".claude/skills/heji-update-toolchain/SKILL.md"],

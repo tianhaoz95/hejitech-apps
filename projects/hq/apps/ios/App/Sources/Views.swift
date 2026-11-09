@@ -133,6 +133,7 @@ struct InboxView: View {
 struct CardDetailView: View {
     var cardID: String
     var reasons: [String]
+    @Environment(AppModel.self) private var model
     @State private var detail: CardDetail?
     @State private var error: String?
     @State private var busy = false
@@ -205,7 +206,7 @@ struct CardDetailView: View {
     }
 
     @ViewBuilder private func actions(_ c: Card) -> some View {
-        switch c.status {
+        switch model.canDecide ? c.status : "read-only" {
         case "proposed", "discussing":
             VStack(spacing: 8) {
                 Button { Task { await act { try await HQClient().decide(cardID, approve: true) } } } label: { Label("Approve", systemImage: "checkmark").frame(maxWidth: .infinity) }
@@ -357,67 +358,101 @@ struct RunsView: View {
     }
 }
 
-// MARK: - Settings & connect
+// MARK: - Settings: workspace, members, kill switch
 
 struct SettingsView: View {
-    @Binding var connected: Bool
+    @Environment(AppModel.self) private var model
+    @State private var members: [Member] = []
     @State private var paused: Bool?
+    @State private var invite: Invite?
+    @State private var error: String?
+
     var body: some View {
         Form {
-            Section("Server") {
-                LabeledContent("URL", value: Connection.serverURL).font(.footnote)
-                Button("Disconnect", role: .destructive) { Connection.token = ""; connected = false }
-            }
-            Section {
-                if let paused {
-                    Button(paused ? "Resume HQ" : "Pause everything", role: paused ? nil : .destructive) {
-                        Task { try? await HQClient().setPaused(!paused); self.paused = !paused }
+            if let ws = model.current {
+                Section("Workspace") {
+                    Picker("Workspace", selection: Binding(get: { ws.id }, set: { model.select($0) })) {
+                        ForEach(model.workspaces) { w in Text(w.name).tag(w.id) }
                     }
-                } else { ProgressView() }
-            } header: { Text("Kill switch") } footer: { Text("Paused: no scouts, no builds, no verbs except the ones you start.") }
+                    LabeledContent("Repository", value: ws.repo).font(.footnote)
+                    LabeledContent("Your role", value: ws.role)
+                    NavigationLink("New workspace") { WorkspaceSetupView(first: false) }
+                }
+                Section {
+                    ForEach(members) { m in
+                        HStack { Text(m.email ?? m.user_id).lineLimit(1); Spacer(); Chip(text: m.role) }
+                    }
+                    if model.isAdmin {
+                        Menu("Invite someone") {
+                            ForEach(["approver", "viewer", "admin"], id: \.self) { r in
+                                Button("as \(r)") { Task { do { invite = try await HQClient().invite(role: r) } catch { self.error = error.localizedDescription } } }
+                            }
+                        }
+                    }
+                    if let invite {
+                        let link = "\(Backend.shared.config.site.absoluteString)/#/join/\(invite.code)"
+                        ShareLink(item: link) { Label("Share invite link (\(invite.role), until \(invite.expires_at.prefix(10)))", systemImage: "square.and.arrow.up") }
+                    }
+                } header: { Text("Members") } footer: { Text("admin: members, tokens, kill switch · approver: approve, reject, ship, run verbs · viewer: read and comment") }
+                Section {
+                    if let paused {
+                        if model.isAdmin {
+                            Button(paused ? "Resume HQ" : "Pause everything", role: paused ? nil : .destructive) {
+                                Task { try? await HQClient().setPaused(!paused); self.paused = !paused }
+                            }
+                        } else {
+                            Text(paused ? "Paused" : "Running")
+                        }
+                    } else { ProgressView() }
+                } header: { Text("Kill switch") } footer: { Text("Paused: no scouts, no builds, no verbs except the ones a person starts.") }
+            }
+            if let error { Section { Text(error).foregroundStyle(.red) } }
             Section {
-                Button("Allow a daily digest notification") { Task { await DigestNotifier.requestPermission() } }
+                Button("Allow a digest notification") { Task { await DigestNotifier.requestPermission() } }
             } footer: { Text("HQ checks in the background and tells you how many cards need you.") }
+            Section {
+                if let e = model.email { LabeledContent("Signed in as", value: e).font(.footnote) }
+                Button("Sign out", role: .destructive) { model.signOut() }
+            }
         }
         .navigationTitle("Settings")
-        .task { paused = (try? await HQClient().health())?.paused }
+        .task {
+            paused = (try? await HQClient().health())?.paused
+            members = (try? await HQClient().members()) ?? []
+        }
     }
 }
 
-struct ConnectView: View {
-    @Binding var connected: Bool
-    @State private var url = Connection.serverURL
-    @State private var token = ""
-    @State private var error: String?
+/// First run (no workspace yet) or "New workspace": create one for a repo, or join with an invite.
+struct WorkspaceSetupView: View {
+    var first: Bool
+    @Environment(AppModel.self) private var model
+    @State private var name = ""
+    @State private var repo = ""
+    @State private var code = ""
     @State private var busy = false
+    @State private var error: String?
+
     var body: some View {
         Form {
             Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("HQ").font(.largeTitle.weight(.bold))
-                    Text("Approve, reject or discuss what your repo's agents propose.").foregroundStyle(.secondary)
-                }.padding(.vertical, 6)
-            }
+                TextField("Name, e.g. Acme", text: $name)
+                TextField("owner/repo on GitHub", text: $repo).textInputAutocapitalization(.never).autocorrectionDisabled()
+                Button(busy ? "Creating…" : "Create workspace") {
+                    Task {
+                        busy = true; defer { busy = false }
+                        do { let w = try await HQClient().createWorkspace(name: name, repo: repo); model.select(w.id); await model.load() }
+                        catch { self.error = error.localizedDescription }
+                    }
+                }.disabled(busy || name.isEmpty || repo.isEmpty)
+            } header: { Text("Create") } footer: { Text("A workspace is one repository and the people who work on it. HQ is built for a monorepo: one .hq/ at the root and one per project.") }
             Section {
-                TextField("https://hq.example.workers.dev", text: $url).textInputAutocapitalization(.never).keyboardType(.URL).autocorrectionDisabled()
-                SecureField("Owner token", text: $token)
-            } header: { Text("Your HQ") } footer: { Text("The owner token is the HQ_OWNER_TOKEN secret of your HQ Worker. It's kept in the Keychain.") }
+                TextField("Invite code (hqi_…)", text: $code).textInputAutocapitalization(.never).autocorrectionDisabled()
+                Button("Join") { Task { await model.join(code.components(separatedBy: "/").last ?? code); error = model.error } }.disabled(code.isEmpty)
+            } header: { Text("Or join a team") } footer: { Text("Paste the invite link or code a workspace admin sent you.") }
             if let error { Section { Text(error).foregroundStyle(.red) } }
-            Button(busy ? "Connecting…" : "Connect") { Task { await connect() } }.disabled(busy || url.isEmpty || token.isEmpty)
+            if first { Section { Button("Sign out", role: .destructive) { model.signOut() } } }
         }
-    }
-    private func connect() async {
-        busy = true
-        defer { busy = false }
-        let base = url.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        do {
-            let role = try await HQClient(baseURL: base, token: token).me()
-            guard role == "owner" else { error = "That's an agent or runner token; the app needs the owner token."; return }
-            Connection.serverURL = base
-            Connection.token = token
-            connected = true
-        } catch {
-            self.error = error.localizedDescription
-        }
+        .navigationTitle(first ? "Set up HQ" : "New workspace")
     }
 }

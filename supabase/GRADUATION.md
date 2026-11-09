@@ -23,7 +23,7 @@ By convention (not machine-checkable; reviewers enforce):
   it calls Waypack's Worker, which keeps working after either graduates.
 - **HQ is the one project that touches every project, and only through the repo.** It opens
   branches/PRs and runs each project's own `.hq/bin` verbs, but it reads no project's database,
-  bucket or secrets and has no Supabase backend of its own (`BACKEND=none`, a D1 database). A
+  bucket or secrets; its own data is in the `hq` schema and bucket like any other project's. A
   project's `.hq/` folder moves with it; nothing in HQ needs changing when a project graduates.
 - **No shared sessions.** Each app signs its users in itself and sends its tokens only to its own
   backend. A user who uses two apps is the same `auth.users` id today and, after graduation, the

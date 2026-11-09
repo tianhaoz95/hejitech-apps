@@ -24,7 +24,14 @@ export class HqClient {
       headers["Content-Type"] = "application/json";
       payload = JSON.stringify(body);
     }
-    const res = await fetch(this.url + path, { method, headers, body: payload });
+    // One retry on a network error: a kept-alive connection can be closed while a verb or agent runs.
+    let res: Response;
+    try {
+      res = await fetch(this.url + path, { method, headers, body: payload });
+    } catch {
+      await new Promise((r) => setTimeout(r, 500));
+      res = await fetch(this.url + path, { method, headers, body: payload });
+    }
     const text = await res.text();
     let data: any = text;
     try {
