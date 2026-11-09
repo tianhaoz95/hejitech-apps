@@ -1,7 +1,7 @@
 # HEJI projects monorepo
 
-Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`, `g2digest`, `headway`, `fitloop`, `tether`, `tradeboard`), sharing one
-Supabase project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief, Meowtrix, ToddlerCam and TinyTouch have none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
+Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`, `g2digest`, `headway`, `fitloop`, `tether`, `tradeboard`, `hq`), sharing one
+Supabase project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief, Meowtrix, ToddlerCam, TinyTouch and HQ have none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
 something at the root only when it is genuinely shared. Each project has its own `CLAUDE.md`
 (`projects/<name>/CLAUDE.md`, loaded when you work there) for its commands, architecture and
@@ -21,6 +21,12 @@ project's code, packages, schema, bucket or CI settings, no shared sessions, and
 coordinates only in the files a project lists in its `backend.env`. Products talk through public
 APIs, never the database. Rules, checks (`check_isolation.mjs`, `graduation_check.sh`, run by
 `supabase-ci.yml`) and the move itself: `supabase/GRADUATION.md`.
+
+## HQ (the repo's autopilot)
+
+This repo is managed by HQ (`projects/hq`). For proposals, approvals, scouting or releases on HQ's
+behalf, read `.hq/HQ.md` (and the project's `.hq/HQ.md`) and use the HQ MCP tool `get_context`
+first. Never edit a `.hq/` folder without the owner's approval: it's HQ's policy.
 
 ## Testing on devices
 
@@ -118,6 +124,12 @@ cron) deploys on push. It handles real-money trading: never place a live order y
 For Polymath it releases `projects/polymath/apps/desktop/package.json`'s version as `polymath-v<version>`,
 which runs `polymath-mac-release.yml` (signed & notarized Tauri macOS DMGs). Its Worker (site, docs, MCP)
 deploys on push. See `projects/polymath/CLAUDE.md`.
+
+For HQ it bumps `MARKETING_VERSION` in `projects/hq/apps/ios/project.yml` (refusing until the in-app
+What's New describes the version) and publishes `hq-v<version>`; no TestFlight workflow yet. Its
+Worker (portal, API, MCP, hourly scheduler) deploys on push once Workers Builds is linked. Releases
+of every project can also be started from an HQ card (`.hq/bin/release` wraps this script; L3,
+owner only). See `projects/hq/CLAUDE.md`.
 
 ## Common pitfalls
 

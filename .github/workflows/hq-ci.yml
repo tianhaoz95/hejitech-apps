@@ -1,0 +1,98 @@
+name: HQ CI
+
+# Checks pushes and PRs that touch HQ, the repo's .hq/ folders, or what HQ shares with other
+# projects (root workspace files, CI plumbing). Keep `paths` in sync with CI_PATHS in
+# projects/hq/release.env.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/hq/**"
+      - "projects/*/.hq/**"
+      - ".hq/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/hq-ci.yml"
+  pull_request:
+    paths:
+      - "projects/hq/**"
+      - "projects/*/.hq/**"
+      - ".hq/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/hq-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: hq-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Core, CLI, portal + Worker (tests, typecheck, build, coupling, .hq lint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck:hq
+      - run: npm run test:hq
+      - run: npm run build:hq
+      - name: HQ's code names no project, path or repo tool
+        run: node projects/hq/scripts/check_coupling.mjs
+      - name: Every .hq/ folder in this repo is valid (schema, verbs exist and are executable)
+        run: npm run -s hq -- lint --no-run
+
+  worker:
+    name: Worker integration (the whole loop against a fresh local D1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Start the Worker
+        working-directory: projects/hq/services/web
+        run: |
+          echo "HQ_OWNER_TOKEN=ci-owner-token" > .dev.vars
+          npx vite build --mode development
+          npx wrangler d1 migrations apply hq --local
+          npx wrangler dev > /tmp/worker.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8799/api/health-check && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:8799/api/health-check || { cat /tmp/worker.log; exit 1; }
+      - run: node projects/hq/scripts/test-api.mjs
+        env:
+          HQ_URL: http://127.0.0.1:8799
+          HQ_OWNER_TOKEN: ci-owner-token
+      - if: failure()
+        run: cat /tmp/worker.log || true
+
+  ios:
+    name: iOS app (simulator build)
+    runs-on: macos-26
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: projects/hq/apps/ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26"
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - name: Build for the simulator
+        run: xcodebuild -project HQ.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO

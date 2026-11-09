@@ -90,3 +90,13 @@ when there are several. Do not change anything before the answer.
 Never cut a release from this skill (`scripts/cut_release.sh` is its own step), never force-push,
 and never disable a check or mark a test skipped to make it green without saying so in the
 proposal and getting approval for exactly that.
+
+## Headless mode (HQ scout)
+
+When an HQ runner starts this skill as a scout (its prompt says HEADLESS MODE), do the survey and
+the investigation exactly as above, then stop at the proposal: don't edit, re-run, commit or push,
+and don't build a review site. Instead, submit one card per distinct failure (§3's proposal = the card): `why` = the cause with the failing step, `evidence` = the run URLs (type ci_run) and the decisive log lines (type log), `plan` = the fix, `verify` = the run that must go green. Flaky or infrastructure-only failures (runner outage, expired secret the owner must renew) are L3 cards that say what the owner has to do. Use the hq MCP tool `create_proposal`
+with `project` = the affected project (or `repo-wide`), `dedupe_key` = `fix-ci:<workflow>:<failure signature>`, and
+`source.scout` = `heji-fix-ci`. Read the open cards in the context first and comment on an existing card
+rather than duplicating it. The owner approves in HQ, and an HQ executor does the fix (§ on fixing).
+

@@ -1,0 +1,39 @@
+// HQ: the portal (Vite-built pages in ./dist) plus a Worker for /api, /mcp and its OAuth endpoints
+// (src/worker), and an hourly cron that enqueues due scouts, the CEO and the health check.
+// Local: `npm run dev:worker -w @hq/web` serves both on 127.0.0.1:8799 (D1, R2 and KV are local).
+// Deploy: projects/hq/docs/DEPLOY.md.
+{
+  "$schema": "../../../../node_modules/wrangler/config-schema.json",
+  "name": "hq-dev",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/mcp", "/mcp/*", "/authorize", "/token", "/register", "/.well-known/*", "/api/*"]
+  },
+  "vars": { "PUBLIC_URL": "http://127.0.0.1:8799" },
+  // Local secret: .dev.vars (HQ_OWNER_TOKEN).
+  "d1_databases": [{ "binding": "DB", "database_name": "hq", "database_id": "hq-local", "migrations_dir": "migrations" }],
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "hq-files-local" }],
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "hq-oauth-local" }],
+  "triggers": { "crons": ["7 * * * *"] },
+  "dev": { "port": 8799, "ip": "127.0.0.1" },
+
+  "env": {
+    "production": {
+      "name": "hq",
+      "workers_dev": true,
+      "vars": { "PUBLIC_URL": "https://hq.hejitech.workers.dev" },
+      // `wrangler d1 create hq` prints the id; put it here (docs/DEPLOY.md).
+      "d1_databases": [{ "binding": "DB", "database_name": "hq", "database_id": "REPLACE_WITH_D1_ID", "migrations_dir": "migrations" }],
+      "r2_buckets": [{ "binding": "FILES", "bucket_name": "hq-files" }],
+      // Secret (wrangler secret put HQ_OWNER_TOKEN --env production): the owner's sign-in token.
+      "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+      "triggers": { "crons": ["7 * * * *"] }
+    }
+  }
+}

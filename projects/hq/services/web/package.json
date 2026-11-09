@@ -1,0 +1,26 @@
+{
+  "name": "@hq/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "HQ portal + Worker: the owner's inbox (approve, reject, discuss), health board, runs and controls; the API for the iOS app and runners; the MCP server with its OAuth 2.1 endpoints; the hourly scheduler (Cloudflare, D1, R2)",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 3007",
+    "dev:worker": "vite build --mode development && wrangler d1 migrations apply hq --local && wrangler dev",
+    "build": "npm run typecheck && vite build",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.worker.json",
+    "deploy": "vite build && wrangler d1 migrations apply hq --remote --env production && wrangler deploy --env production",
+    "upload-version": "vite build && wrangler versions upload --env production"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^1.2.1",
+    "@hq/core": "0.1.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260930.2",
+    "@types/node": "^22.20.5",
+    "typescript": "^5.6.3",
+    "vite": "^8.3.2",
+    "wrangler": "^4.147.0"
+  }
+}

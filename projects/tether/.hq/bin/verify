@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Typecheck + tests, as CI runs them.
+exec "$(git rev-parse --show-toplevel)/.hq/lib/verify.sh" tether

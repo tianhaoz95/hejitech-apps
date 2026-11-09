@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Fixture release: refuses to run for real.
+if [ "${1:-}" = --dry-run ]; then echo '{"ok":true,"dry_run":true}'; exit 0; fi
+echo '{"ok":false}'; exit 1

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Repo-wide health: main's latest CI runs across all workflows, and the isolation checks.
+set -euo pipefail
+source "$(dirname "$0")/../lib/json.sh"
+cd "$(hq_root)"
+failing=0 total=0 names=""
+if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
+  while read -r name concl; do
+    total=$((total+1)); if [ "$concl" = failure ]; then failing=$((failing+1)); names+="${name}, "; fi
+  done < <(gh run list --branch main --limit 60 --json workflowName,conclusion,status -q 'group_by(.workflowName)[] | .[0] | select(.status == "completed") | "\(.workflowName | gsub(" "; "_")) \(.conclusion)"' 2>/dev/null || true)
+fi
+iso=ok; node scripts/check_isolation.mjs >/dev/null 2>&1 || iso=failing
+ok=true; { [ "$failing" -gt 0 ] || [ "$iso" != ok ]; } && ok=false
+printf '{"ok":%s,"workflows_checked":%d,"workflows_failing":%d,"failing":"%s","isolation":"%s"}\n' "$ok" "$total" "$failing" "${names%, }" "$iso"

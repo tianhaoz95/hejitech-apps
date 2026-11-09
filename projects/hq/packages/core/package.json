@@ -1,0 +1,19 @@
+{
+  "name": "@hq/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "HQ's contracts in code: the proposal card schema and lifecycle, the .hq/HQ.md policy (merge, tiers, verb checks, budget) and the context every agent gets. Shared by the Worker, the CLI and mirrored in the iOS app.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^5.0.3",
+    "@types/node": "^22.20.5"
+  }
+}

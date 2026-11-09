@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+apps/ios/HQ.xcodeproj/
+apps/ios/.derived/
+apps/ios/build/
+.DS_Store

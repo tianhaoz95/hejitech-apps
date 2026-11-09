@@ -114,3 +114,13 @@ Wait for user approval before making edits.
    gh run list --branch main --limit 10
    gh run watch <run-id>
    ```
+
+## Headless mode (HQ scout)
+
+When an HQ runner starts this skill as a scout (its prompt says HEADLESS MODE), do the survey and
+the investigation exactly as above, then stop at the proposal: don't edit, re-run, commit or push,
+and don't build a review site. Instead, submit one card per tool upgrade (§4's proposal = the card): `evidence` = the release notes or registry link (type link) and the local verification output from §3 (type test), `plan` = the files to change, `verify` = the CI workflows that must pass. Patch bumps with green local checks are L1; majors are L2. Use the hq MCP tool `create_proposal`
+with `project` = the affected project (or `repo-wide`), `dedupe_key` = `toolchain:<tool>:<from>-><to>`, and
+`source.scout` = `heji-update-toolchain`. Read the open cards in the context first and comment on an existing card
+rather than duplicating it. The owner approves in HQ, and an HQ executor does the fix (§ on fixing).
+

@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HQ — product requirements (draft)</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8603A'/%3E%3Crect x='9' y='9' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='15' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='21' width='9' height='2.5' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>HQ — product requirements (draft)</b><small>Draft PRD for review: read the three contracts, answer Q1–Q7, then Copy summary</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <!-- Filled from the sections' <h2>s by report.js; data-toc="Short label" on a section overrides. -->
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <p class="kicker">PRD draft · 2026-11-08 · for owner review</p>
+        <h1>HQ: the autopilot CEO of a repo</h1>
+        <p class="lede"><b>HQ is a new, self-contained product</b> that runs scheduled agents to find maintenance, reliability, performance and opportunity work across a repo, turns what they find into evidence-backed proposal cards, and builds, verifies and ships the approved ones. You spend about <b>10 minutes a day</b> in a web and iOS inbox approving, rejecting or discussing. Brand-new product ideas stay with you; everything else is managed.</p>
+
+        <div class="status">
+          <div><b>Shape of the product</b><span class="ok">Agreed in discussion</span></div>
+          <div><b>Three contracts</b><span class="todo">Drafted here (§4–§6), need your review</span></div>
+          <div><b>Open decisions</b><span class="todo">7 questions (§14)</span></div>
+          <div><b>Code</b><span class="todo">Nothing built yet</span></div>
+        </div>
+
+        <div class="cards">
+          <div class="card good">
+            <h3>Decided</h3>
+            <ul>
+              <li><b>Self-contained and portable.</b> HQ works on any repo that has a <code>.hq/</code> folder; this monorepo is its first customer.</li>
+              <li><b>HQ owns control, not capabilities.</b> It decides when things run, where results land and who approves. Skills and scripts keep doing the work.</li>
+              <li><b>Opinionated, not coupled.</b> Built-in opinions (card schema, tiers, evidence rule); no knowledge of project paths or tools.</li>
+              <li><b>Agent-agnostic.</b> Claude, Antigravity or another agent can be the CEO; one entry point, <code>hq.get_context</code>.</li>
+              <li><b>Guardrails live in HQ's code</b>, never in prose an agent might misread.</li>
+            </ul>
+          </div>
+          <div class="card warn">
+            <h3>Not decided</h3>
+            <ul>
+              <li>Pushed branches/PRs vs local-only branches (changes <code>heji-build-next</code>'s policy).</li>
+              <li>Whether HQ may run TestFlight/Beta releases on its own.</li>
+              <li>Weekly budget, name, backend, where HQ's code lives long-term.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>Recommendation:</b> review the three contracts (§4 card schema, §5 <code>.hq/</code> spec, §6 headless skill contract) first. Everything else in HQ is implementation behind them, and they're the expensive part to change later.</div>
+      </section>
+
+      <section id="problem">
+        <h2>Problem and goals</h2>
+        <p>The monorepo already has most of the capabilities an autopilot needs, but every one of them waits for you to start it, and their results land in different places.</p>
+        <table class="kv">
+          <tr><th>Capabilities exist</th><td><code>.claude/skills/</code> holds 17 repo skills, among them <code>heji-fix-ci</code>, <code>heji-update-toolchain</code>, <code>heji-build-next</code>, <code>heji-archive-reports</code>. Release goes through <code>scripts/cut_release.sh</code>; isolation through <code>scripts/check_isolation.mjs</code> and <code>scripts/graduation_check.sh</code>.</td></tr>
+          <tr><th>Triggering is manual</th><td>The skills run when you ask. Only CI has schedules (16 of the 62 workflows in <code>.github/workflows/</code> have a <code>schedule:</code>, e.g. the weekly TestFlight runs).</td></tr>
+          <tr><th>State is scattered</th><td>49 report folders in <code>reports/</code> and <code>reports/archive/</code>, each its own site and port; open owner steps live in agent memory notes; CI, TestFlight and Even Hub each have their own place to look.</td></tr>
+          <tr><th>Hand-offs are copy-paste</th><td>Review sites end in "Copy summary, paste to any agent". That works, but nothing tracks whether the hand-off happened.</td></tr>
+        </table>
+        <h3>Goals</h3>
+        <ol class="do">
+          <li><b>One queue and one audit log</b> for all non-creative work across the repo.</li>
+          <li><b>Owner time ≤ 10 minutes a day</b> (target) to keep the repo healthy and moving.</li>
+          <li><b>Every proposal carries evidence</b>; every shipped change carries proof it works.</li>
+          <li><b>Nothing dangerous happens without you</b>, whichever agent is the CEO.</li>
+          <li><b>Portable:</b> adopting HQ in another repo means adding <code>.hq/</code> and connecting the MCP.</li>
+        </ol>
+        <h3>Non-goals</h3>
+        <ul>
+          <li><b>Originating brand-new products.</b> HQ may <i>surface</i> ideas as cards (open question Q2); it never starts one alone.</li>
+          <li><b>Replacing CI/CD.</b> GitHub Actions, Workers Builds and <code>cut_release.sh</code> stay the delivery path.</li>
+          <li><b>Absorbing skills.</b> HQ calls skills; it doesn't contain copies of them.</li>
+          <li><b>Submitting to App Store review, touching secrets, deleting data, or placing trades.</b> Always human.</li>
+        </ul>
+      </section>
+
+      <section id="principles">
+        <h2>Design principles</h2>
+        <table class="grid">
+          <tr><th>Principle</th><th>What it means in practice</th></tr>
+          <tr><td><b>Control, not capabilities</b></td><td>HQ owns scheduling, the queue, tiers, budget, approvals and the inbox. Skills, scripts and CI keep doing the work and stay usable by hand.</td></tr>
+          <tr><td><b>Self-contained</b></td><td>Own Worker, own store, own CI, own <code>CLAUDE.md</code>. Delete HQ and every product still builds and ships.</td></tr>
+          <tr><td><b>Portable</b></td><td>Repo-specific knowledge lives in the repo's <code>.hq/</code>, never in HQ's code.</td></tr>
+          <tr><td><b>Opinionated, not coupled</b></td><td>Opinions are built in and the same everywhere. HQ never references project names, paths or tools; a CI check enforces it (§11).</td></tr>
+          <tr><td><b>Enforced in code</b></td><td>Tiers, budgets, WIP limits and the kill switch are checked by HQ's server before anything runs. Prose guides agents; it never guards anything.</td></tr>
+          <tr><td><b>Agent-agnostic</b></td><td>The CEO and executors are swappable through small adapters. Swapping agents can change the quality of proposals but not what's allowed.</td></tr>
+          <tr><td><b>Evidence or no card</b></td><td>A proposal without links, numbers or logs is rejected by the server.</td></tr>
+        </table>
+      </section>
+
+      <section id="architecture">
+        <h2>Architecture</h2>
+        <p>Toggle <b>Today / Proposed</b>. Today you are the scheduler and the queue. With HQ, scouts and the CEO feed a single inbox, and an executor that holds the credentials runs verbs only after HQ's policy check.</p>
+        <div data-block="arch"></div>
+        <div data-block="loop"></div>
+      </section>
+
+      <section id="card">
+        <h2>Contract 1: the proposal card</h2>
+        <p>Every scout, the CEO and every executor speaks this one format. <code>hq.create_proposal</code> validates it and refuses cards without evidence or with a tier above the project's ceiling.</p>
+        <div data-block="cardSchema"></div>
+        <p>Card lifecycle: <code>proposed → approved | rejected | discussing → building → in_review → shipped | failed</code>. L0 cards go straight from <code>proposed</code> to <code>building</code> and show in the digest afterwards.</p>
+      </section>
+
+      <section id="hq-folder">
+        <h2>Contract 2: the <code>.hq/</code> folder</h2>
+        <p>Repo-specific knowledge lives in the repo, laid out like a skill folder: <code>HQ.md</code> (YAML frontmatter that HQ enforces, plus prose guidance agents read) and <code>bin/</code> verbs HQ calls. It nests like <code>CLAUDE.md</code>: a root <code>.hq/</code> for repo-wide policy and one per project, which moves with the project when it graduates.</p>
+        <div data-block="layout"></div>
+        <div data-block="hqmd"></div>
+        <h3>Verbs</h3>
+        <div data-block="verbs"></div>
+        <h3>Rules</h3>
+        <ol class="do">
+          <li><b>Verbs are adapters, not implementations.</b> <code>bin/release</code> is a one-line wrapper around <code>scripts/cut_release.sh</code>, which stays the only release path. A verb that grows real logic means that logic belongs in the project's own scripts.</li>
+          <li><b>No duplication of <code>CLAUDE.md</code>.</b> How to build and test stays there; <code>HQ.md</code> covers goals, priorities, scouts and limits.</li>
+          <li><b>Not a third home for skills.</b> <code>HQ.md</code> references skills by name; <code>.hq/</code> never contains them.</li>
+          <li><b>Existing config stays put.</b> <code>release.env</code> and <code>backend.env</code> are read by verbs, not moved.</li>
+          <li><b>The whole folder is L3.</b> Any change to <code>.hq/</code> needs your approval, including HQ's own suggestions.</li>
+          <li><b>Learned taste becomes an <code>HQ.md</code> edit.</b> Repeated rejections turn into a proposed change you approve, so what HQ learned is visible, versioned and moves with the repo.</li>
+        </ol>
+      </section>
+
+      <section id="skill-contract">
+        <h2>Contract 3: skills that run headless</h2>
+        <p>A skill becomes a scout without being rewritten: in headless mode it does its usual investigation and then emits cards instead of a review site or chat answer. The same skill still works by hand.</p>
+        <div data-block="headless"></div>
+        <h3>Where skills live</h3>
+        <table class="grid">
+          <tr><th>Kind</th><th>Home</th><th>Examples</th></tr>
+          <tr><td><b>Repo-specific</b></td><td>Stays in <code>.claude/skills/</code> (+ <code>.agents/skills/</code> symlink)</td><td><code>heji-new-project</code>, <code>heji-migrate-project</code>, <code>heji-even-hub-submit</code>, <code>heji-review-account</code>, <code>heji-machine-setup</code></td></tr>
+          <tr><td><b>Generic in shape</b></td><td>HQ's skill catalog, installed into each repo, versioned; repo details move to <code>.hq/</code></td><td><code>heji-fix-ci</code>, <code>heji-update-toolchain</code>, <code>heji-build-next</code>, <code>heji-report</code>, <code>heji-candidate-review</code>, <code>heji-archive-reports</code></td></tr>
+          <tr><td><b>HQ state and actions</b></td><td>HQ MCP tools (§7)</td><td><code>create_proposal</code>, <code>run_verb</code>, <code>get_context</code></td></tr>
+        </table>
+        <div class="note">Skills run on the agent's machine (scripts, xcodebuild, Remotion), so they can't be served as remote MCP tools. The MCP may expose them as resources for the latest version, but they always execute locally. Making a "generic" skill truly generic means extracting its HEJI specifics (Workers Builds, ports, <code>cut_release.sh</code>) into <code>.hq/</code>, which is real work per skill.</div>
+      </section>
+
+      <section id="agents">
+        <h2>Agents, the CEO role and the MCP</h2>
+        <p><b>One entry point, three ways in.</b> <code>hq.get_context(repo, project?)</code> returns the merged <code>HQ.md</code> policy plus live state (inbox, budget left, open PRs, recent decisions). Every route leads there, so the context never depends on how the agent arrived.</p>
+        <table class="grid">
+          <tr><th>Way in</th><th>Reaches</th><th>Guarantee</th></tr>
+          <tr><td>HQ's launch prompt</td><td>Scheduled CEO, scout and executor runs</td><td>Guaranteed: HQ writes the first prompt and includes the context</td></tr>
+          <tr><td>MCP server instructions</td><td>Any agent connected to the HQ MCP</td><td>Strong hint; clients vary in how they honour it</td></tr>
+          <tr><td>One line in <code>AGENTS.md</code>/<code>CLAUDE.md</code></td><td>Any agent working in the repo</td><td>Read by every agent, policy stays out of normal sessions</td></tr>
+        </table>
+        <h3>MCP tools (first set)</h3>
+        <div data-block="mcp"></div>
+        <h3>Agent adapters</h3>
+        <p>One small adapter per agent: how to start it headless, pass the prompt, attach the MCP and collect output. Claude Code via <code>claude -p</code>; Antigravity and others through whatever headless mode they offer.</p>
+        <div class="unknown"><b>Not verified:</b> which headless/CLI modes Antigravity and other agents support today. Check before promising an adapter.</div>
+        <p><b>CEO comparison:</b> because adapters make the CEO swappable, HQ can run two CEOs on the same week's signals and compare them by approval rate, evidence quality and cost.</p>
+      </section>
+
+      <section id="tiers">
+        <h2>Autonomy tiers</h2>
+        <div data-block="tiersTable"></div>
+        <p>Each <code>HQ.md</code> sets a <code>tier_ceiling</code> per project, and each verb its own tier. A project can be promoted a tier after a track record (e.g. 4 weeks with no reverted L1 merges; threshold to be decided). Promotion is itself an L3 <code>HQ.md</code> change.</p>
+      </section>
+
+      <section id="portal">
+        <h2>The portal: web and iOS</h2>
+        <table class="grid">
+          <tr><th>Feature</th><th>Web</th><th>iOS</th><th>Requirement</th></tr>
+          <tr><td><b>Inbox</b></td><td>✓</td><td>✓ swipe</td><td>Ranked, capped (default 5 new cards/day). Approve, reject (one-tap preset reasons + text), discuss.</td></tr>
+          <tr><td><b>Discuss</b></td><td>✓</td><td>✓</td><td>Comments go back to the agent session that wrote the card, which answers with its full context.</td></tr>
+          <tr><td><b>Evidence view</b></td><td>✓</td><td>✓</td><td>Screenshots, GIFs, before/after numbers, test runs, diff summary, reviewer-agent verdict.</td></tr>
+          <tr><td><b>Daily digest</b></td><td>✓</td><td>✓ push</td><td>"3 shipped automatically, 2 need you, 1 failed." One push a day, plus urgent pushes for red main or failed releases.</td></tr>
+          <tr><td><b>Health board</b></td><td>✓</td><td>✓</td><td>One row per project: CI, latest build verdict, deploy freshness, dependency age, open cards, spend this week.</td></tr>
+          <tr><td><b>Weekly memo</b></td><td>✓</td><td>✓</td><td>CEO's "state of the repo": what moved, what's stuck, what it plans next.</td></tr>
+          <tr><td><b>Controls</b></td><td>✓</td><td>✓</td><td>Kill switch, pause per project, budget and WIP sliders.</td></tr>
+          <tr><td><b>Watch / glasses</b></td><td></td><td>later</td><td>Pending count complication; Even G2 plugin as a dogfood option.</td></tr>
+        </table>
+        <p>Sign-in is the owner only at first (single-tenant per repo), using the Worker OAuth pattern the other projects' MCPs use.</p>
+      </section>
+
+      <section id="guardrails">
+        <h2>Guardrails and security</h2>
+        <table class="grid">
+          <tr><th>Risk</th><th>Guardrail</th></tr>
+          <tr><td><b>Prompt injection</b> from FeedbackKit reports, web pages, issues</td><td>Scouts that read outside text have no write access and can only create cards. Executors act only on approved cards, never on raw outside text.</td></tr>
+          <tr><td><b>Agent bypasses policy</b></td><td>Verbs run through <code>hq.run_verb</code>, which checks tier, budget and approval. Only HQ's executor holds credentials (App Store Connect key, signing, deploy tokens); CEO sessions have none.</td></tr>
+          <tr><td><b>Busywork</b></td><td>Evidence required; daily inbox cap; acceptance rate tracked per scout; low scorers retuned or retired.</td></tr>
+          <tr><td><b>Collisions</b></td><td>One active executor per project; global limit on open PRs.</td></tr>
+          <tr><td><b>Cost creep</b></td><td>Hard weekly cap; hitting it pauses scouts, never in-flight work.</td></tr>
+          <tr><td><b>Self-grading</b></td><td>A separate reviewer agent checks every build before it reaches you.</td></tr>
+          <tr><td><b>Self-modification</b></td><td>Changes to HQ's code, prompts, tiers or any <code>.hq/</code> file are L3.</td></tr>
+          <tr><td><b>Drift from your intent</b></td><td>Weekly memo; taste learned only as approved <code>HQ.md</code> edits.</td></tr>
+          <tr><td><b>Certificates</b></td><td>Mac-runner jobs sign with the existing identity; never mint a certificate (root <code>CLAUDE.md</code>).</td></tr>
+        </table>
+      </section>
+
+      <section id="runtime">
+        <h2>Where it runs</h2>
+        <table class="grid">
+          <tr><th>Piece</th><th>Runs on</th><th>Why</th></tr>
+          <tr><td>Portal, API, MCP, scheduler, store</td><td>HQ's Cloudflare Worker + its own store</td><td>Same pattern as the other projects; always on</td></tr>
+          <tr><td>Scouts, CEO, cloud executors</td><td>Cloud scheduled agent sessions</td><td>Cheap, isolated, no access to your Mac</td></tr>
+          <tr><td>iOS builds, device tests, signing, Spark models</td><td>Your Mac as a self-hosted runner</td><td>Signing identities and devices live there; same model as <code>setup-agent-runner</code></td></tr>
+        </table>
+        <p>Verbs declare <code>runs_on</code> in <code>HQ.md</code>, so HQ routes each job to the cloud or to the Mac runner.</p>
+        <p><b>HQ's own data</b> (cards, decisions, audit log) lives in HQ's own store and never reads another project's database. HQ touches projects only through the repo, CI status, verbs and public APIs. This exception, a project whose job is to open PRs everywhere while holding no runtime coupling to any project, should be written into <code>supabase/GRADUATION.md</code>.</p>
+        <h3>Isolation check</h3>
+        <ul>
+          <li>CI greps HQ's code for <code>projects/</code>, product names and <code>cut_release</code>; any hit fails.</li>
+          <li>A smoke test runs HQ against a blank fixture repo with only a <code>.hq/</code> folder.</li>
+          <li><code>hq lint</code> checks every <code>.hq/</code>: frontmatter schema, declared verbs exist and are executable, side-effecting verbs pass <code>--dry-run</code>.</li>
+        </ul>
+      </section>
+
+      <section id="migration">
+        <h2>Migration: moving the scattered tools in</h2>
+        <p>What moves into HQ is the triggering, the output and the approval, not the skills themselves. An old entry point retires only after HQ has handled its job for a few weeks without you falling back to it.</p>
+        <div data-block="migration"></div>
+        <p>Stays where it is: <code>cut_release.sh</code> (HQ triggers it through <code>bin/release</code>), the weekly TestFlight crons and project CI, project-specific checks such as <code>projects/weehours/scripts/asc_build_status.swift</code> (HQ reads what they report), and <code>heji-candidate-review</code> for visual design choices.</p>
+      </section>
+
+      <section id="phases">
+        <h2>Phases and success measures</h2>
+        <div data-block="phases"></div>
+        <p>The build is quick by this repo's track record; <b>calibration isn't</b>. Good proposals, a useful taste file and enough trust for L0 merges take weeks of real runs, which is why cards start flowing in phase 1 and the portal polish runs alongside calibration.</p>
+        <div data-block="metrics"></div>
+      </section>
+
+      <section id="questions">
+        <h2>Open questions</h2>
+        <table class="grid">
+          <tr><th>#</th><th>Question</th><th>Proposed default</th></tr>
+          <tr><td>Q1</td><td>Pushed branches + PRs, or local-only branches like <code>heji-build-next</code> today?</td><td>Pushed <code>hq/&lt;card-id&gt;</code> branches + PRs; needed for cloud executors and the reviewer agent</td></tr>
+          <tr><td>Q2</td><td>May HQ surface new project ideas as cards?</td><td>Yes as L2 cards, capped to one a week; it never builds one unasked</td></tr>
+          <tr><td>Q3</td><td>May HQ run <code>cut_release.sh</code> for TestFlight/Beta on its own?</td><td>L3 at first; consider L1 (one tap) after phase 3</td></tr>
+          <tr><td>Q4</td><td>Weekly budget?</td><td>Your number; HQ pauses scouts at the cap</td></tr>
+          <tr><td>Q5</td><td>Name?</td><td>HQ (alternatives: Helm, Boardroom)</td></tr>
+          <tr><td>Q6</td><td>HQ's store: own schema on the shared Supabase, or Cloudflare D1?</td><td>D1: HQ is single-tenant and Worker-only, and it keeps HQ off the shared project entirely</td></tr>
+          <tr><td>Q7</td><td>Where HQ's code lives: <code>projects/hq/</code> or its own repo?</td><td>Start in <code>projects/hq/</code>, written as if it will move; its own code changes are L3</td></tr>
+        </table>
+      </section>
+
+      <section id="review">
+        <h2>Review checklist</h2>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="c-goals"><span><b>Goals and non-goals (§1) are right</b><small>Especially the line between "managed" and "always human"</small></span></li>
+          <li><input type="checkbox" id="c-card"><span><b>Card schema (§4) has every field you'd want to see</b></span></li>
+          <li><input type="checkbox" id="c-hq"><span><b><code>.hq/</code> spec (§5): layout, frontmatter and verbs</b></span></li>
+          <li><input type="checkbox" id="c-headless"><span><b>Headless skill contract (§6) and which skills count as generic</b></span></li>
+          <li><input type="checkbox" id="c-tiers"><span><b>Tier table (§8) and Tradeboard's L1 ceiling</b></span></li>
+          <li><input type="checkbox" id="c-migration"><span><b>Migration order (§12)</b></span></li>
+          <li><input type="checkbox" id="c-questions"><span><b>Answers to Q1–Q7 (§14)</b><small>Write them in Your notes</small></span></li>
+        </ul>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-11-08-hq-prd</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- Order: design blocks → this report's config → the engine. -->
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>
