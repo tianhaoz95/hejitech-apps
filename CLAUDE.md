@@ -122,7 +122,7 @@ deploys on push. See `projects/polymath/CLAUDE.md`.
 
 ## New App Store Connect apps
 
-Create the app record yourself; don't hand it to the owner. Register the bundle ID and its
+Steps and API client: the `heji-app-store-connect` skill. Create the app record yourself; don't hand it to the owner. Register the bundle ID and its
 capabilities with the App Store Connect API, then create the record in App Store Connect (the API
 can't create apps) through the Mac's signed-in Safari, then fill in the rest by API. Ask the owner
 only if Apple wants a sign-in or 2FA code, or if the session has no computer-use or browser tools
