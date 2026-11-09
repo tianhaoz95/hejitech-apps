@@ -207,20 +207,25 @@ struct CardDetailView: View {
     @ViewBuilder private func actions(_ c: Card) -> some View {
         switch c.status {
         case "proposed", "discussing":
-            HStack {
+            VStack(spacing: 8) {
                 Button { Task { await act { try await HQClient().decide(cardID, approve: true) } } } label: { Label("Approve", systemImage: "checkmark").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderedProminent)
-                Button(role: .destructive) { showReject = true } label: { Label("Reject", systemImage: "xmark").frame(maxWidth: .infinity) }
-                    .buttonStyle(.bordered)
-                Button { commentFocused = true } label: { Label("Discuss", systemImage: "bubble.left").frame(maxWidth: .infinity) }
-                    .buttonStyle(.bordered)
-            }.disabled(busy).labelStyle(.titleAndIcon).font(.footnote.weight(.semibold))
+                    .buttonStyle(.borderedProminent).controlSize(.large)
+                HStack {
+                    Button(role: .destructive) { showReject = true } label: { Label("Reject", systemImage: "xmark").frame(maxWidth: .infinity) }
+                        .buttonStyle(.bordered)
+                    Button { commentFocused = true } label: { Label("Discuss", systemImage: "bubble.left").frame(maxWidth: .infinity) }
+                        .buttonStyle(.bordered)
+                }
+            }.disabled(busy).font(.subheadline.weight(.semibold))
         case "in_review":
-            HStack {
-                Button { Task { await act { try await HQClient().setStatus(cardID, "shipped") } } } label: { Text("Mark shipped").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
-                Button { Task { await act { try await HQClient().setStatus(cardID, "approved") } } } label: { Text("Build again").frame(maxWidth: .infinity) }.buttonStyle(.bordered)
-                Button(role: .destructive) { showReject = true } label: { Text("Reject").frame(maxWidth: .infinity) }.buttonStyle(.bordered)
-            }.disabled(busy).font(.footnote.weight(.semibold))
+            VStack(spacing: 8) {
+                Button { Task { await act { try await HQClient().setStatus(cardID, "shipped") } } } label: { Text("Mark shipped").frame(maxWidth: .infinity) }
+                    .buttonStyle(.borderedProminent).controlSize(.large)
+                HStack {
+                    Button { Task { await act { try await HQClient().setStatus(cardID, "approved") } } } label: { Text("Build again").frame(maxWidth: .infinity) }.buttonStyle(.bordered)
+                    Button(role: .destructive) { showReject = true } label: { Text("Reject").frame(maxWidth: .infinity) }.buttonStyle(.bordered)
+                }
+            }.disabled(busy).font(.subheadline.weight(.semibold))
         case "failed":
             Button("Retry build") { Task { await act { try await HQClient().setStatus(cardID, "approved") } } }.disabled(busy)
         default:

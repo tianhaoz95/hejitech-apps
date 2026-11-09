@@ -148,7 +148,8 @@ async function callTool(name: string, a: Record<string, unknown>, caller: Caller
 
 export async function handleMcp(req: Request, caller: Caller, env: Env): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
-  if (req.method === "GET") return json({ name: "hq-mcp", transport: "streamable-http" });
+  // No server-initiated stream: per Streamable HTTP, GET answers 405 so clients don't poll it.
+  if (req.method === "GET") return new Response(null, { status: 405, headers: { Allow: "POST, OPTIONS", ...cors } });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
   let msg: { id?: string | number; method: string; params?: Record<string, unknown> };
   try {

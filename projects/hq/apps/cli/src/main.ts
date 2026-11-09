@@ -10,8 +10,8 @@
 //
 // The repo is the git repository around the current directory (or --root <dir>).
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { hostname, homedir } from "node:os";
-import { join } from "node:path";
+import { hostname } from "node:os";
+import { dirname, join } from "node:path";
 import { contextMarkdown } from "@hq/core";
 import { HqClient } from "./client.ts";
 import { headCommit, lint, loadPolicy, repoRoot, runVerb } from "./repo.ts";
@@ -96,7 +96,7 @@ async function main() {
       const name = opt("--name") ?? process.env.HQ_RUNNER_NAME ?? hostname().split(".")[0];
       const log = (m: string) => console.log(`${new Date().toISOString().slice(0, 19)} ${m}`);
       log(`runner ${name} for ${policy!.repo} at ${client.url} (${caps.join(", ")})${once ? ", once" : ""}`);
-      await loop(client, { root, name, capabilities: caps, workdir: process.env.HQ_WORKDIR ?? join(homedir(), ".hq", "worktrees"), base: process.env.HQ_BASE ?? "main", agentToken: agentToken as string, log }, interval, once);
+      await loop(client, { root, name, capabilities: caps, workdir: process.env.HQ_WORKDIR ?? join(dirname(root), ".hq-worktrees"), base: process.env.HQ_BASE ?? "main", agentToken: agentToken as string, log }, interval, once);
       return;
     }
     case "init": {

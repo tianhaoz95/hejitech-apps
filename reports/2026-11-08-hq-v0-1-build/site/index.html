@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HQ v0.1: what's built and how to try it</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8603A'/%3E%3Crect x='9' y='9' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='15' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='21' width='9' height='2.5' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>HQ v0.1: what's built and how to try it</b><small>What was built while you were away, the real runs, and what's left for you</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <!-- Filled from the sections' <h2>s by report.js; data-toc="Short label" on a section overrides. -->
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <p class="kicker">Build report · 2026-11-08 · HQ v0.1</p>
+        <h1>HQ v0.1 is built and running on this Mac</h1>
+        <p class="lede">Everything in the PRD's phases 1–4 exists and works end to end on a local stack: <b>the Worker</b> (portal, API, MCP server, scheduler), <b>the <code>hq</code> CLI and runner</b>, <b>the iPhone app</b>, and <b><code>.hq/</code> folders for the repo and all 15 projects</b>. Two real Claude Code runs went through it: a scout filed a genuine reliability card for $0.60, and an executor built, tested and committed an approved fix for $0.67, then a second agent reviewed it. Nothing is pushed or deployed: it's all on the local branch <code>hq/initial</code>.</p>
+
+        <div class="status">
+          <div><b>Core contracts</b><span class="ok">Card, policy, context: 11 tests</span></div>
+          <div><b>Worker</b><span class="ok">18-step integration test passes</span></div>
+          <div><b>CLI + runner</b><span class="ok">7 tests; real scout, build, review runs</span></div>
+          <div><b>Portal</b><span class="ok">Desktop + phone, light + dark</span></div>
+          <div><b>iPhone app</b><span class="todo">Simulator only (device signing needs you)</span></div>
+          <div><b>Deploy</b><span class="todo">Not deployed (§7)</span></div>
+        </div>
+
+        <div class="cards">
+          <div class="card good">
+            <h3>Verified</h3>
+            <ul>
+              <li><b>Guardrails refuse what they should</b>: cards without evidence, above the tier ceiling, for unknown projects or verbs; agents approving, shipping or running L3 verbs (<code>projects/hq/scripts/test-api.mjs</code>).</li>
+              <li><b>A real scout</b> (<code>heji-fix-ci</code>, headless) filed a card about a recurring <code>supabase-ci.yml</code> flake with 8 pieces of evidence.</li>
+              <li><b>A real build</b>: approved card → worktree → fix + test → independent <code>verify</code> verb → reviewer agent.</li>
+              <li><b>Portability</b>: HQ runs a fixture repo it has never seen, and a CI check proves HQ's code names no project.</li>
+            </ul>
+          </div>
+          <div class="card warn">
+            <h3>Not verified</h3>
+            <ul>
+              <li><b>The iPhone app on your iPhone 13</b>: codesign needs a person to allow keychain access.</li>
+              <li><b>Production</b>: no Cloudflare deploy, so the hourly cron and OAuth over HTTPS weren't run live.</li>
+              <li><b>Agents other than Claude Code</b>: no Antigravity or Codex CLI on this Mac; their adapter is a template.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>To review:</b> open the portal on your phone (URL in the chat message), look at the two real cards, then read §6 (decisions I made for you) and tick the checklist in §7.</div>
+      </section>
+
+      <section id="tour">
+        <h2>What you'll see</h2>
+        <p>Screenshots of the running build against the local Worker, with the real cards from the runs in §3. The portal and the app read the same API.</p>
+        <h3>Web portal</h3>
+        <div class="shots">
+          <figure><img src="media/portal-desktop-inbox.png" alt="Portal inbox: digest row (1 needs you, $0.60 this week), Decide with the scout's Supabase graduation-check card, Working with the HQ API wording card"><figcaption>Inbox: digest, Decide (capped at 5), Ready to ship, Discussing, Working.</figcaption></figure>
+          <figure><img src="media/portal-desktop-card.png" alt="Card detail for the scout's card: tier L1, why, eight evidence items with GitHub run links and log excerpts, plan, verify, Approve / Reject / Discuss"><figcaption>A card: why, evidence, plan, how we'll know it worked, and the three actions.</figcaption></figure>
+          <figure><img src="media/portal-phone-inbox.png" alt="The same inbox at phone width in dark mode"><figcaption>Phone width, dark mode.</figcaption></figure>
+        </div>
+        <div class="shots">
+          <figure><img src="media/portal-desktop-health.png" alt="Health board: one card per project from its .hq/bin/health verb; TinyTouch shows Needs attention because its CI on main is failing"><figcaption>Health: each project's <code>.hq/bin/health</code>. TinyTouch's CI on main really is failing.</figcaption></figure>
+          <figure><img src="media/portal-desktop-runs.png" alt="Runs page: buttons to run the CEO, health or each scout now, and the run history with costs"><figcaption>Runs: start the CEO, health or a scout now; history with cost.</figcaption></figure>
+          <figure><img src="media/portal-desktop-settings.png" alt="Settings: kill switch, MCP server URL, token creation for runners and agents, audit log"><figcaption>Settings: kill switch, tokens, connected agents, audit log.</figcaption></figure>
+        </div>
+        <h3>iPhone app (simulator)</h3>
+        <div class="shots">
+          <figure><img src="media/ios-inbox.png" alt="iOS inbox: digest row and the Decide section with the scout's card"><figcaption>Inbox with the digest.</figcaption></figure>
+          <figure><img src="media/ios-card.png" alt="iOS card detail: tier, title, Approve full width, then Reject and Discuss"><figcaption>Card: Approve, Reject (with a reason), Discuss.</figcaption></figure>
+          <figure><img src="media/ios-health.png" alt="iOS health board listing projects with CI status"><figcaption>Health.</figcaption></figure>
+        </div>
+      </section>
+
+      <section id="runs">
+        <h2>The real runs</h2>
+        <p>Both ran through the runner on this Mac with Claude Code headless, an agent token for the MCP server, and the deny-list (no push, merge, release, deploy, secrets).</p>
+        <div data-block="runsTable"></div>
+        <h3>The scout's card (waiting for you)</h3>
+        <p><b>"Supabase conventions: graduation check flakes on port 56622 already in use"</b> (L1, repo-wide). It found the <code>&lt;project&gt; stands alone</code> jobs in <code>supabase-ci.yml</code> fail intermittently because <code>scripts/graduation_check.sh</code> remaps the throwaway stack's database to port 56622, inside the Linux ephemeral range, so an outbound connection can already hold it. It happened 3 times in 10 days (fitloop 11-02, headway 10-30, tradeboard 11-08), and the script then blames migrations. The plan moves the ports out of the ephemeral range and retries once on infrastructure errors. <b>It's a real proposal: approve or reject it yourself.</b></p>
+        <div class="unknown"><b>A miss:</b> the same scout said "main and all recent releases are green", while the health verb shows TinyTouch's CI failing on main. The scout looked at recent runs only. Worth a look at TinyTouch, and a hint for tuning the scout.</div>
+        <h3>The build loop (a fix to HQ itself)</h3>
+        <p>To exercise approve → build → review, I filed a small real bug I'd noticed (the API said "needs a owner token") as an L1 card and approved it on this dev instance. The executor:</p>
+        <ol class="do">
+          <li>Got a fresh worktree on branch <code>hq/hq-20261109-rqhh</code> (from <code>hq/initial</code>); the repo's <code>setup</code> verb ran <code>npm ci</code> in it.</li>
+          <li>Added assertions to the integration test, showed them failing, fixed <code>need()</code> in <code>api.ts</code>, got 18/18, committed <code>c330b869</code> (2 files, +16 −3).</li>
+          <li>Attached its evidence through MCP. The runner then ran <code>.hq/bin/verify</code> itself (typecheck + tests, exit 0) and queued the reviewer.</li>
+        </ol>
+        <p>It also reported, unprompted, that its <code>pkill -f "wrangler dev"</code> had killed my dev Worker for a minute. That's now blocked (§5).</p>
+        <div data-block="reviewVerdict"></div>
+      </section>
+
+      <section id="architecture">
+        <h2>What's in the branch</h2>
+        <div data-block="arch"></div>
+        <table class="grid">
+          <tr><th>Part</th><th>Where</th><th>What it does</th></tr>
+          <tr><td><b>Contracts</b></td><td><code>projects/hq/packages/core</code></td><td>Card schema + lifecycle (who may move a card where), <code>HQ.md</code> policy merge, tiers, verb checks, budget, schedules, <code>get_context</code>.</td></tr>
+          <tr><td><b>Worker</b></td><td><code>projects/hq/services/web</code></td><td>D1 store, R2 for screenshots, the owner's portal, REST API, MCP server (9 tools; HQ tokens or OAuth), hourly cron. Every rule is enforced in <code>store.ts</code>.</td></tr>
+          <tr><td><b>CLI + runner</b></td><td><code>projects/hq/apps/cli</code></td><td><code>hq lint | policy | sync | context | verb | runner | init</code>. The runner claims runs, starts agents through adapters, and holds the credentials.</td></tr>
+          <tr><td><b>iPhone app</b></td><td><code>projects/hq/apps/ios</code></td><td>SwiftUI: inbox, card, health, runs, settings, kill switch, background digest notification.</td></tr>
+          <tr><td><b>Repo side</b></td><td><code>.hq/</code>, <code>projects/*/.hq/</code></td><td>Root policy (repo, ceiling L1, $40/week, scouts) + <code>lib/</code> helpers; per project <code>health</code>, <code>verify</code> (where npm tests exist), <code>release</code> (wraps <code>cut_release.sh</code>, L3).</td></tr>
+          <tr><td><b>Skills</b></td><td><code>heji-fix-ci</code>, <code>heji-update-toolchain</code></td><td>A "Headless mode (HQ scout)" section: same investigation, cards instead of a review site.</td></tr>
+          <tr><td><b>CI</b></td><td><code>.github/workflows/hq-ci.yml</code></td><td>Typecheck, tests, build, coupling check, <code>hq lint</code>, Worker integration on a fresh D1, iOS simulator build.</td></tr>
+          <tr><td><b>Docs</b></td><td><code>projects/hq/{CLAUDE,README}.md</code>, <code>docs/</code></td><td>Commands, architecture, pitfalls, decisions, deploy steps. Root <code>CLAUDE.md</code> points agents at HQ; <code>GRADUATION.md</code> records HQ's exception.</td></tr>
+        </table>
+      </section>
+
+      <section id="tests">
+        <h2>Tests and checks</h2>
+        <div data-block="checks"></div>
+        <pre class="cmd">npm run typecheck:hq && npm run test:hq && npm run build:hq
+node projects/hq/scripts/check_coupling.mjs
+npm run -s hq -- lint                   <span class="c"># all 16 .hq/ folders; --no-run skips the dry runs</span></pre>
+      </section>
+
+      <section id="found">
+        <h2>Problems found while building (all fixed)</h2>
+        <table class="grid">
+          <tr><th>Found by</th><th>Problem</th><th>Fix</th></tr>
+          <tr><td>Integration test</td><td>Your real <code>release</code> request was silently merged into an already-queued dry run of the same verb (run de-dup ignored arguments).</td><td>Verb runs de-dup by arguments; the test asserts three verb runs.</td></tr>
+          <tr><td>Coupling check</td><td>The agent deny-list named this repo's <code>cut_release.sh</code>, tying HQ to this repo.</td><td>Generic rule (no agent runs <code>.hq/bin/release</code>) plus <code>HQ_DENY_TOOLS</code> for repo-specific additions.</td></tr>
+          <tr><td>Running over Tailscale</td><td>Agent tokens were bound to <code>PUBLIC_URL</code>, so MCP failed at any other address.</td><td>HQ's own tokens are checked against D1 before the OAuth layer; OAuth stays for third-party clients.</td></tr>
+          <tr><td>The worker log</td><td>Claude Code polled <code>GET /mcp</code> in a loop because HQ answered 200.</td><td>GET answers 405, as the MCP Streamable HTTP spec expects.</td></tr>
+          <tr><td>The executor itself</td><td>It ran <code>pkill -f "wrangler dev"</code> and killed a server it didn't start.</td><td><code>pkill</code>/<code>killall</code> denied to agents; the build prompt says to stop processes by PID.</td></tr>
+          <tr><td>First build</td><td>A fresh worktree has no <code>node_modules</code>, so <code>verify</code> would fail.</td><td>A repo-wide <code>setup</code> verb the runner calls in each new worktree.</td></tr>
+          <tr><td>iOS</td><td>ATS refuses plain HTTP to a raw Tailscale IP.</td><td>The app allows <code>*.ts.net</code>; use the MagicDNS name.</td></tr>
+        </table>
+      </section>
+
+      <section id="decisions">
+        <h2>Decisions I made for you</h2>
+        <p>The PRD's open questions, answered with its proposed defaults or a safer one. All are a one-line change in <code>.hq/HQ.md</code> or the code; full list in <code>projects/hq/docs/decisions.md</code>.</p>
+        <table class="grid">
+          <tr><th>#</th><th>Question</th><th>Chosen</th></tr>
+          <tr><td>Q1</td><td>Push branches and open PRs?</td><td><b>Off for now</b> (<code>push: false</code>): builds stay on local <code>hq/&lt;card&gt;</code> branches, like <code>heji-build-next</code>. Set <code>push: true</code> to get PRs.</td></tr>
+          <tr><td>Q2</td><td>New project ideas as cards?</td><td>Allowed (kind <code>portfolio</code>), never built unasked. No scout generates them yet.</td></tr>
+          <tr><td>Q3</td><td>May HQ release?</td><td><b>No</b>: every <code>release</code> verb is L3. You can dry-run and run it from a card.</td></tr>
+          <tr><td>Q4</td><td>Weekly budget</td><td><b>$40</b>. Scouts and the CEO pause at the cap; builds finish.</td></tr>
+          <tr><td>Q5</td><td>Name</td><td>HQ.</td></tr>
+          <tr><td>Q6</td><td>Store</td><td>Cloudflare <b>D1</b> (+ R2), <code>BACKEND=none</code>: HQ never touches the shared Supabase project.</td></tr>
+          <tr><td>Q7</td><td>Where the code lives</td><td><code>projects/hq/</code>, written to move.</td></tr>
+          <tr><td>—</td><td>Tier ceilings</td><td><b>L1 everywhere</b>: nothing auto-merges yet. Promotion to L0 is an <code>HQ.md</code> edit you approve.</td></tr>
+          <tr><td>—</td><td>Sign-in</td><td>One owner per deployment with an owner token (portal, app, MCP consent). Runners and headless agents use tokens you mint in Settings.</td></tr>
+          <tr><td>—</td><td>Inbox cap</td><td>At most 5 cards waiting for a decision at once; the CEO's ranking picks which.</td></tr>
+          <tr><td>—</td><td>Notifications</td><td>Local digest notification from background refresh; APNs push later.</td></tr>
+        </table>
+      </section>
+
+      <section id="next">
+        <h2>What's left for you</h2>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="c-try"><span><b>Try it on your phone</b><small>Portal URL and owner token are in the chat message; the token is in <code>projects/hq/services/web/.dev.vars</code>.</small></span></li>
+          <li><input type="checkbox" id="c-card"><span><b>Decide the scout's card</b><small>Approve to watch a real build, or reject with a reason.</small></span></li>
+          <li><input type="checkbox" id="c-merge"><span><b>Look at the executor's fix and merge it into <code>hq/initial</code> if you like it</b><small><code>git diff hq/initial hq/hq-20261109-rqhh</code></small></span></li>
+          <li><input type="checkbox" id="c-device"><span><b>Install on your iPhone</b><small><code>cd projects/hq/apps/ios &amp;&amp; xcodegen generate &amp;&amp; open HQ.xcodeproj</code>, run on the device, allow keychain access once.</small></span></li>
+          <li><input type="checkbox" id="c-branch"><span><b>Merge <code>hq/initial</code> into main and push</b><small>Then CI runs <code>hq-ci.yml</code>. It's a new public project, so it's your call.</small></span></li>
+          <li><input type="checkbox" id="c-deploy"><span><b>Deploy</b><small><code>projects/hq/docs/DEPLOY.md</code>: D1 + R2 + owner secret, <code>npm run deploy -w @hq/web</code>, link Workers Builds.</small></span></li>
+          <li><input type="checkbox" id="c-runner"><span><b>Run the runner on this Mac for real</b><small>With production tokens; a launchd agent keeps it running.</small></span></li>
+          <li><input type="checkbox" id="c-tinytouch"><span><b>Look at TinyTouch's red CI on main</b><small>Found by the health verb.</small></span></li>
+        </ul>
+        <h3>Not in v0.1</h3>
+        <ul>
+          <li>APNs push and a TestFlight workflow (needs the App Store Connect record for <code>com.hejitech.hq</code>).</li>
+          <li>Tested adapters for Antigravity or Codex (only the command template).</li>
+          <li>Taste learning beyond what the CEO prompt does: it reads recent decisions and may propose an <code>HQ.md</code> policy card, but there's no scout scoring or automatic tier promotion yet.</li>
+          <li>Moving the review-site hand-offs (§12 steps 3–5 of the PRD) into HQ.</li>
+        </ul>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-11-08-hq-v0-1-build</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- Order: design blocks → this report's config → the engine. -->
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>

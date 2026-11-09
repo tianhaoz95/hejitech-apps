@@ -71,7 +71,7 @@ ${cardText(o.card)}
 You're in a git worktree at ${o.worktree} on branch ${o.branch} (from ${o.base}). Only work there.
 1. Read the project's CLAUDE.md/AGENTS.md for how to build and test.
 2. Make the change the plan describes, as small as it can be. If the plan turns out wrong, do the right smaller thing and say so.
-3. Run the project's tests. Show the failure before your fix when there is one.
+3. Run the project's tests. Show the failure before your fix when there is one. If you start a server, stop it by its PID; never pkill/killall by name (other people's servers run on this machine).
 4. Commit on ${o.branch} with a clear message. Don't push, merge, release or deploy; don't touch .hq/ folders.
 5. Attach evidence with the hq MCP tool attach_evidence (phase "build"): the tests you ran and their result (type test), measured before/after numbers with their source (type metric), anything else that proves it works.
 If you can't finish, commit nothing broken, attach what you found (type log) and say why.

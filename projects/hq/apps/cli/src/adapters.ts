@@ -35,7 +35,7 @@ export interface AgentResult {
 const DENY_ALWAYS = [
   "Bash(git push:*)", "Bash(git push)", "Bash(gh pr merge:*)", "Bash(gh release:*)", "Bash(gh workflow run:*)",
   "Bash(wrangler deploy:*)", "Bash(npx wrangler deploy:*)", "Bash(*.hq/bin/release*)", "Bash(*.hq/bin/rollback*)", "Bash(git reset --hard:*)",
-  "Bash(rm -rf /:*)", "Bash(supabase db push:*)", "Bash(*wrangler secret:*)", "Bash(gh secret:*)",
+  "Bash(rm -rf /:*)", "Bash(pkill:*)", "Bash(killall:*)", "Bash(supabase db push:*)", "Bash(*wrangler secret:*)", "Bash(gh secret:*)",
 ];
 /** Repo-specific additions, e.g. HQ_DENY_TOOLS='Bash(*my_release.sh*),Bash(fly deploy:*)'. */
 const extraDeny = () => (process.env.HQ_DENY_TOOLS ?? "").split(",").map((s) => s.trim()).filter(Boolean);

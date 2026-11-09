@@ -36,7 +36,7 @@ HQ_DENY_TOOLS='Bash(*cut_release.sh*)' npm run -s hq -- runner      # foreground
 ```
 
 To keep it running, a launchd agent (`~/Library/LaunchAgents/com.hejitech.hq-runner.plist`) that
-runs the same command from the repo root with those variables. Builds go to `~/.hq/worktrees`
+runs the same command from the repo root with those variables. Builds go to `../.hq-worktrees` next to the repo, on the same disk
 (`HQ_WORKDIR`), from `main` (`HQ_BASE`).
 
 ## 4. iPhone app
