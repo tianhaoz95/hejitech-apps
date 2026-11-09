@@ -102,7 +102,7 @@ async function verb(client: HqClient, o: RunnerOptions, policy: RepoPolicy, run:
   return "worked" as const;
 }
 
-function ensureWorktree(o: RunnerOptions, cardId: string): { path: string; branch: string } {
+function ensureWorktree(o: RunnerOptions, policy: RepoPolicy, cardId: string): { path: string; branch: string } {
   const branch = `hq/${cardId}`;
   const path = join(o.workdir, `${basename(o.root)}-${cardId}`);
   mkdirSync(o.workdir, { recursive: true });
@@ -115,6 +115,12 @@ function ensureWorktree(o: RunnerOptions, cardId: string): { path: string; branc
   }
   if (exists) git(o.root, "worktree", "add", path, branch);
   else git(o.root, "worktree", "add", "-b", branch, path, o.base);
+  // A fresh checkout has no dependencies: the repo's own setup verb (if any) prepares it.
+  if (policy.verbs.setup) {
+    o.log(`setup in ${path}`);
+    const r = runVerb(path, policy, "repo-wide", "setup", { timeoutMs: 20 * 60_000 });
+    if (r.code !== 0) throw new Error(`.hq/bin/setup failed in the worktree (exit ${r.code}): ${r.stderr.slice(-300)}`);
+  }
   return { path, branch };
 }
 
@@ -122,7 +128,7 @@ async function build(client: HqClient, o: RunnerOptions, c: Claimed, finish: (b:
   const run = c.run!;
   const card = c.card!;
   const policy = c.policy!;
-  const wt = ensureWorktree(o, card.card.id);
+  const wt = ensureWorktree(o, policy, card.card.id);
   o.log(`building in ${wt.path} on ${wt.branch}`);
   const before = git(wt.path, "rev-parse", "HEAD");
   const res = await runAgent({

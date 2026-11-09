@@ -97,7 +97,7 @@ export const DEFAULTS = {
   tier_ceiling: "L2" as Tier,
   card_limit: 3,
   /** Built-in verb tiers when HQ.md doesn't say. Anything that publishes is L3 unless lowered. */
-  verbTier: { health: "L0", verify: "L0", evidence: "L0", release: "L3", rollback: "L2" } as Record<string, Tier>,
+  verbTier: { health: "L0", verify: "L0", evidence: "L0", setup: "L0", release: "L3", rollback: "L2" } as Record<string, Tier>,
 };
 
 export const tierRank = (t: Tier) => TIERS.indexOf(t);

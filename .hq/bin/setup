@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Prepares a fresh checkout (a build worktree) so verbs and agents can build and test: installs the
+# npm workspaces. Local only; prints JSON.
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)"
+out="$(npm ci --no-audit --no-fund 2>&1)"; code=$?
+echo "$out" | tail -5 >&2
+printf '{"ok":%s,"exit":%d}\n' "$([ $code -eq 0 ] && echo true || echo false)" "$code"
+exit $code

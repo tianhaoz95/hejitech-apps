@@ -80,13 +80,14 @@ screen without taps.
 
 - **Node runs the CLI's TypeScript directly** (type stripping): no parameter properties, enums or
   namespaces in `apps/cli/src` or `packages/core/src` (`erasableSyntaxOnly` in the CLI tsconfig).
-- **OAuth wants an HTTPS `PUBLIC_URL`** (loopback HTTP is the exception), and agent tokens are
-  bound to it as their audience: a Worker served on another host/port needs `--var PUBLIC_URL:…`
-  matching the URL agents call, or MCP answers `invalid_token`.
+- **OAuth wants an HTTPS `PUBLIC_URL`** (loopback HTTP is the exception), and OAuth access tokens
+  are bound to it. HQ's own `hq_agt_`/`hq_run_` tokens skip the OAuth layer on `/mcp`
+  (`ownTokenMcp` in `src/worker/index.ts`), so runners and agents work at any address.
 - **iOS ATS**: plain HTTP is allowed only for local names and `*.ts.net`; a raw Tailscale IP is
   refused. Use the MagicDNS name for a dev Worker.
 - **Device builds from a non-interactive shell** fail at codesign with `errSecInternalComponent`
   (the keychain asks a person); build to the iPhone from Xcode or a logged-in terminal once.
+- **Fresh build worktrees** get the repo-wide `setup` verb (here `npm ci`) before the agent starts.
 - Verb runs dedupe by arguments: a real run must never merge into a queued dry run (fixed; tested).
 
 ## Releasing

@@ -158,8 +158,23 @@ function getProvider(env: Env): OAuthProvider<Env> {
   return provider;
 }
 
+/**
+ * HQ's own tokens (hq_agt_…, hq_run_…) are checked against HQ's D1 directly, so they work at any
+ * address this Worker is reached by (workers.dev, a custom domain, a dev Worker over Tailscale).
+ * OAuth access tokens from MCP clients go through the provider, bound to PUBLIC_URL.
+ */
+async function ownTokenMcp(req: Request, env: Env): Promise<Response | null> {
+  const url = new URL(req.url);
+  if (url.pathname !== "/mcp" && !url.pathname.startsWith("/mcp/")) return null;
+  const t = bearer(req);
+  if (!t.startsWith("hq_agt_") && !t.startsWith("hq_run_")) return null;
+  const caller = await resolveToken(env, t);
+  if (!caller) return json({ error: "invalid_token", error_description: "unknown or revoked HQ token" }, 401);
+  return handleMcp(req, caller, env);
+}
+
 export default {
-  fetch: (req: Request, env: Env, ctx: ExecutionContext) => getProvider(env).fetch(req, env, ctx),
+  fetch: async (req: Request, env: Env, ctx: ExecutionContext) => (await ownTokenMcp(req, env)) ?? getProvider(env).fetch(req, env, ctx),
   scheduled: async (_event: ScheduledController, env: Env, ctx: ExecutionContext) => {
     ctx.waitUntil(schedule(env).then((r) => console.log("schedule", JSON.stringify(r))));
   },

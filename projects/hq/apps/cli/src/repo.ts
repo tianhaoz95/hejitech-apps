@@ -9,7 +9,7 @@ import { buildPolicy, type HqFile, type RepoPolicy } from "@hq/core";
 
 const SKIP = new Set(["node_modules", ".git", "dist", "build", ".wrangler", ".derived", "Pods", "DerivedData", ".build", ".dart_tool", "target", ".next", ".venv", "venv"]);
 /** Verbs that only read; every other verb must support --dry-run. */
-export const READ_ONLY_VERBS = new Set(["health", "verify", "evidence"]);
+export const READ_ONLY_VERBS = new Set(["health", "verify", "evidence", "setup"]);
 
 export function repoRoot(from = process.cwd()): string {
   try {
@@ -171,7 +171,7 @@ export function lint(root: string, opts: { runVerbs: boolean }): { errors: strin
     if (!opts.runVerbs) continue;
     for (const name of Object.keys(verbs)) {
       const dry = !READ_ONLY_VERBS.has(name);
-      if (name === "verify" || name === "evidence") continue; // slow or needs a change; checked by CI per project
+      if (name === "verify" || name === "evidence" || name === "setup") continue; // slow or needs a change; checked by CI per project
       const r = runVerb(root, policy, project, name, { dryRun: dry, timeoutMs: 5 * 60_000 });
       if (r.code !== 0) errors.push(`${where}/bin/${name}${dry ? " --dry-run" : ""}: exit ${r.code}${r.stderr ? `: ${r.stderr.trim().split("\n").slice(-2).join(" ")}` : ""}`);
       else if (r.json === null) errors.push(`${where}/bin/${name}${dry ? " --dry-run" : ""}: stdout isn't JSON`);
