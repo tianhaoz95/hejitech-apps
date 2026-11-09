@@ -111,13 +111,25 @@ in-app What's New describes the version) and publishes `tether-v<version>`, whic
 For the Trading Plan Board it bumps `projects/tradeboard/apps/executor/package.json` and publishes
 `tradeboard-v<version>`, which runs `tradeboard-executor-release.yml` (tests, bundles the local
 executor and attaches `tradeboard-executor.mjs`, `install.sh` and `policy.example.json`; the owner's
-machine updates with `bash install.sh <version>`). Its Worker (portal, Board MCP, executor API, minute
+machine updates with `bash install.sh <version>`) and `tradeboard-testflight.yml` (the iPhone app, same
+version, refusing until its in-app What's New describes it). Its Worker (portal, Board MCP, executor API, minute
 cron) deploys on push. It handles real-money trading: never place a live order yourself. See
 `projects/tradeboard/CLAUDE.md`.
 
 For Polymath it releases `projects/polymath/apps/desktop/package.json`'s version as `polymath-v<version>`,
 which runs `polymath-mac-release.yml` (signed & notarized Tauri macOS DMGs). Its Worker (site, docs, MCP)
 deploys on push. See `projects/polymath/CLAUDE.md`.
+
+## New App Store Connect apps
+
+Create the app record yourself; don't hand it to the owner. Register the bundle ID and its
+capabilities with the App Store Connect API, then create the record in App Store Connect (the API
+can't create apps) through the Mac's signed-in Safari, then fill in the rest by API. Ask the owner
+only if Apple wants a sign-in or 2FA code, or if the session has no computer-use or browser tools
+(then do every other step and leave only the record to them). If the name is taken, don't ask: use
+`<Name>: <short descriptor>` (e.g. "FitLoop: Workout Tracker"), at most 30 characters, and say
+which name you used. Every new app also gets `tianhaozhou95@icloud.com` as a TestFlight tester,
+with the invite sent (by API: add the tester to a beta group, then send the invitation).
 
 ## Common pitfalls
 

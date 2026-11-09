@@ -41,6 +41,7 @@ Robinhood MCP  https://agent.robinhood.com/mcp/trading  (dedicated agentic accou
 | `packages/core` | `@tradeboard/core`: ticket and plan rules, state vocabulary, market calendar and PT/ET times, policy + deterministic validator, drift, TOTP, the sanity-check contract, executor protocol |
 | `services/web` | `@tradeboard/web`: the Worker (portal API, Board MCP + OAuth, executor API, minute cron) and the portal pages |
 | `apps/executor` | `@tradeboard/executor`: the daemon and CLI, Robinhood MCP client (loopback OAuth), model client; `deploy/install.sh` |
+| `apps/ios` | Native iOS 17+ client (SwiftUI + `TradeboardKit`), with 2FA TOTP sign-in, order tickets, plan approval, discussion, and kill controls |
 | `supabase/schemas/tradeboard` (repo root) | the schema; every state change is a Postgres function |
 | `scripts/test-api.mjs` | end-to-end test of PRD §12.1 against the real Worker, with `mock-robinhood.mjs` and `mock-model.mjs` |
 | `policy.example.json` | the §9.2 defaults (review every value before live) |
