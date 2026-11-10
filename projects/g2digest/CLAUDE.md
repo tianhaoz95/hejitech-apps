@@ -81,4 +81,6 @@ Local tokens from the seed: agent `g2a_dev_local_token`, glasses `g2d_dev_local_
 (the plugin's version; `scripts/pack.mjs` stamps it into `app.json`) and publishes
 `g2digest-v<version>`, whose workflow attaches the `.ehpk`, uploads it to Even Hub and promotes it to
 Beta (secrets `EVENHUB_EMAIL` / `EVENHUB_PASSWORD`, see `docs/DEPLOY.md` §4). Review and publishing are in the portal.
+The same release runs `g2digest-testflight.yml`: the iPhone app (`scripts/release_testflight.sh`) ships
+the plugin's version, so the script refuses until `apps/ios/App/Sources/WhatsNewView.swift` describes it.
 The Worker deploys on push to `main`.

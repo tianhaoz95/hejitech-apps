@@ -94,7 +94,8 @@ which runs `tinytouch-testflight.yml`. See `projects/tinytouch/CLAUDE.md`.
 For G2 Digest it bumps the Even Hub plugin's version in `projects/g2digest/apps/glasses/package.json`
 (stamped into `app.json` when packing) and publishes `g2digest-v<version>`, which runs
 `g2digest-plugin-release.yml` (attaches the `.ehpk`, uploads it to Even Hub and promotes it to Beta;
-submit for review in the portal). Its
+submit for review in the portal) and `g2digest-testflight.yml` (the iPhone app, same version, refusing
+until its in-app What's New describes it). Its
 Worker (web app, API, MCP) deploys on push. See `projects/g2digest/CLAUDE.md`.
 
 For Headway it bumps `MARKETING_VERSION` in `projects/headway/apps/ios/project.yml` (refusing until the
