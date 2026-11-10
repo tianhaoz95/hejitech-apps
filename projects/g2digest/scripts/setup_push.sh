@@ -7,11 +7,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 set -a; . ~/Credentials/hejitech-apps.env; set +a
+. projects/g2digest/backend.env   # SUPABASE_REF: this project's backend
 [ -f "${HEJI_APNS_KEY_P8_LOCATION:-}" ] || { echo "!! no APNs key file (HEJI_APNS_KEY_P8_LOCATION)" >&2; exit 1; }
 
 echo "==> database: pending migrations (should be only g2digest_push_devices)"
-supabase db push --remote jitdzllkxfhlrxxvljhp --dry-run
-supabase db push --remote jitdzllkxfhlrxxvljhp
+supabase db push --remote "$SUPABASE_REF" --dry-run
+supabase db push --remote "$SUPABASE_REF"
 
 echo "==> Worker secrets (g2digest, production)"
 cd projects/g2digest/services/web
