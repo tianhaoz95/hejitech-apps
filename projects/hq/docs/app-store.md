@@ -17,7 +17,7 @@ Never: submit for review, set a price other than free, accept an agreement. Thos
 | Production Worker + database | **Not deployed** (`projects/hq/docs/DEPLOY.md`) |
 | Privacy, terms, support pages | **Built** (`services/web/{privacy,terms,support}`), live once deployed |
 | In-app account deletion | **Built**: Settings → Delete account (iPhone and web), Apple token revocation when the SIWA key secrets are set |
-| TestFlight workflow | **Built**: `hq-testflight.yml` (Wednesdays 19:45 UTC + `hq-v*` releases) |
+| TestFlight workflow | **Built**: `hq-testflight.yml` (Wednesdays 20:00 UTC + `hq-v*` releases) |
 | Device build | Signed Debug build installs and runs on the owner's iPhone 13 |
 
 Check any time:
@@ -65,7 +65,7 @@ home-screen name stays "HQ").
 5. **TestFlight plumbing** (done):
    - `projects/hq/scripts/release_testflight.sh` and `scripts/asc_build_status.swift`
    - `.github/workflows/hq-testflight.yml`, triggered by published `hq-v*` releases, with the
-     weekly schedule `cron: "45 19 * * 3"` (Wednesdays 19:45 UTC, after `19:30`, the latest today)
+     weekly schedule `cron: "0 20 * * 3"` (Wednesdays 20:00 UTC, after Tradeboard's 19:45)
    - `projects/hq/release.env`: `RELEASE_WORKFLOWS=(hq-testflight.yml)` and the team signing
      `REQUIRED_SECRETS=(ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8_BASE64 SIGNING_P12_BASE64 SIGNING_P12_PASSWORD DEV_SIGNING_P12_BASE64 DEV_SIGNING_P12_PASSWORD)`;
      the What's New `release_check` is already there

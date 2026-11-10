@@ -24,6 +24,11 @@ npm run dev:worker -w @tradeboard/web                # 127.0.0.1:8798, email sig
 node projects/tradeboard/scripts/test-api.mjs        # end to end: PRD §12.1 1–16 + auth, OAuth, limits
 node projects/tradeboard/scripts/scan-tokens.mjs   # no token patterns in the repo (CI)
 node projects/tradeboard/apps/executor/src/cli.ts help
+
+# iOS app (TradeboardKit tests + simulator build)
+swift test --package-path projects/tradeboard/apps/ios/TradeboardKit
+(cd projects/tradeboard/apps/ios && xcodegen generate)
+xcodebuild -project projects/tradeboard/apps/ios/Tradeboard.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' -derivedDataPath projects/tradeboard/apps/ios/.derived CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO build
 ```
 
 The promo video's edit is `branding/promo-videos/src/tradeboard-launch` (Remotion, `branding/README.md`).
@@ -84,5 +89,8 @@ enrolls again), signs up a second user to check boards stay private, then delete
 
 `scripts/cut_release.sh tradeboard --dry-run`, then for real. It bumps
 `apps/executor/package.json` and publishes `tradeboard-v<version>`, whose workflow tests and bundles
-the executor and attaches `tradeboard-executor.mjs`, `install.sh` and `policy.example.json`. Update
+the executor and attaches `tradeboard-executor.mjs`, `install.sh` and `policy.example.json`, and
+`tradeboard-testflight.yml` uploads the iPhone app (`scripts/release_testflight.sh`) with the same
+version: it reads the executor's `package.json` and overrides `MARKETING_VERSION`, so `project.yml`'s
+value is only the local default. It refuses until the in-app What's New describes the version. Update
 the executor with `bash install.sh <version>` on its machine. The Worker deploys on push to `main`.

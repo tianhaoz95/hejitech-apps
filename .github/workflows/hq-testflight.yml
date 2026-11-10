@@ -6,7 +6,7 @@ on:
   release:
     types: [published]
   schedule:
-    - cron: "45 19 * * 3" # Wednesdays 19:45 UTC (staggered after tether-testflight.yml's 19:30)
+    - cron: "0 20 * * 3" # Wednesdays 20:00 UTC (staggered after tradeboard-testflight.yml's 19:45)
   workflow_dispatch: {}
 
 concurrency:

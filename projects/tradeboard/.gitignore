@@ -8,3 +8,11 @@ robinhood-oauth.json
 policy.local.json
 journal.jsonl
 KILL
+
+# iOS app build artifacts
+apps/ios/Tradeboard.xcodeproj
+apps/ios/.derived
+apps/ios/.derived-device
+apps/ios/TradeboardKit/.build
+apps/ios/TradeboardKit/.swiftpm
+

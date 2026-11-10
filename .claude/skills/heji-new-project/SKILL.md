@@ -107,7 +107,10 @@ projects/<name>/
    settings; add redirect URLs and the Apple bundle id to the auth lists (read, then extend; the
    Site URL belongs to Waypack); deploy the Worker and set its secret; smoke-test `/mcp`, OAuth
    metadata, register/authorize/deny.
-3. App Store Connect record for the bundle id (the user), then
+3. App Store Connect record for the bundle id, made by you, not the user (skill
+   **heji-app-store-connect**; root `CLAUDE.md` →
+   "New App Store Connect apps": bundle ID by API, record via signed-in Safari, taken name →
+   `<Name>: <descriptor>`, TestFlight invite to `tianhaozhou95@icloud.com`), then
    `scripts/cut_release.sh <name> --dry-run` and the real release.
    An iOS app that needs signing in also gets an App Review demo account before its first App
    Store submission: plan it with the app (a seedable demo state for every screen) and build it with
