@@ -3,8 +3,12 @@ import SwiftUI
 /// The in-app What's New. `scripts/cut_release.sh hq` refuses until `currentVersion` and the top
 /// release entry describe the version being released (projects/hq/release.env).
 enum WhatsNew {
-    static let currentVersion = "0.1.1"
+    static let currentVersion = "0.1.2"
     static let releases: [(version: String, notes: [String])] = [
+        (version: "0.1.2", notes: [
+            "The kill switch is now a switch: turn Pause HQ on or off and see at a glance whether HQ is running.",
+            "Settings shows whether the digest notification is on, with a shortcut to turn it back on.",
+        ]),
         (version: "0.1.1", notes: [
             "Sign-in now offers Google and Apple. The GitHub button is gone until GitHub sign-in is ready.",
         ]),

@@ -1,6 +1,7 @@
 // HQ for iPhone: the owner's few minutes a day. Inbox (decide, ready to ship, discussing, working),
 // card detail (approve, reject with a reason, discuss), health board, runs, and controls.
 import SwiftUI
+import UserNotifications
 
 let tierHelp: [String: String] = [
     "L0": "Just do it: built and merged on green CI",
@@ -367,6 +368,19 @@ struct SettingsView: View {
     @State private var invite: Invite?
     @State private var error: String?
     @State private var confirmDelete = false
+    @State private var notifications: UNAuthorizationStatus?
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// Flips the switch at once, then puts it back if the server refuses.
+    private func setPaused(_ on: Bool) {
+        let before = paused
+        paused = on
+        Task {
+            do { try await HQClient().setPaused(on); error = nil }
+            catch { paused = before; self.error = error.localizedDescription }
+        }
+    }
 
     var body: some View {
         Form {
@@ -398,18 +412,40 @@ struct SettingsView: View {
                 Section {
                     if let paused {
                         if model.isAdmin {
-                            Button(paused ? "Resume HQ" : "Pause everything", role: paused ? nil : .destructive) {
-                                Task { try? await HQClient().setPaused(!paused); self.paused = !paused }
+                            Toggle(isOn: Binding(get: { paused }, set: { setPaused($0) })) {
+                                Label("Pause HQ", systemImage: paused ? "pause.circle.fill" : "pause.circle")
+                                    .foregroundStyle(paused ? .red : .primary)
                             }
+                            .tint(.red)
                         } else {
-                            Text(paused ? "Paused" : "Running")
+                            LabeledContent("HQ", value: paused ? "Paused" : "Running")
                         }
                     } else { ProgressView() }
-                } header: { Text("Kill switch") } footer: { Text("Paused: no scouts, no builds, no verbs except the ones a person starts.") }
+                } header: { Text("Kill switch") } footer: {
+                    Text(paused == true
+                         ? "HQ is paused: no scouts, no builds, no verbs except the ones a person starts. Turn this off to resume."
+                         : "HQ is running. Turn this on to stop everything: no scouts, no builds, no verbs except the ones a person starts.")
+                }
             }
             if let error { Section { Text(error).foregroundStyle(.red) } }
             Section {
-                Button("Allow a digest notification") { Task { await DigestNotifier.requestPermission() } }
+                switch notifications {
+                case .authorized, .provisional, .ephemeral:
+                    LabeledContent("Digest notification", value: "On")
+                case .denied:
+                    LabeledContent("Digest notification", value: "Off")
+                    Button("Turn on in Settings") {
+                        if let u = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(u) }
+                    }
+                case .notDetermined:
+                    Button("Allow a digest notification") {
+                        Task { await DigestNotifier.requestPermission(); notifications = await DigestNotifier.status() }
+                    }
+                case nil:
+                    ProgressView()
+                @unknown default:
+                    LabeledContent("Digest notification", value: "Unknown")
+                }
             } footer: { Text("HQ checks in the background and tells you how many cards need you.") }
             Section {
                 if let e = model.email { LabeledContent("Signed in as", value: e).font(.footnote) }
@@ -435,6 +471,10 @@ struct SettingsView: View {
             }
         } message: { Text("This can't be undone.") }
         .navigationTitle("Settings")
+        .task(id: scenePhase) {
+            // Again on return from the Settings app, where the permission may have changed.
+            if scenePhase == .active { notifications = await DigestNotifier.status() }
+        }
         .task {
             paused = (try? await HQClient().health())?.paused
             members = (try? await HQClient().members()) ?? []

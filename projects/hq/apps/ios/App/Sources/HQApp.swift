@@ -154,6 +154,10 @@ enum DigestNotifier {
         _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
     }
 
+    static func status() async -> UNAuthorizationStatus {
+        await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+    }
+
     static func updateBadge(_ n: Int) {
         UNUserNotificationCenter.current().setBadgeCount(n)
     }
