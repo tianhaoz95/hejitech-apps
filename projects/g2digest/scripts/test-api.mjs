@@ -225,6 +225,16 @@ await step("podcast feed: episodes in card order, audio redirects, revocable", a
   assert.equal((await call(path)).status, 403);
 });
 
+// ---------------------------------------------------------------- iPhone notifications
+await step("push: a signed-in iPhone registers its APNs token; devices and agents can't", async () => {
+  const token = "ab".repeat(32);
+  assert.equal((await call("/api/push", { method: "POST", auth: session, body: { token: "nope" } })).status, 400);
+  assert.equal((await call("/api/push", { method: "POST", auth: session, body: { token, sandbox: true } })).status, 200);
+  assert.equal((await call("/api/push", { method: "POST", auth: session, body: { token, sandbox: true } })).status, 200, "again is fine");
+  assert.equal((await call("/api/push", { method: "POST", auth: AGENT, body: { token } })).status, 401);
+  assert.equal((await call(`/api/push/${token}`, { method: "DELETE", auth: session })).status, 200);
+});
+
 // ---------------------------------------------------------------- agent tokens + OAuth
 await step("agent tokens: made once, work, revoke", async () => {
   const t = await call("/api/tokens", { method: "POST", auth: session, body: { name: "Test agent token" } });

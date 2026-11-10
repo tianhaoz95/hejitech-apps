@@ -166,6 +166,17 @@ editions list on its own, so a missing or unreadable latest edition no longer hi
 pull to refresh and coming back to the app refresh too. App Review will need a demo account
 (heji-review-account) before submission, since the app now has sign-in.
 
+## The iPhone app does what the web app does (2026-11-10)
+
+Signed in, the iPhone app is the web app plus a better reader and native things: the brief editor
+(every field, with core's `checkBrief` ported to Swift so problems show while typing; the Worker
+checks again and refuses a stale `expected_version`, which the app turns into "load the latest"),
+build agents (MCP address, the bundled `pipeline/build-prompt.md`, agent tokens, OAuth assistants),
+podcast feed links, pairing codes, devices and Delete all my data. Reading adds an Edition tab: the
+full written edition with methodology and sources. Notifications: a push when an agent publishes
+(`worker/push.ts`, `g2digest.push_devices`, registered from Settings, removed on sign-out and with
+the account's data). Only an MCP publish notifies; nothing is sent while the APNs secrets are unset.
+
 ## Observed in the simulator (2026-10-23)
 
 The glasses' font is narrow: a 25-character line fills about 40% of the 576 px width. (Superseded

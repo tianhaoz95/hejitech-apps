@@ -93,3 +93,12 @@ See `pipeline/README.md`: the MCP URL, a `g2a_` token from the Pair page (or OAu
 ## Graduating
 
 Edit exactly the files in `backend.env`'s `BACKEND_FILES`, per `supabase/GRADUATION.md`.
+
+## iPhone notifications (once)
+
+`projects/g2digest/scripts/setup_push.sh` applies the `push_devices` migration to production and sets
+the Worker's `APNS_TEAM_ID`, `APNS_KEY_ID` and `APNS_PRIVATE_KEY` (the team's APNs key from
+`~/Credentials`; one key serves every app of the team, the topic is `com.hejitech.g2digest`). The
+bundle ID has the Push Notifications capability. Until then the app's switch registers nothing and
+publishes notify no one.
+

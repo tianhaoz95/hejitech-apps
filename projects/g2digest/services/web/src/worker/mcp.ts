@@ -83,7 +83,10 @@ export const TOOLS = [
   },
 ];
 
-async function callTool(name: string, args: Record<string, unknown>, caller: Caller, db: Db, kv: KVNamespace): Promise<unknown> {
+/** Called after a successful publish_cards (the Worker sends the iPhone notification). */
+export type OnPublished = (userId: string, e: { date: string; title: string; cards: number }) => Promise<unknown>;
+
+async function callTool(name: string, args: Record<string, unknown>, caller: Caller, db: Db, kv: KVNamespace, onPublished?: OnPublished): Promise<unknown> {
   const userId = caller.userId;
   switch (name) {
     case "get_card_authoring_guide":
@@ -116,8 +119,14 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
     }
     case "validate_cards":
       return validateForUser(db, kv, userId, args.bundle);
-    case "publish_cards":
-      return publishForUser(db, kv, userId, args.bundle, args.preview_hash);
+    case "publish_cards": {
+      const r = await publishForUser(db, kv, userId, args.bundle, args.preview_hash);
+      if (r.published && r.date && onPublished) {
+        const b = args.bundle as { edition?: { title?: string }; cards?: unknown[] };
+        await onPublished(userId, { date: r.date, title: String(b.edition?.title ?? ""), cards: b.cards?.length ?? 0 }).catch(() => undefined);
+      }
+      return r;
+    }
     case "get_last_cards": {
       const sectionId = String(args.section_id ?? ""), before = String(args.before ?? "");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(before)) throw new Error("before must be YYYY-MM-DD");
@@ -133,7 +142,7 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
   throw new Error(`unknown tool ${name}`);
 }
 
-export async function handleMcp(req: Request, caller: Caller, db: Db, kv: KVNamespace): Promise<Response> {
+export async function handleMcp(req: Request, caller: Caller, db: Db, kv: KVNamespace, onPublished?: OnPublished): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method === "GET") return json({ name: "g2digest-mcp", transport: "streamable-http" });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -165,7 +174,7 @@ export async function handleMcp(req: Request, caller: Caller, db: Db, kv: KVName
       const name = String(msg.params?.name ?? "");
       const args = (msg.params?.arguments ?? {}) as Record<string, unknown>;
       try {
-        const result = await callTool(name, args, caller, db, kv);
+        const result = await callTool(name, args, caller, db, kv, onPublished);
         return reply({ content: [{ type: "text", text: JSON.stringify(result, null, 2) }], structuredContent: result });
       } catch (e) {
         return reply({ content: [{ type: "text", text: `Error: ${(e as Error).message}` }], isError: true });

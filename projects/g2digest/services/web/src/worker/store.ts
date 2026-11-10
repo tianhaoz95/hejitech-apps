@@ -13,6 +13,11 @@ export interface Env {
   SUPABASE_ANON_KEY: string;
   /** Secret. Server-side only; bypasses RLS for every project in the shared Supabase project. */
   SUPABASE_SERVICE_ROLE_KEY: string;
+  /** APNs (secrets): the team's push key, for "your edition is ready" on the iPhone. */
+  APNS_TEAM_ID?: string;
+  APNS_KEY_ID?: string;
+  APNS_PRIVATE_KEY?: string;
+  APNS_TOPIC?: string;
 }
 
 export const SCHEMA = "g2digest";
@@ -212,7 +217,7 @@ export async function deleteUserData(db: Db, userId: string): Promise<void> {
     const paths = (files ?? []).map((f) => `${userId}/${d.name}/${f.name}`);
     if (paths.length) await bucket.remove(paths);
   }
-  for (const table of ["cards", "editions", "pairing_codes", "device_tokens", "access_tokens", "briefs", "profiles"]) {
+  for (const table of ["cards", "editions", "pairing_codes", "device_tokens", "push_devices", "access_tokens", "briefs", "profiles"]) {
     const { error } = await db.from(table).delete().eq("user_id", userId);
     if (error) throw new Error(`delete ${table}: ${error.message}`);
   }

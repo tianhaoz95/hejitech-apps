@@ -10,7 +10,7 @@
     <main>
       <div class="wrap narrow doc">
         <h1>Privacy Policy</h1>
-        <p class="muted small">Last updated October 29, 2026</p>
+        <p class="muted small">Last updated November 10, 2026</p>
 
         <div class="panel">
           <b>The short version.</b> G2 Digest stores your brief and the editions your own agent publishes, so your glasses can show them. We use them for nothing else. No ads, no tracking, no data sales, and no AI runs on our servers. You can delete everything at any time.
@@ -22,7 +22,7 @@
         <h2>What we collect</h2>
         <h3>Account</h3>
         <ul>
-          <li>Your email address and the identifier from Sign in with Google.</li>
+          <li>Your email address and the identifier from Sign in with Google, or from Sign in with Apple in the iPhone app.</li>
           <li>Your account is a HEJI account: the same sign-in works in our other apps. Each app keeps its own data, and G2 Digest never shares your brief or editions with them.</li>
         </ul>
         <h3>Your brief and editions</h3>
@@ -38,6 +38,9 @@
           <li>Tokens and pairing codes are stored only as hashes. A pairing code expires after ten minutes.</li>
           <li>To stop code guessing, we count wrong pairing codes per network address for ten minutes, then forget them.</li>
         </ul>
+
+        <h3>Notifications on your iPhone</h3>
+        <p>If you turn on "New edition is ready" in the iPhone app, we keep that iPhone's push token (from Apple) so we can tell you when your agent publishes an edition. The notification says the edition's name, date and number of cards. Turning notifications off, signing out or deleting your data removes the token; Apple delivers the notifications.</p>
 
         <h2>The glasses app</h2>
         <p>The G2 Digest app runs inside the Even Realities app on your phone. It uses one permission, <b>network</b>, only to fetch your editions from G2 Digest (<code>g2digest.hejitech.workers.dev</code>) and your edition's audio from our storage provider, Supabase (a <code>supabase.co</code> address). It keeps its pairing token, the last edition, your place in it and your audio setting in the Even app's storage on your phone, and saves audio files there for offline listening. It doesn't use the microphone, camera, location or photos. What the Even Realities app itself collects is covered by Even Realities' privacy policy.</p>
@@ -59,6 +62,7 @@
           <li><b>Supabase</b> stores accounts, briefs, editions and audio.</li>
           <li><b>Cloudflare</b> serves this website, the API the glasses use, and the agent (MCP) connection.</li>
           <li><b>Google</b> provides Sign in with Google.</li>
+          <li><b>Apple</b> provides Sign in with Apple and delivers notifications to your iPhone.</li>
         </ul>
         <p>The video on the home page is hosted on YouTube. Nothing loads from YouTube until you press play; then the player comes from youtube-nocookie.com, under Google's privacy policy.</p>
 

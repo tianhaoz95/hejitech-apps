@@ -14,7 +14,7 @@ public struct MainView: View {
                     // Mode Picker Header
                     Picker("Reader Mode", selection: $appModel.viewMode) {
                         ForEach(ReaderViewMode.allCases) { mode in
-                            Text(mode.rawValue).tag(mode)
+                            Text(mode.label).tag(mode)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -22,10 +22,10 @@ public struct MainView: View {
                     .padding(.vertical, 8)
 
                     // Content View based on selected mode
-                    if appModel.viewMode == .native {
-                        NativeReaderView(appModel: appModel)
-                    } else {
-                        G2HUDView(appModel: appModel)
+                    switch appModel.viewMode {
+                    case .native: NativeReaderView(appModel: appModel)
+                    case .article: ArticleReaderView(appModel: appModel)
+                    case .hud: G2HUDView(appModel: appModel)
                     }
                 }
 
@@ -49,7 +49,7 @@ public struct MainView: View {
 
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
-                        if appModel.userBrief != nil {
+                        if appModel.isSignedIn {
                             Button {
                                 appModel.showBriefSheet = true
                             } label: {
@@ -93,6 +93,7 @@ public struct MainView: View {
                 if phase == .active { Task { await appModel.refreshAll() } }
             }
             .task {
+                if appModel.notificationsOn { await PushRelay.shared.refreshRegistration() }
                 await appModel.refreshAll()
                 checkWhatsNew()
                 #if DEBUG

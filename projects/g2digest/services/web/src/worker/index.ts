@@ -15,6 +15,7 @@
 //   everything else               static assets
 
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
+import { notifyEdition } from "./push.ts";
 import { handleApi } from "./api.ts";
 import { handleMcp, type Caller } from "./mcp.ts";
 import { admin, deleteUserData, json, PREFIX, sha256, supabaseUser, type Env as BaseEnv } from "./store.ts";
@@ -33,7 +34,8 @@ const mcpHandler = {
     const props = ctx.props;
     if (!props?.userId) return new Response("unauthorized", { status: 401 });
     const caller: Caller = { userId: props.userId, via: props.via };
-    return handleMcp(req, caller, admin(env), env.OAUTH_KV);
+    const db = admin(env);
+    return handleMcp(req, caller, db, env.OAUTH_KV, (userId, e) => notifyEdition(env, db, userId, e));
   },
 };
 

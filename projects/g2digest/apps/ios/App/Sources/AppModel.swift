@@ -6,9 +6,18 @@ import G2DigestKit
 
 public enum ReaderViewMode: String, CaseIterable, Identifiable {
     case native = "Native"
+    case article = "Edition"
     case hud = "G2 Glasses HUD"
 
     public var id: String { rawValue }
+    /// The picker's label (raw values stay as stored preferences).
+    public var label: String {
+        switch self {
+        case .native: "Cards"
+        case .article: "Edition"
+        case .hud: "Glasses"
+        }
+    }
 }
 
 @MainActor
@@ -39,6 +48,16 @@ public final class AppModel: ObservableObject {
     @Published public var showSettingsSheet: Bool = false
     @Published public var showWhatsNewSheet: Bool = false
     @Published public var userBrief: Brief?
+    /// The brief's version on the server (a save sends it, so a newer web edit isn't overwritten).
+    @Published public var briefVersion: Int = 0
+    @Published public var tokens: [AgentToken] = []
+    @Published public var assistants: [ConnectedAssistant] = []
+    /// New-edition notifications on this iPhone (asks iOS the first time it's turned on).
+    @Published public var notificationsOn: Bool = UserDefaults.standard.bool(forKey: "g2digest_notifications") {
+        didSet { UserDefaults.standard.set(notificationsOn, forKey: "g2digest_notifications") }
+    }
+    /// The APNs device token iOS gave this install (hex), once it registered.
+    private var pushToken: String?
     @Published public var devices: [PairedDevice] = []
 
     public var isSignedIn: Bool { account != nil }
@@ -72,6 +91,14 @@ public final class AppModel: ObservableObject {
         }
 
         wireAuth()
+        PushRelay.shared.onToken = { [weak self] token in Task { await self?.didRegisterForPush(token: token) } }
+        PushRelay.shared.onOpenEdition = { [weak self] date in
+            Task {
+                guard let self else { return }
+                await self.refreshAll()
+                if let date { await self.loadEdition(date: date) }
+            }
+        }
         // The built-in tour until the first refresh brings an edition.
         self.currentBundle = TourBuilder.makeTour(reason: hasAccess ? .waiting : .pair)
     }
@@ -166,6 +193,7 @@ public final class AppModel: ObservableObject {
     }
 
     public func signOut() async {
+        if let token = pushToken { try? await api.unregisterPush(token: token) }
         await auth.signOut()
         account = nil
         devices = []
@@ -234,6 +262,82 @@ public final class AppModel: ObservableObject {
             try await api.revokeDevice(id: d.id)
             devices.removeAll { $0.id == d.id }
         } catch { errorMessage = error.localizedDescription }
+    }
+
+    // MARK: brief
+
+    /// Saves an edited brief. Returns the problems the Worker found (empty on success); throws on a
+    /// conflict or a network failure.
+    public func saveBrief(_ brief: Brief) async throws -> Bool {
+        let r = try await api.saveBrief(brief, expectedVersion: briefVersion)
+        userBrief = brief
+        briefVersion = r.briefVersion
+        return r.changed
+    }
+
+    public func reloadBrief() async {
+        if let r = try? await api.fetchBrief() {
+            userBrief = r.brief
+            briefVersion = r.briefVersion
+        }
+    }
+
+    // MARK: agents (the web app's Pair page)
+
+    public func loadAgents() async {
+        guard isSignedIn else { return }
+        do {
+            async let t = api.fetchTokens()
+            async let g = api.fetchGrants()
+            (tokens, assistants) = try await (t, g)
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    public func createToken(name: String) async -> String? {
+        do {
+            let token = try await api.createToken(name: name)
+            await loadAgents()
+            return token
+        } catch { errorMessage = error.localizedDescription; return nil }
+    }
+
+    public func revokeToken(_ t: AgentToken) async {
+        do { try await api.revokeToken(id: t.id); tokens.removeAll { $0.id == t.id } } catch { errorMessage = error.localizedDescription }
+    }
+
+    public func disconnect(_ a: ConnectedAssistant) async {
+        do { try await api.revokeGrant(id: a.id); assistants.removeAll { $0.id == a.id } } catch { errorMessage = error.localizedDescription }
+    }
+
+    public func createFeed() async -> String? {
+        do {
+            let url = try await api.createFeed()
+            await loadDevices()
+            return url
+        } catch { errorMessage = error.localizedDescription; return nil }
+    }
+
+    /// The Worker's MCP address for build agents.
+    public var mcpURL: String { (UserDefaults.standard.string(forKey: serverURLKey) ?? Self.defaultServerURL.absoluteString) + "/mcp" }
+
+    // MARK: notifications
+
+    /// iOS handed over this install's APNs token: register it while notifications are on.
+    public func didRegisterForPush(token: String) async {
+        pushToken = token
+        await syncPushRegistration()
+    }
+
+    /// Keeps the Worker's list in step with the switch: registered when on and signed in, removed when off.
+    public func syncPushRegistration() async {
+        guard isSignedIn, let token = pushToken else { return }
+        #if DEBUG
+        let sandbox = true
+        #else
+        let sandbox = false
+        #endif
+        if notificationsOn { try? await api.registerPush(token: token, sandbox: sandbox) }
+        else { try? await api.unregisterPush(token: token) }
     }
 
     private func resetToTour() {
@@ -313,8 +417,12 @@ public final class AppModel: ObservableObject {
         }
 
         if isSignedIn {
-            userBrief = try? await api.fetchBrief()
+            if let r = try? await api.fetchBrief() {
+                userBrief = r.brief
+                briefVersion = r.briefVersion
+            }
             await loadDevices()
+            await syncPushRegistration()
         } else {
             userBrief = nil
         }

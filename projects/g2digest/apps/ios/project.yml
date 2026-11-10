@@ -29,6 +29,8 @@ targets:
     sources:
       - path: App/Sources
       - path: App/Resources
+      - path: ../../pipeline/build-prompt.md
+        buildPhase: resources
     dependencies:
       - package: G2DigestKit
     settings:
@@ -43,6 +45,7 @@ targets:
       path: App/App.entitlements
       properties:
         com.apple.developer.applesignin: [Default]
+        aps-environment: development
     info:
       path: App/Info.plist
       properties:

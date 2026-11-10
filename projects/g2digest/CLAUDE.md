@@ -28,7 +28,7 @@ xcodebuild -project projects/g2digest/apps/ios/G2Digest.xcodeproj -scheme App -d
 ```
 
 iPhone Debug launch arguments for screenshots without taps: `-card N`, `-showHistory`, `-showBrief`,
-`-showSettings`; preferences such as `-g2digest_device_token g2d_dev_local_device -g2digest_server_url
+`-showSettings`, `-showSignIn`, `-seedSignIn` (the local seed account), `-g2digest_view_mode Native|Edition|"G2 Glasses HUD"`; preferences such as `-g2digest_device_token g2d_dev_local_device -g2digest_server_url
 http://127.0.0.1:8790` pair it with the local stack. App Store screenshots: publish the 2026-10-22
 fixture locally, then `scripts/store_screenshots.sh g2digest`.
 
@@ -52,6 +52,11 @@ Local tokens from the seed: agent `g2a_dev_local_token`, glasses `g2d_dev_local_
   (podcast fallback), `mcp.ts` (six tools), `publish.ts` (validate + publish), `store.ts` (db,
   tokens, brief join). Service key only here. Clients read own rows via RLS; all writes go through
   the Worker.
+- **iPhone app** (`apps/ios`): signs in with Apple or Google to the web app's account and does what
+  the web app does (brief editor with a Swift port of `checkBrief`, build agents, tokens, feeds,
+  pairing, delete), plus the Edition reader and new-edition notifications (`worker/push.ts`,
+  `push_devices`; setup: `scripts/setup_push.sh`). Pairing with a code still reads editions only.
+  Keep `BriefTests` and `checkBrief` in step with core's rules.
 - **Plugin** (`packages/plugin`): `detectBridge()` (Even WebView handler, 5 s), two pages (the
   list of editions, the root page, where double tap exits; an edition's cards, opened at the first
   card: a bordered full-screen text container plus the position-dots container, double tap back to

@@ -10,6 +10,8 @@ public struct SettingsSheet: View {
     @State private var makingCode = false
     @State private var confirmDelete = false
     @State private var deleting = false
+    @State private var feedURL: String?
+    @State private var notifyDenied = false
 
     public init(appModel: AppModel) {
         self.appModel = appModel
@@ -68,6 +70,61 @@ public struct SettingsSheet: View {
                         Text("Glasses & Devices")
                     } footer: {
                         Text("Swipe left on a device to unpair it. It stops working right away.")
+                    }
+
+                    Section {
+                        if let feedURL {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Add this URL in your podcast app (shown once):").font(.footnote)
+                                Text(feedURL).font(.footnote.monospaced()).textSelection(.enabled)
+                                HStack {
+                                    Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = feedURL }
+                                    Spacer()
+                                    ShareLink(item: feedURL)
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                        }
+                        Button("Make a Podcast Feed Link") { Task { feedURL = await appModel.createFeed() } }
+                    } header: {
+                        Text("Podcast feed")
+                    } footer: {
+                        Text("A private feed of every card's audio, for a podcast app that keeps playing with the phone locked. Anyone with the link can listen, so keep it to yourself; it shows up above, where you can unpair it.")
+                    }
+
+                    Section {
+                        Toggle("New edition is ready", isOn: Binding(get: { appModel.notificationsOn }, set: { on in
+                            Task {
+                                if on {
+                                    let ok = await PushRelay.shared.enable()
+                                    appModel.notificationsOn = ok
+                                    notifyDenied = !ok
+                                } else {
+                                    appModel.notificationsOn = false
+                                }
+                                await appModel.syncPushRegistration()
+                            }
+                        }))
+                    } header: {
+                        Text("Notifications")
+                    } footer: {
+                        Text(notifyDenied ? "Notifications are off for G2 Digest in iOS Settings. Turn them on there first." : "A notification on this iPhone when your agent publishes a new edition.")
+                    }
+
+                    Section {
+                        Button {
+                            dismiss()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { appModel.showBriefSheet = true }
+                        } label: {
+                            HStack {
+                                Text("Your Brief").foregroundStyle(.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        NavigationLink("Build Agents") { AgentsView(appModel: appModel) }
+                    } footer: {
+                        Text("Everything the web app does: your brief, the agent that builds your editions, its tokens and connected assistants.")
                     }
 
                     Section {
@@ -183,3 +240,4 @@ public struct SettingsSheet: View {
         }
     }
 }
+

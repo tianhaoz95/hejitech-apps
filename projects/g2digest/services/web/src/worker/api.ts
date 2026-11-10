@@ -128,6 +128,23 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     return reply({ id: data.id, url: `${env.PUBLIC_URL}/feed/${token}/podcast.xml` });
   }
 
+  // ------------------------------------------------------------ iPhone notifications (APNs device tokens)
+  if (path === "/api/push" && req.method === "POST") {
+    const body = (await req.json().catch(() => ({}))) as { token?: unknown; sandbox?: unknown };
+    const token = String(body.token ?? "");
+    if (!/^[0-9a-f]{64,200}$/i.test(token)) return reply({ error: "token must be an APNs device token (hex)" }, 400);
+    const { error } = await db.from("push_devices").upsert(
+      { apns_token: token.toLowerCase(), user_id: userId, environment: body.sandbox === true ? "sandbox" : "production" },
+      { onConflict: "apns_token" });
+    if (error) return reply({ error: error.message }, 500);
+    return reply({ ok: true });
+  }
+  const pushTok = path.match(/^\/api\/push\/([0-9a-fA-F]{64,200})$/);
+  if (pushTok && req.method === "DELETE") {
+    await db.from("push_devices").delete().eq("user_id", userId).eq("apns_token", pushTok[1].toLowerCase());
+    return reply({ ok: true });
+  }
+
   // ------------------------------------------------------------ agent tokens (MCP)
   if (path === "/api/tokens" && req.method === "GET") {
     const { data } = await db.from("access_tokens").select("id, name, created_at, last_used_at").eq("user_id", userId).is("revoked_at", null).order("created_at");

@@ -111,6 +111,16 @@ create table g2digest.cards (
 );
 create index cards_edition on g2digest.cards(edition_id, position);
 
+-- iPhones that get a notification when a new edition is published (APNs device tokens).
+create table g2digest.push_devices (
+  apns_token text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  environment text not null default 'production' check (environment in ('production', 'sandbox')),
+  created_at timestamptz not null default now(),
+  last_sent_at timestamptz
+);
+create index push_devices_user on g2digest.push_devices(user_id);
+
 -- ---------------------------------------------------------------- access rules
 
 alter table g2digest.profiles enable row level security;
@@ -120,6 +130,7 @@ alter table g2digest.device_tokens enable row level security;
 alter table g2digest.access_tokens enable row level security;
 alter table g2digest.editions enable row level security;
 alter table g2digest.cards enable row level security;
+alter table g2digest.push_devices enable row level security;
 
 create policy "own profile" on g2digest.profiles for select using (user_id = auth.uid());
 create policy "own brief" on g2digest.briefs for select using (user_id = auth.uid());
@@ -127,10 +138,11 @@ create policy "own devices" on g2digest.device_tokens for select using (user_id 
 create policy "own access tokens" on g2digest.access_tokens for select using (user_id = auth.uid());
 create policy "own editions" on g2digest.editions for select using (user_id = auth.uid());
 create policy "own cards" on g2digest.cards for select using (user_id = auth.uid());
--- pairing_codes: no client access at all (the Worker issues and redeems them).
+-- pairing_codes, push_devices: no client access at all (the Worker issues and uses them).
 
 grant select on all tables in schema g2digest to authenticated;
 revoke select on g2digest.pairing_codes from authenticated;
+revoke select on g2digest.push_devices from authenticated;
 grant select, insert, update, delete on all tables in schema g2digest to service_role;
 
 -- ---------------------------------------------------------------- worker rpc (service role only)

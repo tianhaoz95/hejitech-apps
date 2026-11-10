@@ -61,6 +61,8 @@ public actor G2DigestAPI {
     private var token: String?
     private var sessionToken: AccessTokenProvider?
     private let session: URLSession
+    /// The `issues` of the last refused request (a brief save).
+    private var lastIssues: [BriefIssue] = []
 
     public init(baseURL: URL = defaultBaseURL, token: String? = nil, session: URLSession = .shared) {
         self.baseURL = baseURL
@@ -112,7 +114,10 @@ public actor G2DigestAPI {
         }
         if http.statusCode == 401 { throw APIError.unauthenticated }
         guard (200..<300).contains(http.statusCode) else {
-            let msg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+            let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            lastIssues = (obj?["issues"]).flatMap { try? JSONSerialization.data(withJSONObject: $0) }
+                .flatMap { try? JSONDecoder().decode([BriefIssue].self, from: $0) } ?? []
+            let msg = obj?["error"] as? String
             throw APIError.serverError(statusCode: http.statusCode, message: msg ?? "Request failed (\(http.statusCode))")
         }
         return data
@@ -146,8 +151,22 @@ public actor G2DigestAPI {
         try decode(EditionResponse.self, try await send("/api/editions/\(date)"))
     }
 
-    public func fetchBrief() async throws -> Brief {
-        try decode(Brief.self, try await send("/api/brief"))
+    /// The brief and its version (`{ brief, brief_version }`, as the web app reads it).
+    public func fetchBrief() async throws -> BriefResponse {
+        try decode(BriefResponse.self, try await send("/api/brief"))
+    }
+
+    /// Saves the brief. A brief with problems comes back as `BriefSaveError.issues`; someone else's
+    /// newer save (the web app) as `.conflict`.
+    public func saveBrief(_ brief: Brief, expectedVersion: Int) async throws -> BriefSaveResult {
+        let body = try JSONSerialization.jsonObject(with: JSONEncoder().encode(brief))
+        do {
+            return try decode(BriefSaveResult.self, try await send("/api/brief", method: "PUT", json: ["brief": body, "expected_version": expectedVersion]))
+        } catch APIError.serverError(422, let msg) {
+            throw BriefSaveError.issues(msg, lastIssues)
+        } catch APIError.serverError(409, let msg) {
+            throw BriefSaveError.conflict(msg)
+        }
     }
 
     // MARK: signed-in only (the web app's Pair page and account)
@@ -164,9 +183,89 @@ public actor G2DigestAPI {
         _ = try await send("/api/devices/\(id)", method: "DELETE")
     }
 
+    /// A private podcast feed of every card's audio. The URL is shown once.
+    public func createFeed() async throws -> String {
+        let obj = try JSONSerialization.jsonObject(with: try await send("/api/feeds", method: "POST")) as? [String: Any]
+        guard let url = obj?["url"] as? String else { throw APIError.decodingError("no feed url") }
+        return url
+    }
+
+    public func fetchTokens() async throws -> [AgentToken] {
+        try decode([AgentToken].self, try await send("/api/tokens"))
+    }
+
+    /// A new agent token for the build agent's MCP connection. The token is shown once.
+    public func createToken(name: String) async throws -> String {
+        let obj = try JSONSerialization.jsonObject(with: try await send("/api/tokens", method: "POST", json: ["name": name])) as? [String: Any]
+        guard let token = obj?["token"] as? String else { throw APIError.decodingError("no token") }
+        return token
+    }
+
+    public func revokeToken(id: String) async throws {
+        _ = try await send("/api/tokens/\(id)", method: "DELETE")
+    }
+
+    /// Assistants connected over OAuth (MCP).
+    public func fetchGrants() async throws -> [ConnectedAssistant] {
+        try decode([ConnectedAssistant].self, try await send("/api/grants"))
+    }
+
+    public func revokeGrant(id: String) async throws {
+        let enc = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))) ?? id
+        _ = try await send("/api/grants/\(enc)", method: "DELETE")
+    }
+
+    /// Registers this iPhone for a notification when a new edition is published.
+    public func registerPush(token: String, sandbox: Bool) async throws {
+        _ = try await send("/api/push", method: "POST", json: ["token": token, "sandbox": sandbox])
+    }
+
+    public func unregisterPush(token: String) async throws {
+        _ = try await send("/api/push/\(token)", method: "DELETE")
+    }
+
     /// Deletes everything G2 Digest holds for the account (brief, editions, audio, devices, feeds,
     /// tokens, connected assistants), as Delete all my G2 Digest data on the web does.
     public func deleteAllData() async throws {
         _ = try await send("/api/account", method: "DELETE")
+    }
+}
+
+public enum BriefSaveError: LocalizedError, Equatable, Sendable {
+    case issues(String, [BriefIssue])
+    case conflict(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .issues(let m, let issues): issues.isEmpty ? m : issues.map(\.message).joined(separator: "\n")
+        case .conflict(let m): m
+        }
+    }
+}
+
+/// An agent token (`g2a_…`) for the build agent's MCP connection; the token itself is never listed.
+public struct AgentToken: Codable, Hashable, Identifiable, Sendable {
+    public let id: String
+    public let name: String
+    public let createdAt: String
+    public let lastUsedAt: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case id, name
+        case createdAt = "created_at"
+        case lastUsedAt = "last_used_at"
+    }
+}
+
+/// An assistant connected over OAuth.
+public struct ConnectedAssistant: Codable, Hashable, Identifiable, Sendable {
+    public let id: String
+    public let clientName: String?
+    public let createdAt: String
+
+    public enum CodingKeys: String, CodingKey {
+        case id
+        case clientName = "client_name"
+        case createdAt = "created_at"
     }
 }
