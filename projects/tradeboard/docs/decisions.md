@@ -71,6 +71,15 @@ owner's call, with one boundary: **it guides discussion and never enforces anyth
   App Store guideline 5.1.1(v) asks; the shared HEJI sign-in stays. Sign in with Apple token
   revocation needs a Sign in with Apple key the team doesn't have yet.
 
+## App Store privacy label (2026-11-10)
+
+Published in App Store Connect from what the code sends (no analytics, ads, crash reporting or
+third-party SDKs in the app): **Email Address, User ID, Other Financial Info** (the masked
+brokerage account and order receipts the executor posts) and **Other User Content** (plans,
+comments, approvals, strategy). Each is linked to the user, used only for App Functionality, and
+none is used for tracking. Change the label in App Store Connect → App Privacy whenever what the
+board stores or who it's shared with changes.
+
 ## Stack
 
 - **Board**: one Cloudflare Worker (portal pages, owner API, Board MCP with its own OAuth server,

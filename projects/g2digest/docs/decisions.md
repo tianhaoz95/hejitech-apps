@@ -147,6 +147,15 @@ The owner's call, to save server space: a user keeps their 10 newest editions (b
 kept edition still plays (a carried card points at an earlier date's file) stays. `publish_cards`
 returns the deleted dates as `pruned`; the privacy page says the same.
 
+## App Store privacy label (2026-11-10)
+
+Published in App Store Connect from what the code sends (no analytics, ads, crash reporting or
+third-party SDKs in the app): **Email Address, User ID** and **Other User Content** (the brief,
+editions and their audio). Each is linked to the user, used only for App Functionality, and none
+is used for tracking. The narration isn't the user's voice, so it isn't declared as Audio Data.
+Change the label in App Store Connect → App Privacy whenever what G2 Digest stores or who it's
+shared with changes.
+
 ## Observed in the simulator (2026-10-23)
 
 The glasses' font is narrow: a 25-character line fills about 40% of the 576 px width. (Superseded
