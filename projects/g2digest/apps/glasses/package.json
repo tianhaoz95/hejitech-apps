@@ -1,6 +1,6 @@
 {
   "name": "@g2digest/glasses",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "private": true,
   "type": "module",
   "description": "The packed Even Hub plugin (.ehpk) for G2 Digest: @g2digest/plugin pointed at the hosted web app",
