@@ -47,7 +47,13 @@ jobs:
           cp projects/headway/apps/glasses/build/headway.ehpk "headway-glasses-${TAG#headway-v}.ehpk"
           gh release upload "$TAG" "headway-glasses-${TAG#headway-v}.ehpk" --clobber
       # From main, not the checked-out tag, so re-running an older release still has it.
-      - uses: tianhaoz95/hejitech-apps/.github/actions/evenhub-login@main
+      # (A sparse checkout: `uses: <repo>/...@main` downloads the whole monorepo and times out.)
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: _main
+          sparse-checkout: .github/actions
+      - uses: ./_main/.github/actions/evenhub-login
         with:
           email: ${{ secrets.EVENHUB_EMAIL }}
           password: ${{ secrets.EVENHUB_PASSWORD }}
