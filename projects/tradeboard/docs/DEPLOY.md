@@ -20,6 +20,17 @@ Read the current redirect allow-list, then add `https://tradeboard.hejitech.work
 portal's Google and Apple sign-in returns to `/login/`). The Site URL belongs to Waypack; Google and
 Apple web sign-in already work for the project.
 
+The iPhone app also needs, in the same shared settings (read the lists first, extend, never replace):
+
+- Redirect URLs: `tradeboard://login-callback` (Continue with Google in the app).
+- Apple provider → client IDs: `com.hejitech.tradeboard` (the native Sign in with Apple sheet).
+
+`supabase config push --workdir <dir>` pushes only what that dir's `config.toml` declares, so a
+scratch config holding just the extended `additional_redirect_urls` and `[auth.external.apple]`
+`client_id` changes those two and nothing else (check with `supabase config diff` first). The bundle
+ID needs the Sign in with Apple capability (`APPLE_ID_AUTH`) and the app the
+`com.apple.developer.applesignin` entitlement, or the sheet fails with error 1000.
+
 ## 3. Worker
 
 Cloudflare Workers Builds (dashboard, the owner): new project from this repo, root directory = repo

@@ -129,6 +129,31 @@ public final class AppModel {
         }
     }
 
+    /// Where Supabase sends the browser back after Google sign-in (allow-listed in the shared project).
+    public static let authRedirect = "tradeboard://login-callback"
+
+    @MainActor
+    public func signInWithGoogle(using webAuth: WebAuthenticationSession) async {
+        error = nil
+        do {
+            let (url, verifier) = backend.oauthStart(provider: "google", redirect: Self.authRedirect)
+            let callback = try await webAuth.authenticate(using: url, callbackURLScheme: "tradeboard")
+            let items = URLComponents(url: callback, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            guard let code = items.first(where: { $0.name == "code" })?.value else {
+                let reason = items.first(where: { $0.name == "error_description" })?.value ?? "no code in the callback"
+                throw NSError(domain: "Tradeboard", code: 1, userInfo: [NSLocalizedDescriptionKey: reason.replacingOccurrences(of: "+", with: " ")])
+            }
+            isLoading = true
+            defer { isLoading = false }
+            let session = try await backend.exchangeCode(code, verifier: verifier)
+            await proceedToTOTP(session: session)
+        } catch let e as ASWebAuthenticationSessionError where e.code == .canceledLogin {
+            return
+        } catch {
+            self.error = "Google sign-in failed: \(error.localizedDescription)"
+        }
+    }
+
     @MainActor
     public func signInWithEmail(_ email: String, _ pass: String) async {
         isLoading = true

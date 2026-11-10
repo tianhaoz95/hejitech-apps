@@ -29,10 +29,14 @@ public struct ReleaseNotes: Identifiable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.1.2"
+    public static let currentVersion = "0.1.3"
     public static let lastSeenVersionKey = "last_seen_whats_new_version_tradeboard"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.3", date: "November 2026", items: [
+            WhatsNewItem(icon: "applelogo", title: "Sign in with Apple Works", description: "Continue with Apple no longer fails with an error on the sign-in screen."),
+            WhatsNewItem(icon: "globe", title: "Continue with Google", description: "Sign in with the Google account you use on the Tradeboard website, then confirm with your two-factor code as before.")
+        ]),
         ReleaseNotes(version: "0.1.2", date: "November 2026", items: [
             WhatsNewItem(icon: "text.bubble", title: "Plans with Comments Open Again", description: "A plan with agent comments or questions could get stuck loading. It now opens with its whole discussion, and open questions show as open.")
         ]),

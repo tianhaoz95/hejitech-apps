@@ -4,6 +4,7 @@ import TradeboardKit
 
 public struct SignInView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.webAuthenticationSession) private var webAuth
     @State private var email = "owner@example.com"
     @State private var password = "tradeboard-dev"
     @State private var totpCode = ""
@@ -83,6 +84,17 @@ public struct SignInView: View {
             .signInWithAppleButtonStyle(.whiteOutline)
             .frame(height: 50)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            Button {
+                Task { await model.signInWithGoogle(using: webAuth) }
+            } label: {
+                Label("Continue with Google", systemImage: "globe")
+                    .font(.body.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 36)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .accessibilityIdentifier("google-signin")
 
             Button { emailSheet = true } label: {
                 Text("Sign in with email")
@@ -238,7 +250,7 @@ struct EmailSignInSheet: View {
 
             VStack(spacing: 6) {
                 Text("Sign in with email").font(.title2.bold())
-                Text("For accounts Tradeboard gave you. New here? Continue with Apple.")
+                Text("For accounts Tradeboard gave you. New here? Continue with Apple or Google.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
