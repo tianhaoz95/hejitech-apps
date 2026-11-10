@@ -384,7 +384,12 @@ public final class TradeboardBackend: @unchecked Sendable {
     }
 
     private func supabaseAuthRequest(_ path: String, body: [String: Any]) async throws -> SupabaseSession {
-        var req = URLRequest(url: config.supabaseURL.appendingPathComponent("auth/v1/\(path)"))
+        // `path` carries a query ("token?grant_type=pkce"): appendingPathComponent would encode the "?"
+        // into the path (…/token%3Fgrant_type=pkce) and Supabase answers 404.
+        guard let url = URL(string: "auth/v1/\(path)", relativeTo: config.supabaseURL.hasDirectoryPath ? config.supabaseURL : config.supabaseURL.appendingPathComponent(""))?.absoluteURL else {
+            throw BackendError.invalidResponse("bad auth path \(path)")
+        }
+        var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue(config.anonKey, forHTTPHeaderField: "apikey")
         req.setValue("Bearer \(config.anonKey)", forHTTPHeaderField: "Authorization")

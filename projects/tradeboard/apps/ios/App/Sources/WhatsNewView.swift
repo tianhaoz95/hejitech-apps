@@ -29,10 +29,13 @@ public struct ReleaseNotes: Identifiable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.1.4"
+    public static let currentVersion = "0.1.5"
     public static let lastSeenVersionKey = "last_seen_whats_new_version_tradeboard"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.5", date: "November 2026", items: [
+            WhatsNewItem(icon: "checkmark.shield", title: "Google and Apple Sign-In Fixed", description: "Signing in with Google (and Apple) could fail with \"404 page not found\" after you picked your account. It now finishes and goes on to your two-factor code.")
+        ]),
         ReleaseNotes(version: "0.1.4", date: "November 2026", items: [
             WhatsNewItem(icon: "person.badge.key", title: "Cleaner Sign-In Buttons", description: "Continue with Apple and Continue with Google now sit side by side as a matched pair, in light and dark mode.")
         ]),
