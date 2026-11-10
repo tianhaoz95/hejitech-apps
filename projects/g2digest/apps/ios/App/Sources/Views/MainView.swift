@@ -3,6 +3,7 @@ import G2DigestKit
 
 public struct MainView: View {
     @StateObject private var appModel = AppModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     public init() {}
 
@@ -57,14 +58,17 @@ public struct MainView: View {
                         }
 
                         Button {
-                            if appModel.isPaired {
+                            if appModel.hasAccess {
                                 appModel.showSettingsSheet = true
                             } else {
                                 appModel.showPairingSheet = true
                             }
                         } label: {
-                            Image(systemName: appModel.isPaired ? "gearshape" : "qrcode")
-                                .foregroundStyle(appModel.isPaired ? Color.primary : Color.accentColor)
+                            if appModel.hasAccess {
+                                Image(systemName: "gearshape")
+                            } else {
+                                Text("Sign In").fontWeight(.semibold)
+                            }
                         }
                     }
                 }
@@ -84,6 +88,10 @@ public struct MainView: View {
             .sheet(isPresented: $appModel.showWhatsNewSheet) {
                 WhatsNewView()
             }
+            .onChange(of: scenePhase) { phase in
+                // Back from the background: pick up editions published meanwhile.
+                if phase == .active { Task { await appModel.refreshAll() } }
+            }
             .task {
                 await appModel.refreshAll()
                 checkWhatsNew()
@@ -91,6 +99,10 @@ public struct MainView: View {
                 // Screenshots without taps: `-card N` opens card N (0-based); `-showHistory`,
                 // `-showBrief`, `-showSettings` open those sheets once the edition has loaded.
                 let args = ProcessInfo.processInfo.arguments
+                // `-seedSignIn` signs in as the local seed account (reader@example.com) first.
+                if args.contains("-seedSignIn") && !appModel.isSignedIn {
+                    await appModel.signInWithSeed(email: "reader@example.com", password: "g2digest-dev")
+                }
                 if let i = args.firstIndex(of: "-card"), i + 1 < args.count, let n = Int(args[i + 1]),
                    n < (appModel.currentBundle?.cards.count ?? 0) { appModel.currentCardIndex = n }
                 if args.contains("-showHistory") { appModel.showHistorySheet = true }

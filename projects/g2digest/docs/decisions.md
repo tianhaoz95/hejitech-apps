@@ -156,6 +156,16 @@ is used for tracking. The narration isn't the user's voice, so it isn't declared
 Change the label in App Store Connect → App Privacy whenever what G2 Digest stores or who it's
 shared with changes.
 
+## The iPhone app signs in like the web app (2026-11-10)
+
+The iPhone app was a paired reader (a device token reads editions only). It now signs in with
+Apple or Google to the same Supabase account as the web app, so it can do what the web app does:
+editions, the brief, pairing codes for glasses, unpairing devices and Delete all my data. Pairing
+the phone with a code stays for people who don't want an account on it. Refresh loads the
+editions list on its own, so a missing or unreadable latest edition no longer hides the archive;
+pull to refresh and coming back to the app refresh too. App Review will need a demo account
+(heji-review-account) before submission, since the app now has sign-in.
+
 ## Observed in the simulator (2026-10-23)
 
 The glasses' font is narrow: a 25-character line fills about 40% of the 576 px width. (Superseded

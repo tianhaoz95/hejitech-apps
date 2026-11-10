@@ -14,7 +14,9 @@ public struct EditionsHistorySheet: View {
             List {
                 Section("Available Editions") {
                     if appModel.editions.isEmpty {
-                        Text("No saved editions found.")
+                        Text(appModel.hasAccess
+                             ? (appModel.isLoading ? "Loading…" : "No editions yet. Pull down to check again.")
+                             : "Sign in to see your editions.")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(appModel.editions) { ed in
@@ -47,6 +49,10 @@ public struct EditionsHistorySheet: View {
                     }
                 }
 
+                if let err = appModel.errorMessage {
+                    Section { Text(err).font(.footnote).foregroundStyle(.red) }
+                }
+
                 Section("Demo / Offline") {
                     Button {
                         appModel.currentBundle = TourBuilder.makeTour(reason: .pair)
@@ -71,6 +77,7 @@ public struct EditionsHistorySheet: View {
                     }
                 }
             }
+            .refreshable { await appModel.refreshAll() }
             .navigationTitle("Editions Archive")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

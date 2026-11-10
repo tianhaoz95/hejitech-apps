@@ -197,6 +197,7 @@ public struct NativeReaderView: View {
                     }
                     .padding()
                 }
+                .refreshable { await appModel.refreshAll() }
 
                 // Bottom Pagination Controls
                 HStack {

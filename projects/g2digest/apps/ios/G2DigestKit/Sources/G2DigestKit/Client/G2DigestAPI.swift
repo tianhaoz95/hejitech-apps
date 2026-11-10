@@ -1,6 +1,6 @@
 import Foundation
 
-public enum APIError: LocalizedError, Sendable {
+public enum APIError: LocalizedError, Sendable, Equatable {
     case invalidURL
     case networkError(String)
     case serverError(statusCode: Int, message: String)
@@ -13,21 +13,53 @@ public enum APIError: LocalizedError, Sendable {
             return "Invalid API URL."
         case .networkError(let msg):
             return "Network connection issue: \(msg)"
-        case .serverError(let code, let msg):
-            return "Server returned error (\(code)): \(msg)"
+        case .serverError(_, let msg):
+            return msg
         case .decodingError(let msg):
-            return "Failed to parse data: \(msg)"
+            return "Couldn't read the server's reply: \(msg)"
         case .unauthenticated:
-            return "Not authenticated or pairing code invalid."
+            return "Signed out: sign in again, or pair this iPhone again."
         }
+    }
+
+    public var isNotFound: Bool { if case .serverError(404, _) = self { return true } else { return false } }
+}
+
+/// A 6-digit code for pairing glasses (or another phone), as the web app's Pair page makes it.
+public struct PairingCode: Codable, Hashable, Sendable {
+    public let code: String
+    public let expiresAt: String
+
+    public enum CodingKeys: String, CodingKey {
+        case code
+        case expiresAt = "expires_at"
     }
 }
 
+/// A paired pair of glasses, phone or podcast feed (`/api/devices`).
+public struct PairedDevice: Codable, Hashable, Identifiable, Sendable {
+    public let id: String
+    public let kind: String
+    public let label: String?
+    public let createdAt: String
+    public let lastUsedAt: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case id, kind, label
+        case createdAt = "created_at"
+        case lastUsedAt = "last_used_at"
+    }
+}
+
+/// The G2 Digest Worker. A signed-in session (the same as the web app's) can do what the web app
+/// does; a device token from a pairing code only reads editions.
 public actor G2DigestAPI {
     public static let defaultBaseURL = URL(string: "https://g2digest.hejitech.workers.dev")!
+    public typealias AccessTokenProvider = @Sendable () async throws -> String?
 
     private let baseURL: URL
     private var token: String?
+    private var sessionToken: AccessTokenProvider?
     private let session: URLSession
 
     public init(baseURL: URL = defaultBaseURL, token: String? = nil, session: URLSession = .shared) {
@@ -44,112 +76,97 @@ public actor G2DigestAPI {
         return self.token
     }
 
-    private func makeRequest(path: String, method: String = "GET", body: Data? = nil) throws -> URLRequest {
+    /// The signed-in session's access token; it takes precedence over a device token.
+    public func setAccessTokenProvider(_ provider: AccessTokenProvider?) {
+        self.sessionToken = provider
+    }
+
+    private func makeRequest(path: String, method: String = "GET", body: Data? = nil) async throws -> URLRequest {
         guard let url = URL(string: path, relativeTo: baseURL) else {
             throw APIError.invalidURL
         }
         var req = URLRequest(url: url)
         req.httpMethod = method
+        req.timeoutInterval = 20
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = token, !token.isEmpty {
-            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let bearer = try await sessionToken?() ?? token
+        if let bearer, !bearer.isEmpty {
+            req.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
         }
         req.httpBody = body
         return req
     }
 
-    public func redeemPairingCode(code: String, label: String = "iPhone App") async throws -> PairResult {
-        let cleanCode = code.filter { $0.isNumber }
-        let payload: [String: String] = ["code": cleanCode, "label": label]
-        let body = try JSONSerialization.data(withJSONObject: payload)
-
-        let req = try makeRequest(path: "/api/pair", method: "POST", body: body)
-        let (data, response) = try await session.data(for: req)
-
+    /// Sends a request and checks the status; the Worker's `{"error": …}` becomes the message.
+    private func send(_ path: String, method: String = "GET", json: [String: Any]? = nil) async throws -> Data {
+        let body = try json.map { try JSONSerialization.data(withJSONObject: $0) }
+        let req = try await makeRequest(path: path, method: method, body: body)
+        let data: Data, response: URLResponse
+        do {
+            (data, response) = try await session.data(for: req)
+        } catch {
+            throw APIError.networkError(error.localizedDescription)
+        }
         guard let http = response as? HTTPURLResponse else {
             throw APIError.networkError("Invalid HTTP response")
         }
-
-        if http.statusCode != 200 {
-            let errorMsg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
-                ?? "Failed to redeem code"
-            throw APIError.serverError(statusCode: http.statusCode, message: errorMsg)
+        if http.statusCode == 401 { throw APIError.unauthenticated }
+        guard (200..<300).contains(http.statusCode) else {
+            let msg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+            throw APIError.serverError(statusCode: http.statusCode, message: msg ?? "Request failed (\(http.statusCode))")
         }
+        return data
+    }
 
-        let decoder = JSONDecoder()
-        let result = try decoder.decode(PairResult.self, from: data)
+    private func decode<T: Decodable>(_ type: T.Type, _ data: Data) throws -> T {
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            throw APIError.decodingError(String(describing: error).prefix(240).description)
+        }
+    }
+
+    public func redeemPairingCode(code: String, label: String = "iPhone App") async throws -> PairResult {
+        let cleanCode = code.filter { $0.isNumber }
+        let data = try await send("/api/pair", method: "POST", json: ["code": cleanCode, "label": label])
+        let result = try decode(PairResult.self, data)
         self.token = result.deviceToken
         return result
     }
 
     public func fetchDeviceStatus() async throws -> DeviceStatus {
-        let req = try makeRequest(path: "/api/device")
-        let (data, response) = try await session.data(for: req)
-
-        guard let http = response as? HTTPURLResponse else {
-            throw APIError.networkError("Invalid HTTP response")
-        }
-        if http.statusCode == 401 {
-            throw APIError.unauthenticated
-        }
-        guard http.statusCode == 200 else {
-            throw APIError.serverError(statusCode: http.statusCode, message: "Status check failed")
-        }
-
-        return try JSONDecoder().decode(DeviceStatus.self, from: data)
+        try decode(DeviceStatus.self, try await send("/api/device"))
     }
 
     public func fetchEditions() async throws -> [EditionSummary] {
-        let req = try makeRequest(path: "/api/editions")
-        let (data, response) = try await session.data(for: req)
-
-        guard let http = response as? HTTPURLResponse else {
-            throw APIError.networkError("Invalid HTTP response")
-        }
-        if http.statusCode == 401 {
-            throw APIError.unauthenticated
-        }
-        guard http.statusCode == 200 else {
-            throw APIError.serverError(statusCode: http.statusCode, message: "Failed to list editions")
-        }
-
-        return try JSONDecoder().decode([EditionSummary].self, from: data)
+        try decode([EditionSummary].self, try await send("/api/editions"))
     }
 
     public func fetchEdition(date: String = "latest") async throws -> EditionResponse {
-        let req = try makeRequest(path: "/api/editions/\(date)")
-        let (data, response) = try await session.data(for: req)
-
-        guard let http = response as? HTTPURLResponse else {
-            throw APIError.networkError("Invalid HTTP response")
-        }
-        if http.statusCode == 401 {
-            throw APIError.unauthenticated
-        }
-        if http.statusCode == 404 {
-            throw APIError.serverError(statusCode: 404, message: "No edition available for \(date)")
-        }
-        guard http.statusCode == 200 else {
-            throw APIError.serverError(statusCode: http.statusCode, message: "Failed to fetch edition")
-        }
-
-        return try JSONDecoder().decode(EditionResponse.self, from: data)
+        try decode(EditionResponse.self, try await send("/api/editions/\(date)"))
     }
 
     public func fetchBrief() async throws -> Brief {
-        let req = try makeRequest(path: "/api/brief")
-        let (data, response) = try await session.data(for: req)
+        try decode(Brief.self, try await send("/api/brief"))
+    }
 
-        guard let http = response as? HTTPURLResponse else {
-            throw APIError.networkError("Invalid HTTP response")
-        }
-        if http.statusCode == 401 {
-            throw APIError.unauthenticated
-        }
-        guard http.statusCode == 200 else {
-            throw APIError.serverError(statusCode: http.statusCode, message: "Failed to fetch brief")
-        }
+    // MARK: signed-in only (the web app's Pair page and account)
 
-        return try JSONDecoder().decode(Brief.self, from: data)
+    public func createPairingCode() async throws -> PairingCode {
+        try decode(PairingCode.self, try await send("/api/pairing-code", method: "POST"))
+    }
+
+    public func fetchDevices() async throws -> [PairedDevice] {
+        try decode([PairedDevice].self, try await send("/api/devices"))
+    }
+
+    public func revokeDevice(id: String) async throws {
+        _ = try await send("/api/devices/\(id)", method: "DELETE")
+    }
+
+    /// Deletes everything G2 Digest holds for the account (brief, editions, audio, devices, feeds,
+    /// tokens, connected assistants), as Delete all my G2 Digest data on the web does.
+    public func deleteAllData() async throws {
+        _ = try await send("/api/account", method: "DELETE")
     }
 }

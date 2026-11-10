@@ -29,10 +29,14 @@ public struct ReleaseNotes: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.4.2"
+    public static let currentVersion = "0.4.3"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.4.3", date: "November 2026", items: [
+            WhatsNewItem(icon: "person.crop.circle", title: "Sign In with Apple or Google", description: "Use the account you use on the web: your brief, every edition, and your glasses. Pair glasses with a code from Settings, unpair devices, or delete your data, right on your iPhone."),
+            WhatsNewItem(icon: "arrow.clockwise", title: "Pull to Refresh", description: "Pull down on a card or the editions archive to check for new editions. The app also checks whenever you come back to it, and past editions show up as soon as you sign in or pair.")
+        ]),
         ReleaseNotes(version: "0.4.2", date: "November 2026", items: [
             WhatsNewItem(
                 icon: "checkmark.circle",

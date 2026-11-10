@@ -13,7 +13,7 @@ public struct TourBuilder: Sendable {
     private static func nextInfo(for reason: TourReason) -> (title: String, body: String) {
         switch reason {
         case .pair:
-            return ("Pair your device", "Sign in to G2 Digest on the web, open Pair, and type the 6-digit code.")
+            return ("Sign in", "Tap Sign In and use the account you use on the web, or pair with a code from its Pair page.")
         case .waiting:
             return ("Paired", "Your first edition isn't out yet. Connect an agent from Agents on the web.")
         case .offline:

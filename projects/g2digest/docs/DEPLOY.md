@@ -24,6 +24,10 @@ doesn't exist breaks PostgREST).
 
 - Provider: **Google** (already on for the shared project; no new client needed).
 - Redirect URLs to add: `https://g2digest.hejitech.workers.dev/**`.
+- For the iPhone app (read the lists first, extend, never replace): redirect URL
+  `g2digest://login-callback` (Continue with Google) and `com.hejitech.g2digest` in the Apple
+  provider's client IDs (the native Sign in with Apple sheet). The bundle ID has the
+  `APPLE_ID_AUTH` capability; the app the `com.apple.developer.applesignin` entitlement.
 - Email sign-in stays off; local development uses the seed account.
 
 ## 3. Worker
