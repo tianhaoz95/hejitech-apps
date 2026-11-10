@@ -32,7 +32,7 @@ apps/cli/           @hq/cli: `hq lint | policy | sync | context | verb | runner 
   src/runner.ts     claims runs and does them; adapters.ts starts agents; prompts.ts writes
                     every launch prompt (context included)
   test/fixture/     a repo HQ has never seen (portability tests)
-apps/ios/           SwiftUI app (XcodeGen): sign-in (GitHub/Google PKCE, Apple, Debug email),
+apps/ios/           SwiftUI app (XcodeGen): sign-in (Google PKCE, Apple, Debug email),
                     workspace setup/switch, inbox, card, health, runs, settings with members
 scripts/            test-api.mjs (Worker integration, CI), check_coupling.mjs
 .hq/                HQ as a managed project of this repo (like every other project)

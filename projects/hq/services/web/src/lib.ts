@@ -102,7 +102,7 @@ const ICONS: Record<string, string> = {
   apple: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8s2 .8 3.4.8c1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4.1zM13.9 5c.7-.9 1.2-2 1-3.2-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.1 1.2.1 2.3-.6 3.1-1.5z"/></svg>`,
 };
 
-/** Sign-in: GitHub, Google, Apple; plus email for local accounts in development. */
+/** Sign-in: Google, Apple; plus email for local accounts in development. GitHub once its provider is enabled (docs/DEPLOY.md §2). */
 export function signInView(opts: { title: string; message: string; redirectTo: string; onSignedIn: () => void }) {
   const error = el("p", { class: "error", role: "alert", hidden: true });
   const fail = (m: string) => {
@@ -126,7 +126,7 @@ export function signInView(opts: { title: string; message: string; redirectTo: s
     el("div", { class: "logo big" }, "HQ"),
     el("h1", {}, opts.title),
     el("p", { class: "muted" }, opts.message),
-    el("div", { class: "stack" }, provider("github", "Continue with GitHub"), provider("google", "Continue with Google"), provider("apple", "Continue with Apple")),
+    el("div", { class: "stack" }, provider("google", "Continue with Google"), provider("apple", "Continue with Apple")),
     error);
   if (config.emailSignIn) {
     const email = el("input", { type: "email", placeholder: "Email", autocomplete: "username", "aria-label": "Email" });

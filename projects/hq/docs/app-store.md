@@ -128,7 +128,7 @@ Built for monorepos: one workspace is one repository and the people who work on 
 
 Guardrails live in HQ, not in prompts: each project sets how much autonomy agents get, releases always need a person, and agents can never approve their own work. Runners and agents run on your own machines with your own keys.
 
-HQ works with Claude Code and other agents that speak MCP. Sign in with GitHub, Google or Apple.
+HQ works with Claude Code and other agents that speak MCP. Sign in with Google or Apple.
 ```
 
 **keywords (≤ 100, commas, no spaces after commas)**
@@ -176,7 +176,7 @@ First release: your team's inbox for what HQ's agents propose — approve, rejec
 
 | Data | Collected | Linked to user | Tracking | Purpose |
 |---|---|---|---|---|
-| Email address (from GitHub, Google or Apple sign-in) | Yes | Yes | No | App functionality (sign-in, member list) |
+| Email address (from Google or Apple sign-in) | Yes | Yes | No | App functionality (sign-in, member list) |
 | Name | No | — | — | — |
 | User content (cards, comments, decisions in your workspace) | Yes | Yes | No | App functionality |
 | Identifiers (account id) | Yes | Yes | No | App functionality |

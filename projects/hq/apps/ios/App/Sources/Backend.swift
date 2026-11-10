@@ -97,7 +97,7 @@ enum SessionStore {
     }
 }
 
-/// Supabase Auth (GitHub and Google in the browser with PKCE, Apple with an identity token, email for
+/// Supabase Auth (Google in the browser with PKCE, Apple with an identity token, email for
 /// local accounts, refresh) and HQ's API with the session's access token. No SDK.
 final class Backend: @unchecked Sendable {
     static let shared = Backend()

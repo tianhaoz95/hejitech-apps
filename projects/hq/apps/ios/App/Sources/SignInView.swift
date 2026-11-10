@@ -2,8 +2,9 @@ import AuthenticationServices
 import CryptoKit
 import SwiftUI
 
-/// Sign-in through the shared Supabase project: GitHub and Google in the browser (PKCE), Apple with
-/// the native sheet, and email for local accounts in Debug builds.
+/// Sign-in through the shared Supabase project: Google in the browser (PKCE), Apple with the native
+/// sheet, and email for local accounts in Debug builds. GitHub comes back once its provider is
+/// enabled on the project (docs/DEPLOY.md §2).
 struct SignInView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.webAuthenticationSession) private var webAuth
@@ -23,10 +24,8 @@ struct SignInView: View {
             Text("Your repo's autopilot: agents propose, your team decides.").multilineTextAlignment(.center).foregroundStyle(.secondary)
             Spacer()
             VStack(spacing: 10) {
-                Button { Task { await browser("github") } } label: { Label("Continue with GitHub", systemImage: "chevron.left.forwardslash.chevron.right").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderedProminent).controlSize(.large)
                 Button { Task { await browser("google") } } label: { Label("Continue with Google", systemImage: "globe").frame(maxWidth: .infinity) }
-                    .buttonStyle(.bordered).controlSize(.large)
+                    .buttonStyle(.borderedProminent).controlSize(.large)
                 SignInWithAppleButton(.continue) { req in
                     nonce = Backend.randomURLSafe(bytes: 24)
                     req.requestedScopes = [.email]

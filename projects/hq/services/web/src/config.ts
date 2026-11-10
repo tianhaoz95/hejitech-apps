@@ -1,5 +1,5 @@
 // Build-time settings. Without them the portal talks to the local stack that `supabase start` runs
-// and offers email sign-in (local accounts only; production signs in with GitHub, Google or Apple).
+// and offers email sign-in (local accounts only; production signs in with Google or Apple).
 const env = import.meta.env;
 
 export const config = {

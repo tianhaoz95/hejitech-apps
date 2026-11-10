@@ -20,8 +20,9 @@ and `hq://login-callback` (read the list first and extend it; the Site URL belon
   Apple sheet, add `com.hejitech.hq` to Apple's client IDs (comma-separated list).
 - **GitHub** (recommended for HQ: every workspace is a GitHub repo) isn't enabled yet. Create a
   GitHub OAuth App (callback `https://jitdzllkxfhlrxxvljhp.supabase.co/auth/v1/callback`) and enable
-  the GitHub provider with its client id and secret. Until then the GitHub button shows Supabase's
-  "provider not enabled" error.
+  the GitHub provider with its client id and secret. Until then the portal and the
+  iPhone app offer no GitHub button (removed in 0.1.1); put it back in `services/web/src/lib.ts`
+  (`signInView`) and `apps/ios/App/Sources/SignInView.swift` once the provider is on.
 
 ## 3. The Worker
 
