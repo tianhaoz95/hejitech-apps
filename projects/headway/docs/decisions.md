@@ -156,3 +156,38 @@ page (`/eta/*` was missing from `run_worker_first`, in production too); Share li
 shared a List row without a borderless style, so sharing also stopped tracking; and re-tracking a train
 updated the Live Activity the app had just ended. A Live Activity now also starts without push updates when
 the push-token request fails (an unsigned simulator build), updated by the app while it runs.
+
+## Family groups (2026-11-09)
+
+The owner's choices: an account is in at most one group; both sides choose (the sharer what to share and
+with whom, each viewer what to be told about); every share kind exists and all start off; sharing is always
+per item and per person. Groups hold at most 8 people counting pending invites; only the owner invites,
+by email, and the invitee accepts in the app; you can't join another group without leaving yours; the owner
+leaving deletes the group (members are told); leaving removes everything you shared at once; only the
+current state is shown, never a history; members who share nothing show by name only; viewers get nothing
+until they subscribe; the sharer sees who sees each share and who follows it. Pickup reminders were left
+out for now. Followed trains go on the Lock Screen. iPhone and Android phone apps; Android gets no family
+notifications yet (no server push to Android: it needs FCM, to be revisited).
+
+- **Four share kinds** (`core/family.ts`): `trip` (the tracked train), `ride` (on-train detection, high
+  confidence only), `commute` (the usual train, the first at or after a leg's usual time, late ≥ 5 min or
+  cancelled, inside the leg's window on its days: never stations or times), `status` (fixed choices only,
+  for 15/30/60/120/240 minutes, default 30; free text would be user-generated content under App Review 1.2).
+- **Stored per member, not per pair**: `family_members.shares` (kind → viewer ids) and `follows` (sharer →
+  { notify, live }) as JSON, read and changed by the Worker with the whole group loaded (≤ 8 rows). Following
+  only counts what's shared with you right now (`effectiveFollow`), and taking someone off a share prunes
+  their follow at once (`pruneFollows`). `user_id` is the primary key: one group per account.
+- **Nothing about a ride is stored for this**: a member's train is read from `tracked_trips` or the on-train
+  KV session at the moment someone asks or the cron runs.
+- **Invites by email, answered the same way whether or not the address uses Headway**, so nobody can probe
+  who does. An invitee who has an iPhone registered gets a push (`push_users_by_email`, which only returns
+  users with Headway push devices: the shared auth pool also holds other HEJI apps' users). Apple's "Hide My
+  Email" addresses are shown at the bottom of the Family tab so they can be given to the owner.
+- **Notifications** (`familyNotifications`, `fam:` dedupe keys): on a train, late (again every 5 min worse),
+  cancelled, arrived (within 15 min), usual train late or cancelled, a new status. Boarding a train that's
+  already late says so once. Ordinary interruption level, not time-sensitive. The family pass runs before the
+  per-user alerts so a train that just arrived is still tracked.
+- **Lock Screen**: following someone live push-starts a `TrackActivityAttributes` activity with `who` set and
+  `trip_id` `follow:<sharer>:<trip>`; the cron updates and ends it, and ends any whose share or follow is gone.
+  The app never ends those itself (only `endAllActivities` on sign-out or deleting data). Merging your own and
+  followed trains into one activity is the fallback if iOS's activity limit bites.

@@ -19,7 +19,7 @@ struct HeadwayApp: App {
                 }
                 .onChange(of: scenePhase) { _, phase in
                     model.applyLocationForRides(active: phase == .active)
-                    if phase == .active { Task { await model.refresh() } }
+                    if phase == .active { Task { await model.refresh(); await model.loadFamily() } }
                 }
         }
     }
@@ -50,7 +50,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        Task { @MainActor in await model?.refresh() }
+        Task { @MainActor in
+            await model?.refresh()
+            if (notification.request.content.userInfo["kind"] as? String) == "family" { await model?.loadFamily() }
+        }
         return [.banner, .sound, .list]
     }
 }
@@ -81,7 +84,7 @@ struct MainTabs: View {
     @Environment(AppModel.self) private var model
     @State private var tab = Self.initialTab
 
-    /// `-screen trains|commute|glasses|settings` opens a tab directly (screenshots without taps).
+    /// `-screen trains|commute|family|glasses|settings` opens a tab directly (screenshots without taps).
     static var initialTab: String {
         let args = ProcessInfo.processInfo.arguments
         if let i = args.firstIndex(of: "-screen"), i + 1 < args.count { return args[i + 1] }
@@ -92,6 +95,8 @@ struct MainTabs: View {
         TabView(selection: $tab) {
             Tab("Trains", systemImage: "tram.fill", value: "trains") { BoardView() }
             Tab("Commute", systemImage: "arrow.left.arrow.right", value: "commute") { CommuteView() }
+            Tab("Family", systemImage: "person.2.fill", value: "family") { FamilyView() }
+                .badge(model.family?.invites.count ?? 0)
             Tab("Glasses", systemImage: "eyeglasses", value: "glasses") { GlassesView() }
             Tab("Settings", systemImage: "gearshape", value: "settings") { SettingsView() }
         }

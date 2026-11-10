@@ -37,6 +37,8 @@ final class AppModel {
     var error: String?
     var loading = false
     var notificationsAllowed: Bool?
+    /// The family group (nil until loaded) and invites to you.
+    var family: FamilyState?
     /// "from>to" of the board pinned to the Lock Screen as a Live Activity.
     var pinnedBoard: String?
     /// Estimate the trip to the station from where the phone is (Settings › Location), instead of the leg's fixed minutes.
@@ -148,6 +150,7 @@ final class AppModel {
             applyLocationForRides(active: true)
             expressPreference = settings.expressPreference
             await refresh()
+            await loadFamily()
             await registerForPushIfAllowed()
         } catch BackendError.notSignedIn {
             phase = .signedOut
@@ -223,13 +226,14 @@ final class AppModel {
     func signOut() async {
         if let t = pushToken { try? await backend.unregisterPush(token: t) }
         #if os(iOS) && canImport(ActivityKit)
-        await LiveActivityManager.shared.endCurrentActivity()
+        await LiveActivityManager.shared.endAllActivities()
         await LiveActivityManager.shared.unpinBoard(backend: backend)
         pinnedBoard = nil
         #endif
         backend.signOut()
         board = nil
         tracked = nil
+        family = nil
         settings = .defaults
         customPair = nil
         phase = .signedOut
@@ -242,13 +246,14 @@ final class AppModel {
             let appleCode = backend.session?.signedInWithApple == true ? await AppleReauthorization().authorizationCode() : nil
             try await backend.deleteData(appleAuthorizationCode: appleCode)
             #if os(iOS) && canImport(ActivityKit)
-            await LiveActivityManager.shared.endCurrentActivity()
+            await LiveActivityManager.shared.endAllActivities()
             await LiveActivityManager.shared.unpinBoard(backend: backend)
             pinnedBoard = nil
             #endif
             backend.signOut()
             board = nil
             tracked = nil
+            family = nil
             settings = .defaults
             phase = .signedOut
             syncWatch()
@@ -459,6 +464,55 @@ final class AppModel {
 
     func shareEta(name: String? = nil) async throws -> EtaShareResponse {
         try await backend.createEtaShare(name: name)
+    }
+
+    // MARK: family
+
+    func loadFamily() async {
+        guard phase == .ready else { return }
+        if let f = try? await backend.family() { family = f }
+    }
+
+    /// Runs a family change and shows the group as the Worker returns it. False (with `error` set) when refused.
+    @discardableResult
+    func familyChange(_ op: (Backend) async throws -> FamilyState) async -> Bool {
+        do {
+            family = try await op(backend)
+            error = nil
+            return true
+        } catch {
+            self.error = error.localizedDescription
+            return false
+        }
+    }
+
+    /// Your shares that are on, with who sees each (what `updateFamily(shares:)` takes).
+    var currentShares: [ShareKind: [String]] {
+        var out: [ShareKind: [String]] = [:]
+        for s in family?.me?.shares ?? [] where s.on { out[s.kind] = s.viewers }
+        return out
+    }
+
+    /// Turns a share on (for `viewers`) or off.
+    func setShare(_ kind: ShareKind, on: Bool, viewers: [String]) async {
+        var shares = currentShares
+        shares[kind] = on ? viewers : nil
+        await familyChange { try await $0.updateFamily(shares: shares) }
+    }
+
+    /// What you follow of each member, as the Worker stores it.
+    var currentFollows: [String: FollowPrefs] {
+        var out: [String: FollowPrefs] = [:]
+        for m in family?.others ?? [] where !m.follow.notify.isEmpty || m.follow.live { out[m.userId] = m.follow }
+        return out
+    }
+
+    func setFollow(_ userId: String, _ prefs: FollowPrefs) async {
+        var follows = currentFollows
+        follows[userId] = prefs.notify.isEmpty && !prefs.live ? nil : prefs
+        // Being told needs alerts on; the Lock Screen needs Live Activities on.
+        if !prefs.notify.isEmpty, notificationsAllowed == nil { await requestNotifications() }
+        await familyChange { try await $0.updateFamily(follows: follows) }
     }
 
     // MARK: settings

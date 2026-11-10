@@ -219,13 +219,15 @@ export const json = (body: unknown, status = 200, headers?: HeadersInit) => {
 export const bearer = (req: Request) => (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
 
 /** The Supabase user behind a session access token (the site's supabase-js or the iPhone app), or null. */
-export async function supabaseUser(env: Env, req: Request): Promise<{ id: string; email?: string } | null> {
+export async function supabaseUser(env: Env, req: Request): Promise<{ id: string; email?: string; name?: string } | null> {
   const jwt = bearer(req);
   if (!jwt || jwt.startsWith("hw")) return null;
   const res = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, { headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${jwt}` } });
   if (!res.ok) return null;
-  const u = (await res.json()) as { id: string; email?: string };
-  return { id: u.id, email: u.email };
+  const u = (await res.json()) as { id: string; email?: string; user_metadata?: { full_name?: unknown; name?: unknown; given_name?: unknown } };
+  const meta = u.user_metadata ?? {};
+  const name = [meta.given_name, meta.full_name, meta.name].find((v): v is string => typeof v === "string" && v.trim().length > 0);
+  return { id: u.id, email: u.email, name };
 }
 
 // ---------------------------------------------------------------- the train you're riding

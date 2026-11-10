@@ -7,6 +7,9 @@ import com.google.android.gms.wearable.Wearable
 import com.hejitech.headway.core.model.*
 import com.hejitech.headway.core.net.BackendConfig
 import com.hejitech.headway.core.net.HeadwayApiClient
+import com.hejitech.headway.core.net.HeadwayApiException
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import com.hejitech.headway.core.sync.WatchMessage
 import com.hejitech.headway.core.sync.WatchSyncState
 import kotlinx.coroutines.Job
@@ -68,6 +71,10 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
     private val _isLocalBackend = MutableStateFlow(false)
     val isLocalBackend: StateFlow<Boolean> = _isLocalBackend.asStateFlow()
 
+    private val _family = MutableStateFlow<FamilyState?>(null)
+    /** The family group (null until loaded or signed out) and invites to you. */
+    val family: StateFlow<FamilyState?> = _family.asStateFlow()
+
     private var pollJob: Job? = null
 
     init {
@@ -128,6 +135,44 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
         try {
             loadBoardInternal()
         } catch (_: Exception) {}
+        if (apiClient.session != null) runCatching { apiClient.getFamily() }.onSuccess { _family.value = it }
+    }
+
+    // ---------------------------------------------------------------- family group
+
+    fun loadFamily() {
+        if (apiClient.session == null) { _family.value = null; return }
+        viewModelScope.launch { runCatching { apiClient.getFamily() }.onSuccess { _family.value = it } }
+    }
+
+    /** Runs a family change and shows the group as the Worker returns it; [done] gets whether it worked. */
+    fun familyChange(done: (Boolean) -> Unit = {}, op: suspend (HeadwayApiClient) -> FamilyState) {
+        viewModelScope.launch {
+            try {
+                _family.value = op(apiClient)
+                _errorMessage.value = null
+                done(true)
+            } catch (e: HeadwayApiException) {
+                _errorMessage.value = apiError(e)
+                done(false)
+            } catch (e: Exception) {
+                _errorMessage.value = e.localizedMessage ?: "Something went wrong"
+                done(false)
+            }
+        }
+    }
+
+    /** Turns a share on (for [viewers]) or off. */
+    fun setShare(kind: ShareKind, on: Boolean, viewers: List<String>) {
+        val shares = (_family.value?.currentShares ?: emptyMap()).toMutableMap()
+        if (on) shares[kind] = viewers else shares.remove(kind)
+        familyChange { it.updateFamily(shares = shares) }
+    }
+
+    /** The Worker's `{ "error": "…" }`, or the status. */
+    private fun apiError(e: HeadwayApiException): String {
+        val body = e.message?.substringAfter(": ", "") ?: ""
+        return runCatching { apiClient.json.parseToJsonElement(body).jsonObject["error"]?.jsonPrimitive?.content }.getOrNull() ?: (e.message ?: "Request failed")
     }
 
     private suspend fun loadBoardInternal() {
@@ -308,6 +353,7 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
                 apiClient.signInEmail(email, pass)
                 refresh()
                 loadSettings()
+                loadFamily()
             } catch (e: Exception) {
                 _errorMessage.value = "Sign in failed: ${e.localizedMessage}"
             } finally {
@@ -318,6 +364,7 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
 
     fun signOut() {
         apiClient.setSession(null)
+        _family.value = null
         _tracked.value = null
         _onTrain.value = null
         rideLocation.stop()

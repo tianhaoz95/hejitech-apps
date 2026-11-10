@@ -3,12 +3,13 @@
 // Who may call what:
 //   none                          stations, any board, a train's progress, status; POST /api/pair (throttled)
 //   session or glasses token      the user's commute board, the tracked train, the train they're on
-//   Supabase session (web, iPhone) settings, pairing codes, devices, push registration, agent tokens, delete data
+//   Supabase session (web, iPhone) settings, pairing codes, devices, push registration, agent tokens, family group, delete data
 import { devClock, now as clockNow } from "./clock.ts";
 import { appleKey, revokeIfPossible } from "./apple.ts";
 import { board, checkSettings, isTravelMode, clock, commuteBoard, detectOnTrain, newLeg, onTrainCard, stillOnTrain, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type ExpressPreference, type OnTrainSample, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
 import { NOT_BOARD_ACTIVITY, pushConfigured, sendPush } from "./push.ts";
 import { reviewSignIn } from "./review.ts";
+import { handleFamily, leaveFamily } from "./family.ts";
 import {
   admin, bearer, createEtaShare, json, loadEtaShare, loadOnTrain, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
   revokeEtaShares, saveOnTrain, type OnTrainSession, saveSettings, saveTracked, sha256, supabaseUser, updateEtaShareExpiry, type Db, type Env,
@@ -29,7 +30,7 @@ const cors = {
 };
 const reply = (body: unknown, status = 200, extra: Record<string, string> = {}) => json(body, status, { ...cors, ...extra });
 
-type Caller = { userId: string; via: "session" | "device"; email?: string };
+type Caller = { userId: string; via: "session" | "device"; email?: string; name?: string };
 
 async function caller(env: Env, db: Db, req: Request): Promise<Caller | null> {
   const token = bearer(req);
@@ -38,7 +39,7 @@ async function caller(env: Env, db: Db, req: Request): Promise<Caller | null> {
     return d ? { userId: d.userId, via: "device" } : null;
   }
   const u = await supabaseUser(env, req);
-  return u ? { userId: u.id, via: "session", email: u.email } : null;
+  return u ? { userId: u.id, via: "session", email: u.email, name: u.name } : null;
 }
 
 const pairOf = (url: URL) => {
@@ -98,6 +99,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   if (path === "/api/review-sign-in" && req.method === "POST") {
     // App Review's demo account: a fresh commute every time it signs in (review.ts).
     const r = await reviewSignIn(env, req, async (userId) => {
+      await leaveFamily(env, db, userId, now);
       for (const t of USER_TABLES) await db.from(t).delete().eq("user_id", userId);
       const settings = normalizeSettings({
         morning: { ...newLeg("mountain_view", "san_francisco", "morning"), usual: "08:00" },
@@ -288,6 +290,12 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     return reply({ ok: true });
   }
 
+  // ------------------------------------------------------------ family group
+  if (path === "/api/family" || path.startsWith("/api/family/")) {
+    const r = await handleFamily(req, env, db, path, who, now, reply);
+    if (r) return r;
+  }
+
   // ------------------------------------------------------------ settings
   if (path === "/api/settings" && req.method === "GET") return reply({ ...(await loadSettings(db, userId)), email: who.email ?? null });
   if (path === "/api/settings" && req.method === "PUT") {
@@ -370,6 +378,8 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     // The app sends a fresh Sign in with Apple code when the person signed in with Apple (apple.ts).
     const { apple_authorization_code } = (await req.json().catch(() => ({}))) as { apple_authorization_code?: unknown };
     const appleRevoked = await revokeIfPossible(appleKey(env), apple_authorization_code);
+    // Leaving first: an owner's group goes, and the others are told.
+    await leaveFamily(env, db, userId, now);
     for (const t of USER_TABLES) {
       const { error } = await db.from(t).delete().eq("user_id", userId);
       if (error) return reply({ error: `couldn't delete ${t}: ${error.message}` }, 500);

@@ -18,8 +18,9 @@ public struct TrackActivityWidget: Widget {
                     HStack(spacing: 6) {
                         Image(systemName: "tram.fill")
                             .foregroundStyle(Color(red: 0.12, green: 0.54, blue: 0.30))
-                        Text("\(context.attributes.train) \(context.attributes.kind)")
+                        Text(context.attributes.who.map { "\($0) · \(context.attributes.train)" } ?? "\(context.attributes.train) \(context.attributes.kind)")
                             .font(.headline)
+                            .lineLimit(1)
                             .foregroundStyle(.white)
                     }
                 }
@@ -62,9 +63,9 @@ public struct TrackActivityWidget: Widget {
                 }
             } compactLeading: {
                 HStack(spacing: 3) {
-                    Image(systemName: "tram.fill")
+                    Image(systemName: context.attributes.who == nil ? "tram.fill" : "person.fill")
                         .foregroundStyle(Color(red: 0.24, green: 0.82, blue: 0.48))
-                    Text(context.attributes.train)
+                    Text(context.attributes.who.map { String($0.prefix(6)) } ?? context.attributes.train)
                         .font(.caption2.bold())
                         .foregroundStyle(.white)
                 }
@@ -104,9 +105,10 @@ struct LockScreenLiveActivityView: View {
                     .frame(width: 26, height: 26)
                     .background(Color(red: 0.12, green: 0.54, blue: 0.30), in: RoundedRectangle(cornerRadius: 6))
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("\(attributes.train) \(attributes.kind)")
+                    Text(attributes.who.map { "\($0) · \(attributes.train) \(attributes.kind)" } ?? "\(attributes.train) \(attributes.kind)")
                         .font(.headline)
                         .foregroundStyle(.white)
+                        .lineLimit(1)
                     Text("to \(attributes.to)")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.7))
@@ -149,7 +151,7 @@ struct LockScreenLiveActivityView: View {
                             .font(.headline)
                             .foregroundStyle(.green)
                     } else if state.stopsLeft <= 1 {
-                        Text("Next stop is yours")
+                        Text(attributes.who == nil ? "Next stop is yours" : "Next stop")
                             .font(.headline)
                             .foregroundStyle(.green)
                     } else {

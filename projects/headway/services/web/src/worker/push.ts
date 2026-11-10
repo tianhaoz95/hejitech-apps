@@ -37,8 +37,10 @@ async function token(env: Env): Promise<string> {
 
 /** "Next trains" Live Activities register update tokens with trip_id `board:<from>><to>`. */
 export const BOARD_ACTIVITY_PREFIX = "board:";
-/** PostgREST filter for activity tokens that aren't a board's (a tracked train's, or none). */
-export const NOT_BOARD_ACTIVITY = `trip_id.is.null,trip_id.not.like.${BOARD_ACTIVITY_PREFIX}*`;
+/** Live Activities of a family member's train register update tokens with trip_id `follow:<sharer id>:<trip id>`. */
+export const FOLLOW_ACTIVITY_PREFIX = "follow:";
+/** PostgREST filter for the activity tokens of your own tracked train (not a board's, not a followed train's, or none). */
+export const NOT_BOARD_ACTIVITY = `trip_id.is.null,and(trip_id.not.like.${BOARD_ACTIVITY_PREFIX}*,trip_id.not.like.${FOLLOW_ACTIVITY_PREFIX}*)`;
 
 export type PushResult = { ok: true } | { ok: false; status: number; reason: string; gone: boolean };
 
@@ -61,6 +63,8 @@ export interface LiveActivityPayload {
     train: string;
     kind: string;
     to: string;
+    /** A family member's train: their name. */
+    who?: string;
   };
   contentState: LiveActivityContentState | BoardActivityState;
 }
@@ -122,8 +126,8 @@ export async function sendPush(env: Env, device: { apns_token: string; environme
         ...(n.priority ? { sound: "default" } : {}),
         "thread-id": n.thread,
         // Delays, cancellations, leave-now and arrival are time-sensitive (they break through Focus
-        // when the user allows it); service alerts are ordinary.
-        "interruption-level": !n.priority ? "passive" : n.kind === "service" ? "active" : "time-sensitive",
+        // when the user allows it); service alerts and news about family are ordinary.
+        "interruption-level": !n.priority ? "passive" : n.kind === "service" || n.kind === "family" ? "active" : "time-sensitive",
       },
       kind: n.kind,
       priority: n.priority,

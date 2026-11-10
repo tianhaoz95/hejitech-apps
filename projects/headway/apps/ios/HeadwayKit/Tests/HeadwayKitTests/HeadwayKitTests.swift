@@ -16,6 +16,38 @@ final class HeadwayKitTests: XCTestCase {
         XCTAssertEqual(board.trains[0].id, "\(board.trains[0].serviceDate):\(board.trains[0].tripId)")
     }
 
+    /// /api/family for a member Alex shares a tracked train and a status with (captured from the local stack).
+    func testDecodesFamilyAsViewer() throws {
+        let f = try Backend.decoder.decode(FamilyState.self, from: fixture("family-viewer"))
+        let g = try XCTUnwrap(f.group)
+        XCTAssertFalse(g.owner)
+        XCTAssertTrue(g.pendingInvites.isEmpty, "only the owner sees pending invites")
+        let alex = try XCTUnwrap(f.others.first)
+        XCTAssertEqual(alex.displayName, "Alex")
+        XCTAssertTrue(alex.isOwner)
+        XCTAssertEqual(alex.sharedWithMe, [.trip, .status])
+        XCTAssertEqual(alex.train?.source, .trip)
+        XCTAssertEqual(alex.status?.code, .onMyWay)
+        XCTAssertEqual(alex.follow, FollowPrefs(notify: [.trip], live: true))
+        XCTAssertTrue(f.me?.shares.allSatisfy { !$0.on } ?? false, "the viewer shares nothing")
+    }
+
+    /// The same group as its owner sees it: who sees each share, and who follows it.
+    func testDecodesFamilyAsOwner() throws {
+        let f = try Backend.decoder.decode(FamilyState.self, from: fixture("family-owner"))
+        let g = try XCTUnwrap(f.group)
+        XCTAssertTrue(g.owner)
+        XCTAssertEqual(g.pendingInvites.count, 1)
+        let trip = try XCTUnwrap(f.share(.trip))
+        let viewer = try XCTUnwrap(f.others.first?.userId)
+        XCTAssertEqual(trip.viewers, [viewer])
+        XCTAssertEqual(trip.notified, [viewer])
+        XCTAssertEqual(trip.live, [viewer])
+        XCTAssertEqual(f.share(.commute)?.on, false)
+        XCTAssertEqual(f.me?.status?.text, "On my way")
+        XCTAssertEqual(f.name(of: viewer), f.others.first?.displayName)
+    }
+
     func testDecodesTravelEstimateAndSpareMinutes() throws {
         // Made by @headway/core's board() from a location ~1.6 km from Mountain View, driving.
         let b = try XCTUnwrap(try Backend.decoder.decode(MyBoard.self, from: fixture("me-board-travel")).board)

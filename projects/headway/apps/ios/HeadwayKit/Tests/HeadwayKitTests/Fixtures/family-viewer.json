@@ -1,0 +1,112 @@
+{
+ "email": "cap-b-1794275855057@example.com",
+ "suggested_name": "cap-b-1794275855057",
+ "max": 8,
+ "invites": [],
+ "group": {
+  "id": "41e6ee33-9636-41c9-a745-8c1806fa0fe9",
+  "name": "The Zhous",
+  "owner": false,
+  "members": [
+   {
+    "user_id": "f88095d2-cbe4-4cbc-9a77-e8747ff3e6a3",
+    "display_name": "Alex",
+    "role": "owner",
+    "me": false,
+    "shared_with_me": [
+     "trip",
+     "status"
+    ],
+    "train": {
+     "source": "trip",
+     "trip_id": "111",
+     "service_date": "20261110",
+     "train": "111",
+     "kind": "LOC",
+     "dir": "N",
+     "to": {
+      "id": "san_francisco",
+      "name": "San Francisco",
+      "short": "SF"
+     },
+     "next": {
+      "id": "california_ave",
+      "name": "California Avenue",
+      "short": "CAL AVE",
+      "pred": 1794325920000
+     },
+     "pred_arr": 1794329160000,
+     "arr": 1794329160000,
+     "delay_min": null,
+     "stops_left": 16,
+     "cancelled": false,
+     "arrived": false,
+     "live": false
+    },
+    "commute": null,
+    "status": {
+     "code": "on_my_way",
+     "set_at": 1794325860151,
+     "until": 1794327660151,
+     "text": "On my way"
+    },
+    "follow": {
+     "notify": [
+      "trip"
+     ],
+     "live": true
+    }
+   },
+   {
+    "user_id": "7e14bb25-6ebc-4cc0-a99e-3890ac24c683",
+    "display_name": "cap-b-1794275855057",
+    "role": "member",
+    "me": true,
+    "shared_with_me": [],
+    "train": null,
+    "commute": null,
+    "status": null,
+    "follow": {
+     "notify": [],
+     "live": false
+    }
+   }
+  ],
+  "pending_invites": []
+ },
+ "me": {
+  "display_name": "cap-b-1794275855057",
+  "role": "member",
+  "shares": [
+   {
+    "kind": "trip",
+    "on": false,
+    "viewers": [],
+    "notified": [],
+    "live": []
+   },
+   {
+    "kind": "ride",
+    "on": false,
+    "viewers": [],
+    "notified": [],
+    "live": []
+   },
+   {
+    "kind": "commute",
+    "on": false,
+    "viewers": [],
+    "notified": [],
+    "live": []
+   },
+   {
+    "kind": "status",
+    "on": false,
+    "viewers": [],
+    "notified": [],
+    "live": []
+   }
+  ],
+  "status": null
+ }
+}

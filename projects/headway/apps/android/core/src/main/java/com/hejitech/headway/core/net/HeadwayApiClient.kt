@@ -206,6 +206,53 @@ class HeadwayApiClient(
         authSession
     }
 
+    // ---------------------------------------------------------------- family group
+
+    private suspend fun family(method: String, path: String = "", body: JsonElement? = null): FamilyState = withContext(Dispatchers.IO) {
+        val reqBody = (body?.toString() ?: "{}").toRequestBody(jsonMediaType)
+        val builder = Request.Builder().url("${config.site}/api/family$path")
+        when (method) {
+            "GET" -> builder.get()
+            "POST" -> builder.post(reqBody)
+            "PUT" -> builder.put(reqBody)
+            "DELETE" -> builder.delete()
+        }
+        addAuthHeader(builder)
+        executeAndDecode(builder.build())
+    }
+
+    suspend fun getFamily(): FamilyState = family("GET")
+
+    suspend fun createFamily(name: String, displayName: String): FamilyState =
+        family("POST", body = buildJsonObject { put("name", name); put("display_name", displayName) })
+
+    suspend fun renameFamily(name: String): FamilyState = family("PUT", body = buildJsonObject { put("name", name) })
+
+    /** Leaves the group; the owner leaving deletes it. */
+    suspend fun leaveFamily(): FamilyState = family("DELETE")
+
+    suspend fun invite(email: String): FamilyState = family("POST", "/invites", buildJsonObject { put("email", email) })
+    suspend fun cancelInvite(id: String): FamilyState = family("DELETE", "/invites/$id")
+    suspend fun acceptInvite(id: String): FamilyState = family("POST", "/invites/$id/accept")
+    suspend fun declineInvite(id: String): FamilyState = family("POST", "/invites/$id/decline")
+    suspend fun removeMember(userId: String): FamilyState = family("DELETE", "/members/$userId")
+
+    /** Changes your own row: your name, who sees each share (absent: off), what you follow of whom. Null leaves a field as it is. */
+    suspend fun updateFamily(
+        displayName: String? = null,
+        shares: Map<ShareKind, List<String>>? = null,
+        follows: Map<String, FollowPrefs>? = null
+    ): FamilyState = family("PUT", "/me", buildJsonObject {
+        if (displayName != null) put("display_name", displayName)
+        if (shares != null) put("shares", buildJsonObject { shares.forEach { (k, v) -> put(k.value, JsonArray(v.map { JsonPrimitive(it) })) } })
+        if (follows != null) put("follows", buildJsonObject { follows.forEach { (id, f) -> put(id, json.encodeToJsonElement(f)) } })
+    })
+
+    suspend fun setStatus(code: StatusCode, minutes: Int): FamilyState =
+        family("PUT", "/status", buildJsonObject { put("code", code.value); put("minutes", minutes) })
+
+    suspend fun clearStatus(): FamilyState = family("DELETE", "/status")
+
     private fun addAuthHeader(builder: Request.Builder) {
         val token = session?.accessToken
         if (!token.isNullOrEmpty()) {

@@ -44,7 +44,8 @@ public final class LiveActivityManager {
         guard activityUpdatesTask == nil else { return }
         activityUpdatesTask = Task {
             for await activity in Activity<TrackActivityAttributes>.activityUpdates {
-                self.currentActivity = activity
+                // A family member's train (push-started) registers its own token; it isn't yours.
+                if !activity.attributes.isFollowed { self.currentActivity = activity }
                 self.monitorActivityPushToken(activity, backend: backend)
             }
         }
@@ -87,7 +88,7 @@ public final class LiveActivityManager {
 
         // If an activity is already active for this trip, update it.
         // Only a live one: an activity this app ended (stopped tracking) stays listed for a while, and updating it shows nothing.
-        if let current = Activity<TrackActivityAttributes>.activities.first(where: { $0.attributes.tripId == tracked.tripId && $0.activityState == .active }) {
+        if let current = Activity<TrackActivityAttributes>.activities.first(where: { !$0.attributes.isFollowed && $0.attributes.tripId == tracked.tripId && $0.activityState == .active }) {
             self.currentActivity = current
             await current.update(ActivityContent(state: contentState, staleDate: Date(timeIntervalSinceNow: 180)))
             return
@@ -167,7 +168,16 @@ public final class LiveActivityManager {
         }
     }
 
+    /// Ends your own tracked train's activity; family members' trains you follow stay (the Worker ends those).
     public func endCurrentActivity() async {
+        for activity in Activity<TrackActivityAttributes>.activities where !activity.attributes.isFollowed {
+            await activity.end(dismissalPolicy: .immediate)
+        }
+        self.currentActivity = nil
+    }
+
+    /// Ends every activity, followed trains too (signing out, deleting data).
+    public func endAllActivities() async {
         for activity in Activity<TrackActivityAttributes>.activities {
             await activity.end(dismissalPolicy: .immediate)
         }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsTransit
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
@@ -24,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.hejitech.headway.app.ui.screens.BoardScreen
 import com.hejitech.headway.app.ui.screens.CommuteScreen
+import com.hejitech.headway.app.ui.screens.FamilyScreen
 import com.hejitech.headway.app.ui.screens.GlassesScreen
 import com.hejitech.headway.app.ui.screens.SettingsScreen
 import com.hejitech.headway.app.ui.theme.HeadwayTheme
@@ -31,6 +33,7 @@ import com.hejitech.headway.app.ui.theme.HeadwayTheme
 enum class MainTab(val title: String) {
     TRAINS("Trains"),
     COMMUTE("Commute"),
+    FAMILY("Family"),
     GLASSES("Glasses"),
     SETTINGS("Settings")
 }
@@ -80,6 +83,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             HeadwayTheme {
                 var currentTab by remember { mutableStateOf(MainTab.TRAINS) }
+                val family by viewModel.family.collectAsState()
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -96,6 +100,17 @@ class MainActivity : ComponentActivity() {
                                 onClick = { currentTab = MainTab.COMMUTE },
                                 icon = { Icon(Icons.Default.Schedule, contentDescription = "Commute") },
                                 label = { Text("Commute") }
+                            )
+                            NavigationBarItem(
+                                selected = currentTab == MainTab.FAMILY,
+                                onClick = { currentTab = MainTab.FAMILY },
+                                icon = {
+                                    val invites = family?.invites?.size ?: 0
+                                    BadgedBox(badge = { if (invites > 0) Badge { Text("$invites") } }) {
+                                        Icon(Icons.Default.People, contentDescription = "Family")
+                                    }
+                                },
+                                label = { Text("Family") }
                             )
                             NavigationBarItem(
                                 selected = currentTab == MainTab.GLASSES,
@@ -121,6 +136,7 @@ class MainActivity : ComponentActivity() {
                         when (currentTab) {
                             MainTab.TRAINS -> BoardScreen(viewModel = viewModel)
                             MainTab.COMMUTE -> CommuteScreen(viewModel = viewModel)
+                            MainTab.FAMILY -> FamilyScreen(viewModel = viewModel)
                             MainTab.GLASSES -> GlassesScreen(viewModel = viewModel)
                             MainTab.SETTINGS -> SettingsScreen(viewModel = viewModel, onRideModeChosen = ::requestRideAccess)
                         }

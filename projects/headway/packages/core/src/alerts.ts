@@ -26,7 +26,7 @@ export const DELAY_STEP_MIN = 5;
 /** Delay and cancellation alerts cover this many upcoming trains of a leg. */
 export const ALERT_TRAINS = 3;
 
-export type NotificationKind = "delay" | "cancellation" | "service" | "leave_now" | "arrival" | "better_train" | "on_train";
+export type NotificationKind = "delay" | "cancellation" | "service" | "leave_now" | "arrival" | "better_train" | "on_train" | "family";
 
 export interface Notification {
   /** Dedupe key: the same key is never sent twice to one user. */
@@ -58,7 +58,8 @@ export interface AlertResult {
 }
 
 const KIND_NAME = { LOC: "Local", LTD: "Limited", EXP: "Express", SCC: "South County" } as const;
-const trainName = (t: { train: string; kind: keyof typeof KIND_NAME }) => `${KIND_NAME[t.kind]} ${t.train}`;
+/** "Local 123", "Express 511". */
+export const trainName = (t: { train: string; kind: keyof typeof KIND_NAME }) => `${KIND_NAME[t.kind]} ${t.train}`;
 
 function inWindow(leg: Leg, minuteOfDay: number) {
   const s = hhmm(leg.window.start) ?? 0, e = hhmm(leg.window.end) ?? 0;

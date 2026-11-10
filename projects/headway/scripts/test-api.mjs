@@ -6,6 +6,7 @@
 // glasses tokens (commute board, tracking, nothing else), push registration, the MCP tools, the
 // OAuth flow and personal tokens, RLS isolation, deleting a user's data, the App Review demo
 // account, and the pages.
+// Family groups: invites, per-person shares and follows, leaving.
 // Usage: node projects/headway/scripts/test-api.mjs [site-origin] [supabase-url]
 import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
@@ -344,6 +345,92 @@ await step("OAuth: register → consent (deny, approve) → token → MCP → di
 });
 
 // ---------------------------------------------------------------- isolation + deletion
+await step("family: a group, email invites, nothing shared until chosen, per-person shares and follows, leaving", async () => {
+  const stamp = Date.now();
+  const mails = { a: `fam-a-${stamp}@example.com`, b: `fam-b-${stamp}@example.com`, c: `fam-c-${stamp}@example.com` };
+  const [a, b, c] = [await makeUser(mails.a, "fam-pass-123"), await makeUser(mails.b, "fam-pass-123"), await makeUser(mails.c, "fam-pass-123")];
+  const fam = (auth, path = "", opts = {}) => call(`/api/family${path}`, { auth, ...opts });
+
+  const none = await fam(a);
+  assert.equal(none.status, 200, none.text);
+  assert.equal(none.body.group, null);
+  assert.equal(none.body.email, mails.a);
+  const made = await fam(a, "", { method: "POST", body: { name: "The Testers", display_name: "Alex" } });
+  assert.equal(made.status, 201, made.text);
+  assert.equal(made.body.group.owner, true);
+  assert.deepEqual(made.body.group.members.map((m) => m.display_name), ["Alex"]);
+  assert.ok(made.body.me.shares.every((sh) => !sh.on), "everything starts off");
+  assert.equal((await fam(a, "", { method: "POST", body: { name: "Again" } })).status, 409, "one group per account");
+
+  // Invites: the same answer for an address nobody uses.
+  assert.equal((await fam(a, "/invites", { method: "POST", body: { email: mails.b.toUpperCase() } })).status, 201);
+  const ghost = await fam(a, "/invites", { method: "POST", body: { email: `nobody-${stamp}@example.com` } });
+  assert.equal(ghost.status, 201);
+  assert.equal(ghost.body.group.pending_invites.length, 2);
+  assert.equal((await fam(a, "/invites", { method: "POST", body: { email: "not-an-email" } })).status, 400);
+  const forB = (await fam(b)).body.invites;
+  assert.equal(forB.length, 1);
+  assert.deepEqual([forB[0].group_name, forB[0].from_name], ["The Testers", "Alex"]);
+  assert.equal((await fam(c, `/invites/${forB[0].id}/accept`, { method: "POST" })).status, 404, "an invite is for its address only");
+  const joined = await fam(b, `/invites/${forB[0].id}/accept`, { method: "POST" });
+  assert.equal(joined.status, 200, joined.text);
+  const ida = joined.body.group.members.find((m) => m.role === "owner").user_id;
+  const idb = joined.body.group.members.find((m) => m.me).user_id;
+  assert.equal((await fam(b, "/invites", { method: "POST", body: { email: mails.c } })).status, 403, "only the owner invites");
+
+  // Alex rides; Sam (b) sees a name only until Alex shares it with them.
+  const train = (await call("/api/board?from=mountain_view&to=san_francisco")).body.trains[0];
+  assert.equal((await call("/api/track", { method: "POST", auth: a, body: { trip_id: train.trip_id, service_date: train.service_date, from: "mountain_view", to: "san_francisco" } })).status, 200);
+  const alexFor = async () => (await fam(b)).body.group.members.find((m) => m.user_id === ida);
+  assert.deepEqual(await alexFor(), { ...(await alexFor()), shared_with_me: [], train: null, status: null });
+  assert.equal((await fam(a, "/me", { method: "PUT", body: { shares: { trip: [idb] } } })).status, 200);
+  assert.equal((await alexFor()).train.trip_id, train.trip_id);
+  assert.equal((await fam(b, "/me", { method: "PUT", body: { follows: { [ida]: { notify: ["trip", "status"], live: true } } } })).status, 200);
+  assert.deepEqual((await alexFor()).follow, { notify: ["trip"], live: true }, "only what's shared counts");
+  const tripShare = (await fam(a)).body.me.shares.find((sh) => sh.kind === "trip");
+  assert.deepEqual([tripShare.viewers, tripShare.notified, tripShare.live], [[idb], [idb], [idb]], "the sharer sees who follows");
+  await fam(a, "/me", { method: "PUT", body: { shares: { trip: [] } } });
+  assert.deepEqual((await alexFor()).follow, { notify: [], live: false }, "taken off a share: the subscription ends");
+
+  // A status, shared or not.
+  assert.equal((await fam(a, "/status", { method: "PUT", body: { code: "running_late", minutes: 45 } })).status, 400);
+  assert.equal((await fam(a, "/status", { method: "PUT", body: { code: "running_late", minutes: 15 } })).status, 200);
+  assert.equal((await alexFor()).status, null);
+  await fam(a, "/me", { method: "PUT", body: { shares: { status: [idb] } } });
+  assert.equal((await alexFor()).status.text, "Running late");
+  assert.equal((await fam(b, "/me", { method: "PUT", body: { shares: { trip: ["00000000-0000-4000-8000-000000000000"] } } })).status, 422);
+
+  // Clients read only their own membership row.
+  const rows = await fetch(`${supabase}/rest/v1/family_members?select=user_id`, { headers: { apikey: ANON, Authorization: `Bearer ${b}`, "Accept-Profile": "headway" } }).then((r) => r.json());
+  assert.deepEqual(rows.map((r) => r.user_id), [idb]);
+
+  // Someone in another group can't join until they leave it.
+  assert.equal((await fam(c, "", { method: "POST", body: { name: "Kim's" } })).status, 201);
+  await fam(a, "/invites", { method: "POST", body: { email: mails.c } });
+  const forC = (await fam(c)).body.invites[0];
+  assert.equal((await fam(c, `/invites/${forC.id}/accept`, { method: "POST" })).status, 409);
+  assert.equal((await fam(c, "", { method: "DELETE" })).body.group, null, "the owner leaving deletes the group");
+  const three = await fam(c, `/invites/${forC.id}/accept`, { method: "POST" });
+  assert.equal(three.body.group.members.length, 3, three.text);
+  const idc = three.body.group.members.find((m) => m.me).user_id;
+  assert.equal((await fam(b, `/members/${idc}`, { method: "DELETE" })).status, 403);
+  assert.equal((await fam(a, `/members/${idc}`, { method: "DELETE" })).body.group.members.length, 2);
+  assert.equal((await fam(c)).body.group, null);
+
+  // Leaving: gone from every share at once.
+  assert.equal((await fam(b, "", { method: "DELETE" })).body.group, null);
+  const after = (await fam(a)).body;
+  assert.equal(after.group.members.length, 1);
+  assert.deepEqual(after.me.shares.find((sh) => sh.kind === "status").viewers, []);
+
+  // At most 8 people, counting pending invites (1 member + 1 pending now).
+  for (let i = 0; i < 6; i++) assert.equal((await fam(a, "/invites", { method: "POST", body: { email: `fill-${i}-${stamp}@example.com` } })).status, 201);
+  assert.equal((await fam(a, "/invites", { method: "POST", body: { email: `one-too-many-${stamp}@example.com` } })).status, 409);
+  assert.equal((await fam(a, "", { method: "DELETE" })).body.group, null);
+  await call("/api/track", { method: "DELETE", auth: a });
+  await call("/cdn-cgi/handler/scheduled?cron=*+*+*+*+*");
+});
+
 await step("RLS: clients read only their own rows; codes and snapshot aren't readable", async () => {
   const get = async (table, auth) => fetch(`${supabase}/rest/v1/${table}?select=*`, { headers: { apikey: ANON, Authorization: `Bearer ${auth}`, "Accept-Profile": "headway" } });
   const mine = await (await get("profiles", session)).json();

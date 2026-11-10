@@ -73,7 +73,7 @@ struct SettingsView: View {
                 Section {
                     Button("Delete my Headway data", role: .destructive) { confirmDelete = true }
                 } footer: {
-                    Text("Removes your commute, alert choices, paired glasses, iPhones and assistant connections from Headway. Headway isn't affiliated with Caltrain.")
+                    Text("Removes your commute, alert choices, paired glasses, iPhones, your family group (or your place in one) and assistant connections from Headway. Headway isn't affiliated with Caltrain.")
                 }
             }
             .navigationTitle("Settings")

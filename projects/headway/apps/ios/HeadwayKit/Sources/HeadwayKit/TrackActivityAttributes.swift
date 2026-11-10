@@ -60,12 +60,19 @@ public struct TrackActivityAttributes: ActivityAttributes {
     public var train: String
     public var kind: String
     public var to: String
+    /// A family member's train (started by the Worker when you follow them live): their name.
+    public var who: String?
 
-    public init(tripId: String, train: String, kind: String, to: String) {
+    /// Followed trains' activities: `tripId` is `follow:<their user id>:<trip id>`.
+    public static let followPrefix = "follow:"
+    public var isFollowed: Bool { tripId.hasPrefix(Self.followPrefix) }
+
+    public init(tripId: String, train: String, kind: String, to: String, who: String? = nil) {
         self.tripId = tripId
         self.train = train
         self.kind = kind
         self.to = to
+        self.who = who
     }
 
     enum CodingKeys: String, CodingKey {
@@ -73,6 +80,7 @@ public struct TrackActivityAttributes: ActivityAttributes {
         case train
         case kind
         case to
+        case who
     }
 }
 #endif

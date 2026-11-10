@@ -20,10 +20,15 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.1.3"
+    static let currentVersion = "1.2.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.2.0", date: "November 2026", items: [
+            WhatsNewItem(icon: "person.2.fill", title: "Family groups", description: "Create a family group in the new Family tab and invite up to 7 people by email. Each person sees the others' trains, when someone's usual train is late, and statuses like Running late, but only what each of them chooses to share."),
+            WhatsNewItem(icon: "hand.raised.fill", title: "You choose what you share, and with whom", description: "Nothing is shared until you turn it on: the trains you track, rides Headway detects, your usual train running late, or your status. Pick who sees each one, and see who follows it. Your location is never shared."),
+            WhatsNewItem(icon: "bell.badge.fill", title: "Follow the people you care about", description: "Choose what you're told about each person: when they get on a train, it's late or arrives, or they set a status. Turn on Lock Screen to see their train on your Lock Screen and in the Dynamic Island until it arrives."),
+        ]),
         ReleaseNotes(version: "1.1.3", date: "November 2026", items: [
             WhatsNewItem(icon: "clock.badge", title: "Two numbers on the small round complication", description: "The small round watch face complication now shows minutes until your train leaves on top, and minutes for you to get to the station below, green while you have time to spare and orange when you need to hurry."),
         ]),

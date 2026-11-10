@@ -111,6 +111,46 @@ create table headway.activity_tokens (
 );
 create index activity_tokens_user on headway.activity_tokens(user_id);
 
+-- ---------------------------------------------------------------- family groups
+-- One group per account (family_members.user_id is the primary key), at most 8 people counting pending
+-- invites (the Worker checks). Everything a member shares is off until they turn it on and pick who
+-- sees it (`shares`: kind -> viewer user ids); each viewer picks what to be told about (`follows`:
+-- sharer id -> { notify: kinds, live }). Only the current state is kept: a ride is read from
+-- tracked_trips or the on-train KV session when asked, and leaving deletes the row, so what you
+-- shared disappears at once. The owner leaving deletes the group (cascade).
+create table headway.family_groups (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (char_length(name) between 1 and 40),
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table headway.family_members (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  group_id uuid not null references headway.family_groups(id) on delete cascade,
+  role text not null check (role in ('owner', 'member')),
+  display_name text not null check (char_length(display_name) between 1 and 20),
+  shares jsonb not null default '{}'::jsonb,
+  follows jsonb not null default '{}'::jsonb,
+  -- A manual status ({ code, set_at, until }, epoch ms), shown until `until`.
+  status jsonb,
+  joined_at timestamptz not null default now()
+);
+create index family_members_group on headway.family_members(group_id);
+
+-- Invites by email, accepted in the app by whoever signs in with that address. An address that isn't
+-- a Headway user just waits (the owner sees "Pending") until it expires.
+create table headway.family_invites (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references headway.family_groups(id) on delete cascade,
+  email text not null check (email = lower(email) and char_length(email) between 3 and 254),
+  invited_by uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  unique (group_id, email)
+);
+create index family_invites_email on headway.family_invites(email);
+
 -- The latest Caltrain realtime snapshot (511.org TripUpdates + ServiceAlerts), one row, written by
 -- the Worker's cron and read by every board. Not visible to clients.
 create table headway.realtime (
@@ -132,6 +172,9 @@ alter table headway.sent_notifications enable row level security;
 alter table headway.eta_shares enable row level security;
 alter table headway.activity_tokens enable row level security;
 alter table headway.realtime enable row level security;
+alter table headway.family_groups enable row level security;
+alter table headway.family_members enable row level security;
+alter table headway.family_invites enable row level security;
 
 create policy "own profile" on headway.profiles for select using (user_id = auth.uid());
 create policy "own devices" on headway.device_tokens for select using (user_id = auth.uid());
@@ -140,9 +183,11 @@ create policy "own push devices" on headway.push_devices for select using (user_
 create policy "own tracked trip" on headway.tracked_trips for select using (user_id = auth.uid());
 create policy "own eta shares" on headway.eta_shares for select using (user_id = auth.uid());
 create policy "own activity tokens" on headway.activity_tokens for select using (user_id = auth.uid());
--- pairing_codes, sent_notifications, realtime: no client access at all (the Worker owns them).
+create policy "own family membership" on headway.family_members for select using (user_id = auth.uid());
+-- pairing_codes, sent_notifications, realtime, family_groups, family_invites: no client access at all (the
+-- Worker owns them; a member's view of the others is computed by the Worker from what each one shares).
 
-grant select on headway.profiles, headway.device_tokens, headway.access_tokens, headway.push_devices, headway.tracked_trips, headway.eta_shares, headway.activity_tokens to authenticated;
+grant select on headway.profiles, headway.device_tokens, headway.access_tokens, headway.push_devices, headway.tracked_trips, headway.eta_shares, headway.activity_tokens, headway.family_members to authenticated;
 grant select, insert, update, delete on all tables in schema headway to service_role;
 
 -- ---------------------------------------------------------------- worker rpc (service role only)
@@ -186,3 +231,15 @@ revoke all on function headway.resolve_access_token(text) from public, anon, aut
 grant execute on function headway.redeem_pairing_code(text, text, text) to service_role;
 grant execute on function headway.resolve_device_token(text) to service_role;
 grant execute on function headway.resolve_access_token(text) to service_role;
+
+-- Headway users signed in with this email who have an iPhone registered for alerts: an invite's push.
+-- Only Headway's own rows decide (the shared auth pool also holds every other HEJI app's users).
+create or replace function headway.push_users_by_email(p_email text)
+returns table (user_id uuid)
+language sql stable security definer set search_path = headway, extensions as $$
+  select u.id from auth.users u
+  where lower(u.email) = lower(p_email)
+    and exists (select 1 from headway.push_devices d where d.user_id = u.id)
+$$;
+revoke all on function headway.push_users_by_email(text) from public, anon, authenticated;
+grant execute on function headway.push_users_by_email(text) to service_role;

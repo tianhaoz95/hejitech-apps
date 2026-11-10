@@ -2,6 +2,7 @@
 // an iPhone registered for alerts, push what's due, and record it so it's never sent twice.
 import { board, boardActivityState, dueNotifications, normalizeSettings, progress, type RealtimeSnapshot, type Tracked } from "@headway/core";
 import { BOARD_ACTIVITY_PREFIX, NOT_BOARD_ACTIVITY, sendPush, sendLiveActivityPush, pushConfigured, type LiveActivityContentState } from "./push.ts";
+import { runFamilyCron } from "./family.ts";
 import { refreshRealtime } from "./realtime.ts";
 import { admin, saveTracked, type Env } from "./store.ts";
 
@@ -23,6 +24,8 @@ export async function runCron(env: Env, now = new Date()): Promise<CronReport> {
   const report: CronReport = { live: Boolean(snapshot && now.getTime() - snapshot.fetched_at < 10 * 60_000), users: 0, sent: 0, failed: 0 };
   if (!pushConfigured(env)) return report;
   await pushBoardActivities(env, db, snapshot, now, report);
+  // Before the per-user alerts: a train that just arrived is still someone's tracked train here.
+  await runFamilyCron(env, db, snapshot, now, report).catch((e: Error) => console.error("family cron failed:", e.message));
 
   const { data: devices } = await db.from("push_devices").select("id, user_id, apns_token, environment");
   if (!devices?.length) return report;
@@ -125,6 +128,7 @@ export async function runCron(env: Env, now = new Date()): Promise<CronReport> {
     await db.from("sent_notifications").delete().lt("sent_at", since);
     await db.from("pairing_codes").delete().lt("expires_at", new Date(now.getTime() - 86400_000).toISOString());
     await db.from("activity_tokens").delete().lt("updated_at", new Date(now.getTime() - 86400_000).toISOString());
+    await db.from("family_invites").delete().lt("expires_at", now.toISOString());
   }
   return report;
 }
