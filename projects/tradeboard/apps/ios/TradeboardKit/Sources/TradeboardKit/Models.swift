@@ -296,7 +296,8 @@ public struct ApprovalItem: Codable, Hashable, Sendable {
 public struct CommentItem: Codable, Hashable, Sendable, Identifiable {
     public var id: String { comment_id }
     public var comment_id: String
-    public var plan_id: String
+    /// Not in the plan view's comments (they're already under their plan).
+    public var plan_id: String?
     public var version: Int?
     public var author_type: String
     public var author_id: String
@@ -307,9 +308,15 @@ public struct CommentItem: Codable, Hashable, Sendable, Identifiable {
     public var parent_comment_id: String?
     public var created_at: String
 
+    // The API calls a question's state `status` (open / resolved).
+    enum CodingKeys: String, CodingKey {
+        case comment_id, plan_id, version, author_type, author_id, body, anchor, is_question, parent_comment_id, created_at
+        case question_status = "status"
+    }
+
     public init(
         comment_id: String,
-        plan_id: String,
+        plan_id: String? = nil,
         version: Int? = nil,
         author_type: String,
         author_id: String,

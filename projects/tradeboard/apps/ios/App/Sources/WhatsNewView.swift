@@ -29,10 +29,13 @@ public struct ReleaseNotes: Identifiable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.1.1"
+    public static let currentVersion = "0.1.2"
     public static let lastSeenVersionKey = "last_seen_whats_new_version_tradeboard"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.2", date: "November 2026", items: [
+            WhatsNewItem(icon: "text.bubble", title: "Plans with Comments Open Again", description: "A plan with agent comments or questions could get stuck loading. It now opens with its whole discussion, and open questions show as open.")
+        ]),
         ReleaseNotes(version: "0.1.1", date: "November 2026", items: [
             WhatsNewItem(icon: "trash", title: "Delete Your Board in the App", description: "Settings now has Delete My Board: it removes every plan, receipt, policy, strategy, agent and executor credential on your board, as the website does."),
             WhatsNewItem(icon: "envelope", title: "Sign In with Email", description: "Accounts Tradeboard hands out can sign in with email from the sign-in screen. Everyone else keeps using Apple and a two-factor code.")

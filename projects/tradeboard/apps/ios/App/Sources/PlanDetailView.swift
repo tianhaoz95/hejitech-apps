@@ -35,6 +35,11 @@ public struct PlanDetailView: View {
         .navigationTitle(plan?.ticker ?? "Plan")
         .navigationBarTitleDisplayMode(.inline)
         .task {
+            #if DEBUG
+            // Screenshots: `-planTab N` opens that section (0 thesis, 1 discussion, 2 receipts, 3 audit).
+            let args = ProcessInfo.processInfo.arguments
+            if let i = args.firstIndex(of: "-planTab"), i + 1 < args.count, let n = Int(args[i + 1]) { selectedTab = n }
+            #endif
             await model.loadPlan(id: planId)
         }
         .refreshable {

@@ -36,7 +36,7 @@ The promo video's edit is `branding/promo-videos/src/tradeboard-launch` (Remotio
 App Review demo account: `POST /api/review-sign-in` (`services/web/src/worker/review.ts`), local
 `review@example.com` / `tradeboard-review-dev`; every sign-in resets that board to DEMO plans in
 dry-run with no executor. iPhone Debug launch arguments: `-reviewSignIn` (signs in through it),
-`-emailSheet`, `-openSettings`, `-openPlan ready|debated` (screenshots without taps). Production:
+`-emailSheet`, `-openSettings`, `-openPlan ready|debated`, `-planTab N` (screenshots without taps: `scripts/store_screenshots.sh tradeboard`). Production:
 `scripts/review_account.sh tradeboard` (`review.env`).
 
 Local-only seed credentials: agents `tba_dev_claude`, `tba_dev_gemini`, `tba_dev_muse`; executor

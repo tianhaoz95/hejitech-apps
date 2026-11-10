@@ -16,3 +16,5 @@ apps/ios/.derived-device
 apps/ios/TradeboardKit/.build
 apps/ios/TradeboardKit/.swiftpm
 
+# App Store screenshots: regenerate with scripts/store_screenshots.sh tradeboard
+apps/ios/AppStore/screenshots
