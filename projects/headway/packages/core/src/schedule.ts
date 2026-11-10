@@ -52,12 +52,18 @@ export function isFresh(snapshot: RealtimeSnapshot | null | undefined, now: numb
   return Boolean(snapshot && now - snapshot.fetched_at <= LIVE_MAX_AGE_MS);
 }
 
-/** The live entry for a trip on a service day (a snapshot entry for another day doesn't apply). */
+/**
+ * The live entry for a trip on a service day (a snapshot entry for another day doesn't apply).
+ * The feed doesn't always say which day an update is for: then it's the run nearest the snapshot,
+ * so yesterday's run of the same train never picks up today's update (exactly a day "late").
+ */
 export function liveTrip(snapshot: RealtimeSnapshot | null, trip: Trip, date: string): RealtimeTrip | null {
   const rt = snapshot?.trips[trip.id];
-  if (!rt) return null;
-  if (rt.start_date && rt.start_date !== date) return null;
-  return rt;
+  if (!rt || !snapshot) return null;
+  if (rt.start_date) return rt.start_date === date ? rt : null;
+  const dayStart = serviceDayStart(date);
+  const first = dayStart + trip.stops[2] * MIN, last = dayStart + trip.stops[trip.stops.length - 2] * MIN;
+  return Math.abs(snapshot.fetched_at - (first + last) / 2) < 12 * 60 * MIN ? rt : null;
 }
 
 /**

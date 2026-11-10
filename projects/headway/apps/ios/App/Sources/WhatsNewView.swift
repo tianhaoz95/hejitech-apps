@@ -20,10 +20,13 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.2.0"
+    static let currentVersion = "1.2.1"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.2.1", date: "November 2026", items: [
+            WhatsNewItem(icon: "clock.badge.checkmark", title: "No more \"+1,440 min\" trains", description: "A train Headway found you riding could show as a whole day late, because yesterday's run of the same train picked up today's live update. Live times now only ever apply to today's run."),
+        ]),
         ReleaseNotes(version: "1.2.0", date: "November 2026", items: [
             WhatsNewItem(icon: "person.2.fill", title: "Family groups", description: "Create a family group in the new Family tab and invite up to 7 people by email. Each person sees the others' trains, when someone's usual train is late, and statuses like Running late, but only what each of them chooses to share."),
             WhatsNewItem(icon: "hand.raised.fill", title: "You choose what you share, and with whom", description: "Nothing is shared until you turn it on: the trains you track, rides Headway detects, your usual train running late, or your status. Pick who sees each one, and see who follows it. Your location is never shared."),

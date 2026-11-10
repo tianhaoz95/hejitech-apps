@@ -79,6 +79,9 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|f
   restarting the Worker resets it. Server code takes `now(env)`, never `Date.now()`, for anything a rider sees.
 - Times are Pacific everywhere (`core/src/time.ts`); GTFS service days start at noon minus 12 h, and
   trains after midnight belong to the day before.
+- 511's trip updates don't always carry a `start_date`: `liveTrip` then gives the update to the run
+  nearest the snapshot, never yesterday's run of the same train (it showed "+1,440 min" and won on-train
+  detection). Keep that when touching the live merge (`test/servicedate.test.ts`).
 - The timetable runs out (`feed_end`; a core test fails 21 days before): rebuild it with
   `build-timetable.mjs` when Caltrain publishes a new one, and check new stations get a short name.
 - PostgREST only sees `headway` after `supabase start` with it in `config.toml` (restart the stack
