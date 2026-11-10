@@ -131,13 +131,10 @@ try {
     let tester = inGroup.find((t) => t.attributes.email?.toLowerCase() === email.toLowerCase());
     if (tester) console.log(`== ${email} is already in "${groupName}"`);
     else {
-      const known = (await asc("GET", `v1/betaTesters?filter[email]=${encodeURIComponent(email)}&limit=1`)).data[0];
-      if (known) {
-        await asc("POST", `v1/betaGroups/${group.id}/relationships/betaTesters`, {
-          data: [{ type: "betaTesters", id: known.id }],
-        });
-        tester = known;
-      } else {
+      // Creating the tester with the group attached works even before the app has a build, and for
+      // an email Apple already knows from another app. Linking that existing record to the group
+      // (relationships/betaTesters) is refused with 409 "Tester(s) cannot be assigned" until then.
+      {
         tester = (
           await asc("POST", "v1/betaTesters", {
             data: {

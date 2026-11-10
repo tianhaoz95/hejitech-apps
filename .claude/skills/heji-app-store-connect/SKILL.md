@@ -68,8 +68,10 @@ node $A invite-tester com.hejitech.<slug> tianhaozhou95@icloud.com     # group "
 ```
 
 That address is an Admin on the team, so an internal group works: every build at once, no Beta App
-Review. Apple refuses the invitation until a build has processed; the script says so, rerun after
-step 3.
+Review. Adding the tester works before any build (the script creates the tester with the group
+attached; linking an existing tester record to the group is refused with 409 "Tester(s) cannot be
+assigned"). Only the invitation waits for a processed build ("Tester has no installable build"):
+rerun after step 3, or let the first build reach the internal group on its own.
 
 ## 5. Store draft (API)
 
