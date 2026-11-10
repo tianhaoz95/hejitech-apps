@@ -13,12 +13,13 @@ Never: submit for review, set a price other than free, accept an agreement. Thos
 | Bundle id `com.hejitech.hq` | **Registered** (id `74L74S9UTF`, by automatic signing) |
 | App Store Connect app record | **Created 2026-11-09**: "HQ: Repo Autopilot" (app id `6832847373`, SKU `com.hejitech.hq`; "HQ" was taken), version iOS 1.0 Prepare for Submission |
 | Developer Program License Agreement | **Updated agreement waiting for the Account Holder** (banner in App Store Connect): may block uploads and submissions until accepted |
-| Code on `main` | **No**: still the local branch `hq/initial` |
-| Production Worker + database | **Not deployed** (`projects/hq/docs/DEPLOY.md`) |
+| Code on `main` | **Yes** (2026-11-09, `956a2959`); CI green |
+| Production | **Live** (2026-11-10): migration applied, schema `hq` exposed, redirect URLs and Apple client id added, Worker at https://hq.hejitech.workers.dev with its service key. Workers Builds not linked yet (manual `npm run deploy`) |
 | Privacy, terms, support pages | **Built** (`services/web/{privacy,terms,support}`), live once deployed |
 | In-app account deletion | **Built**: Settings → Delete account (iPhone and web), Apple token revocation when the SIWA key secrets are set |
 | TestFlight workflow | **Built**: `hq-testflight.yml` (Wednesdays 20:00 UTC + `hq-v*` releases) |
 | Device build | Signed Debug build installs and runs on the owner's iPhone 13 |
+| TestFlight | Release `hq-v0.1.0` published 2026-11-10; tester group "dev" (internal) has tianhaozhou95@icloud.com, invitation sent |
 
 Check any time:
 
