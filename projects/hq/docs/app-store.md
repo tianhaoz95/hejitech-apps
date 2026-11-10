@@ -11,7 +11,8 @@ Never: submit for review, set a price other than free, accept an agreement. Thos
 | Step | State |
 |---|---|
 | Bundle id `com.hejitech.hq` | **Registered** (id `74L74S9UTF`, by automatic signing) |
-| App Store Connect app record | **Not created** (step 2, needs a signed-in browser) |
+| App Store Connect app record | **Created 2026-11-09**: "HQ: Repo Autopilot" (app id `6832847373`, SKU `com.hejitech.hq`; "HQ" was taken), version iOS 1.0 Prepare for Submission |
+| Developer Program License Agreement | **Updated agreement waiting for the Account Holder** (banner in App Store Connect): may block uploads and submissions until accepted |
 | Code on `main` | **No**: still the local branch `hq/initial` |
 | Production Worker + database | **Not deployed** (`projects/hq/docs/DEPLOY.md`) |
 | Privacy policy page | **Missing**: the portal has no `/privacy/` yet (blocker for the store draft) |
@@ -32,7 +33,7 @@ node $A status com.hejitech.hq                   # exit 3 = no app record yet
 `node $A register-bundle com.hejitech.hq HQ` is idempotent if it ever needs repeating. Capabilities:
 Sign in with Apple (`com.apple.developer.applesignin`, in `apps/ios/project.yml`). No App Groups.
 
-## 2. App record (browser; the API can't create apps)
+## 2. App record (browser; the API can't create apps): done, kept for reference
 
 appstoreconnect.apple.com → **Apps** → **+** → **New App**. A sign-in or 2FA prompt is the only
 reason to stop and hand back to the owner.
