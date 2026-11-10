@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Support · HQ</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+</head>
+<body>
+  <header class="top"><a class="brand" href="/"><span class="logo">HQ</span><span>Headquarters</span></a></header>
+  <main><article class="panel doc">
+    <h1>Support</h1>
+    <p>Need help with HQ? Email <a href="mailto:info@hejitech.com">info@hejitech.com</a> and include your workspace’s repository name.</p>
+    <h2>Getting started</h2>
+    <ol>
+      <li>Sign in, create a workspace for your repository (<code>owner/repo</code>), and invite your team from Settings.</li>
+      <li>Add <code>.hq/HQ.md</code> to your repository: <code>hq init --repo owner/repo</code> writes one.</li>
+      <li>In Settings, create a runner token and an agent token, then in the repository run <code>hq sync</code> and <code>hq runner</code> on a machine with the repo checked out.</li>
+    </ol>
+    <h2>Common questions</h2>
+    <ul>
+      <li><b>What can each role do?</b> Admins manage members, tokens and the kill switch; approvers approve, reject, ship and run verbs; viewers read and comment.</li>
+      <li><b>How do I stop everything?</b> Settings → Pause everything (admins). Nothing runs until you resume, except actions a person starts.</li>
+      <li><b>How do I connect another agent?</b> Point any MCP client at <code>/mcp</code> on this site and approve it, or give a headless agent an agent token.</li>
+      <li><b>How do I delete my account?</b> Settings → Delete account in the app. See the <a href="/privacy/">Privacy Policy</a> for what that removes.</li>
+    </ul>
+  </article></main>
+  <footer class="site"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/support/">Support</a> · © 2026 HEJI TECHNOLOGY LLC</footer>
+  <script type="module" src="/src/page.ts"></script>
+</body>
+</html>

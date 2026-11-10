@@ -214,6 +214,12 @@ struct HQClient {
     func invite(role: String) async throws -> Invite {
         try JSONDecoder().decode(Invite.self, from: try await b.request("POST", "~/invites", body: ["role": role]))
     }
+    /// Deletes the person's HQ data (App Store guideline 5.1.1(v)); see the privacy policy.
+    func deleteAccount(appleAuthorizationCode: String?) async throws {
+        var body: [String: Any] = [:]
+        if let appleAuthorizationCode { body["apple_authorization_code"] = appleAuthorizationCode }
+        _ = try await b.request("DELETE", "/api/me", body: body)
+    }
     func file(_ key: String) async throws -> Data {
         try await b.request("GET", "~/files/\(key.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? key)")
     }

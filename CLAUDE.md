@@ -126,7 +126,8 @@ which runs `polymath-mac-release.yml` (signed & notarized Tauri macOS DMGs). Its
 deploys on push. See `projects/polymath/CLAUDE.md`.
 
 For HQ it bumps `MARKETING_VERSION` in `projects/hq/apps/ios/project.yml` (refusing until the in-app
-What's New describes the version) and publishes `hq-v<version>`; no TestFlight workflow yet. Its
+What's New describes the version) and publishes `hq-v<version>`, which runs `hq-testflight.yml`
+(App Store Connect app "HQ: Repo Autopilot", same team-wide signing secrets). Its
 Worker (portal, API, MCP, hourly scheduler) deploys on push once Workers Builds is linked. Releases
 of every project can also be started from an HQ card (`.hq/bin/release` wraps this script; L3,
 owner only). See `projects/hq/CLAUDE.md`.

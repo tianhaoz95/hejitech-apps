@@ -126,6 +126,14 @@ const app = {
     const url = new URL(req.url);
     if (url.pathname === "/authorize") return authorize(req, env);
     if (url.pathname === "/api/grants" || url.pathname.startsWith("/api/grants/")) return grants(req, env, url);
+    if (url.pathname === "/api/me" && req.method === "DELETE") {
+      // Deleting the account also disconnects every agent the person connected (OAuth grants).
+      const user = await supabaseUser(env, bearer(req));
+      if (user) {
+        const { items } = await env.OAUTH_PROVIDER.listUserGrants(user.id);
+        await Promise.all(items.map((g) => env.OAUTH_PROVIDER.revokeGrant(g.id, user.id)));
+      }
+    }
     if (url.pathname.startsWith("/api/")) {
       if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
       return handleApi(req, env, url);

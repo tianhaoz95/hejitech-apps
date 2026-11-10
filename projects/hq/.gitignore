@@ -6,3 +6,4 @@ apps/ios/HQ.xcodeproj/
 apps/ios/.derived/
 apps/ios/build/
 .DS_Store
+build/

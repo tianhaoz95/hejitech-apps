@@ -15,9 +15,9 @@ Never: submit for review, set a price other than free, accept an agreement. Thos
 | Developer Program License Agreement | **Updated agreement waiting for the Account Holder** (banner in App Store Connect): may block uploads and submissions until accepted |
 | Code on `main` | **No**: still the local branch `hq/initial` |
 | Production Worker + database | **Not deployed** (`projects/hq/docs/DEPLOY.md`) |
-| Privacy policy page | **Missing**: the portal has no `/privacy/` yet (blocker for the store draft) |
-| In-app account deletion | **Missing** (guideline 5.1.1(v), blocker for review) |
-| TestFlight workflow | **Missing** (step 3) |
+| Privacy, terms, support pages | **Built** (`services/web/{privacy,terms,support}`), live once deployed |
+| In-app account deletion | **Built**: Settings → Delete account (iPhone and web), Apple token revocation when the SIWA key secrets are set |
+| TestFlight workflow | **Built**: `hq-testflight.yml` (Wednesdays 19:45 UTC + `hq-v*` releases) |
 | Device build | Signed Debug build installs and runs on the owner's iPhone 13 |
 
 Check any time:
@@ -57,13 +57,12 @@ home-screen name stays "HQ").
 2. **Deploy production** per `DEPLOY.md`: `supabase db push`, expose schema `hq`, redirect URLs
    `https://hq.hejitech.workers.dev/**` and `hq://login-callback`, add `com.hejitech.hq` to Apple's
    client ids on the shared Supabase project, Worker secret, `npm run deploy -w @hq/web`.
-3. **Add the missing pages to the portal** (`services/web`): `/privacy/`, `/terms/`, `/support/`,
-   copying the other projects' pages (e.g. `projects/tether/services/web/{privacy,terms,support}`).
-4. **Add in-app account deletion** (Settings → Delete account): delete the person's HQ rows
-   (memberships; workspaces where they're the only admin, after a warning) and never the shared
-   `auth.users` row (`supabase/README.md`: no project deletes an auth user). Revoke Sign in with
-   Apple tokens like Tether does (`projects/tether/services/web/src/worker/apple.ts`).
-5. **TestFlight plumbing**, copied from the newest iOS project (Tether):
+3. **Pages** (done): `/privacy/`, `/terms/`, `/support/` in `services/web`.
+4. **Account deletion** (done): Settings → Delete account (iPhone, web) calls `DELETE /api/me`:
+   memberships go, workspaces where the person is the only member go, a team's admin role is handed
+   on; the shared `auth.users` row stays (`supabase/README.md`). Apple tokens are revoked
+   (`src/worker/apple.ts`) once `APPLE_SIWA_KEY_ID` and `APPLE_SIWA_PRIVATE_KEY` are set.
+5. **TestFlight plumbing** (done):
    - `projects/hq/scripts/release_testflight.sh` and `scripts/asc_build_status.swift`
    - `.github/workflows/hq-testflight.yml`, triggered by published `hq-v*` releases, with the
      weekly schedule `cron: "45 19 * * 3"` (Wednesdays 19:45 UTC, after `19:30`, the latest today)

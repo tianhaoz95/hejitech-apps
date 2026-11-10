@@ -9,11 +9,12 @@
 import { REJECT_REASONS, type Evidence, type MemberRole, type Status } from "@hq/core";
 import {
   acceptInvite, admin, attachEvidence, auditLog, cardDetail, changeStatus, claimRun, comment, createInvite, createProposal, createToken,
-  createWorkspace, decide, digest, finishRun, getContext, getFile, getPolicy, getRun, getWorkspace, healthBoard, HttpError, inbox, listCards,
+  createWorkspace, decide, deleteAccount, digest, finishRun, getContext, getFile, getPolicy, getRun, getWorkspace, healthBoard, HttpError, inbox, listCards,
   listMembers, listRuns, listTokens, memberRole, myWorkspaces, need, putFile, putHealth, removeMember, requestVerb, resolveToken, revokeToken,
   scheduleWorkspace, setMemberRole, setPaused, startRun, supabaseUser, syncPolicy,
   type Caller, type Ctx, type Env, type User,
 } from "./store.ts";
+import { appleKey, revokeIfPossible } from "./apple.ts";
 
 export const json = (body: unknown, status = 200, headers: HeadersInit = {}) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...headers } });
@@ -60,6 +61,12 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
         return json(await createWorkspace(x, user, b.name, b.repo), 201);
       }
       if (p === "/api/invites/accept" && m === "POST") return json(await acceptInvite(x, user, String((await body(req)).code ?? "")));
+      if (p === "/api/me" && m === "DELETE") {
+        const b = (await req.json().catch(() => ({}))) as { apple_authorization_code?: string };
+        const result = await deleteAccount(x, user);
+        const appleRevoked = await revokeIfPossible(appleKey(x.env), b.apple_authorization_code);
+        return json({ ok: true, ...result, apple_revoked: appleRevoked });
+      }
     }
     if (who.token && p === "/api/me" && m === "GET") {
       const w = await getWorkspace(x, who.token.workspaceId);

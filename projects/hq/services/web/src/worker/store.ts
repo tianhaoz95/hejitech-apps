@@ -40,6 +40,10 @@ export interface Env {
   SUPABASE_ANON_KEY: string;
   /** Secret. Server-side only; bypasses RLS for every project in the shared Supabase project. */
   SUPABASE_SERVICE_ROLE_KEY: string;
+  /** With the two secrets below, account deletion revokes Sign in with Apple tokens (apple.ts). */
+  APPLE_TEAM_ID?: string;
+  APPLE_SIWA_KEY_ID?: string;
+  APPLE_SIWA_PRIVATE_KEY?: string;
 }
 
 export const SCHEMA = "hq";
@@ -741,4 +745,46 @@ export async function revokeToken(x: Ctx, c: Caller, id: string) {
 export async function auditLog(x: Ctx, c: Caller, limit = 100) {
   need(c, "audit");
   return must(await x.db.from("audit").select("at, actor, action, target, detail").eq("workspace_id", c.workspaceId).order("id", { ascending: false }).limit(Math.min(limit, 500)), "audit");
+}
+
+// ── account deletion (App Store guideline 5.1.1(v)) ─────────────────────────────────────────
+
+/** Removes every file under a Storage folder (Storage lists one level at a time; folders have no id). */
+async function removeFolder(x: Ctx, prefix: string, depth = 0): Promise<void> {
+  if (depth > 6) return;
+  const r = await x.db.storage.from(BUCKET).list(prefix, { limit: 1000 });
+  const items = r.data ?? [];
+  const files = items.filter((f) => f.id).map((f) => `${prefix}/${f.name}`);
+  if (files.length) await x.db.storage.from(BUCKET).remove(files);
+  for (const d of items.filter((f) => !f.id)) await removeFolder(x, `${prefix}/${d.name}`, depth + 1);
+}
+
+/**
+ * Deletes a person's HQ data: their memberships, and every workspace where they're the only member
+ * (with its cards, runs and files). Where they're the only admin of a team, the longest-standing
+ * other member becomes admin first, so no workspace is left without one. The shared sign-in account
+ * (auth.users) stays: other HEJI apps use it too (supabase/README.md).
+ */
+export async function deleteAccount(x: Ctx, user: User) {
+  const mine = must(await x.db.from("members").select("workspace_id, role").eq("user_id", user.id), "memberships") as { workspace_id: string; role: MemberRole }[];
+  const deleted: string[] = [];
+  const handedOver: string[] = [];
+  for (const m of mine) {
+    const others = must(await x.db.from("members").select("user_id, role, created_at").eq("workspace_id", m.workspace_id).neq("user_id", user.id).order("created_at"), "others") as { user_id: string; role: MemberRole }[];
+    if (!others.length) {
+      await removeFolder(x, m.workspace_id);
+      must(await x.db.from("workspaces").delete().eq("id", m.workspace_id), "delete workspace");
+      deleted.push(m.workspace_id);
+      continue;
+    }
+    if (m.role === "admin" && !others.some((o) => o.role === "admin")) {
+      must(await x.db.from("members").update({ role: "admin" }).eq("workspace_id", m.workspace_id).eq("user_id", others[0].user_id), "hand over admin");
+      await audit(x, { role: "system", name: "system", workspaceId: m.workspace_id }, "member.role", others[0].user_id, { to: "admin", reason: "the only admin deleted their account" });
+      handedOver.push(m.workspace_id);
+    }
+    must(await x.db.from("members").delete().eq("workspace_id", m.workspace_id).eq("user_id", user.id), "leave");
+    await audit(x, { role: "system", name: "system", workspaceId: m.workspace_id }, "member.delete_account", user.email ?? user.id);
+  }
+  must(await x.db.from("invites").update({ created_by: null }).eq("created_by", user.id), "invites");
+  return { deleted_workspaces: deleted.length, admin_handed_over: handedOver.length, left: mine.length - deleted.length };
 }

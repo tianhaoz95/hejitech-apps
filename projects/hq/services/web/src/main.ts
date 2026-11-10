@@ -332,7 +332,12 @@ async function settings() {
       el("ul", { class: "small mono audit" }, log.map((a: { at: string; actor: string; action: string; target: string | null }) => el("li", {}, `${a.at.slice(5, 16).replace("T", " ")} ${a.actor} ${a.action} ${a.target ?? ""}`)))) : null,
     el("p", { class: "actions" },
       el("a", { class: "btn ghost", href: "#/new" }, "New workspace"),
-      el("button", { class: "btn ghost", onclick: async () => { await supabase.auth.signOut(); setCurrentWorkspace(""); signIn(); } }, "Sign out"))
+      el("button", { class: "btn ghost", onclick: async () => { await supabase.auth.signOut(); setCurrentWorkspace(""); signIn(); } }, "Sign out"),
+      el("button", { class: "btn danger", onclick: async () => {
+        if (!confirm("Delete your HQ account? This removes your memberships and every workspace where you're the only member. Team workspaces keep their history, and another member becomes admin if you were the only one. This can't be undone.")) return;
+        try { await api("/api/me", { method: "DELETE", json: {} }); await supabase.auth.signOut(); setCurrentWorkspace(""); toast("Your HQ account was deleted"); signIn(); }
+        catch (err) { toast(String((err as Error).message), true); }
+      } }, "Delete account"))
   );
 }
 

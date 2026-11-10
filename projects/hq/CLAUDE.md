@@ -109,5 +109,7 @@ reach any screen without taps (`-production` for the hosted HQ, `-serverURL` for
 ## Releasing
 
 `scripts/cut_release.sh hq` bumps `MARKETING_VERSION` in `apps/ios/project.yml` (refusing until
-`WhatsNewView.swift` describes the version) and publishes `hq-v<version>`. No TestFlight workflow
-yet; the Worker deploys on push once Workers Builds is linked (`docs/DEPLOY.md`).
+`WhatsNewView.swift` describes the version) and publishes `hq-v<version>`, which runs
+`hq-testflight.yml` (`scripts/release_testflight.sh`, then `asc_build_status.swift` waits for
+Apple's verdict). The Worker deploys on push once Workers Builds is linked (`docs/DEPLOY.md`).
+App Store steps and copy: `docs/app-store.md`.

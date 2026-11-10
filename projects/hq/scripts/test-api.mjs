@@ -286,6 +286,31 @@ await step("roles change and members leave; revoked tokens stop working", async 
   assert.equal((await call(agent, "POST", "/mcp", { jsonrpc: "2.0", id: 1, method: "tools/list" })).status, 401);
 });
 
+await step("files: a runner attaches a screenshot; members fetch it; other workspaces can't", async () => {
+  const png = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="), (ch) => ch.charCodeAt(0));
+  const up = await fetch(`${U}/api/cards/${cardId}/files?name=after.png&caption=after`, { method: "POST", headers: { Authorization: `Bearer ${runner}`, "Content-Type": "image/png" }, body: png });
+  const upBody = await up.text();
+  assert.equal(up.status, 201, upBody);
+  const { key } = JSON.parse(upBody);
+  const got = await fetch(`${U}${W(`/files/${encodeURIComponent(key)}`)}`, { headers: { Authorization: `Bearer ${ada.token}` } });
+  assert.equal(got.status, 200);
+  assert.equal((await got.arrayBuffer()).byteLength, png.byteLength);
+  assert.equal((await fetch(`${U}/api/w/${other}/files/${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${eve.token}` } })).status, 404);
+});
+
+await step("account deletion: the sole member's workspace goes; a team keeps an admin; sign-in stays", async () => {
+  const e = await call(eve.token, "DELETE", "/api/me");
+  assert.equal(e.status, 200, JSON.stringify(e.data));
+  assert.equal(e.data.deleted_workspaces, 1);
+  assert.deepEqual((await call(eve.token, "GET", "/api/me")).data.workspaces, [], "eve's session still works; she just has no HQ data");
+  const a = await call(ada.token, "DELETE", "/api/me");
+  assert.equal(a.data.admin_handed_over, 1, JSON.stringify(a.data));
+  const members = (await call(bo.token, "GET", W("/members"))).data;
+  assert.deepEqual(members.map((m) => `${m.email === bo.email ? "bo" : "?"}:${m.role}`), ["bo:admin"]);
+  assert.equal((await call(bo.token, "GET", W("/inbox"))).status, 200, "the workspace and its cards remain");
+  assert.equal((await call(null, "DELETE", "/api/me")).status, 401);
+});
+
 await step("OAuth metadata for MCP clients is published", async () => {
   const r = await call(null, "GET", "/.well-known/oauth-authorization-server");
   assert.equal(r.status, 200);

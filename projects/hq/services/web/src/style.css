@@ -118,3 +118,11 @@ pre.log { background: var(--bg); padding: .8rem; border-radius: 10px; max-height
 .member select { padding: .25rem .4rem; font-size: .85rem; }
 ol.steps { display: grid; gap: .6rem; padding-left: 1.2rem; line-height: 1.5; }
 ol.steps code { word-break: break-all; }
+
+/* Static pages (privacy, terms, support) */
+.doc { max-width: 760px; margin: 0 auto; line-height: 1.6; }
+.doc h1 { font-size: 1.8rem; margin-top: 1rem; }
+.doc h2 { font-size: 1.15rem; margin-top: 1.6rem; display: block; }
+.doc li { margin: .25rem 0; }
+footer.site { text-align: center; font-size: .85rem; color: var(--muted); padding: 2rem 1rem 3rem; }
+footer.site a { margin: 0 .5rem; }

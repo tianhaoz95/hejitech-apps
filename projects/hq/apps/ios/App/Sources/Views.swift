@@ -366,6 +366,7 @@ struct SettingsView: View {
     @State private var paused: Bool?
     @State private var invite: Invite?
     @State private var error: String?
+    @State private var confirmDelete = false
 
     var body: some View {
         Form {
@@ -413,8 +414,26 @@ struct SettingsView: View {
             Section {
                 if let e = model.email { LabeledContent("Signed in as", value: e).font(.footnote) }
                 Button("Sign out", role: .destructive) { model.signOut() }
+                Button("Delete account", role: .destructive) { confirmDelete = true }
+            } footer: {
+                Text("Deleting removes your memberships and every workspace where you're the only member. Team workspaces keep their history, and another member becomes admin if you were the only one.")
+            }
+            Section {
+                Link("Privacy Policy", destination: Backend.shared.config.site.appendingPathComponent("privacy/"))
+                Link("Terms of Use", destination: Backend.shared.config.site.appendingPathComponent("terms/"))
+                Link("Support", destination: Backend.shared.config.site.appendingPathComponent("support/"))
             }
         }
+        .confirmationDialog("Delete your HQ account?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete account", role: .destructive) {
+                Task {
+                    var code: String?
+                    if Backend.shared.session?.signedInWithApple == true { code = await AppleReauthorization().authorizationCode() }
+                    do { try await HQClient().deleteAccount(appleAuthorizationCode: code); model.signOut() }
+                    catch { self.error = error.localizedDescription }
+                }
+            }
+        } message: { Text("This can't be undone.") }
         .navigationTitle("Settings")
         .task {
             paused = (try? await HQClient().health())?.paused

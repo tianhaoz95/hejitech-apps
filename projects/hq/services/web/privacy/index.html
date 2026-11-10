@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Privacy Policy · HQ</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+</head>
+<body>
+  <header class="top"><a class="brand" href="/"><span class="logo">HQ</span><span>Headquarters</span></a></header>
+  <main><article class="panel doc">
+    <h1>Privacy Policy</h1>
+    <p class="muted">Last updated November 9, 2026. HQ is made by HEJI TECHNOLOGY LLC.</p>
+    <p>HQ helps an engineering team run its repository: AI agents that the team runs propose work as cards, and the team approves, rejects or discusses them. This policy explains what HQ stores and why.</p>
+    <h2>What we store</h2>
+    <ul>
+      <li><b>Your account:</b> your email address and an account id, from the sign-in provider you choose (GitHub, Google or Apple). We do not receive your password.</li>
+      <li><b>Your workspaces:</b> each workspace’s name and repository name, its members and their roles, invites, and the policy your team syncs from the repository’s <code>.hq/</code> folders.</li>
+      <li><b>Work in your workspaces:</b> cards (proposals with their evidence, such as links to CI runs, log excerpts and measured numbers), comments, decisions, run summaries and their costs, health reports, screenshots attached to cards, and an audit log of who did what.</li>
+      <li><b>Tokens:</b> for runner and agent tokens we store only a one-way hash, never the token itself.</li>
+    </ul>
+    <h2>What we don’t do</h2>
+    <ul>
+      <li>No analytics, advertising or tracking SDKs, in the app or on the web.</li>
+      <li>We don’t sell or share your data. Only members of a workspace can see it.</li>
+      <li>HQ doesn’t clone your code or hold your signing or deploy keys: your team’s runners and agents run on your own machines with your own credentials, and send HQ only what’s listed above.</li>
+    </ul>
+    <h2>Where it lives</h2>
+    <p>Data is stored with Supabase (database, file storage and sign-in) and served by Cloudflare Workers. Both process it on our behalf.</p>
+    <h2>Deleting your data</h2>
+    <p>Delete your account in the app (Settings → Delete account) or ask us to. That removes your memberships and every workspace where you are the only member, with all its cards, runs and files. In a team workspace, your past comments and decisions stay in that workspace’s history, and another member becomes admin if you were the only one. Leaving a workspace removes your access to it. Signing in with Apple also lets you revoke HQ from your Apple ID.</p>
+    <h2>Contact</h2>
+    <p>Questions or requests: <a href="mailto:info@hejitech.com">info@hejitech.com</a>.</p>
+  </article></main>
+  <footer class="site"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/support/">Support</a> · © 2026 HEJI TECHNOLOGY LLC</footer>
+  <script type="module" src="/src/page.ts"></script>
+</body>
+</html>
