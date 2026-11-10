@@ -42,7 +42,7 @@ struct SignInView: View {
                 Button("Sign in") { Task { await run { try await Backend.shared.signIn(email: email, password: password) } } }.disabled(email.isEmpty || password.isEmpty)
             }.textFieldStyle(.roundedBorder).padding(.top, 8)
             #endif
-            if let error { Text(error).font(.footnote).foregroundStyle(.red).multilineTextAlignment(.center) }
+            if let error = error ?? model.error { Text(error).font(.footnote).foregroundStyle(.red).multilineTextAlignment(.center) }
             Spacer()
         }
         .padding(24)

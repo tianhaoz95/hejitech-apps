@@ -58,7 +58,7 @@ final class AppModel {
         #if DEBUG
         let d = UserDefaults.standard
         if Backend.shared.session == nil, let e = d.string(forKey: "signInEmail"), let p = d.string(forKey: "signInPassword") {
-            try? await Backend.shared.signIn(email: e, password: p)
+            do { try await Backend.shared.signIn(email: e, password: p) } catch { self.error = "Test sign-in at \(Backend.shared.config.supabaseURL.host() ?? ""): \(error.localizedDescription)" }
         }
         #endif
         guard Backend.shared.session != nil else { phase = .signedOut; return }
