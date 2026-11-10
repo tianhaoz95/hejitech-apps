@@ -7,6 +7,7 @@ public struct BoardView: View {
     @State private var showSettingsSheet = false
     @State private var showEmergencyKillConfirm = false
     @State private var showDryRunToggleConfirm = false
+    @State private var openPlanId: String?
 
     public init() {}
 
@@ -18,18 +19,18 @@ public struct BoardView: View {
         case .pendingApproval:
             return all.filter { $0.status.lowercased() == "ready" }
         case .discussion:
-            return all.filter { $0.status.lowercased() == "draft" || $0.status.lowercased() == "discussion" }
+            return all.filter { ["draft", "debated"].contains($0.status.lowercased()) }
         case .active:
             return all.filter {
                 let s = $0.status.lowercased()
-                return s == "approved" || s == "claiming" || s == "placing" || s == "submitted"
+                return s == "approved" || s == "validated" || s == "executing"
             }
         case .executed:
             return all.filter { $0.status.lowercased() == "executed" }
         case .closed:
             return all.filter {
                 let s = $0.status.lowercased()
-                return s == "cancelled" || s == "rejected" || s == "expired"
+                return ["cancelled", "rejected", "expired", "failed", "stale"].contains(s)
             }
         }
     }
@@ -94,6 +95,21 @@ public struct BoardView: View {
             }
             .sheet(isPresented: $showSettingsSheet) {
                 SettingsView()
+            }
+            .navigationDestination(item: $openPlanId) { id in
+                PlanDetailView(planId: id)
+            }
+            .task(id: model.board?.plans.count ?? 0) {
+                #if DEBUG
+                // Screenshots and checks without taps: `-openSettings`, or `-openPlan ready|debated`
+                // opens the first plan with that status once the board has loaded.
+                let args = ProcessInfo.processInfo.arguments
+                if args.contains("-openSettings"), model.board != nil { showSettingsSheet = true }
+                if let i = args.firstIndex(of: "-openPlan"), i + 1 < args.count, openPlanId == nil,
+                   let p = model.board?.plans.first(where: { $0.status.lowercased() == args[i + 1] }) {
+                    openPlanId = p.plan_id
+                }
+                #endif
             }
             .confirmationDialog(
                 "Trigger Emergency Kill Switch?",

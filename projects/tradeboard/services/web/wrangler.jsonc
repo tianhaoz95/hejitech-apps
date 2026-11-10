@@ -26,7 +26,10 @@
     // Local only (a dev key). Production sets TOTP_ENC_KEY as a secret.
     // The integration test makes hundreds of calls a minute; production keeps the default 60.
     "AGENT_RATE_PER_MIN": "400",
-    "TOTP_ENC_KEY": "dHJhZGVib2FyZC1sb2NhbC1kZXYta2V5LTMyYnl0ZXM="
+    "TOTP_ENC_KEY": "dHJhZGVib2FyZC1sb2NhbC1kZXYta2V5LTMyYnl0ZXM=",
+    // The local App Review demo account (password tradeboard-review-dev); production has them as secrets.
+    "REVIEW_EMAIL": "review@example.com",
+    "REVIEW_PASSWORD_SHA256": "5ab68c3a992637eff33ab30ed165387c991f913501b5efb88f86a19af8a34793"
   },
   // Local secrets: .dev.vars (SUPABASE_SERVICE_ROLE_KEY; scripts/test-api.mjs writes the local demo key).
   "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "tradeboard-oauth-local" }],
@@ -42,7 +45,8 @@
         "SUPABASE_URL": "https://jitdzllkxfhlrxxvljhp.supabase.co",
         "SUPABASE_ANON_KEY": "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8"
       },
-      // Secrets (wrangler secret put --env production): SUPABASE_SERVICE_ROLE_KEY, TOTP_ENC_KEY.
+      // Secrets (wrangler secret put --env production): SUPABASE_SERVICE_ROLE_KEY, TOTP_ENC_KEY,
+      // REVIEW_EMAIL + REVIEW_PASSWORD_SHA256 (scripts/review_account.sh tradeboard).
       "kv_namespaces": [{ "binding": "OAUTH_KV" }]
     }
   }

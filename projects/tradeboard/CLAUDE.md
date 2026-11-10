@@ -33,6 +33,12 @@ xcodebuild -project projects/tradeboard/apps/ios/Tradeboard.xcodeproj -scheme Ap
 
 The promo video's edit is `branding/promo-videos/src/tradeboard-launch` (Remotion, `branding/README.md`).
 
+App Review demo account: `POST /api/review-sign-in` (`services/web/src/worker/review.ts`), local
+`review@example.com` / `tradeboard-review-dev`; every sign-in resets that board to DEMO plans in
+dry-run with no executor. iPhone Debug launch arguments: `-reviewSignIn` (signs in through it),
+`-emailSheet`, `-openSettings`, `-openPlan ready|debated` (screenshots without taps). Production:
+`scripts/review_account.sh tradeboard` (`review.env`).
+
 Local-only seed credentials: agents `tba_dev_claude`, `tba_dev_gemini`, `tba_dev_muse`; executor
 `tbx_dev_local` (id `local`). The integration test **resets the seed user's account row** (TOTP
 enrolls again), signs up a second user to check boards stay private, then deletes that board, and drives the bundled executor against `scripts/mock-robinhood.mjs` (port 8766) and

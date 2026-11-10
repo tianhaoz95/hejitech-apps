@@ -7,6 +7,7 @@
 //   /.well-known/…, /token, /register handled by the provider
 //   GET/POST /authorize               consent for an agent, with the user's session cookie
 //   /api/auth/begin|verify|logout     sign-up / sign-in (Supabase account + TOTP) → session cookie
+//   /api/review-sign-in               App Review demo account only (review.ts; needs its secrets)
 //   /api/executor/*                   executor.ts, `tbx_…` credential only (its user's board)
 //   /api/*                            portal.ts, the user's session cookie only (their own board)
 //   /plans/<id>                       the plan page
@@ -15,6 +16,7 @@
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { checkAgentId } from "@tradeboard/core";
 import { authBegin, authLogout, authVerify, cookieName, sameOrigin, userSession } from "./auth.ts";
+import { reviewSignIn } from "./review.ts";
 import { handleExecutor } from "./executor.ts";
 import { handleMcp } from "./mcp.ts";
 import { handlePortal } from "./portal.ts";
@@ -147,6 +149,7 @@ const app = {
       if (path === "/api/auth/begin" && req.method === "POST") return authBegin(req, env);
       if (path === "/api/auth/verify" && req.method === "POST") return authVerify(req, env);
       if (path === "/api/auth/logout" && req.method === "POST") return authLogout(req, env);
+      if (path === "/api/review-sign-in" && req.method === "POST") return reviewSignIn(req, env, admin(env));
       const db = admin(env);
       const session = await userSession(env, db, req);
       if (!session) return problem(401, "signin_required", "sign in");

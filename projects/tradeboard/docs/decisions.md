@@ -60,6 +60,17 @@ owner's call, with one boundary: **it guides discussion and never enforces anyth
   with gemma4:26b: a long-hold plan → yes (13 s), an intraday scalp against a hold-for-months
   strategy → no (4 s).
 
+## App Review account (2026-11-10)
+
+- App Review can't produce a TOTP code, so one account signs in without it: `POST /api/review-sign-in`
+  checks the email and password against the Worker's own secrets (`REVIEW_EMAIL`,
+  `REVIEW_PASSWORD_SHA256`; no secrets, no route) and sets the ordinary session cookie. It can't
+  trade: every sign-in resets that board to DEMO plans (which the board hands to an executor only
+  in dry-run), dry-run on and no executor credential. Wrong passwords are throttled per address.
+- The iPhone app deletes the board itself (Settings → Delete My Board, `DELETE /api/account`), as
+  App Store guideline 5.1.1(v) asks; the shared HEJI sign-in stays. Sign in with Apple token
+  revocation needs a Sign in with Apple key the team doesn't have yet.
+
 ## Stack
 
 - **Board**: one Cloudflare Worker (portal pages, owner API, Board MCP with its own OAuth server,

@@ -35,6 +35,10 @@ CONF="projects/$PROJECT/review.env"
 source "$CONF"
 for v in REVIEW_EMAIL WORKER_DIR SITE BUNDLE_ID REVIEW_NOTES; do [ -n "${!v:-}" ] || die "$CONF: $v is empty"; done
 WRANGLER_ENV="${WRANGLER_ENV:-production}"
+# Optional: a header the project's API wants on every write, and what a successful sign-in returns
+# (default: a Supabase session; Tradeboard answers with its own cookie and {"signed_in":true}).
+SIGNIN_HEADER="${SIGNIN_HEADER:-}"
+SIGNIN_OK="${SIGNIN_OK:-\"access_token\"}"
 
 STORE="$HOME/Credentials/review-accounts.env"
 KEY="$(echo "$PROJECT" | tr '[:lower:]-' '[:upper:]_')_REVIEW_PASSWORD"
@@ -70,8 +74,9 @@ if ! $ASC_ONLY; then
   ok=false
   for _ in 1 2 3 4 5 6; do   # secrets take a few seconds to reach the Worker
     body="$(curl -s -X POST "$SITE/api/review-sign-in" -H 'Content-Type: application/json' \
+      ${SIGNIN_HEADER:+-H "$SIGNIN_HEADER"} \
       -d "{\"email\":\"$REVIEW_EMAIL\",\"password\":\"$PASSWORD\"}")"
-    if echo "$body" | grep -q '"access_token"'; then ok=true; break; fi
+    if echo "$body" | grep -q "$SIGNIN_OK"; then ok=true; break; fi
     sleep 5
   done
   $ok || die "the production sign-in failed: $(echo "$body" | head -c 300) (is the Worker with /api/review-sign-in deployed?)"

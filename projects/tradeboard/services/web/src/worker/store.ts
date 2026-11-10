@@ -20,6 +20,9 @@ export interface Env {
   SESSION_DAYS?: string;
   /** Tool calls per agent per minute (default 60, §7.1). */
   AGENT_RATE_PER_MIN?: string;
+  /** The App Review demo account (secrets in production; review.ts). */
+  REVIEW_EMAIL?: string;
+  REVIEW_PASSWORD_SHA256?: string;
 }
 
 export const SCHEMA = "tradeboard";

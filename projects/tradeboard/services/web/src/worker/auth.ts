@@ -146,3 +146,4 @@ export async function authLogout(req: Request, env: Env): Promise<Response> {
 }
 
 export const clearCookie = (env: Env) => sessionCookie(env, "", 0);
+export const sessionCookieFor = sessionCookie;

@@ -29,10 +29,14 @@ public struct ReleaseNotes: Identifiable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.1.0"
+    public static let currentVersion = "0.1.1"
     public static let lastSeenVersionKey = "last_seen_whats_new_version_tradeboard"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.1", date: "November 2026", items: [
+            WhatsNewItem(icon: "trash", title: "Delete Your Board in the App", description: "Settings now has Delete My Board: it removes every plan, receipt, policy, strategy, agent and executor credential on your board, as the website does."),
+            WhatsNewItem(icon: "envelope", title: "Sign In with Email", description: "Accounts Tradeboard hands out can sign in with email from the sign-in screen. Everyone else keeps using Apple and a two-factor code.")
+        ]),
         ReleaseNotes(version: "0.1.0", date: "November 2026", items: [
             WhatsNewItem(icon: "shield.lefthalf.filled", title: "Autonomous Trading Plan Board", description: "Review and approve structured trade plans drafted and debated by your hosted AI discussion agents."),
             WhatsNewItem(icon: "lock.shield", title: "Two-Factor Safety Verification", description: "Every session is secured with TOTP two-factor authentication, ensuring only the owner can authorize live or dry-run orders."),

@@ -32,7 +32,9 @@ Where the projects stand (2026-10-29):
 | Tether | not needed: works fully offline; sign-in (Apple) only adds sync |
 | Wee Hours | not needed: "Use without an account"; Sign in with Apple for partner sync |
 | FeedbackKit Portal | not needed: TestFlight only, GitHub sign-in on its own backend, and a manual token sign-in |
-| G2 Digest, Polymath | no iOS app |
+| Tradeboard | done 2026-11-10: sign-in is Apple + TOTP, so the review path sets Tradeboard's own session cookie (no Supabase session) on a DEMO board in dry-run with no executor; `review.env` sets `SIGNIN_HEADER`/`SIGNIN_OK` |
+| G2 Digest | not needed: the iPhone app opens a built-in tour without an account |
+| Polymath | no iOS app |
 
 ## How it works
 

@@ -7,6 +7,8 @@ public struct SettingsView: View {
 
     @State private var showWhatsNew = false
     @State private var showSignOutConfirm = false
+    @State private var showDeleteConfirm = false
+    @State private var deleting = false
 
     public init() {}
 
@@ -31,7 +33,7 @@ public struct SettingsView: View {
                     HStack {
                         Label("Session Status", systemImage: "key.fill")
                         Spacer()
-                        Text("Verified via TOTP")
+                        Text("Verified")
                             .font(.footnote)
                             .foregroundStyle(.green)
                     }
@@ -57,6 +59,7 @@ public struct SettingsView: View {
                     }
                 }
 
+                #if DEBUG
                 Section("Environment") {
                     Picker("Server", selection: Binding(
                         get: { model.config == .production ? "production" : "local" },
@@ -69,6 +72,7 @@ public struct SettingsView: View {
                         Text("Local Stack (127.0.0.1:8798)").tag("local")
                     }
                 }
+                #endif
 
                 Section("About") {
                     Button {
@@ -96,6 +100,27 @@ public struct SettingsView: View {
                         }
                     }
                 }
+
+                Section {
+                    Button(role: .destructive) {
+                        showDeleteConfirm = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if deleting { ProgressView() } else { Text("Delete My Board") }
+                            Spacer()
+                        }
+                    }
+                    .disabled(deleting)
+                    .accessibilityIdentifier("delete-board")
+                    if let e = model.error, e.hasPrefix("Couldn't delete") {
+                        Label(e, systemImage: "exclamationmark.circle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                } footer: {
+                    Text("Deletes your account's board for good: every plan, comment, version, receipt, policy and strategy, your agents and their tokens, and your executor credentials. Your Apple sign-in is shared with other HEJI apps and isn't touched.")
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -115,6 +140,19 @@ public struct SettingsView: View {
                     }
                 }
                 Button("Cancel", role: .cancel) {}
+            }
+            .alert("Delete your board?", isPresented: $showDeleteConfirm) {
+                Button("Delete", role: .destructive) {
+                    deleting = true
+                    Task {
+                        let ok = await model.deleteAccount()
+                        deleting = false
+                        if ok { dismiss() }
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This permanently deletes every plan, comment, version, receipt, policy version and audit event on your board, your agents and their tokens and connections, and your executor credentials. It can't be undone. Stop and uninstall the executor on your computer too.")
             }
         }
     }

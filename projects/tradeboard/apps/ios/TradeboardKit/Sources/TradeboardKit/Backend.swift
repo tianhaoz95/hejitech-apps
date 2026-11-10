@@ -188,6 +188,40 @@ public final class TradeboardBackend: @unchecked Sendable {
         }
     }
 
+    /// Email sign-in for accounts Tradeboard hands out (App Review's demo account): the Worker checks
+    /// them against its own secrets and sets the same session cookie as the TOTP step.
+    public func reviewSignIn(email: String, password: String) async throws {
+        var req = URLRequest(url: config.site.appendingPathComponent("api/review-sign-in"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("1", forHTTPHeaderField: "X-Tradeboard")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["email": email, "password": password])
+
+        let (data, resp) = try await http.data(for: req)
+        try Self.check(resp, data)
+        guard let httpResp = resp as? HTTPURLResponse, let cookieValue = Self.extractSessionCookie(from: httpResp) else {
+            throw BackendError.invalidResponse("No session in the sign-in response")
+        }
+        setSessionCookie(cookieValue)
+    }
+
+    /// Deletes this board for good: plans, history, policy, strategy, agents and their tokens, executor
+    /// credentials and sessions (the same as Account → Delete my board on the web). The sign-in itself
+    /// is shared with other HEJI apps and stays.
+    public func deleteAccount() async throws {
+        guard let cookie = sessionCookie else { throw BackendError.notSignedIn }
+        var c = URLComponents(url: config.site.appendingPathComponent("api/account"), resolvingAgainstBaseURL: false)!
+        c.queryItems = [URLQueryItem(name: "confirm", value: "1")]
+        var req = URLRequest(url: c.url!)
+        req.httpMethod = "DELETE"
+        req.setValue("1", forHTTPHeaderField: "X-Tradeboard")
+        req.setValue(cookieHeader(for: cookie), forHTTPHeaderField: "Cookie")
+        let (data, resp) = try await http.data(for: req)
+        try Self.check(resp, data)
+        setSessionCookie(nil)
+        setSupabaseSession(nil)
+    }
+
     public func logout() async {
         if let cookie = sessionCookie {
             var req = URLRequest(url: config.site.appendingPathComponent("api/auth/logout"))

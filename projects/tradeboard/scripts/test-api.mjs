@@ -621,6 +621,36 @@ await step("boards are private: a second user signs up to an empty board and can
   assert.equal((await portal(`/api/plans/${p1}`)).status, 200);
 });
 
+await step("review sign-in: only the demo account's password works; every sign-in resets a dry-run DEMO board", async () => {
+  const mine = cookie;
+  const signIn = (password) => portal("/api/review-sign-in", { body: { email: "Review@Example.com", password }, raw: true });
+  assert.equal((await signIn("wrong")).status, 401);
+  assert.equal((await portal("/api/review-sign-in", { body: { email: "owner@example.com", password: "tradeboard-review-dev" }, raw: true })).status, 401, "another account can't use the demo password");
+  const first = await signIn("tradeboard-review-dev");
+  assert.equal(first.status, 200, first.text);
+  assert.equal(first.body.signed_in, true);
+  cookie = first.headers.get("set-cookie").split(";")[0];
+  const me = (await portal("/api/me")).body;
+  assert.equal(me.email, "review@example.com");
+  const plans = (await portal("/api/board")).body.plans;
+  assert.equal(plans.length, 3, JSON.stringify(plans.map((p) => [p.title, p.status])));
+  assert.ok(plans.every((p) => p.is_demo), "every review plan is a DEMO plan");
+  assert.ok(plans.some((p) => p.status === "ready"), "one plan waits for approval");
+  assert.equal((await portal("/api/board")).body.control?.dry_run ?? true, true, "dry-run is on");
+  assert.equal((await portal("/api/executor-status")).body.executors.length, 0, "no executor can trade for it");
+  // A change, then a second sign-in: the same user, back to the demo state.
+  const ready = plans.find((p) => p.status === "ready");
+  const ok = await portal(`/api/plans/${ready.plan_id}/reject`, { body: { reason: "reviewer test" } });
+  assert.equal(ok.status, 200, ok.text);
+  const again = await signIn("tradeboard-review-dev");
+  cookie = again.headers.get("set-cookie").split(";")[0];
+  const after = (await portal("/api/board")).body.plans;
+  assert.equal(after.length, 3);
+  assert.ok(after.some((p) => p.status === "ready"), "the reset restored the ready plan");
+  assert.equal((await portal("/api/me")).body.email, "review@example.com");
+  cookie = mine;
+});
+
 console.log(`tradeboard integration: ${steps.length} checks passed`);
 mocks.forEach((m) => m.kill());
 process.exit(0);

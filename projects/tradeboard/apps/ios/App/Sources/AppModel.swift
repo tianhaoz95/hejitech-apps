@@ -92,15 +92,19 @@ public final class AppModel {
     @MainActor
     public func refresh() async {
         guard case .authenticated = authPhase else { return }
-        do {
-            board = try await backend.getBoard()
-            error = nil
-        } catch {
-            self.error = error.localizedDescription
-            if (error as? BackendError)?.isUnauthorized == true {
-                authPhase = .unauthenticated
+        // Its own task: a caller's view task (the sign-in screen's) is cancelled when the board
+        // replaces it, and the load must not fail with "cancelled" then.
+        await Task { @MainActor in
+            do {
+                board = try await backend.getBoard()
+                error = nil
+            } catch {
+                self.error = error.localizedDescription
+                if (error as? BackendError)?.isUnauthorized == true {
+                    authPhase = .unauthenticated
+                }
             }
-        }
+        }.value
     }
 
     // MARK: - Authentication Flow
@@ -165,6 +169,48 @@ public final class AppModel {
             await refresh()
         } catch {
             self.error = error.localizedDescription
+        }
+    }
+
+    /// Email sign-in for accounts Tradeboard hands out (App Review's demo account). No TOTP step: the
+    /// Worker only accepts its own demo account here, and that board is DEMO plans in dry-run.
+    @MainActor
+    public func signInWithEmailAccount(_ email: String, _ password: String) async -> Bool {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            try await backend.reviewSignIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
+            let me = try await backend.getMe()
+            authPhase = .authenticated(email: me.email ?? email)
+            error = nil
+            await refresh()
+            return true
+        } catch {
+            if case .http(let code, _) = error as? BackendError, code == 401 {
+                self.error = "Wrong email or password."
+            } else if case .http(429, _) = error as? BackendError {
+                self.error = "Too many attempts. Wait ten minutes and try again."
+            } else {
+                self.error = error.localizedDescription
+            }
+            return false
+        }
+    }
+
+    /// Deletes the board and everything on it, then signs out.
+    @MainActor
+    public func deleteAccount() async -> Bool {
+        do {
+            try await backend.deleteAccount()
+            authPhase = .unauthenticated
+            board = nil
+            selectedPlan = nil
+            strategy = nil
+            error = nil
+            return true
+        } catch {
+            self.error = "Couldn't delete your board: \(error.localizedDescription)"
+            return false
         }
     }
 
