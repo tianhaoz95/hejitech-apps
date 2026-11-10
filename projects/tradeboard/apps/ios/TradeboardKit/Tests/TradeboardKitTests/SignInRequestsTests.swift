@@ -19,7 +19,7 @@ final class SignInRequestsTests: XCTestCase {
         let r = try XCTUnwrap(StubProtocol.requests.first)
         XCTAssertEqual(r.url?.path, "/auth/v1/token")
         XCTAssertEqual(r.url?.query, "grant_type=pkce")
-        XCTAssertEqual(r.url?.host, "jitdzllkxfhlrxxvljhp.supabase.co")
+        XCTAssertEqual(r.url?.host, BackendConfig.production.supabaseURL.host)
         let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(r.httpBody)) as? [String: String])
         XCTAssertEqual(body, ["auth_code": "code-1", "code_verifier": "ver-1"])
         XCTAssertEqual(s.userId, "u1")
