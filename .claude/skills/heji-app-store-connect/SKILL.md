@@ -91,9 +91,12 @@ Take the text from the project (landing page, `docs/`, `review.env`), not invent
 | Availability | `POST v2/appAvailabilities` listing **every** territory with `available` true/false |
 | App Review demo account + notes | the `heji-review-account` skill (`scripts/review_account.sh <project>`); its PATCH needs the review contact's name, phone and email filled first |
 
-Screenshots can go up by API too (`appScreenshotSets`, then `appScreenshots` upload reservations)
-but that path is untested here; the 6.9" iPhone size is required and the owner's iPhone 13 is
-6.1", so they come from a simulator (`xcrun simctl io booted screenshot`).
+Screenshots: `scripts/store_screenshots.sh <project>` takes them in simulators (6.9" iPhone 18 Pro
+Max, 13" iPad Pro) from a Debug build on the local stack, one launch per shot through the app's own
+Debug launch arguments (Tradeboard and G2 Digest have shot lists; add one for another app), then
+`node $A upload-screenshots com.hejitech.<slug> APP_IPHONE_67 <png…>` (and `APP_IPAD_PRO_3GEN_129`
+for iPad apps) replaces that set and waits for Apple's COMPLETE. The owner's iPhone 13 is 6.1", too
+small for the required size. Look at every shot before uploading: taking them found two real bugs.
 
 ## 6. Hand back
 

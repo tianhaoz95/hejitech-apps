@@ -10,10 +10,13 @@
 //   asc.mjs register-bundle <bundle id> <name>                  # idempotent
 //   asc.mjs invite-tester <bundle id> <email> [group name]      # internal group (default "Team"),
 //                                                               # add the tester, send the invite
+//   asc.mjs upload-screenshots <bundle id> <display type> <png…>  # replace the editable version's
+//                                                               # en-US set (APP_IPHONE_67, APP_IPAD_PRO_3GEN_129…)
 //
 // Exit codes: 0 ok, 1 API error, 2 usage, 3 the app record doesn't exist yet.
-import { createSign } from "node:crypto";
+import { createHash, createSign } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { basename } from "node:path";
 import { homedir } from "node:os";
 
 const env = process.env;
@@ -163,8 +166,53 @@ try {
       console.log(`== invitation not sent yet (${e.status}): rerun after the first build is processed`);
       console.log(`   ${e.message.split("\n")[0].slice(0, 300)}`);
     }
+  } else if (cmd === "upload-screenshots") {
+    // Replaces the screenshots of one display type in the editable version's en-US localization:
+    // reserve each file, PUT its bytes to the upload operations Apple returns, commit with the MD5,
+    // then wait for Apple to finish processing (COMPLETE, or FAILED with its errors).
+    const [id, displayType, ...files] = args;
+    if (!id || !displayType || !files.length) die("usage: asc.mjs upload-screenshots <bundle id> <display type> <png…>");
+    const app = await findApp(id);
+    if (!app) die(`no app record for ${id} yet (SKILL.md step 2)`, 3);
+    const versions = (await asc("GET", `v1/apps/${app.id}/appStoreVersions?filter[appStoreState]=PREPARE_FOR_SUBMISSION,DEVELOPER_REJECTED,REJECTED,METADATA_REJECTED`)).data;
+    if (!versions.length) die(`no editable App Store version for ${id}`, 3);
+    const loc = (await asc("GET", `v1/appStoreVersions/${versions[0].id}/appStoreVersionLocalizations`)).data.find((l) => l.attributes.locale === "en-US");
+    if (!loc) die("no en-US localization on the editable version");
+    const sets = (await asc("GET", `v1/appStoreVersionLocalizations/${loc.id}/appScreenshotSets?limit=50`)).data;
+    let set = sets.find((x) => x.attributes.screenshotDisplayType === displayType);
+    if (set) {
+      for (const shot of (await asc("GET", `v1/appScreenshotSets/${set.id}/appScreenshots?limit=50`)).data) await asc("DELETE", `v1/appScreenshots/${shot.id}`);
+    } else {
+      set = (await asc("POST", "v1/appScreenshotSets", { data: { type: "appScreenshotSets", attributes: { screenshotDisplayType: displayType },
+        relationships: { appStoreVersionLocalization: { data: { type: "appStoreVersionLocalizations", id: loc.id } } } } })).data;
+    }
+    const ids = [];
+    for (const f of files) {
+      const bytes = readFileSync(f);
+      const shot = (await asc("POST", "v1/appScreenshots", { data: { type: "appScreenshots", attributes: { fileName: basename(f), fileSize: bytes.length },
+        relationships: { appScreenshotSet: { data: { type: "appScreenshotSets", id: set.id } } } } })).data;
+      for (const op of shot.attributes.uploadOperations) {
+        const headers = Object.fromEntries((op.requestHeaders ?? []).map((h) => [h.name, h.value]));
+        const put = await fetch(op.url, { method: op.method, headers, body: bytes.subarray(op.offset, op.offset + op.length) });
+        if (!put.ok) die(`upload of ${f} failed: ${put.status} ${await put.text()}`, 1);
+      }
+      await asc("PATCH", `v1/appScreenshots/${shot.id}`, { data: { type: "appScreenshots", id: shot.id,
+        attributes: { uploaded: true, sourceFileChecksum: createHash("md5").update(bytes).digest("hex") } } });
+      ids.push([shot.id, basename(f)]);
+    }
+    for (const [sid, name] of ids) {
+      let state = "";
+      for (let i = 0; i < 60; i++) {
+        const a = (await asc("GET", `v1/appScreenshots/${sid}`)).data.attributes.assetDeliveryState;
+        state = a?.state ?? "";
+        if (state === "COMPLETE") break;
+        if (state === "FAILED") die(`${name}: FAILED ${JSON.stringify(a.errors)}`, 1);
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+      console.log(`== ${displayType} ${name}: ${state}`);
+    }
   } else {
-    die("usage: asc.mjs <GET|POST|PATCH|DELETE> <path> [body] | status <bundle id> | register-bundle <id> <name> | invite-tester <bundle id> <email> [group]");
+    die("usage: asc.mjs <GET|POST|PATCH|DELETE> <path> [body] | status <bundle id> | register-bundle <id> <name> | invite-tester <bundle id> <email> [group] | upload-screenshots <bundle id> <display type> <png…>");
   }
 } catch (e) {
   die(e.message, 1);
