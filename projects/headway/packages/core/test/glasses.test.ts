@@ -39,6 +39,15 @@ describe("board screen", () => {
     fits(lines);
     expect(lines.at(-2)).toMatch(/^Leave (in \d+m|now) for \d+ \(drive ~\d+m\)$|^Hurry: \d+ is \d+m tight \(drive ~\d+m\)$/);
   });
+  it("drops the leave hint once the tracked train has left their station", () => {
+    const t = firstTrain(WEEKDAY, "07:00");
+    const later = t.dep + 3 * 60_000;
+    const riding = progress({ trip_id: t.trip_id, service_date: WEEKDAY, from: "mountain_view", to: "san_francisco" }, later, null);
+    expect(riding?.departed).toBe(true);
+    const lines = new Navigator().lines(world({ board: commuteBoard(commuter(), later, null), progress: riding, now: later }));
+    fits(lines);
+    expect(lines.join("\n")).not.toMatch(/Leave (in|now)|Hurry:/);
+  });
   it("shows go Xm or RUN on rows when walk_minutes is set", () => {
     const nav = new Navigator();
     const lines = nav.lines(world());

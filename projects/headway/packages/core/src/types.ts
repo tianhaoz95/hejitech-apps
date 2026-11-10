@@ -264,6 +264,8 @@ export interface TrainProgress {
   stops_left: number;
   cancelled: boolean;
   arrived: boolean;
+  /** The train has left the station they're tracking it from: they're on it (or missed it). */
+  departed: boolean;
   live: boolean;
 }
 

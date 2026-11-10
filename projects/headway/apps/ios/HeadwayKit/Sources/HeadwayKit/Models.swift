@@ -269,10 +269,15 @@ public struct TrainProgress: Codable, Hashable, Sendable {
     public var stopsLeft: Int
     public var cancelled: Bool
     public var arrived: Bool
+    /// The train has left the station they track it from (absent from older servers).
+    public var departed: Bool?
     public var live: Bool
 
+    /// On the train: it left their station and hasn't arrived.
+    public var riding: Bool { departed == true && !arrived && !cancelled }
+
     enum CodingKeys: String, CodingKey {
-        case train, kind, to, next, arr, cancelled, arrived, live
+        case train, kind, to, next, arr, cancelled, arrived, departed, live
         case tripId = "trip_id", serviceDate = "service_date", predArr = "pred_arr", delayMin = "delay_min", stopsLeft = "stops_left"
     }
 }

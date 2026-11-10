@@ -38,3 +38,19 @@ describe("live updates without a start date", () => {
     expect(m?.service_date).toBe(WEEKDAY);
   });
 });
+
+describe("progress.departed", () => {
+  const t = firstTrain(WEEKDAY, "08:00");
+  const ride = { trip_id: t.trip_id, service_date: WEEKDAY, from: "mountain_view", to: "san_francisco" };
+
+  it("is false until the train leaves their station, then true", () => {
+    expect(progress(ride, t.dep - 5 * MIN, null)?.departed).toBe(false);
+    expect(progress(ride, t.dep + 2 * MIN, null)?.departed).toBe(true);
+  });
+
+  it("waits for a late train", () => {
+    const now = t.dep + 2 * MIN;
+    const late = snapshot(now, { [t.trip_id]: { stops: { [station("mountain_view")!.nb!]: { delay: 300 } } } });
+    expect(progress(ride, now, late)?.departed).toBe(false);
+  });
+});

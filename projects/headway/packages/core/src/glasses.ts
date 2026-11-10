@@ -125,7 +125,10 @@ export function boardLines(world: World, cursor: number): string[] {
   const title = b.express_preference === "express_only" ? `${b.from.short} > ${b.to.short} EXP` : `${b.from.short} > ${b.to.short}`;
   const lines = [spreadPx(title, b.live ? clockAmPm(world.now) : `SCHED ${clock(world.now)}`)];
 
-  const leaveTrain = b.walk_minutes != null
+  // On the train (seen riding, or the tracked one left their station), when to leave is beside the point.
+  const p = world.progress;
+  const riding = Boolean(world.onTrain) || Boolean(p && p.departed && !p.arrived && !p.cancelled);
+  const leaveTrain = b.walk_minutes != null && !riding
     ? (b.trains.find((t) => t.catch === "leave") ?? b.trains.find((t) => t.catch === "run"))
     : null;
   // From the rider's location the trip is an estimate ("drive ~12m"); otherwise the leg's walk.
@@ -138,7 +141,7 @@ export function boardLines(world: World, cursor: number): string[] {
           ? `Leave now for ${leaveTrain.train} (${trip})`
           : `Leave in ${untilText(leaveTrain.leave_by, world.now)} for ${leaveTrain.train} (${trip})`)
     : null;
-  const tipHint = b.tip ? `Wait for ${b.tip.wait_for} (${b.tip.wait_for_kind}): beats ${b.tip.instead_of} by ${b.tip.saves_min}m` : null;
+  const tipHint = b.tip && !riding ? `Wait for ${b.tip.wait_for} (${b.tip.wait_for_kind}): beats ${b.tip.instead_of} by ${b.tip.saves_min}m` : null;
 
   // The footer: an alert, an overtaking tip, a leave-by hint, or a note (offline, pair, timetable only) above the gesture hint,
   // which always shows (a first-time user, or a reviewer, learns the ring from it).

@@ -43,8 +43,10 @@ struct BoardView: View {
                     Section("Tracking") { TrackedRow(tracked: t, now: now, compact: model.onTrain?.tripId == t.tripId) }
                 }
                 if let b = model.board {
-                    // On the train, when to leave for one is beside the point.
-                    if model.onTrain == nil, let tip = b.tip {
+                    // On the train (detected, or the tracked one has left their station), when to
+                    // leave for one is beside the point.
+                    let riding = model.onTrain != nil || model.tracked?.progress.riding == true
+                    if !riding, let tip = b.tip {
                         Section {
                             InsightBanner(tip: tip)
                         }
@@ -52,7 +54,7 @@ struct BoardView: View {
                         .listRowBackground(Color.clear)
                     }
 
-                    if model.onTrain == nil, let walk = b.walkMinutes {
+                    if !riding, let walk = b.walkMinutes {
                         Section {
                             CatchCard(board: b, walkMinutes: walk, now: now)
                         }

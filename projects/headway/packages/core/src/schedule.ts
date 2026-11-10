@@ -430,10 +430,13 @@ export function progress(tracked: Tracked, now: number, snapshot: RealtimeSnapsh
   }
   const arrived = pred_arr < now - 30_000;
   const delay_min = da === null ? null : Math.round(da / 60);
+  const from = station(tracked.from);
+  const a = from ? stopPos(trip, stationIndex(from.id)) : -1;
+  const departed = arrived || (a >= 0 && a < b && dayStart + trip.stops[a * 3 + 2] * MIN + (delayAt(trip, a, rt, dayStart, "dep") ?? 0) * 1000 < now - 30_000);
   return {
     trip_id: trip.id, train: trip.train, kind: trip.kind, dir: trip.dir, service_date: tracked.service_date, to: lite(to),
     next: arrived ? null : next, pred_arr, arr, delay_min, stops_left: arrived ? 0 : stopsLeft, cancelled: Boolean(rt?.cancelled),
-    arrived, live: Boolean(live),
+    arrived, departed, live: Boolean(live),
   };
 }
 
