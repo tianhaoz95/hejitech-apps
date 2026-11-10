@@ -8,7 +8,6 @@ public struct PairingSheet: View {
     @ObservedObject var appModel: AppModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.webAuthenticationSession) private var webAuth
-    @Environment(\.colorScheme) private var colorScheme
 
     @State private var code: String = ""
     @State private var isRedeeming: Bool = false
@@ -43,25 +42,13 @@ public struct PairingSheet: View {
                     }
 
                     VStack(spacing: 12) {
-                        SignInWithAppleButton(.continue) { request in
-                            request.requestedScopes = [.email]
-                        } onCompletion: { result in
+                        AppleSignInButton { result in
                             Task { await appModel.signInWithApple(result) }
                         }
-                        .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-                        .frame(height: 50)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                        Button {
+                        GoogleSignInButton {
                             Task { await appModel.signInWithGoogle(using: webAuth) }
-                        } label: {
-                            Label("Continue with Google", systemImage: "globe")
-                                .font(.body.weight(.semibold))
-                                .frame(maxWidth: .infinity, minHeight: 36)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .accessibilityIdentifier("google-signin")
 
                         if let err = appModel.errorMessage, !showCode {
                             Text(err)

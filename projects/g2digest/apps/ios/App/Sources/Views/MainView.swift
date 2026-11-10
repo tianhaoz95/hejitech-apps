@@ -108,6 +108,7 @@ public struct MainView: View {
                 if args.contains("-showHistory") { appModel.showHistorySheet = true }
                 if args.contains("-showBrief") { appModel.showBriefSheet = true }
                 if args.contains("-showSettings") { appModel.showSettingsSheet = true }
+                if args.contains("-showSignIn") { appModel.showPairingSheet = true }
                 #endif
             }
         }

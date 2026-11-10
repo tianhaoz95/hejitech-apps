@@ -76,25 +76,13 @@ public struct SignInView: View {
 
     private var primarySignInActions: some View {
         VStack(spacing: 14) {
-            SignInWithAppleButton(.continue) { request in
-                request.requestedScopes = [.email]
-            } onCompletion: { result in
+            AppleSignInButton { result in
                 Task { await model.signInWithApple(result) }
             }
-            .signInWithAppleButtonStyle(.whiteOutline)
-            .frame(height: 50)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-            Button {
+            GoogleSignInButton {
                 Task { await model.signInWithGoogle(using: webAuth) }
-            } label: {
-                Label("Continue with Google", systemImage: "globe")
-                    .font(.body.weight(.semibold))
-                    .frame(maxWidth: .infinity, minHeight: 36)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .accessibilityIdentifier("google-signin")
 
             Button { emailSheet = true } label: {
                 Text("Sign in with email")
