@@ -28,7 +28,8 @@ public final class AudioPlayerService: NSObject, ObservableObject {
 
     private var player: AVPlayer?
     private var timeObserver: Any?
-    private var signedAudioMap: [String: SignedAudioEntry] = [:]
+    /// Signed URLs by audio path (`<date>/<file>`).
+    private var signedAudioMap: [String: String] = [:]
 
     public override init() {
         super.init()
@@ -86,7 +87,7 @@ public final class AudioPlayerService: NSObject, ObservableObject {
         }
     }
 
-    public func updateSignedAudioMap(_ map: [String: SignedAudioEntry]) {
+    public func updateSignedAudioMap(_ map: [String: String]) {
         self.signedAudioMap = map
     }
 
@@ -210,10 +211,8 @@ public final class AudioPlayerService: NSObject, ObservableObject {
     }
 
     private func resolveAudioURL(card: CardInput, mode: AudioTrackMode) -> String? {
-        if let entry = signedAudioMap[card.slug] {
-            return mode == .glance ? entry.glance : entry.deepDive
-        }
-        return nil
+        guard let path = (mode == .glance ? card.glance : card.deepDive)?.audioPath else { return nil }
+        return signedAudioMap[path]
     }
 
     private func updateNowPlayingInfo() {

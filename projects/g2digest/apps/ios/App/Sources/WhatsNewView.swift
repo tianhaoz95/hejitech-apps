@@ -29,10 +29,17 @@ public struct ReleaseNotes: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.4.1"
+    public static let currentVersion = "0.4.2"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.4.2", date: "November 2026", items: [
+            WhatsNewItem(
+                icon: "checkmark.circle",
+                title: "Your Editions Load After Pairing",
+                description: "A paired iPhone could stay on the tour instead of showing your editions. It now opens your latest edition, with its glance and deep-dive audio."
+            )
+        ]),
         ReleaseNotes(version: "0.4.1", date: "November 2026", items: [
             WhatsNewItem(
                 icon: "sparkles",

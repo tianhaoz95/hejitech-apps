@@ -87,6 +87,16 @@ public struct MainView: View {
             .task {
                 await appModel.refreshAll()
                 checkWhatsNew()
+                #if DEBUG
+                // Screenshots without taps: `-card N` opens card N (0-based); `-showHistory`,
+                // `-showBrief`, `-showSettings` open those sheets once the edition has loaded.
+                let args = ProcessInfo.processInfo.arguments
+                if let i = args.firstIndex(of: "-card"), i + 1 < args.count, let n = Int(args[i + 1]),
+                   n < (appModel.currentBundle?.cards.count ?? 0) { appModel.currentCardIndex = n }
+                if args.contains("-showHistory") { appModel.showHistorySheet = true }
+                if args.contains("-showBrief") { appModel.showBriefSheet = true }
+                if args.contains("-showSettings") { appModel.showSettingsSheet = true }
+                #endif
             }
         }
     }

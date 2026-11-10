@@ -124,7 +124,8 @@ public struct EditionResponse: Codable, Hashable, Sendable {
     public let guideVersion: String
     public let briefVersion: Int
     public let bundle: BundleData
-    public let audio: [String: SignedAudioEntry]?
+    /// Signed audio URLs by the card's `audio_path` (`<date>/<file>`), as the Worker sends them.
+    public let audio: [String: String]?
     public let previewSnapshot: String?
 
     public enum CodingKeys: String, CodingKey {
@@ -145,7 +146,7 @@ public struct EditionResponse: Codable, Hashable, Sendable {
         guideVersion: String,
         briefVersion: Int,
         bundle: BundleData,
-        audio: [String: SignedAudioEntry]? = nil,
+        audio: [String: String]? = nil,
         previewSnapshot: String? = nil
     ) {
         self.date = date

@@ -14,7 +14,7 @@ public final class AppModel: ObservableObject {
     public static let defaultServerURL = URL(string: "https://g2digest.hejitech.workers.dev")!
 
     @Published public var currentBundle: BundleData?
-    @Published public var signedAudioMap: [String: SignedAudioEntry] = [:]
+    @Published public var signedAudioMap: [String: String] = [:]
     @Published public var currentCardIndex: Int = 0
     @Published public var viewMode: ReaderViewMode = .native {
         didSet {
@@ -124,9 +124,12 @@ public final class AppModel: ObservableObject {
 
                 async let editionsTask = api.fetchEditions()
                 async let latestTask = api.fetchEdition(date: "latest")
-                async let briefTask = api.fetchBrief()
+                // A device token reads editions only (docs/decisions.md): the brief is a signed-in
+                // web session's, so a refused brief must not throw the editions away.
+                async let briefTask: Brief? = try? api.fetchBrief()
 
-                let (edList, latestRes, brief) = try await (editionsTask, latestTask, briefTask)
+                let (edList, latestRes) = try await (editionsTask, latestTask)
+                let brief = await briefTask
                 self.editions = edList
                 self.currentBundle = latestRes.bundle
                 self.signedAudioMap = latestRes.audio ?? [:]

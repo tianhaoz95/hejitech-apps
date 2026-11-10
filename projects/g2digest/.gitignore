@@ -8,3 +8,5 @@ apps/ios/.derived
 apps/ios/.derived-device
 apps/ios/G2DigestKit/.build
 apps/ios/G2DigestKit/.swiftpm
+# App Store screenshots: regenerate with scripts/store_screenshots.sh g2digest
+apps/ios/AppStore/screenshots
