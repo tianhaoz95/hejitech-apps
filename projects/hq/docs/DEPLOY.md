@@ -93,8 +93,8 @@ re-running it is safe. Started by hand without a tag it rehearses the current br
 nothing; that run also checks the npm token (it warns if the token is rejected or its account isn't
 in the `hejitech` organization).
 
-Tokens: npm uses `FEEDBACKKIT_NPM_TOKEN`, which despite its name is the owner's npm token for every
-npm package this repo publishes; GitHub Packages uses the built-in `GITHUB_TOKEN`. Nothing new to
+Tokens: npm uses `NPM_TOKEN`, the owner's npm token shared by every npm package this repo publishes
+(a copy is in `~/Credentials/npm.env`; it expires on 2026-12-20); GitHub Packages uses the built-in `GITHUB_TOKEN`. Nothing new to
 store. One-time setup on npm: the organization `hejitech` must exist (npmjs.com → Add Organization,
 free for public packages) with the token's account in it, and if the token is a granular one it
 must allow the `@hejitech` scope.

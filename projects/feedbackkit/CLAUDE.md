@@ -29,9 +29,10 @@ repo root (local action: `.github/actions/feedbackkit-setup-cli`). Every workflo
 - **Agent dispatch labels** are `feedbackkit-claude` and `feedbackkit-antigravity` (other projects
   share this repo's issues).
 - **CI secrets** follow the monorepo's naming: FeedbackKit-only ones are `FEEDBACKKIT_*`
-  (`FEEDBACKKIT_NPM_TOKEN`, `FEEDBACKKIT_SUPABASE_ACCESS_TOKEN`, …); Apple signing uses the
+  (`FEEDBACKKIT_RELEASE_TOKEN`, `FEEDBACKKIT_SUPABASE_ACCESS_TOKEN`, …); Apple signing uses the
   team-wide `ASC_*`, `APPLE_TEAM_ID`, `DEV_SIGNING_P12_*` (the Apple Development identity the
-  TestFlight scripts archive with) and `MAC_SIGNING_P12_*` (Developer ID).
+  TestFlight scripts archive with) and `MAC_SIGNING_P12_*` (Developer ID); npm publishing uses the
+  team-wide `NPM_TOKEN`, shared by every npm package this repo publishes.
 - **Swift Package / CocoaPods / JitPack** resolve from a repository root, so they still point at the
   archived `tianhaoz95/feedback-kit` (versions up to 1.0.62). The npm packages (and the Tauri
   crate on crates.io) keep publishing from here.

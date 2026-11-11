@@ -84,7 +84,7 @@ jobs:
 
       - name: Publish package to npm
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.FEEDBACKKIT_NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           PKG_VERSION="${{ steps.version.outputs.version }}"
           ALREADY_PUBLISHED="$(npm view feedback-kit-skills@"$PKG_VERSION" version 2>/dev/null || true)"

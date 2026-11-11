@@ -89,7 +89,7 @@ jobs:
       - name: Publish package to npm
         working-directory: projects/feedbackkit/cli
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.FEEDBACKKIT_NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           PKG_VERSION="${{ steps.version.outputs.version }}"
           ALREADY_PUBLISHED="$(npm view feedbackkit-cli@"$PKG_VERSION" version 2>/dev/null || true)"

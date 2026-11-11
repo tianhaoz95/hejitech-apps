@@ -9,9 +9,9 @@ name: HQ CLI (npm + GitHub Packages)
 # It runs only for a published release, or by hand. By hand without a tag it packs and checks the
 # branch it is started from and publishes nothing (a rehearsal); publishing always needs a tag.
 #
-# Secrets: FEEDBACKKIT_NPM_TOKEN, which despite its name is the owner's npm token for every npm
-# package this repo publishes (also in REQUIRED_SECRETS of projects/hq/release.env). Its account must
-# be able to publish in the @hejitech scope. GitHub Packages uses the workflow's own GITHUB_TOKEN.
+# Secrets: NPM_TOKEN, the owner's npm token shared by every npm package this repo publishes (also
+# in REQUIRED_SECRETS of projects/hq/release.env). Its account must be able to publish in the
+# @hejitech scope. GitHub Packages uses the workflow's own GITHUB_TOKEN.
 on:
   release:
     types: [published]
@@ -107,13 +107,13 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - name: The npm token works and may publish in the @hejitech scope
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.FEEDBACKKIT_NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           DRY_RUN: ${{ needs.pack.outputs.dry_run }}
         run: |
           # A rehearsal reports problems as warnings; a real publish stops on them.
           problem() { if [ "$DRY_RUN" = "true" ]; then echo "::warning::$1"; else echo "::error::$1"; exit 1; fi; }
-          if [ -z "$NODE_AUTH_TOKEN" ]; then problem "The FEEDBACKKIT_NPM_TOKEN secret is not set."; exit 0; fi
-          WHO="$(npm whoami 2>/dev/null)" || { problem "npm rejects the token in FEEDBACKKIT_NPM_TOKEN (expired or revoked?)."; exit 0; }
+          if [ -z "$NODE_AUTH_TOKEN" ]; then problem "The NPM_TOKEN secret is not set."; exit 0; fi
+          WHO="$(npm whoami 2>/dev/null)" || { problem "npm rejects the token in NPM_TOKEN (expired or revoked?)."; exit 0; }
           echo "npm account: $WHO"
           if npm org ls hejitech "$WHO" > /dev/null 2>&1; then
             echo "$WHO is a member of the npm organization hejitech."
@@ -122,7 +122,7 @@ jobs:
           fi
       - name: Publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.FEEDBACKKIT_NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION: ${{ needs.pack.outputs.version }}
           DRY_RUN: ${{ needs.pack.outputs.dry_run }}
         run: |

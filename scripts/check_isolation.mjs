@@ -25,9 +25,9 @@ export const SHARED_CI_NAMES = new Set([
   "SIGNING_P12_BASE64", "SIGNING_P12_PASSWORD", "DEV_SIGNING_P12_BASE64", "DEV_SIGNING_P12_PASSWORD",
   "MAC_SIGNING_P12_BASE64", "MAC_SIGNING_P12_PASSWORD",
   "EVENHUB_EMAIL", "EVENHUB_PASSWORD",
-  // The owner's npm token, for every npm package this repo publishes. It keeps the name it got
-  // when FeedbackKit was the only publisher; it is a registry account, not a backend setting.
-  "FEEDBACKKIT_NPM_TOKEN",
+  // The owner's npm token, for every npm package this repo publishes: a registry account, not a
+  // backend setting.
+  "NPM_TOKEN",
 ]);
 /** Unprefixed names from before this rule, not backend-related. Don't add to this list. */
 export const LEGACY_CI_NAMES = { waypack: ["SPARKLE_PRIVATE_KEY"] };
