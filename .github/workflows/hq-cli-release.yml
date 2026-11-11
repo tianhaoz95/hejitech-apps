@@ -71,7 +71,7 @@ jobs:
       - run: npm run typecheck -w "$PACKAGE" -w @hq/core
       - run: npm test -w "$PACKAGE" -w @hq/core
       - name: Pack (builds the bundle)
-        run: npm pack -w "$PACKAGE" --pack-destination "$RUNNER_TEMP/pack"
+        run: mkdir -p "$RUNNER_TEMP/pack" && npm pack -w "$PACKAGE" --pack-destination "$RUNNER_TEMP/pack"
       - uses: actions/setup-node@v4
         with:
           node-version: 20
