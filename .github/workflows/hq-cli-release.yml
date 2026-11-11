@@ -5,6 +5,9 @@ name: HQ CLI (npm + GitHub Packages)
 # on the oldest Node it supports, then publishes that same tarball to npm (with provenance) and to
 # GitHub Packages. Re-running is safe: a version that is already there is skipped.
 #
+# It runs only for a published release, or by hand. By hand without a tag it packs and checks the
+# branch it is started from and publishes nothing (a rehearsal); publishing always needs a tag.
+#
 # Secrets (also in REQUIRED_SECRETS of projects/hq/release.env, so cut_release.sh refuses without them):
 #   HQ_NPM_TOKEN          an npm granular access token that may publish in the @hejitech scope
 #   HQ_GH_PACKAGES_TOKEN  a GitHub token (classic, write:packages) of a member of the hejitech
@@ -15,12 +18,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (hq-v<version>)"
-        required: true
+        description: "Release tag (hq-v<version>). Empty: rehearse this branch, publish nothing"
+        required: false
       dry_run:
         description: "Pack and check, but publish nothing"
         type: boolean
-        default: false
+        default: true
 
 concurrency:
   group: hq-cli-release-${{ github.event.release.tag_name || inputs.tag }}
@@ -36,15 +39,16 @@ env:
 jobs:
   pack:
     name: Test and pack
-    if: startsWith(github.event.release.tag_name || inputs.tag, 'hq-v')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'hq-v')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
       version: ${{ steps.version.outputs.version }}
+      dry_run: ${{ steps.version.outputs.dry_run }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.TAG }}
+          ref: ${{ env.TAG || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -53,9 +57,16 @@ jobs:
       - name: The package takes the release's version
         id: version
         run: |
-          VERSION="${TAG#hq-v}"
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$TAG is not hq-v<major.minor.patch>"; exit 1; }
-          npm pkg set version="$VERSION" -w "$PACKAGE"
+          if [ -z "$TAG" ]; then
+            VERSION="$(npm pkg get version -w "$PACKAGE" | jq -r '.[]')"
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            echo "No tag: rehearsing $PACKAGE@$VERSION from ${GITHUB_REF_NAME}; nothing will be published." >> "$GITHUB_STEP_SUMMARY"
+          else
+            VERSION="${TAG#hq-v}"
+            [[ "$TAG" == hq-v* && "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$TAG is not hq-v<major.minor.patch>"; exit 1; }
+            npm pkg set version="$VERSION" -w "$PACKAGE"
+            echo "dry_run=${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}" >> "$GITHUB_OUTPUT"
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - run: npm run typecheck -w "$PACKAGE" -w @hq/core
       - run: npm test -w "$PACKAGE" -w @hq/core
@@ -98,7 +109,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.HQ_NPM_TOKEN }}
           VERSION: ${{ needs.pack.outputs.version }}
-          DRY_RUN: ${{ inputs.dry_run }}
+          DRY_RUN: ${{ needs.pack.outputs.dry_run }}
         run: |
           if [ "$DRY_RUN" = "true" ]; then npm publish ./*.tgz --access public --dry-run; exit 0; fi
           [ -n "$NODE_AUTH_TOKEN" ] || { echo "::error::The HQ_NPM_TOKEN secret is not set (projects/hq/docs/DEPLOY.md, the hq command)."; exit 1; }
@@ -127,7 +138,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.HQ_GH_PACKAGES_TOKEN }}
           VERSION: ${{ needs.pack.outputs.version }}
-          DRY_RUN: ${{ inputs.dry_run }}
+          DRY_RUN: ${{ needs.pack.outputs.dry_run }}
         run: |
           if [ "$DRY_RUN" = "true" ]; then npm publish ./*.tgz --dry-run; exit 0; fi
           [ -n "$NODE_AUTH_TOKEN" ] || { echo "::error::The HQ_GH_PACKAGES_TOKEN secret is not set (projects/hq/docs/DEPLOY.md, the hq command)."; exit 1; }
