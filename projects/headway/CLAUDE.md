@@ -2,7 +2,7 @@
 
 Caltrain status on Apple Watch, Even G2 glasses + R1 ring, with iPhone alerts. A Worker merges Caltrain's
 timetable (compiled in) with 511.org's live feed into boards for the glasses, the iPhone app, the
-web page and an MCP server, and its every-minute cron pushes alerts through APNs. Layout:
+web page and an MCP server, and its every-minute cron pushes alerts through APNs (iPhone) and FCM (Android). Layout:
 `README.md`. Why things are the way they are: `docs/decisions.md` (read it before changing
 behaviour). Going live: `docs/DEPLOY.md`. Read the root `CLAUDE.md` too.
 
@@ -51,7 +51,7 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|f
   push registration), `review.ts` (App Review's demo account: `/api/review-sign-in` checks the
   Worker's REVIEW_* secrets, resets the account to a demo commute and mints a Supabase session; no
   email sign-in for people), `cron.ts` + `realtime.ts` (511 → `headway.realtime` snapshot, alert engine →
-  `push.ts` APNs), `family.ts` (`/api/family/*` and the cron's family pass: notifications and
+  `push.ts`: APNs for iPhones, FCM's HTTP v1 API for Android phones; a `push_devices` row has one token or the other), `family.ts` (`/api/family/*` and the cron's family pass: notifications and
   followed-train Live Activities, update tokens `follow:<sharer>:<trip>`), `mcp.ts` (seven tools), `store.ts`. Service key only here; clients read their own
   rows through RLS and every write goes through the Worker.
 - **Plugin** (`apps/glasses/src`): `app.ts` (HeadwayApp: board sources, offline timetable, tracking,
@@ -65,7 +65,7 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|f
   App Group), the tracked-train Live Activity and the "next trains" board Live Activity (pinned from the Trains
   tab; the cron pushes it via update tokens whose `trip_id` is `board:<from>><to>`).
 - **Apple Watch app** (`apps/ios/Watch`): Companion watchOS app with glanceable departure board, live delays, countdowns, direction flip, express filtering, and train progress tracking synced with the iPhone app via WatchConnectivity and able to refresh directly.
-- **Android app** (`apps/android/app`): Native Jetpack Compose Material 3 phone app. Tabs: Trains (board, live delays, flip, station picker, track train), Commute (legs, alerts), Family (group, shares, status, invites; no family notifications on Android yet), Glasses (pairing code), Settings. Keeps paired Wear OS watches in step via Google Play Services Wearable Data Layer (`/headway/sync_state`).
+- **Android app** (`apps/android/app`): Native Jetpack Compose Material 3 phone app. Tabs: Trains (board, live delays, flip, station picker, track train), Commute (legs, alerts), Family (group, shares, status, invites), Glasses (pairing code), Settings. Keeps paired Wear OS watches in step via Google Play Services Wearable Data Layer (`/headway/sync_state`). Alerts arrive through FCM (`PushService`; token registered at sign-in with `POST /api/push {platform: "android"}`; Firebase is configured by `res/values/firebase.xml`, no google-services plugin). Debug: `adb shell am start -n com.hejitech.headway/.app.MainActivity --ez autoSignIn true` signs the seed rider in on the local stack (a phone on USB needs `adb reverse tcp:8792 tcp:8792; adb reverse tcp:55421 tcp:55421`).
 - **Wear OS app** (`apps/android/wear`): Companion smartwatch app built with Wear Compose. Features live wrist departure board, one-tap trip tracking, a glanceable Wear OS Tile (`HeadwayBoardTileService`) on the watch carousel, and a watch face complication (`NextTrainComplicationService`) for departure countdowns.
 - **Android Core library** (`apps/android/core`): Shared Kotlin data models, Caltrain station index, Pacific time conversions (`Clock`), coroutine HTTP API client (`HeadwayApiClient`), and Wearable Data Layer message serialization (`WatchSyncState`).
 
@@ -89,8 +89,10 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|f
 - Locally `wrangler dev` runs cron at `/cdn-cgi/handler/scheduled`, not `/__scheduled`.
 - An unsigned simulator build can't use the Keychain (the session doesn't survive a relaunch): build
   with `CODE_SIGN_IDENTITY=-`.
-- The family cron pass only runs with APNs configured, so locally it's skipped: to exercise it, put a throwaway
+- The family cron pass only runs with APNs or FCM configured, so locally it's skipped: to exercise it, put a throwaway
   P-256 key in `.dev.vars` (APNS_TEAM_ID/KEY_ID/PRIVATE_KEY); pushes then fail at Apple but keys are recorded.
+  `FCM_PRIVATE_KEY` in `.dev.vars` (the service account's key, `\n` for newlines) sends real alerts to Android phones,
+  and then `test-api.mjs`'s push steps fail (they expect an unconfigured server).
 - Gradle needs JDK 17 (`JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home`); Android Studio's JBR is too new.
 - The Even SDK returns a bridge object in any browser: `main.ts` checks `flutter_inappwebview` first.
   Simulator screenshots are RGBA with the text in alpha: composite on black to look at them.

@@ -53,15 +53,18 @@ create table headway.access_tokens (
 );
 create index access_tokens_user on headway.access_tokens(user_id);
 
--- iPhones that get alerts (APNs device tokens). `environment` is the APNs host the build talks to.
+-- Phones that get alerts: an iPhone's APNs device token or an Android phone's FCM registration token
+-- (exactly one of the two). `environment` is the APNs host the build talks to (unused for Android).
 create table headway.push_devices (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  apns_token text not null unique,
+  apns_token text unique,
+  fcm_token text unique,
   environment text not null default 'production' check (environment in ('production', 'sandbox')),
   label text not null default 'iPhone',
   created_at timestamptz not null default now(),
-  last_seen_at timestamptz not null default now()
+  last_seen_at timestamptz not null default now(),
+  constraint push_devices_one_token check ((apns_token is null) <> (fcm_token is null))
 );
 create index push_devices_user on headway.push_devices(user_id);
 

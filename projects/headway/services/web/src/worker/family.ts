@@ -7,7 +7,7 @@ import {
   liveFollowTrains, memberFromRow, memberView, myShares, normalizeSettings, pruneFollows, STATUS_TEXT, withoutMember,
   type FamilyMember, type FamilyTrain, type Notification, type RealtimeSnapshot, type SharerData,
 } from "@headway/core";
-import { FOLLOW_ACTIVITY_PREFIX, pushConfigured, sendLiveActivityPush, sendPush, type LiveActivityContentState, type PushResult } from "./push.ts";
+import { FOLLOW_ACTIVITY_PREFIX, PUSH_DEVICE_COLUMNS, pushConfigured, sendLiveActivityPush, sendPush, type LiveActivityContentState, type PushResult } from "./push.ts";
 import { loadOnTrain, loadSettings, loadSnapshot, type Db, type Env } from "./store.ts";
 
 /** A push that throws (a dropped connection) counts as one failure; it mustn't stop everyone else's. */
@@ -77,7 +77,7 @@ async function saveMember(db: Db, m: FamilyMember): Promise<void> {
 
 async function pushToUser(env: Env, db: Db, userId: string, n: Notification): Promise<void> {
   if (!pushConfigured(env)) return;
-  const { data } = await db.from("push_devices").select("id, apns_token, environment").eq("user_id", userId);
+  const { data } = await db.from("push_devices").select(`id, ${PUSH_DEVICE_COLUMNS}`).eq("user_id", userId);
   await Promise.all((data ?? []).map(async (d) => {
     const r = await settle(sendPush(env, d, n));
     if (!r.ok && r.gone) await db.from("push_devices").delete().eq("id", d.id);
@@ -319,7 +319,7 @@ export async function runFamilyCron(env: Env, db: Db, snapshot: RealtimeSnapshot
     const ids = viewers.map((v) => v.viewer.user_id);
     const since = new Date(t - 2 * 86400_000).toISOString();
     const [{ data: devices }, { data: sent }, { data: startTokens }] = await Promise.all([
-      db.from("push_devices").select("id, user_id, apns_token, environment").in("user_id", ids),
+      db.from("push_devices").select(`id, user_id, ${PUSH_DEVICE_COLUMNS}`).in("user_id", ids),
       db.from("sent_notifications").select("user_id, key").in("user_id", ids).like("key", "fam:%").gte("sent_at", since),
       db.from("activity_tokens").select("user_id, token, environment").eq("kind", "start").in("user_id", ids),
     ]);

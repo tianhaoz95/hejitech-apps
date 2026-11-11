@@ -36,6 +36,7 @@ npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production   # the share
 npx wrangler secret put TRANSIT_511_API_KEY --env production         # free token: https://511.org/open-data/token
 npx wrangler secret put APNS_KEY_ID --env production                 # an APNs auth key (developer portal → Keys)
 npx wrangler secret put APNS_PRIVATE_KEY --env production            # that key's .p8 contents
+npx wrangler secret put FCM_PRIVATE_KEY --env production             # Android alerts: the "private_key" of the Firebase service account (~/Credentials/heji-apps-firebase-adminsdk.json)
 npx wrangler secret put APPLE_SIWA_KEY_ID --env production           # a Sign in with Apple key (developer portal → Keys, primary App ID com.hejitech.headway)
 npx wrangler secret put APPLE_SIWA_PRIVATE_KEY --env production      # that key's .p8 contents: account deletion revokes the Apple token (src/worker/apple.ts)
 ```
@@ -43,6 +44,17 @@ npx wrangler secret put APPLE_SIWA_PRIVATE_KEY --env production      # that key'
 Without the 511 token boards are timetable-only (`/api/status` says `realtime.configured: false`);
 without the APNs key nothing is pushed (`push.configured: false`) and the app's Settings says alerts
 aren't switched on. One APNs key serves every app of team 68CTFST8W2 (the topic is the bundle id).
+
+Android alerts go through Firebase Cloud Messaging and nothing else of Firebase: the Worker signs a
+JWT with the service account's key, trades it for a Google access token and calls FCM's HTTP v1 API
+(`push.ts`). The Firebase project is `heji-apps` ("HEJI Apps", console signed in as the team's dev
+Google account), shared by the HEJI apps for now: `FCM_PROJECT_ID` and `FCM_CLIENT_EMAIL` are vars in
+`wrangler.jsonc`, the key a secret. The service account file is `~/Credentials/heji-apps-firebase-adminsdk.json`,
+also the team-wide GitHub secret `FIREBASE_SERVICE_ACCOUNT_JSON` (no workflow reads it yet). The app has no `google-services.json`: its four values are in
+`apps/android/app/src/main/res/values/firebase.xml`. Moving Headway to a Firebase project of its
+own later means a new `firebase.xml`, new vars and key, and every phone registering again after it
+updates (a token belongs to one Firebase project), so send through both projects for a while.
+Without the key Android phones register but get nothing (`POST /api/push` answers `configured: false`).
 
 Smoke test:
 

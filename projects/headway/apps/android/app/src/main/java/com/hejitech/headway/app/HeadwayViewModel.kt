@@ -75,6 +75,19 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
     /** The family group (null until loaded or signed out) and invites to you. */
     val family: StateFlow<FamilyState?> = _family.asStateFlow()
 
+    /** Whether this phone is registered for alerts: null signed out or not tried yet. */
+    private val _alertsOn = MutableStateFlow<Boolean?>(null)
+    val alertsOn: StateFlow<Boolean?> = _alertsOn.asStateFlow()
+
+    private val _notice = MutableStateFlow<String?>(null)
+    /** A one-line result to show in Settings ("Test alert sent"). */
+    val notice: StateFlow<String?> = _notice.asStateFlow()
+
+    /** The token this phone registered, to take it off the account at sign-out. */
+    private var pushToken: String? = null
+
+    private val isEmulator = android.os.Build.FINGERPRINT.contains("generic") || android.os.Build.HARDWARE in setOf("ranchu", "goldfish")
+
     private var pollJob: Job? = null
 
     init {
@@ -113,7 +126,7 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
 
     fun setBackendMode(useLocal: Boolean) {
         _isLocalBackend.value = useLocal
-        apiClient.config = if (useLocal) BackendConfig.LOCAL_EMULATOR else BackendConfig.PRODUCTION
+        apiClient.config = if (!useLocal) BackendConfig.PRODUCTION else if (isEmulator) BackendConfig.LOCAL_EMULATOR else BackendConfig.LOCAL_DEVICE
         refresh()
     }
 
@@ -351,6 +364,7 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
             _isLoading.value = true
             try {
                 apiClient.signInEmail(email, pass)
+                registerForAlerts()
                 refresh()
                 loadSettings()
                 loadFamily()
@@ -362,7 +376,46 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    // ---------------------------------------------------------------- alerts (FCM)
+
+    /** Registers this phone for the account's alerts. Call after sign-in and when the token changes. */
+    fun registerForAlerts(token: String? = null) {
+        if (apiClient.session == null) return
+        PushService.ensureChannels(getApplication())
+        PushService.onToken = { registerForAlerts(it) }
+        viewModelScope.launch {
+            val t = token ?: PushService.token()
+            if (t == null) { _alertsOn.value = false; return@launch }
+            runCatching { apiClient.registerPush(t, android.os.Build.MODEL ?: "Android phone") }
+                .onSuccess { pushToken = t; _alertsOn.value = it }
+                .onFailure { _alertsOn.value = false }
+        }
+    }
+
+    fun sendTestAlert() {
+        viewModelScope.launch {
+            _notice.value = try {
+                apiClient.testPush()
+                "Test alert sent."
+            } catch (e: HeadwayApiException) {
+                apiError(e)
+            } catch (e: Exception) {
+                e.localizedMessage ?: "Couldn't send a test alert"
+            }
+        }
+    }
+
     fun signOut() {
+        // Alerts follow the account: this phone stops getting them (with the session it still has).
+        PushService.onToken = null
+        _alertsOn.value = null
+        _notice.value = null
+        val token = pushToken
+        pushToken = null
+        if (token != null && apiClient.session != null) {
+            val leaving = HeadwayApiClient(apiClient.config).also { it.setSession(apiClient.session) }
+            viewModelScope.launch { runCatching { leaving.unregisterPush(token) } }
+        }
         apiClient.setSession(null)
         _family.value = null
         _tracked.value = null

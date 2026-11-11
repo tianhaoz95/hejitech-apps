@@ -166,8 +166,8 @@ by email, and the invitee accepts in the app; you can't join another group witho
 leaving deletes the group (members are told); leaving removes everything you shared at once; only the
 current state is shown, never a history; members who share nothing show by name only; viewers get nothing
 until they subscribe; the sharer sees who sees each share and who follows it. Pickup reminders were left
-out for now. Followed trains go on the Lock Screen. iPhone and Android phone apps; Android gets no family
-notifications yet (no server push to Android: it needs FCM, to be revisited).
+out for now. Followed trains go on the Lock Screen. iPhone and Android phone apps; Android gets the
+notifications through FCM (no Lock Screen activity there).
 
 - **Four share kinds** (`core/family.ts`): `trip` (the tracked train), `ride` (on-train detection, high
   confidence only), `commute` (the usual train, the first at or after a leg's usual time, late ≥ 5 min or
@@ -216,6 +216,22 @@ that one day.
   leg again; switching the setting off forgets it. The cron reads it only while a leg is being watched.
 - **It needs a fix at the station**: the app open (or opened within the hour), or "with the app
   closed" on-train mode, where a wake soon after a ride now reports even when standing still. Without
-  one, alerts go on as before. Android keeps the setting as saved but has no switch: it gets no
-  commute alerts yet.
+  one, alerts go on as before. Android keeps the setting as saved but has no switch for it yet.
 
+## Android alerts: FCM for delivery, nothing else of Firebase (2026-11-11)
+
+The alert engine, tokens and "who gets what" stay in the Worker and Supabase; Firebase only carries the
+message to the phone (`push.ts`: service-account JWT → Google access token → FCM HTTP v1). No Cloud
+Functions (they need the paid plan and a second deploy path), no Analytics, no google-services plugin
+(`res/values/firebase.xml` holds its four values).
+
+- **One Firebase project for every HEJI app for now** (`heji-apps`), to move fast. The cost comes at
+  graduation: an FCM token belongs to one Firebase project, so moving means every phone registering
+  again after an update, sending through both meanwhile.
+- **Notification messages, not data-only**: the system shows them with the app closed (more reliable
+  under phone makers' battery rules); `PushService` shows them while the app is open. Priority alerts
+  go to the `headway_alerts` channel (sound), the rest to `headway_quiet`; the alert's key is the tag,
+  so a repeat replaces what's showing. Messages expire after 30 minutes.
+- **One table for both platforms**: `push_devices` has `apns_token` or `fcm_token` (a check keeps it to
+  one), so the cron and family passes notify every phone of a user the same way. Live Activities stay
+  iPhone-only.

@@ -10,7 +10,7 @@ cancellations, leaving on time and arriving at your stop. Docs:
 projects/headway/
   packages/core/        @headway/core: compiled Caltrain timetable, GTFS-RT reader, boards, settings,
                         alert engine, G2 screens + R1 state machine (TypeScript, consumed as source)
-  services/web/         @headway/web: Cloudflare Worker (site, /api, every-minute cron, APNs, /mcp + OAuth)
+  services/web/         @headway/web: Cloudflare Worker (site, /api, every-minute cron, APNs + FCM, /mcp + OAuth)
   apps/glasses/         @headway/glasses: Even Hub plugin (.ehpk)
   apps/ios/             iPhone app (SwiftUI, XcodeGen) + HeadwayKit (models, API client, sign-in)
   apps/android/         Android & Wear OS companion apps:

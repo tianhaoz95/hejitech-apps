@@ -312,6 +312,25 @@ await step("push registration: hex tokens, one owner per phone, no pushes withou
   await call(`/api/push/${token}`, { method: "DELETE", auth: other });
   assert.equal((await call("/api/push", { auth: other })).body.devices.length, 0);
 });
+await step("push registration: an Android phone registers its FCM token, listed as android, moved and removed like an iPhone's", async () => {
+  const token = `${randomBytes(11).toString("base64url")}:APA91b${randomBytes(100).toString("base64url")}`;
+  assert.equal((await call("/api/push", { method: "POST", auth: session, body: { platform: "android", token: "short" } })).status, 400);
+  // Plain hex is an APNs token, never an FCM one.
+  assert.equal((await call("/api/push", { method: "POST", auth: session, body: { platform: "android", token: randomBytes(40).toString("hex") } })).status, 400);
+  const r = await call("/api/push", { method: "POST", auth: session, body: { platform: "android", token, label: "Test Pixel" } });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.configured, false);
+  await call("/api/push", { method: "POST", auth: session, body: { platform: "android", token, label: "Test Pixel" } });
+  const mine = (await call("/api/push", { auth: session })).body.devices.filter((d) => d.label === "Test Pixel");
+  assert.equal(mine.length, 1);
+  assert.equal(mine[0].platform, "android");
+  assert.equal(mine[0].fcm_token, undefined);
+  await call("/api/push", { method: "POST", auth: other, body: { platform: "android", token, label: "Test Pixel" } });
+  assert.ok(!(await call("/api/push", { auth: session })).body.devices.some((d) => d.label === "Test Pixel"));
+  assert.equal((await call(`/api/push/${encodeURIComponent(token)}`, { method: "DELETE", auth: other })).status, 200);
+  assert.equal((await call("/api/push", { auth: other })).body.devices.length, 0);
+  assert.equal((await call("/api/push/nope", { method: "DELETE", auth: other })).status, 400);
+});
 
 // ---------------------------------------------------------------- MCP
 await step("MCP: 401 with the OAuth hint, initialize, tools", async () => {

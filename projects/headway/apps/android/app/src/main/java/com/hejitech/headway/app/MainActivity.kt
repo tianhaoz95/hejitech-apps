@@ -66,6 +66,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
+    /** Android 13+ shows nothing until the person allows notifications: asked when they sign in or test an alert. */
+    private fun requestNotifications() {
+        if (!PushService.canNotify(this)) askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
     override fun onStart() {
         super.onStart()
         viewModel.onAppVisible(true)
@@ -79,6 +86,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        PushService.ensureChannels(this)
+        // Debug: `adb shell am start -n com.hejitech.headway/.app.MainActivity --ez autoSignIn true` signs the
+        // seed rider in on the local stack (the iPhone app's -autoSignIn).
+        if (BuildConfig.DEBUG && savedInstanceState == null && intent.getBooleanExtra("autoSignIn", false)) {
+            viewModel.setBackendMode(true)
+            viewModel.signInDebug()
+        }
 
         setContent {
             HeadwayTheme {
@@ -138,7 +152,7 @@ class MainActivity : ComponentActivity() {
                             MainTab.COMMUTE -> CommuteScreen(viewModel = viewModel)
                             MainTab.FAMILY -> FamilyScreen(viewModel = viewModel)
                             MainTab.GLASSES -> GlassesScreen(viewModel = viewModel)
-                            MainTab.SETTINGS -> SettingsScreen(viewModel = viewModel, onRideModeChosen = ::requestRideAccess)
+                            MainTab.SETTINGS -> SettingsScreen(viewModel = viewModel, onRideModeChosen = ::requestRideAccess, onAskNotifications = ::requestNotifications)
                         }
                     }
                 }

@@ -25,6 +25,10 @@ export interface Env {
   APNS_KEY_ID?: string;
   APNS_PRIVATE_KEY?: string;
   APNS_TOPIC?: string;
+  /** Firebase Cloud Messaging (Android): the Firebase project and a service account's email and private key (secret) with the Firebase Messaging API. */
+  FCM_PROJECT_ID?: string;
+  FCM_CLIENT_EMAIL?: string;
+  FCM_PRIVATE_KEY?: string;
   /** Apple developer team; with the two secrets below, account deletion revokes Sign in with Apple tokens (apple.ts). */
   APPLE_TEAM_ID?: string;
   /** Secret: a Sign in with Apple key's id (developer portal → Keys). */

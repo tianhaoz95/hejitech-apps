@@ -18,5 +18,8 @@ data class BackendConfig(
             supabaseUrl = "http://10.0.2.2:55421",
             anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
         )
+
+        // A phone on USB reaches the host through `adb reverse tcp:8792 tcp:8792; adb reverse tcp:55421 tcp:55421`.
+        val LOCAL_DEVICE = LOCAL_EMULATOR.copy(site = "http://127.0.0.1:8792", supabaseUrl = "http://127.0.0.1:55421")
     }
 }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the google-services Gradle plugin would generate from google-services.json, written by hand so
+     the build needs neither. Firebase project "HEJI Apps" (heji-apps), used for Cloud Messaging only.
+     These identify the app to Firebase and ship in every APK: they are not secrets. -->
+<resources>
+    <string name="project_id" translatable="false">heji-apps</string>
+    <string name="gcm_defaultSenderId" translatable="false">1077302351628</string>
+    <string name="google_app_id" translatable="false">1:1077302351628:android:caacb30c85d162afc85b29</string>
+    <string name="google_api_key" translatable="false">AIzaSyB3o3WVdCIzJibmP4xQUIYS4nhasuweyJc</string>
+</resources>

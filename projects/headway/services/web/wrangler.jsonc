@@ -27,11 +27,14 @@
     "REALTIME_EVERY_MIN": "2",
     "APNS_TEAM_ID": "68CTFST8W2",
     "APNS_TOPIC": "com.hejitech.headway",
+    // Android alerts through Firebase Cloud Messaging: the Firebase project and its service account.
+    "FCM_PROJECT_ID": "heji-apps",
+    "FCM_CLIENT_EMAIL": "firebase-adminsdk-fbsvc@heji-apps.iam.gserviceaccount.com",
     // The local App Review demo account (review.ts): review@example.com / headway-review-dev.
     "REVIEW_EMAIL": "review@example.com",
     "REVIEW_PASSWORD_SHA256": "b4762f28c1e03047d1bea23150b65414548c9082057cccbd1acac5d0877ca170"
   },
-  // Local secrets: .dev.vars (SUPABASE_SERVICE_ROLE_KEY; optional TRANSIT_511_API_KEY, APNS_KEY_ID, APNS_PRIVATE_KEY).
+  // Local secrets: .dev.vars (SUPABASE_SERVICE_ROLE_KEY; optional TRANSIT_511_API_KEY, APNS_KEY_ID, APNS_PRIVATE_KEY, FCM_PRIVATE_KEY).
   "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "headway-oauth-local" }],
   "dev": { "port": 8792, "ip": "127.0.0.1" },
 
@@ -47,12 +50,14 @@
         "APPLE_TEAM_ID": "68CTFST8W2",
         "REALTIME_EVERY_MIN": "2",
         "APNS_TEAM_ID": "68CTFST8W2",
-        "APNS_TOPIC": "com.hejitech.headway"
+        "APNS_TOPIC": "com.hejitech.headway",
+        "FCM_PROJECT_ID": "heji-apps",
+        "FCM_CLIENT_EMAIL": "firebase-adminsdk-fbsvc@heji-apps.iam.gserviceaccount.com"
       },
       // Secrets APPLE_SIWA_KEY_ID + APPLE_SIWA_PRIVATE_KEY (a Sign in with Apple key) let account deletion
       // revoke Apple tokens (src/worker/apple.ts).
       // Secrets (wrangler secret put --env production): SUPABASE_SERVICE_ROLE_KEY, TRANSIT_511_API_KEY,
-      // APNS_KEY_ID, APNS_PRIVATE_KEY, and REVIEW_EMAIL + REVIEW_PASSWORD_SHA256 (scripts/review_account.sh). Without the 511 key boards are timetable-only; without the
+      // APNS_KEY_ID, APNS_PRIVATE_KEY, FCM_PRIVATE_KEY (the service account's private key: Android alerts), and REVIEW_EMAIL + REVIEW_PASSWORD_SHA256 (scripts/review_account.sh). Without the 511 key boards are timetable-only; without the
       // APNs key no alerts are pushed (docs/DEPLOY.md).
       "kv_namespaces": [{ "binding": "OAUTH_KV" }]
     }

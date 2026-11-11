@@ -7,7 +7,7 @@
 import { devClock, now as clockNow } from "./clock.ts";
 import { appleKey, revokeIfPossible } from "./apple.ts";
 import { board, checkSettings, isTravelMode, clock, commuteArrival, commuteBoard, commuteDoneCard, detectOnTrain, newLeg, onTrainCard, stillOnTrain, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type CommuteDone, type ExpressPreference, type OnTrainSample, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
-import { NOT_BOARD_ACTIVITY, pushConfigured, sendPush } from "./push.ts";
+import { apnsConfigured, fcmConfigured, NOT_BOARD_ACTIVITY, PUSH_DEVICE_COLUMNS, pushConfigured, sendPush } from "./push.ts";
 import { reviewSignIn } from "./review.ts";
 import { handleFamily, leaveFamily } from "./family.ts";
 import {
@@ -16,6 +16,8 @@ import {
 } from "./store.ts";
 
 /** Every table holding a user's Headway rows (DELETE /api/account, the review account's reset). */
+/** An FCM registration token: URL-safe base64 with a colon, around 150–250 characters (never plain hex, which is an APNs token). */
+const FCM_TOKEN = /^(?=.*[^0-9a-fA-F])[A-Za-z0-9_:\-]{64,4096}$/;
 const USER_TABLES = ["profiles", "pairing_codes", "device_tokens", "access_tokens", "push_devices", "activity_tokens", "tracked_trips", "sent_notifications"] as const;
 
 /** "Not on this train" holds this long, so the same stretch of track doesn't ask again. */
@@ -302,7 +304,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
             title: `On train ${card.train}`,
             body: `Tracking it to ${card.to.name}, arriving ${clock(card.pred_arr)}. Not on it? Stop tracking in Headway.`,
           };
-          const { data } = await db.from("push_devices").select("id, apns_token, environment").eq("user_id", userId);
+          const { data } = await db.from("push_devices").select(`id, ${PUSH_DEVICE_COLUMNS}`).eq("user_id", userId);
           await Promise.all((data ?? []).map((d) => sendPush(env, d, n)));
         }
       }
@@ -363,30 +365,41 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     return reply({ ok: true });
   }
 
-  // ------------------------------------------------------------ push (iPhone)
+  // ------------------------------------------------------------ push (iPhone: APNs token in hex; Android: FCM registration token)
   if (path === "/api/push" && req.method === "GET") {
-    const { data } = await db.from("push_devices").select("id, label, environment, created_at, last_seen_at").eq("user_id", userId).order("created_at");
-    return reply({ configured: pushConfigured(env), devices: data ?? [] });
+    const { data } = await db.from("push_devices").select("id, label, environment, created_at, last_seen_at, fcm_token").eq("user_id", userId).order("created_at");
+    const devices = (data ?? []).map(({ fcm_token, ...d }) => ({ ...d, platform: fcm_token ? "android" : "ios" }));
+    return reply({ configured: pushConfigured(env), devices });
   }
   if (path === "/api/push" && req.method === "POST") {
-    const body = (await req.json().catch(() => ({}))) as { token?: string; environment?: string; label?: string };
+    const body = (await req.json().catch(() => ({}))) as { token?: string; environment?: string; label?: string; platform?: string };
+    const last_seen_at = new Date().toISOString();
+    // A token belongs to one phone: re-registering under another account moves it.
+    if (body.platform === "android") {
+      const token = String(body.token ?? "");
+      if (!FCM_TOKEN.test(token)) return reply({ error: "token must be the FCM registration token" }, 400);
+      const { error } = await db.from("push_devices").upsert({ user_id: userId, fcm_token: token, label: String(body.label ?? "Android phone").slice(0, 60), last_seen_at }, { onConflict: "fcm_token" });
+      if (error) return reply({ error: error.message }, 500);
+      return reply({ ok: true, configured: fcmConfigured(env) });
+    }
     const token = String(body.token ?? "").toLowerCase();
     if (!/^[0-9a-f]{32,200}$/.test(token)) return reply({ error: "token must be the APNs device token in hex" }, 400);
     const environment = body.environment === "sandbox" ? "sandbox" : "production";
-    // A token belongs to one phone: re-registering under another account moves it.
-    const { error } = await db.from("push_devices").upsert({ user_id: userId, apns_token: token, environment, label: String(body.label ?? "iPhone").slice(0, 60), last_seen_at: new Date().toISOString() }, { onConflict: "apns_token" });
+    const { error } = await db.from("push_devices").upsert({ user_id: userId, apns_token: token, environment, label: String(body.label ?? "iPhone").slice(0, 60), last_seen_at }, { onConflict: "apns_token" });
     if (error) return reply({ error: error.message }, 500);
-    return reply({ ok: true, configured: pushConfigured(env) });
+    return reply({ ok: true, configured: apnsConfigured(env) });
   }
-  const pushDel = path.match(/^\/api\/push\/([0-9a-f]{32,200})$/i);
-  if (pushDel && req.method === "DELETE") {
-    await db.from("push_devices").delete().eq("user_id", userId).eq("apns_token", pushDel[1].toLowerCase());
+  if (path.startsWith("/api/push/") && path !== "/api/push/test" && req.method === "DELETE") {
+    const token = decodeURIComponent(path.slice("/api/push/".length));
+    if (/^[0-9a-f]{32,200}$/i.test(token)) await db.from("push_devices").delete().eq("user_id", userId).eq("apns_token", token.toLowerCase());
+    else if (FCM_TOKEN.test(token)) await db.from("push_devices").delete().eq("user_id", userId).eq("fcm_token", token);
+    else return reply({ error: "not a push token" }, 400);
     return reply({ ok: true });
   }
   if (path === "/api/push/test" && req.method === "POST") {
     if (!pushConfigured(env)) return reply({ error: "push isn't set up on the server yet" }, 503);
-    const { data } = await db.from("push_devices").select("id, apns_token, environment").eq("user_id", userId);
-    if (!data?.length) return reply({ error: "no iPhone registered for alerts" }, 404);
+    const { data } = await db.from("push_devices").select(`id, ${PUSH_DEVICE_COLUMNS}`).eq("user_id", userId);
+    if (!data?.length) return reply({ error: "no phone registered for alerts" }, 404);
     const n: Notification = { key: `test:${now}`, kind: "service", priority: true, thread: "headway-test", title: "Headway alerts work", body: "You'll hear from Headway like this when your train is late, cancelled or almost at your stop." };
     const results = await Promise.all(data.map((d) => sendPush(env, d, n)));
     return reply({ results: results.map((r) => (r.ok ? "sent" : r.reason)) });

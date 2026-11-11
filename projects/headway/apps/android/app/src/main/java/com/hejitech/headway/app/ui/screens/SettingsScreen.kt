@@ -25,9 +25,11 @@ import com.hejitech.headway.core.model.OnTrainMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: HeadwayViewModel, onRideModeChosen: (OnTrainMode) -> Unit = {}) {
+fun SettingsScreen(viewModel: HeadwayViewModel, onRideModeChosen: (OnTrainMode) -> Unit = {}, onAskNotifications: () -> Unit = {}) {
     val settings by viewModel.settings.collectAsState()
     val isLocalBackend by viewModel.isLocalBackend.collectAsState()
+    val alertsOn by viewModel.alertsOn.collectAsState()
+    val notice by viewModel.notice.collectAsState()
     val session = viewModel.apiClient.session
     var showWhatsNewDialog by remember { mutableStateOf(false) }
 
@@ -73,7 +75,7 @@ fun SettingsScreen(viewModel: HeadwayViewModel, onRideModeChosen: (OnTrainMode) 
                         } else {
                             Text("Signed out (Public Timetable Mode)", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
                             Spacer(modifier = Modifier.height(12.dp))
-                            Button(onClick = { viewModel.signInDebug() }) {
+                            Button(onClick = { onAskNotifications(); viewModel.signInDebug() }) {
                                 Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null)
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text("Sign In (Rider Account)")
@@ -150,10 +152,29 @@ fun SettingsScreen(viewModel: HeadwayViewModel, onRideModeChosen: (OnTrainMode) 
                             }
                         }
                         Text(
-                            "Priority alerts affect your commute: your direction, inside your watch window, and the train you track. Priority and quiet adds delays and notices for your stations at other times or the other way, silently. Alerts arrive on an iPhone signed in to the same account.",
+                            "Priority alerts affect your commute: your direction, inside your watch window, and the train you track. Priority and quiet adds delays and notices for your stations at other times or the other way, silently. Alerts arrive on every phone signed in to the same account.",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.LightGray
                         )
+                        if (session != null) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                when (alertsOn) {
+                                    true -> "This phone gets alerts."
+                                    false -> "Alerts aren't switched on for this phone yet."
+                                    null -> "Setting up alerts for this phone…"
+                                },
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            if (alertsOn == true) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(onClick = { onAskNotifications(); viewModel.sendTestAlert() }) { Text("Send a test alert") }
+                            }
+                            notice?.let {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(it, style = MaterialTheme.typography.bodySmall, color = Color.LightGray)
+                            }
+                        }
                     }
                 }
             }
@@ -174,7 +195,7 @@ fun SettingsScreen(viewModel: HeadwayViewModel, onRideModeChosen: (OnTrainMode) 
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(if (isLocalBackend) "Local Dev Stack (10.0.2.2:8792)" else "Production (headway.hejitech.workers.dev)")
+                                Text(if (isLocalBackend) "Local Dev Stack (this computer, port 8792)" else "Production (headway.hejitech.workers.dev)")
                                 Text("Toggle between local dev worker and hosted production.", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                             }
                             Switch(

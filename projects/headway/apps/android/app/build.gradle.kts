@@ -56,6 +56,8 @@ dependencies {
 
     implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.play.services)
+    // Alerts from the Worker (FCM). No google-services plugin: res/values/firebase.xml holds what it would generate.
+    implementation(libs.firebase.messaging)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)

@@ -1,7 +1,7 @@
 // The every-minute cron: refresh the realtime snapshot, then run the alert engine for everyone with
-// an iPhone registered for alerts, push what's due, and record it so it's never sent twice.
+// a phone registered for alerts, push what's due, and record it so it's never sent twice.
 import { board, boardActivityState, dueNotifications, normalizeSettings, progress, watchingNow, type RealtimeSnapshot, type Tracked } from "@headway/core";
-import { BOARD_ACTIVITY_PREFIX, NOT_BOARD_ACTIVITY, sendPush, sendLiveActivityPush, pushConfigured, type LiveActivityContentState } from "./push.ts";
+import { BOARD_ACTIVITY_PREFIX, NOT_BOARD_ACTIVITY, PUSH_DEVICE_COLUMNS, sendPush, sendLiveActivityPush, pushConfigured, type LiveActivityContentState } from "./push.ts";
 import { runFamilyCron } from "./family.ts";
 import { refreshRealtime } from "./realtime.ts";
 import { admin, loadCommuteDone, saveLastRide, saveTracked, type Env } from "./store.ts";
@@ -27,7 +27,7 @@ export async function runCron(env: Env, now = new Date()): Promise<CronReport> {
   // Before the per-user alerts: a train that just arrived is still someone's tracked train here.
   await runFamilyCron(env, db, snapshot, now, report).catch((e: Error) => console.error("family cron failed:", e.message));
 
-  const { data: devices } = await db.from("push_devices").select("id, user_id, apns_token, environment");
+  const { data: devices } = await db.from("push_devices").select(`id, user_id, ${PUSH_DEVICE_COLUMNS}`);
   if (!devices?.length) return report;
   const users = [...new Set(devices.map((d) => d.user_id as string))];
   const since = new Date(now.getTime() - SENT_RETENTION_DAYS * 86400_000).toISOString();

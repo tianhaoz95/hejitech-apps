@@ -160,6 +160,33 @@ class HeadwayApiClient(
         executeEmpty(reqBuilder.build())
     }
 
+    // ---------------------------------------------------------------- alerts (FCM)
+
+    /** Registers this phone's FCM token for alerts; true when the server can send them. */
+    suspend fun registerPush(token: String, label: String): Boolean = withContext(Dispatchers.IO) {
+        val body = buildJsonObject {
+            put("platform", "android")
+            put("token", token)
+            put("label", label)
+        }.toString().toRequestBody(jsonMediaType)
+        val builder = Request.Builder().url("${config.site}/api/push").post(body)
+        addAuthHeader(builder)
+        executeAndDecode<JsonObject>(builder.build())["configured"]?.jsonPrimitive?.booleanOrNull ?: false
+    }
+
+    suspend fun unregisterPush(token: String) = withContext(Dispatchers.IO) {
+        val builder = Request.Builder().url("${config.site}/api/push/${java.net.URLEncoder.encode(token, "UTF-8")}").delete()
+        addAuthHeader(builder)
+        executeEmpty(builder.build())
+    }
+
+    /** Asks the server to send a test alert to every phone of this account. */
+    suspend fun testPush() = withContext(Dispatchers.IO) {
+        val builder = Request.Builder().url("${config.site}/api/push/test").post("{}".toRequestBody(jsonMediaType))
+        addAuthHeader(builder)
+        executeEmpty(builder.build())
+    }
+
     suspend fun deleteAccount() = withContext(Dispatchers.IO) {
         val reqBuilder = Request.Builder()
             .url("${config.site}/api/account")
