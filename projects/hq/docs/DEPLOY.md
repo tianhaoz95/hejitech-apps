@@ -49,7 +49,7 @@ npm run -s hq -- lint && npm run -s hq -- sync
 HQ_DENY_TOOLS='Bash(*cut_release.sh*)' npm run -s hq -- runner      # foreground; Ctrl-C to stop
 ```
 
-`hq login` creates a **runner** token and an **agent** token ("hq login on <machine>" in Settings →
+`hq login` creates a **runner** token and an **agent** token (`hq login on <machine>` in Settings →
 Tokens) and saves them in `~/.config/hq/credentials.json` for this repo; `hq logout` forgets them.
 It can also take a pasted runner token (`--token`), and `--no-open` prints the link for another
 device. A machine without a person skips it: create the two tokens in Settings and set
