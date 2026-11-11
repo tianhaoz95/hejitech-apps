@@ -107,4 +107,11 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|f
 sets `currentVersion`; `release.env`'s `release_check` refuses a version it doesn't describe.
 `scripts/cut_release.sh headway --dry-run`, then for real: it bumps `MARKETING_VERSION`, pushes
 (Cloudflare deploys the Worker) and publishes `headway-v<version>` → `headway-testflight.yml`
-(iPhone) and `headway-glasses-release.yml` (the `.ehpk`, attached to the release, uploaded to Even Hub and promoted to Beta).
+(iPhone), `headway-glasses-release.yml` (the `.ehpk`, attached to the release, uploaded to Even Hub and promoted to Beta)
+and `headway-play-internal.yml` (the Android app, same version, to Google Play's internal testing track).
+
+**Google Play**: app "Headway: Caltrain Alerts" (`com.hejitech.headway`, Play app ID 4975322077562037950), internal
+testing only, tester list "HEJI owner", no store listing yet. Upload key in `~/Credentials/headway/` and the
+`HEADWAY_ANDROID_*` GitHub secrets. `versionName` is read from `apps/ios/project.yml`'s MARKETING_VERSION; release
+builds are R8-shrunk (`app/proguard-rules.pro`) and target API 36. The Android app still only has the debug
+seed-rider sign-in, so testers get public boards. Steps: skill `heji-google-play`.
