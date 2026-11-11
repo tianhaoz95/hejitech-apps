@@ -1,21 +1,32 @@
 {
-  "name": "@hq/cli",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@hejitech/hq",
+  "version": "0.1.2",
   "type": "module",
-  "description": "hq: the repo side of HQ. Lints and syncs .hq/ folders, runs verbs, and runs the runner that claims work (scouts, CEO, builds, reviews, replies, verbs, health) and starts agents through adapters.",
+  "description": "hq: the repo side of HQ, a repo's autopilot. Signs in to a workspace, lints and syncs .hq/ folders, runs verbs, and runs the runner that claims work and starts agents.",
+  "license": "SEE LICENSE IN LICENSE",
+  "homepage": "https://hq.hejitech.workers.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tianhaoz95/hejitech-apps.git",
+    "directory": "projects/hq/apps/cli"
+  },
+  "keywords": ["hq", "cli", "monorepo", "agents", "autopilot", "mcp"],
   "bin": { "hq": "./bin/hq.mjs" },
+  "files": ["bin", "dist", "README.md", "LICENSE"],
+  "engines": { "node": ">=20" },
+  "publishConfig": { "access": "public" },
   "scripts": {
+    "build": "esbuild src/main.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/hq.mjs --log-level=warning",
+    "prepack": "npm run build && node -e \"fs.copyFileSync('../../../../LICENSE','LICENSE')\"",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "@hq/core": "0.1.0",
-    "js-yaml": "^4.1.0"
-  },
   "devDependencies": {
+    "@hq/core": "0.1.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.20.5",
+    "esbuild": "^0.28.2",
+    "js-yaml": "^4.1.0",
     "typescript": "^5.6.3",
     "vitest": "^5.0.3"
   }

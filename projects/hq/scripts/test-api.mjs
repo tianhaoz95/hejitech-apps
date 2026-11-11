@@ -7,7 +7,10 @@
 //
 //   node projects/hq/scripts/test-api.mjs     (HQ_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY default to local)
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+import { createHash, randomBytes } from "node:crypto";
+import { mkdtempSync, readFileSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -124,6 +127,59 @@ await step("hq sync uploads the fixture repo's policy; only for the workspace's 
   assert.equal((await call(agent, "PUT", "/api/config", { policy: cfg.policy })).status, 403, "agents can't change policy");
   const wrongRepo = await call(runner, "PUT", "/api/config", { policy: { ...cfg.policy, repo: "someone/else" } });
   assert.equal(wrongRepo.status, 409);
+});
+
+await step("hq login in the browser: an admin allows it, the CLI collects tokens once and saves them", async () => {
+  // The Worker's side: only an admin, only for this repo, one claim per secret.
+  const verifier = randomBytes(32).toString("hex");
+  const challenge = createHash("sha256").update(verifier).digest("hex");
+  const claim = (v) => call(null, "POST", "/api/cli-login/claim", { verifier: v });
+  assert.equal((await claim(verifier)).status, 202, "nothing to collect before anyone allows it");
+  assert.equal((await claim("nope")).status, 400);
+  assert.equal((await call(bo.token, "POST", W("/cli-logins"), { challenge, host: "laptop" })).status, 403, "approvers can't");
+  assert.equal((await call(runner, "POST", "/api/cli-logins", { challenge, host: "laptop" })).status, 403, "tokens can't");
+  assert.equal((await call(ada.token, "POST", W("/cli-logins"), { challenge, host: "laptop", repo: "someone/else" })).status, 409);
+  assert.equal((await call(ada.token, "POST", W("/cli-logins"), { challenge: "short", host: "laptop" })).status, 400);
+  assert.equal((await claim(verifier)).status, 202, "refused approvals leave nothing behind");
+  assert.equal((await call(ada.token, "POST", W("/cli-logins"), { challenge, host: "laptop", repo: "example/fixture" })).status, 201);
+  assert.equal((await claim(randomBytes(32).toString("hex"))).status, 202, "another secret gets nothing");
+  const got = await claim(verifier);
+  assert.equal(got.status, 200, JSON.stringify(got.data));
+  assert.match(got.data.runner_token, /^hq_run_/);
+  assert.match(got.data.agent_token, /^hq_agt_/);
+  assert.equal(got.data.workspace.repo, "example/fixture");
+  assert.equal((await call(got.data.runner_token, "GET", "/api/me")).data.token.name, "hq login on laptop");
+  assert.equal((await claim(verifier)).status, 202, "a secret works once");
+
+  // The CLI's side, with no terminal and no variables: it prints the link, waits, saves, and sync then works.
+  const config = mkdtempSync(join(tmpdir(), "hq-login-"));
+  const env = { ...process.env, HQ_CONFIG_DIR: config, HQ_URL: "", HQ_TOKEN: "", HQ_AGENT_TOKEN: "" };
+  const refused = spawn("node", [cli, "sync", "--root", fixture], { env, stdio: ["ignore", "pipe", "pipe"] });
+  let err = "";
+  refused.stderr.on("data", (d) => (err += d));
+  assert.equal(await new Promise((r) => refused.on("close", r)), 1);
+  assert.match(err, /hq login/, "without a terminal it says how to sign in instead of prompting");
+
+  const child = spawn("node", [cli, "login", "--root", fixture, "--url", U, "--browser", "--no-open", "--timeout", "60"], { env, stdio: ["ignore", "pipe", "pipe"] });
+  let out = "";
+  child.stdout.on("data", (d) => (out += d));
+  child.stderr.on("data", (d) => (out += d));
+  const exited = new Promise((r) => child.on("close", r));
+  for (let i = 0; i < 100 && !/challenge=[0-9a-f]{64}/.test(out); i++) await new Promise((r) => setTimeout(r, 100));
+  const link = new URL(out.match(/https?:\/\/\S+challenge=\S+/)?.[0] ?? assert.fail(out));
+  assert.equal(link.pathname, "/cli/login/");
+  const shown = link.searchParams.get("challenge");
+  assert.ok(out.includes(`${shown.slice(0, 4)}-${shown.slice(4, 8)}`.toUpperCase()), "the terminal shows the code the page shows");
+  assert.equal((await call(ada.token, "POST", W("/cli-logins"), { challenge: shown, host: link.searchParams.get("host"), repo: link.searchParams.get("repo") })).status, 201);
+  assert.equal(await exited, 0, out);
+  const file = join(config, "credentials.json");
+  assert.equal(statSync(file).mode & 0o777, 0o600);
+  const login = JSON.parse(readFileSync(file, "utf8")).logins["example/fixture"];
+  assert.equal(login.url, U);
+  assert.match(login.token, /^hq_run_/);
+  assert.match(login.agent_token, /^hq_agt_/);
+  assert.match(execFileSync("node", [cli, "sync", "--root", fixture], { env, encoding: "utf8" }), /synced example\/fixture/);
+  assert.match(execFileSync("node", [cli, "logout", "--root", fixture], { env, encoding: "utf8" }), /forgot the login/);
 });
 
 await step("MCP: instructions, tools; agents can't approve", async () => {

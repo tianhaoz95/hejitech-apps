@@ -4,11 +4,12 @@
 //   GET  /api/me                          the person and their workspaces
 //   POST /api/workspaces                  create one (you become its admin)
 //   POST /api/invites/accept              join with an invite code
+//   POST /api/cli-login/claim             `hq login` collects its tokens (no session: its secret)
 //   …    /api/w/<workspace>/<route>       everything else, scoped to a workspace (people need a role)
 //   …    /api/<route>                     the same routes for tokens (their workspace is implied)
 import { REJECT_REASONS, type Evidence, type MemberRole, type Status } from "@hq/core";
 import {
-  acceptInvite, admin, attachEvidence, auditLog, cardDetail, changeStatus, claimRun, comment, createInvite, createProposal, createToken,
+  acceptInvite, admin, approveCliLogin, attachEvidence, auditLog, cardDetail, changeStatus, claimCliLogin, claimRun, comment, createInvite, createProposal, createToken,
   createWorkspace, decide, deleteAccount, digest, finishRun, getContext, getFile, getPolicy, getRun, getWorkspace, healthBoard, HttpError, inbox, listCards,
   listMembers, listRuns, listTokens, memberRole, myWorkspaces, need, putFile, putHealth, removeMember, requestVerb, resolveToken, revokeToken,
   scheduleWorkspace, setMemberRole, setPaused, startRun, supabaseUser, syncPolicy,
@@ -49,6 +50,11 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   try {
     const p = url.pathname.replace(/\/+$/, "");
     if (p === "/api/health-check") return json({ ok: true, service: "hq" });
+    // `hq login` collecting its tokens: the secret it made is the credential.
+    if (p === "/api/cli-login/claim" && m === "POST") {
+      const claimed = await claimCliLogin(x, String((await body(req)).verifier ?? ""));
+      return claimed ? json(claimed) : json({ status: "pending" }, 202);
+    }
     const who = await authenticate(x, req);
     if (!who.token && !who.user) return json({ error: "sign in required: send Authorization: Bearer <session or token>" }, 401);
 
@@ -209,6 +215,10 @@ async function workspaceRoute(x: Ctx, req: Request, url: URL, c: Caller, p: stri
   if (p === "/tokens" && m === "POST") {
     const b = await body<{ name: string; role: "runner" | "agent" }>(req);
     return json(await createToken(x, c, b.name, b.role), 201);
+  }
+  if (p === "/cli-logins" && m === "POST") {
+    const b = await body<{ challenge?: string; host?: string; repo?: string }>(req);
+    return json(await approveCliLogin(x, c, String(b.challenge ?? ""), String(b.host ?? ""), b.repo ? String(b.repo) : null), 201);
   }
   mm = p.match(/^\/tokens\/([\w-]+)$/);
   if (mm && m === "DELETE") { await revokeToken(x, c, mm[1]); return json({ ok: true }); }

@@ -7,13 +7,6 @@ export class HqClient {
     this.token = token;
   }
 
-  static fromEnv(): HqClient {
-    const url = process.env.HQ_URL;
-    const token = process.env.HQ_TOKEN;
-    if (!url || !token) throw new Error("set HQ_URL and HQ_TOKEN (a runner token from the portal's Settings, or the owner token)");
-    return new HqClient(url, token);
-  }
-
   async call<T = any>(method: string, path: string, body?: unknown, raw?: { data: Uint8Array; type: string }): Promise<T> {
     const headers: Record<string, string> = { Authorization: `Bearer ${this.token}` };
     let payload: string | Uint8Array | undefined;

@@ -51,3 +51,10 @@ v0.1 (the owner said "use your best judgement"; each is easy to change).
   through a command template (`HQ_AGENT_<NAME>_CMD`). Antigravity's and Codex's headless modes were
   not available on this Mac, so those templates are untested.
 - **Weekly memo** = the CEO run's `MEMO:` section, shown as the run's summary.
+- **Signing the CLI in** (2026-11-10): environment variables first (headless runners, CI), then a
+  login saved per repo by `hq login`, then the prompts. The browser path is a device-style exchange
+  through the Worker (a secret's hash, an admin's approval in KV, one claim) rather than a callback
+  to a port on the machine: browsers differ on whether an HTTPS page may reach `http://127.0.0.1`,
+  and this also works when the CLI is on a server over SSH. Only admins can allow it, because it creates tokens. The
+  saved file is plain JSON readable only by its owner, like other CLIs' token files; agents the
+  runner starts run as the same user, so the deny-list, not the file, is what limits them.

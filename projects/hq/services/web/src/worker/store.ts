@@ -742,6 +742,45 @@ export async function revokeToken(x: Ctx, c: Caller, id: string) {
   await audit(x, c, "token.revoke", id);
 }
 
+// ── `hq login` in the browser ────────────────────────────────────────────────────────────────────
+// The CLI makes a secret and opens the portal with its SHA-256 (the challenge). An admin allows it
+// for a workspace; the approval waits in KV for ten minutes. The CLI, polling with the secret, then
+// gets a runner and an agent token, once. Tokens are minted at the claim, so none is ever stored.
+
+const CLI_LOGIN_TTL = 600;
+const cliLoginKey = (challenge: string) => `cli-login:${challenge}`;
+const HEX64 = /^[0-9a-f]{64}$/;
+
+export async function approveCliLogin(x: Ctx, c: Caller, challenge: string, host: string, repo: string | null) {
+  need(c, "tokens");
+  if (!c.userId) throw new HttpError(403, "a person allows a CLI sign-in, not a token");
+  if (!HEX64.test(challenge)) throw new HttpError(400, "challenge: start again with `hq login`");
+  const w = await getWorkspace(x, c.workspaceId);
+  if (repo && repo !== w.repo) throw new HttpError(409, `this workspace is for ${w.repo}, but the CLI is in ${repo}`);
+  const name = `hq login on ${host.replace(/[^\w .-]/g, "").trim().slice(0, 36) || "a computer"}`;
+  await x.env.OAUTH_KV.put(cliLoginKey(challenge), JSON.stringify({ workspaceId: c.workspaceId, userId: c.userId, by: c.name, name }), { expirationTtl: CLI_LOGIN_TTL });
+  await audit(x, c, "cli.approve", name);
+  return { ok: true, name };
+}
+
+/** null while nobody has allowed it (or it expired). */
+export async function claimCliLogin(x: Ctx, verifier: string) {
+  if (!HEX64.test(verifier)) throw new HttpError(400, "verifier: start again with `hq login`");
+  const key = cliLoginKey(await sha256(verifier));
+  const raw = await x.env.OAUTH_KV.get(key);
+  if (!raw) return null;
+  await x.env.OAUTH_KV.delete(key);
+  const a = JSON.parse(raw) as { workspaceId: string; userId: string; by: string; name: string };
+  // The admin must still be one when the CLI collects.
+  const role = await memberRole(x, a.workspaceId, a.userId);
+  if (!role || !can(role, "tokens")) throw new HttpError(403, "the member who allowed this sign-in can no longer create tokens");
+  const c: Caller = { role, name: a.by, workspaceId: a.workspaceId, userId: a.userId };
+  const runner = await createToken(x, c, a.name, "runner");
+  const agent = await createToken(x, c, `${a.name} (agents)`, "agent");
+  const w = await getWorkspace(x, a.workspaceId);
+  return { workspace: { id: w.id, name: w.name, repo: w.repo }, runner_token: runner.token, agent_token: agent.token };
+}
+
 export async function auditLog(x: Ctx, c: Caller, limit = 100) {
   need(c, "audit");
   return must(await x.db.from("audit").select("at, actor, action, target, detail").eq("workspace_id", c.workspaceId).order("id", { ascending: false }).limit(Math.min(limit, 500)), "audit");

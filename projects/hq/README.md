@@ -14,7 +14,7 @@ and `bin/` verbs (`health`, `verify`, `release`, …) that wrap the repo's own s
 |---|---|
 | Contracts in code (card, policy, context) | `packages/core` |
 | Worker: portal, API, MCP server, scheduler | `services/web` |
-| `hq` CLI + runner + agent adapters | `apps/cli` |
+| `hq` CLI + runner + agent adapters (published as `@hejitech/hq`) | `apps/cli` |
 | iPhone app | `apps/ios` |
 
 Start here: `CLAUDE.md` (commands, architecture), `docs/decisions.md`, `docs/DEPLOY.md`.

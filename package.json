@@ -36,7 +36,7 @@
     "dev:desktop:polymath": "npm run dev:desktop -w @polymath/desktop",
     "test:polymath": "npm test -w projects/polymath/packages -w projects/polymath/services --if-present",
     "typecheck:polymath": "npm run typecheck -w projects/polymath/packages -w projects/polymath/services -w projects/polymath/apps --if-present",
-    "build:hq": "npm run build -w @hq/web",
+    "build:hq": "npm run build -w @hq/web -w @hejitech/hq",
     "test:hq": "npm test -w projects/hq/packages -w projects/hq/apps --if-present",
     "typecheck:hq": "npm run typecheck -w projects/hq/packages -w projects/hq/apps -w projects/hq/services --if-present",
     "hq": "node projects/hq/apps/cli/bin/hq.mjs",

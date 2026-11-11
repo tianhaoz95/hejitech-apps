@@ -15,8 +15,8 @@
     <h2>Getting started</h2>
     <ol>
       <li>Sign in, create a workspace for your repository (<code>owner/repo</code>), and invite your team from Settings.</li>
-      <li>Add <code>.hq/HQ.md</code> to your repository: <code>hq init --repo owner/repo</code> writes one.</li>
-      <li>In Settings, create a runner token and an agent token, then in the repository run <code>hq sync</code> and <code>hq runner</code> on a machine with the repo checked out.</li>
+      <li>Install the command with <code>npm install -g @hejitech/hq</code> (Node 20 or newer), then add <code>.hq/HQ.md</code> to your repository: <code>hq init --repo owner/repo</code> writes one.</li>
+      <li>In the repository, run <code>hq login</code> and allow it in the browser as a workspace admin (it creates and saves a runner token and an agent token), then <code>hq sync</code> and <code>hq runner</code> on a machine with the repo checked out. On a machine without a person, create the tokens in Settings and set <code>HQ_URL</code>, <code>HQ_TOKEN</code> and <code>HQ_AGENT_TOKEN</code> instead.</li>
     </ol>
     <h2>Common questions</h2>
     <ul>

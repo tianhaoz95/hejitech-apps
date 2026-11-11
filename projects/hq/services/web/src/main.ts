@@ -435,9 +435,9 @@ function notSynced() {
     el("h1", {}, `Connect ${current!.repo}`),
     el("p", { class: "muted" }, "HQ hasn't seen this repo's policy yet. Three steps:"),
     el("ol", { class: "steps" },
-      el("li", {}, "Add ", el("code", {}, ".hq/HQ.md"), " at the repo root (", el("code", {}, `hq init --repo ${current!.repo}`), " writes one), and one per project you want HQ to manage."),
-      el("li", {}, isAdmin() ? el("span", {}, "Create a runner token and an agent token in ", el("a", { href: "#/settings" }, "Settings"), ".") : "Ask an admin for a runner token."),
-      el("li", {}, "In the repo: ", el("code", {}, "HQ_URL=" + location.origin + " HQ_TOKEN=hq_run_… hq sync"), ", then start ", el("code", {}, "hq runner"), " on a machine that has the repo checked out."))));
+      el("li", {}, "Install the command: ", el("code", {}, "npm install -g @hejitech/hq"), ". Add ", el("code", {}, ".hq/HQ.md"), " at the repo root (", el("code", {}, `hq init --repo ${current!.repo}`), " writes one), and one per project you want HQ to manage."),
+      el("li", {}, "In the repo, run ", el("code", {}, "hq login"), isAdmin() ? " and allow it in the browser: it creates and saves the runner and agent tokens." : ": ask an admin for a runner token to paste, or to run it for you."),
+      el("li", {}, "Still in the repo: ", el("code", {}, "hq sync"), ", then start ", el("code", {}, "hq runner"), " on a machine that has the repo checked out. A headless machine takes ", el("code", {}, "HQ_URL"), ", ", el("code", {}, "HQ_TOKEN"), " and ", el("code", {}, "HQ_AGENT_TOKEN"), " from ", isAdmin() ? el("a", { href: "#/settings" }, "Settings") : "an admin", " instead."))));
 }
 
 supabase.auth.onAuthStateChange((event) => {

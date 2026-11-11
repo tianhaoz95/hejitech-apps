@@ -1,0 +1,139 @@
+name: HQ CLI (npm + GitHub Packages)
+
+# Publishes the `hq` command (@hejitech/hq, projects/hq/apps/cli) for a published hq-v<version>
+# release: tests it, packs it once with the release's version, checks the tarball installs and runs
+# on the oldest Node it supports, then publishes that same tarball to npm (with provenance) and to
+# GitHub Packages. Re-running is safe: a version that is already there is skipped.
+#
+# Secrets (also in REQUIRED_SECRETS of projects/hq/release.env, so cut_release.sh refuses without them):
+#   HQ_NPM_TOKEN          an npm granular access token that may publish in the @hejitech scope
+#   HQ_GH_PACKAGES_TOKEN  a GitHub token (classic, write:packages) of a member of the hejitech
+#                         organization: this repo's own GITHUB_TOKEN can only publish under its owner
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (hq-v<version>)"
+        required: true
+      dry_run:
+        description: "Pack and check, but publish nothing"
+        type: boolean
+        default: false
+
+concurrency:
+  group: hq-cli-release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  PACKAGE: "@hejitech/hq"
+
+jobs:
+  pack:
+    name: Test and pack
+    if: startsWith(github.event.release.tag_name || inputs.tag, 'hq-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: The package takes the release's version
+        id: version
+        run: |
+          VERSION="${TAG#hq-v}"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$TAG is not hq-v<major.minor.patch>"; exit 1; }
+          npm pkg set version="$VERSION" -w "$PACKAGE"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - run: npm run typecheck -w "$PACKAGE" -w @hq/core
+      - run: npm test -w "$PACKAGE" -w @hq/core
+      - name: Pack (builds the bundle)
+        run: npm pack -w "$PACKAGE" --pack-destination "$RUNNER_TEMP/pack"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: The tarball installs and runs on Node 20, away from the repo
+        run: |
+          mkdir "$RUNNER_TEMP/try" && cd "$RUNNER_TEMP/try"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "$RUNNER_TEMP"/pack/*.tgz
+          test "$(./node_modules/.bin/hq --version)" = "${{ steps.version.outputs.version }}"
+          ./node_modules/.bin/hq lint --root "$GITHUB_WORKSPACE/projects/hq/apps/cli/test/fixture"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hq-cli
+          path: ${{ runner.temp }}/pack/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  npm:
+    name: Publish to npm
+    needs: pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # provenance
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: hq-cli
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.HQ_NPM_TOKEN }}
+          VERSION: ${{ needs.pack.outputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then npm publish ./*.tgz --access public --dry-run; exit 0; fi
+          [ -n "$NODE_AUTH_TOKEN" ] || { echo "::error::The HQ_NPM_TOKEN secret is not set (projects/hq/docs/DEPLOY.md, the hq command)."; exit 1; }
+          if [ "$(npm view "$PACKAGE@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
+            echo "$PACKAGE@$VERSION is already on npm; nothing to do."
+            exit 0
+          fi
+          npm publish ./*.tgz --access public --provenance
+          echo "Published https://www.npmjs.com/package/$PACKAGE/v/$VERSION" >> "$GITHUB_STEP_SUMMARY"
+
+  github-packages:
+    name: Publish to GitHub Packages
+    needs: pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: hq-cli
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@hejitech"
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.HQ_GH_PACKAGES_TOKEN }}
+          VERSION: ${{ needs.pack.outputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then npm publish ./*.tgz --dry-run; exit 0; fi
+          [ -n "$NODE_AUTH_TOKEN" ] || { echo "::error::The HQ_GH_PACKAGES_TOKEN secret is not set (projects/hq/docs/DEPLOY.md, the hq command)."; exit 1; }
+          if [ "$(npm view "$PACKAGE@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
+            echo "$PACKAGE@$VERSION is already on GitHub Packages; nothing to do."
+            exit 0
+          fi
+          npm publish ./*.tgz
+          echo "Published $PACKAGE@$VERSION to GitHub Packages (organization hejitech)" >> "$GITHUB_STEP_SUMMARY"

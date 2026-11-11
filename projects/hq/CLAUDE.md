@@ -28,7 +28,9 @@ services/web/       @hq/web: Cloudflare Worker (KV for OAuth, hourly cron) on th
                     index.ts (OAuth 2.1 for MCP with a workspace picker, tokens, cron)
   src/main.ts       the portal (sign-in, workspace switcher, inbox, card, health, runs, settings
                     with members and invites), vanilla TS + supabase-js
-apps/cli/           @hq/cli: `hq lint | policy | sync | context | verb | runner | init`
+apps/cli/           @hejitech/hq (published to npm and GitHub Packages): `hq login | logout | lint | policy | sync | context | verb | runner | init`
+  src/credentials.ts  where the address and tokens come from (environment, then the saved login);
+                    login.ts is `hq login` (prompts, browser approval or a pasted token)
   src/runner.ts     claims runs and does them; adapters.ts starts agents; prompts.ts writes
                     every launch prompt (context included)
   test/fixture/     a repo HQ has never seen (portability tests)
@@ -52,11 +54,13 @@ npm run -s hq -- verb tradeboard health  # run a verb as the runner would
 # Local: `supabase start` (repo root), then the Worker on 127.0.0.1:8799 with email sign-in
 echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > projects/hq/services/web/.dev.vars
 npm run dev:worker -w @hq/web
-node projects/hq/scripts/test-api.mjs     # 22 steps: two teams, roles, isolation, the whole loop
+node projects/hq/scripts/test-api.mjs     # 25 steps: two teams, roles, isolation, the whole loop
 
-# A runner on this Mac (tokens from the portal's Settings)
-HQ_URL=… HQ_TOKEN=hq_run_… HQ_AGENT_TOKEN=hq_agt_… HQ_DENY_TOOLS='Bash(*cut_release.sh*)' \
-  npm run -s hq -- runner            # --once to drain the queue and exit
+# Sign in once per machine (asks for the address, then the browser or a pasted token), then sync
+npm run -s hq -- login && npm run -s hq -- sync
+
+# A runner on this Mac (after `hq login`; headless: HQ_URL=… HQ_TOKEN=hq_run_… HQ_AGENT_TOKEN=hq_agt_…)
+HQ_DENY_TOOLS='Bash(*cut_release.sh*)' npm run -s hq -- runner     # --once to drain the queue and exit
 ```
 
 iOS: `cd apps/ios && xcodegen generate`, then build the `App` scheme. Debug builds use the local
@@ -83,14 +87,23 @@ reach any screen without taps (`-production` for the hosted HQ, `-serverURL` for
 - **Credentials**: only the runner holds them. Agents it starts get an agent token for the MCP
   server and a deny-list (no push, merge, release, deploy, secrets; `HQ_DENY_TOOLS` adds repo-
   specific ones). Agents can't approve, change policy, pause HQ or see tokens.
+- **Signing the CLI in** (`apps/cli/src/credentials.ts`, `login.ts`): commands that talk to HQ use
+  `HQ_URL` + `HQ_TOKEN` (+ `HQ_AGENT_TOKEN`) when set, else the login saved for the repo
+  (`~/.config/hq/credentials.json`, mode 600, keyed by `repo:`), else they start `hq login` when there
+  is a terminal and fail with instructions when there isn't. Browser sign-in is a device-style
+  exchange: the CLI makes a secret and opens `/cli/login/` with its hash; an admin allows it
+  (`POST /api/w/<id>/cli-logins`, kept in KV for ten minutes); the CLI polls
+  `POST /api/cli-login/claim` with the secret and gets a runner and an agent token, minted then, once.
 - **Entry point**: `get_context` (MCP) / `GET /api/w/<id>/context`: merged HQ.md policy + live state
   (open cards, recent decisions = learned taste, budget left). Reached by the launch prompt, the
   MCP server's instructions and the pointer in the root `AGENTS.md`.
 
 ## Pitfalls
 
-- **Node runs the CLI's TypeScript directly** (type stripping): no parameter properties, enums or
-  namespaces in `apps/cli/src` or `packages/core/src` (`erasableSyntaxOnly` in the CLI tsconfig).
+- **Node runs the CLI's TypeScript directly** in a checkout (type stripping): no parameter
+  properties, enums or namespaces in `apps/cli/src` or `packages/core/src` (`erasableSyntaxOnly` in
+  the CLI tsconfig). `bin/hq.mjs` runs `src/` when it exists and the bundle otherwise, so a stale
+  local `dist/` never shadows the source. `@hq/core` stays private: it is bundled, never published.
 - **Exposing the `hq` schema locally needs a restart** of the stack after `config.toml` changes;
   don't use `alter role authenticator set pgrst.db_schemas` (it silently overrides config.toml for
   every project).
@@ -111,5 +124,9 @@ reach any screen without taps (`-production` for the hosted HQ, `-serverURL` for
 `scripts/cut_release.sh hq` bumps `MARKETING_VERSION` in `apps/ios/project.yml` (refusing until
 `WhatsNewView.swift` describes the version) and publishes `hq-v<version>`, which runs
 `hq-testflight.yml` (`scripts/release_testflight.sh`, then `asc_build_status.swift` waits for
-Apple's verdict). The Worker deploys on push once Workers Builds is linked (`docs/DEPLOY.md`).
+Apple's verdict) and `hq-cli-release.yml`, which packs the `hq` command once with the release's
+version (`npm run build -w @hejitech/hq` bundles `@hq/core` and js-yaml into `dist/hq.mjs`, so the
+package has no dependencies and runs on Node 20), checks the tarball on Node 20 and publishes it as
+`@hejitech/hq` to npm (provenance) and GitHub Packages. Secrets `HQ_NPM_TOKEN` and
+`HQ_GH_PACKAGES_TOKEN`: `docs/DEPLOY.md` §7. The Worker deploys on push once Workers Builds is linked (`docs/DEPLOY.md`).
 App Store steps and copy: `docs/app-store.md`.

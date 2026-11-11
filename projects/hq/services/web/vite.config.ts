@@ -8,6 +8,6 @@ export default defineConfig({
   build: {
     target: "es2022",
     outDir: "dist",
-    rollupOptions: { input: { index: resolve(root, "index.html"), consent: resolve(root, "oauth/consent/index.html"), privacy: resolve(root, "privacy/index.html"), terms: resolve(root, "terms/index.html"), support: resolve(root, "support/index.html") } },
+    rollupOptions: { input: { index: resolve(root, "index.html"), consent: resolve(root, "oauth/consent/index.html"), cliLogin: resolve(root, "cli/login/index.html"), privacy: resolve(root, "privacy/index.html"), terms: resolve(root, "terms/index.html"), support: resolve(root, "support/index.html") } },
   },
 });

@@ -13,7 +13,7 @@ export const READ_ONLY_VERBS = new Set(["health", "verify", "evidence", "setup"]
 
 export function repoRoot(from = process.cwd()): string {
   try {
-    return execFileSync("git", ["rev-parse", "--show-toplevel"], { cwd: from, encoding: "utf8" }).trim();
+    return execFileSync("git", ["rev-parse", "--show-toplevel"], { cwd: from, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
   } catch {
     return from;
   }
@@ -21,7 +21,7 @@ export function repoRoot(from = process.cwd()): string {
 
 export function headCommit(root: string): string | null {
   try {
-    return execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    return execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
   } catch {
     return null;
   }
@@ -65,6 +65,16 @@ export function parseHqMd(text: string, where: string): { frontmatter: Record<st
   }
   if (!fm || typeof fm !== "object" || Array.isArray(fm)) throw new Error(`${where}: frontmatter must be a YAML mapping`);
   return { frontmatter: fm as Record<string, unknown>, body: m[2] };
+}
+
+/** The repo's name in HQ (`repo:` in the root .hq/HQ.md), or null when there is no readable root policy. */
+export function repoName(root: string): string | null {
+  try {
+    const repo = parseHqMd(readFileSync(join(root, ".hq", "HQ.md"), "utf8"), ".hq/HQ.md").frontmatter.repo;
+    return typeof repo === "string" && repo.trim() ? repo.trim() : null;
+  } catch {
+    return null;
+  }
 }
 
 export function listVerbs(hqDir: string): { executable: string[]; notExecutable: string[] } {

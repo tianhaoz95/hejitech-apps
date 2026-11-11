@@ -40,18 +40,28 @@ deploy `npm run deploy -w @hq/web`, non-production `npm run upload-version -w @h
 ## 4. A workspace for this repo
 
 1. Sign in at https://hq.hejitech.workers.dev, create a workspace for `tianhaoz95/hejitech-apps`.
-2. Settings → invite teammates (approver or viewer), and create a **runner** token and an **agent**
-   token.
+2. Settings → invite teammates (approver or viewer).
 3. From the repo:
 
 ```sh
-export HQ_URL=https://hq.hejitech.workers.dev HQ_TOKEN=hq_run_… HQ_AGENT_TOKEN=hq_agt_…
+npm run -s hq -- login     # address (Enter for the hosted HQ), then allow it in the browser as an admin
 npm run -s hq -- lint && npm run -s hq -- sync
 HQ_DENY_TOOLS='Bash(*cut_release.sh*)' npm run -s hq -- runner      # foreground; Ctrl-C to stop
 ```
 
+`hq login` creates a **runner** token and an **agent** token ("hq login on <machine>" in Settings →
+Tokens) and saves them in `~/.config/hq/credentials.json` for this repo; `hq logout` forgets them.
+It can also take a pasted runner token (`--token`), and `--no-open` prints the link for another
+device. A machine without a person skips it: create the two tokens in Settings and set
+
+```sh
+export HQ_URL=https://hq.hejitech.workers.dev HQ_TOKEN=hq_run_… HQ_AGENT_TOKEN=hq_agt_…
+```
+
+which always win over a saved login.
+
 To keep the runner going, a launchd agent (`~/Library/LaunchAgents/com.hejitech.hq-runner.plist`)
-that runs the same command from the repo root with those variables. Builds go to `../.hq-worktrees`
+that runs the same command from the repo root, after `hq login` as the same user or with those variables. Builds go to `../.hq-worktrees`
 next to the repo, on the same disk (`HQ_WORKDIR`), from `main` (`HQ_BASE`).
 
 ## 5. iPhone app
@@ -69,3 +79,24 @@ other iOS projects.
 - **Headless agents**: a workspace agent token as `Authorization: Bearer hq_agt_…` on `/mcp`.
 - **A different CEO**: set `agents.ceo` in the root `.hq/HQ.md` and give the runner a template,
   e.g. `HQ_AGENT_CODEX_CMD='codex exec --full-auto "$(cat {prompt_file})"'` (untested).
+
+## 7. The `hq` command on npm and GitHub Packages
+
+`hq-cli-release.yml` publishes `apps/cli` as **`@hejitech/hq`** for every `hq-v<version>` release,
+with that version, to both registries (`npm install -g @hejitech/hq`, then `hq login`). It packs
+once, checks the tarball on Node 20, and skips a version that is already published, so re-running
+it is safe. To try it without publishing: run the workflow by hand with a tag and `dry_run`.
+
+One-time setup (the release script refuses until both secrets exist):
+
+1. **npm**: create the organization `hejitech` on npmjs.com (free for public packages), then a
+   granular access token with read and write on the `@hejitech` scope.
+   `gh secret set HQ_NPM_TOKEN` (paste the token).
+2. **GitHub Packages**: the package lives under the `hejitech` GitHub organization, which this
+   repo's own `GITHUB_TOKEN` can't write to (it belongs to the repo's owner). Create a classic
+   personal access token with only `write:packages`, as a member of that organization.
+   `gh secret set HQ_GH_PACKAGES_TOKEN` (paste the token). After the first publish, set the
+   package's visibility to public in the organization's Packages settings (new ones start private).
+
+Installing from GitHub Packages needs `@hejitech:registry=https://npm.pkg.github.com` in `.npmrc`
+and a GitHub token even for public packages; npm is the one to point people at.

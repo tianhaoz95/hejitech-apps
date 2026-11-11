@@ -2,19 +2,27 @@
 //
 //   hq lint [--no-run]            check every .hq/ (schema, verbs exist/executable, dry runs)
 //   hq policy                     print the merged policy as JSON
-//   hq sync                       upload the policy to HQ (HQ_URL, HQ_TOKEN)
+//   hq login [--url <address>] [--browser | --token] [--no-open]   sign in and save it for this repo
+//   hq logout                     forget this repo's saved login
+//   hq sync                       upload the policy to HQ
 //   hq context [project]          print what agents get from hq.get_context
 //   hq verb <project> <verb> [--dry-run]   run a verb locally, as the runner would
 //   hq runner [--once] [--caps mac-runner,cloud] [--interval 60]   claim and do work
 //   hq init [--repo owner/name]   add a root .hq/ to a repo that has none
+//   hq --version
 //
 // The repo is the git repository around the current directory (or --root <dir>).
-import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+// Commands that talk to HQ take the address and tokens from the environment (HQ_URL, HQ_TOKEN,
+// HQ_AGENT_TOKEN: headless runners and CI), else from `hq login`'s saved login, else they start
+// `hq login` when there is a terminal.
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { dirname, join } from "node:path";
 import { contextMarkdown } from "@hq/core";
 import { HqClient } from "./client.ts";
-import { headCommit, lint, loadPolicy, repoRoot, runVerb } from "./repo.ts";
+import { credentialsFile, removeLogin, resolveCredentials, type Credentials } from "./credentials.ts";
+import { interactive, login } from "./login.ts";
+import { headCommit, lint, loadPolicy, repoName, repoRoot, runVerb } from "./repo.ts";
 import { loop } from "./runner.ts";
 
 const argv = process.argv.slice(2);
@@ -37,6 +45,18 @@ const die = (msg: string, code = 1): never => {
   process.exit(code);
 };
 
+/** The environment, then the saved login, then (at a terminal) `hq login`. */
+async function connect(root: string): Promise<{ client: HqClient; creds: Credentials }> {
+  let creds = resolveCredentials(repoName(root));
+  if (!creds) {
+    if (!interactive()) die("not signed in: set HQ_URL and HQ_TOKEN (a runner token from the portal's Settings), or run `hq login` at a terminal");
+    console.log("Not signed in to HQ for this repo yet.\n");
+    creds = await login(root);
+    console.log("");
+  }
+  return { client: new HqClient(creds.url, creds.token), creds };
+}
+
 async function main() {
   const root = opt("--root") ?? repoRoot();
   const cmd = argv.shift();
@@ -57,17 +77,28 @@ async function main() {
       console.log(JSON.stringify(policy, null, 2));
       return;
     }
+    case "login": {
+      const method = flag("--browser") ? "browser" : flag("--token") ? "token" : undefined;
+      await login(root, { url: opt("--url"), method, open: !flag("--no-open"), timeoutSec: Number(opt("--timeout") ?? 600) });
+      if (process.env.HQ_URL && process.env.HQ_TOKEN) console.log("Note: HQ_URL and HQ_TOKEN are set in this shell and take priority over the saved login.");
+      return;
+    }
+    case "logout": {
+      const repo = repoName(root) ?? die("no .hq/HQ.md with a `repo:` here");
+      console.log(removeLogin(repo as string) ? `forgot the login for ${repo} (${credentialsFile()}); revoke its tokens in the portal's Settings if they're no longer needed` : `no saved login for ${repo}`);
+      return;
+    }
     case "sync": {
       const { policy, errors } = loadPolicy(root);
       if (!policy) die(`not synced; fix these first (hq lint):\n${errors.join("\n")}`);
-      const client = HqClient.fromEnv();
+      const { client } = await connect(root);
       await client.call("PUT", "/api/config", { policy, commit: headCommit(root) });
       console.log(`synced ${policy!.repo} (${Object.keys(policy!.projects).length} projects) to ${client.url}`);
       return;
     }
     case "context": {
       const project = argv.shift() ?? null;
-      const client = HqClient.fromEnv();
+      const { client } = await connect(root);
       const ctx = await client.call("GET", `/api/context${project ? `?project=${encodeURIComponent(project)}` : ""}`);
       console.log(flag("--json") ? JSON.stringify(ctx, null, 2) : contextMarkdown(ctx));
       return;
@@ -87,11 +118,11 @@ async function main() {
       const once = !!flag("--once");
       const caps = (opt("--caps") ?? process.env.HQ_RUNNER_CAPS ?? (process.platform === "darwin" ? "mac-runner,cloud" : "cloud")).split(",").map((s) => s.trim()).filter(Boolean);
       const interval = Number(opt("--interval") ?? 60);
-      const client = HqClient.fromEnv();
-      const agentToken = process.env.HQ_AGENT_TOKEN ?? die("set HQ_AGENT_TOKEN: an agent token (portal → Settings) the runner gives the agents it starts");
       // Sync first so the server enforces what this checkout says.
       const { policy, errors } = loadPolicy(root);
       if (!policy) die(`fix .hq/ first:\n${errors.join("\n")}`);
+      const { client, creds } = await connect(root);
+      const agentToken = creds.agent_token ?? die("no agent token: set HQ_AGENT_TOKEN (portal → Settings), or run `hq login` in the browser, which saves one. The runner gives it to the agents it starts");
       await client.call("PUT", "/api/config", { policy, commit: headCommit(root) });
       const name = opt("--name") ?? process.env.HQ_RUNNER_NAME ?? hostname().split(".")[0];
       const log = (m: string) => console.log(`${new Date().toISOString().slice(0, 19)} ${m}`);
@@ -110,8 +141,13 @@ async function main() {
       console.log("created .hq/HQ.md and .hq/bin/health; add a line to AGENTS.md pointing agents at HQ, then `hq lint`");
       return;
     }
+    case "--version":
+    case "version":
+      // package.json sits one folder above both the source and the published bundle.
+      console.log((JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version);
+      return;
     default:
-      console.log(`hq: lint | policy | sync | context [project] | verb <project> <verb> [--dry-run] | runner [--once] | init --repo owner/name`);
+      console.log(`hq: login | logout | lint | policy | sync | context [project] | verb <project> <verb> [--dry-run] | runner [--once] | init --repo owner/name`);
       if (cmd && cmd !== "help" && cmd !== "--help") process.exit(2);
   }
 }
