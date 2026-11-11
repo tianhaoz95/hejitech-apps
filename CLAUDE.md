@@ -131,7 +131,7 @@ For HQ it bumps `MARKETING_VERSION` in `projects/hq/apps/ios/project.yml` (refus
 What's New describes the version) and publishes `hq-v<version>`, which runs `hq-testflight.yml`
 (App Store Connect app "HQ: Repo Autopilot", same team-wide signing secrets) and
 `hq-cli-release.yml` (the `hq` command, same version, published as `@hejitech/hq` to npm and
-GitHub Packages). Its
+`@tianhaoz95/hq` to GitHub Packages). Its
 Worker (portal, API, MCP, hourly scheduler) deploys on push once Workers Builds is linked. Releases
 of every project can also be started from an HQ card (`.hq/bin/release` wraps this script; L3,
 owner only). See `projects/hq/CLAUDE.md`.

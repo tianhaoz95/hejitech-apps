@@ -2,16 +2,16 @@ name: HQ CLI (npm + GitHub Packages)
 
 # Publishes the `hq` command (@hejitech/hq, projects/hq/apps/cli) for a published hq-v<version>
 # release: tests it, packs it once with the release's version, checks the tarball installs and runs
-# on the oldest Node it supports, then publishes that same tarball to npm (with provenance) and to
-# GitHub Packages. Re-running is safe: a version that is already there is skipped.
+# on the oldest Node it supports, then publishes that tarball to npm as @hejitech/hq (with
+# provenance) and to GitHub Packages as @<repo owner>/hq: the same files under the only scope the
+# workflow's own token may write to. Re-running is safe: a version that is already there is skipped.
 #
 # It runs only for a published release, or by hand. By hand without a tag it packs and checks the
 # branch it is started from and publishes nothing (a rehearsal); publishing always needs a tag.
 #
-# Secrets (also in REQUIRED_SECRETS of projects/hq/release.env, so cut_release.sh refuses without them):
-#   HQ_NPM_TOKEN          an npm granular access token that may publish in the @hejitech scope
-#   HQ_GH_PACKAGES_TOKEN  a GitHub token (classic, write:packages) of a member of the hejitech
-#                         organization: this repo's own GITHUB_TOKEN can only publish under its owner
+# Secrets: FEEDBACKKIT_NPM_TOKEN, which despite its name is the owner's npm token for every npm
+# package this repo publishes (also in REQUIRED_SECRETS of projects/hq/release.env). Its account must
+# be able to publish in the @hejitech scope. GitHub Packages uses the workflow's own GITHUB_TOKEN.
 on:
   release:
     types: [published]
@@ -105,14 +105,28 @@ jobs:
         with:
           node-version: 24
           registry-url: "https://registry.npmjs.org"
+      - name: The npm token works and may publish in the @hejitech scope
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.FEEDBACKKIT_NPM_TOKEN }}
+          DRY_RUN: ${{ needs.pack.outputs.dry_run }}
+        run: |
+          # A rehearsal reports problems as warnings; a real publish stops on them.
+          problem() { if [ "$DRY_RUN" = "true" ]; then echo "::warning::$1"; else echo "::error::$1"; exit 1; fi; }
+          if [ -z "$NODE_AUTH_TOKEN" ]; then problem "The FEEDBACKKIT_NPM_TOKEN secret is not set."; exit 0; fi
+          WHO="$(npm whoami 2>/dev/null)" || { problem "npm rejects the token in FEEDBACKKIT_NPM_TOKEN (expired or revoked?)."; exit 0; }
+          echo "npm account: $WHO"
+          if npm org ls hejitech "$WHO" > /dev/null 2>&1; then
+            echo "$WHO is a member of the npm organization hejitech."
+          else
+            echo "::warning::Couldn't confirm that $WHO is in an npm organization named hejitech (it may not exist yet, or this token can't read organizations). Publishing $PACKAGE needs it: projects/hq/docs/DEPLOY.md §7."
+          fi
       - name: Publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.HQ_NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.FEEDBACKKIT_NPM_TOKEN }}
           VERSION: ${{ needs.pack.outputs.version }}
           DRY_RUN: ${{ needs.pack.outputs.dry_run }}
         run: |
           if [ "$DRY_RUN" = "true" ]; then npm publish ./*.tgz --access public --dry-run; exit 0; fi
-          [ -n "$NODE_AUTH_TOKEN" ] || { echo "::error::The HQ_NPM_TOKEN secret is not set (projects/hq/docs/DEPLOY.md, the hq command)."; exit 1; }
           if [ "$(npm view "$PACKAGE@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
             echo "$PACKAGE@$VERSION is already on npm; nothing to do."
             exit 0
@@ -125,6 +139,9 @@ jobs:
     needs: pack
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -133,18 +150,22 @@ jobs:
         with:
           node-version: 24
           registry-url: "https://npm.pkg.github.com"
-          scope: "@hejitech"
-      - name: Publish
+          scope: "@${{ github.repository_owner }}"
+      - name: Publish as @<repo owner>/hq
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.HQ_GH_PACKAGES_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.pack.outputs.version }}
           DRY_RUN: ${{ needs.pack.outputs.dry_run }}
         run: |
-          if [ "$DRY_RUN" = "true" ]; then npm publish ./*.tgz --dry-run; exit 0; fi
-          [ -n "$NODE_AUTH_TOKEN" ] || { echo "::error::The HQ_GH_PACKAGES_TOKEN secret is not set (projects/hq/docs/DEPLOY.md, the hq command)."; exit 1; }
-          if [ "$(npm view "$PACKAGE@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
-            echo "$PACKAGE@$VERSION is already on GitHub Packages; nothing to do."
+          # GitHub Packages only takes names in the owner's scope, so the packed files get that name.
+          NAME="@$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/hq"
+          tar -xzf ./*.tgz && cd package
+          npm pkg set name="$NAME"
+          # The bundle is already built; there is no source here for prepack to build again.
+          if [ "$DRY_RUN" = "true" ]; then npm publish --ignore-scripts --dry-run; exit 0; fi
+          if [ "$(npm view "$NAME@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
+            echo "$NAME@$VERSION is already on GitHub Packages; nothing to do."
             exit 0
           fi
-          npm publish ./*.tgz
-          echo "Published $PACKAGE@$VERSION to GitHub Packages (organization hejitech)" >> "$GITHUB_STEP_SUMMARY"
+          npm publish --ignore-scripts
+          echo "Published $NAME@$VERSION to GitHub Packages" >> "$GITHUB_STEP_SUMMARY"

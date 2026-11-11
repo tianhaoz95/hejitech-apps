@@ -82,21 +82,22 @@ other iOS projects.
 
 ## 7. The `hq` command on npm and GitHub Packages
 
-`hq-cli-release.yml` publishes `apps/cli` as **`@hejitech/hq`** for every `hq-v<version>` release,
-with that version, to both registries (`npm install -g @hejitech/hq`, then `hq login`). It packs
-once, checks the tarball on Node 20, and skips a version that is already published, so re-running
-it is safe. To try it without publishing: run the workflow by hand with a tag and `dry_run`.
+`hq-cli-release.yml` publishes `apps/cli` for every `hq-v<version>` release, with that version:
 
-One-time setup (the release script refuses until both secrets exist):
+- **npm**: `@hejitech/hq` (`npm install -g @hejitech/hq`, then `hq login`), with provenance.
+- **GitHub Packages**: the same files as `@tianhaoz95/hq`. GitHub only accepts names in the scope
+  of the repo's owner from the workflow's own token, so it can't be `@hejitech/hq` there.
 
-1. **npm**: create the organization `hejitech` on npmjs.com (free for public packages), then a
-   granular access token with read and write on the `@hejitech` scope.
-   `gh secret set HQ_NPM_TOKEN` (paste the token).
-2. **GitHub Packages**: the package lives under the `hejitech` GitHub organization, which this
-   repo's own `GITHUB_TOKEN` can't write to (it belongs to the repo's owner). Create a classic
-   personal access token with only `write:packages`, as a member of that organization.
-   `gh secret set HQ_GH_PACKAGES_TOKEN` (paste the token). After the first publish, set the
-   package's visibility to public in the organization's Packages settings (new ones start private).
+It packs once, checks the tarball on Node 20, and skips a version that is already published, so
+re-running it is safe. Started by hand without a tag it rehearses the current branch and publishes
+nothing; that run also checks the npm token (it warns if the token is rejected or its account isn't
+in the `hejitech` organization).
 
-Installing from GitHub Packages needs `@hejitech:registry=https://npm.pkg.github.com` in `.npmrc`
+Tokens: npm uses `FEEDBACKKIT_NPM_TOKEN`, which despite its name is the owner's npm token for every
+npm package this repo publishes; GitHub Packages uses the built-in `GITHUB_TOKEN`. Nothing new to
+store. One-time setup on npm: the organization `hejitech` must exist (npmjs.com → Add Organization,
+free for public packages) with the token's account in it, and if the token is a granular one it
+must allow the `@hejitech` scope.
+
+Installing from GitHub Packages needs `@tianhaoz95:registry=https://npm.pkg.github.com` in `.npmrc`
 and a GitHub token even for public packages; npm is the one to point people at.

@@ -127,6 +127,7 @@ reach any screen without taps (`-production` for the hosted HQ, `-serverURL` for
 Apple's verdict) and `hq-cli-release.yml`, which packs the `hq` command once with the release's
 version (`npm run build -w @hejitech/hq` bundles `@hq/core` and js-yaml into `dist/hq.mjs`, so the
 package has no dependencies and runs on Node 20), checks the tarball on Node 20 and publishes it as
-`@hejitech/hq` to npm (provenance) and GitHub Packages. Secrets `HQ_NPM_TOKEN` and
-`HQ_GH_PACKAGES_TOKEN`: `docs/DEPLOY.md` §7. The Worker deploys on push once Workers Builds is linked (`docs/DEPLOY.md`).
+`@hejitech/hq` to npm (provenance, with the repo's shared npm token `FEEDBACKKIT_NPM_TOKEN`) and as
+`@<repo owner>/hq` to GitHub Packages (the workflow's own token). Run it by hand without a tag to
+rehearse from a branch; it publishes nothing. Setup: `docs/DEPLOY.md` §7. The Worker deploys on push once Workers Builds is linked (`docs/DEPLOY.md`).
 App Store steps and copy: `docs/app-store.md`.
