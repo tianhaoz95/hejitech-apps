@@ -22,6 +22,12 @@ npm run package -w @fitloop/glasses                   # apps/glasses/build/fitlo
 cd projects/fitloop/apps/ios/FitLoopKit && swift test # models vs real Worker JSON, reminders planner
 cd projects/fitloop/apps/ios && xcodegen generate     # FitLoop.xcodeproj is generated and git-ignored
 xcodebuild -project FitLoop.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' -derivedDataPath .derived CODE_SIGN_IDENTITY=- build
+
+# Android (JDK 17: JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home)
+cd projects/fitloop/apps/android && ./gradlew :core:test :app:assembleDebug
+adb reverse tcp:8794 tcp:8794 && adb reverse tcp:55421 tcp:55421   # the local stack from a device/emulator
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -n com.hejitech.fitloop/.MainActivity --ez autoSignIn true   # also: reviewSignIn, screen, date, openWorkout, production
 ```
 
 Local tokens from the seed: glasses `fld_dev_local_device`, agent `fla_dev_local_token` (MCP at
@@ -51,6 +57,17 @@ local stack), `-reviewSignIn` (the App Review sign-in path), `-screen today|plan
   check-ins, reminders via `ReminderPlanner`, Health sync, the Watch link), Today (workouts open
   the `WorkoutPlayer`; meals check off), Plan, Progress, Feedback, Settings (every switch, about you,
   glasses pairing). `Services.swift`: `HealthSync` (daily summary) and `WatchLink` (WCSession).
+- **Android** (`apps/android`, `com.hejitech.fitloop`): `:core` is plain Kotlin (JVM) mirroring
+  FitLoopKit: `Models.kt` (same JSON), `Backend.kt` (Supabase PKCE / password / review sign-in +
+  the Worker API, OkHttp, no SDK), `Reminders.kt` (`ReminderPlanner`, same rules); its tests read
+  FitLoopKit's fixtures. `:app` (Compose Material 3): `AppModel` (same phase/route flow),
+  `SessionStore` (session sealed with an Android Keystore AES-GCM key), `Reminders.kt` (inexact
+  AlarmManager alarms, re-set after boot), the five tabs and the workout player in `ui/`. Google
+  sign-in goes through a Custom Tab back to `fitloop://login-callback` (the iPhone app's address).
+  Not there yet: Sign in with Apple, a watch (no live heart rate), Health Connect, What's New.
+  versionName is read from `apps/ios/project.yml`'s MARKETING_VERSION; it isn't released anywhere
+  yet (no Play Console app, no release workflow; a store build needs `-PversionCode=` and the
+  `FITLOOP_ANDROID_KEYSTORE*` variables).
 - **Watch** (`apps/ios/Watch`): runs the `HKWorkoutSession` when the phone opens a workout
   (`startWatchApp`), sends heart rate every 4 s and "set done", shows the set and rest timer.
   The phone sends today's progress as user info (`DayProgress`); the watch keeps it in a Keychain item

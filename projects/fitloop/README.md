@@ -14,6 +14,7 @@ projects/fitloop/
   services/web/         @fitloop/web: Cloudflare Worker (web app, /api, /mcp + OAuth)
   apps/glasses/         @fitloop/glasses: Even Hub plugin (.ehpk)
   apps/ios/             iPhone + Apple Watch apps (SwiftUI, XcodeGen) + FitLoopKit (models, API, sign-in, reminders)
+  apps/android/         Android app (Kotlin, Compose): :core (models, API, sign-in, reminders; JVM tests) + :app
   scripts/              integration test, simulator e2e, TestFlight release
   branding/             icon source
   docs/                 decisions, deployment, the docs page
