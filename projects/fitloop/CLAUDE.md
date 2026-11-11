@@ -65,9 +65,12 @@ local stack), `-reviewSignIn` (the App Review sign-in path), `-screen today|plan
   AlarmManager alarms, re-set after boot), the five tabs and the workout player in `ui/`. Google
   sign-in goes through a Custom Tab back to `fitloop://login-callback` (the iPhone app's address).
   Not there yet: Sign in with Apple, a watch (no live heart rate), Health Connect, What's New.
-  versionName is read from `apps/ios/project.yml`'s MARKETING_VERSION; it isn't released anywhere
-  yet (no Play Console app, no release workflow; a store build needs `-PversionCode=` and the
-  `FITLOOP_ANDROID_KEYSTORE*` variables).
+  versionName is read from `apps/ios/project.yml`'s MARKETING_VERSION. Google Play: app
+  `com.hejitech.fitloop` (HEJI TECH LLC, app ID 4973385431680507913), internal testing only (tester
+  list "HEJI owner"; no store listing yet). Release builds are R8-shrunk and target API 36 (Play's
+  minimum); `-PminifyDebug` makes a shrunk debug build to test R8 against the local stack. Upload
+  key: `~/Credentials/fitloop/` (`android-upload.env` sets the `FITLOOP_ANDROID_KEYSTORE*` vars).
+  Setup and steps: skill `heji-google-play`.
 - **Watch** (`apps/ios/Watch`): runs the `HKWorkoutSession` when the phone opens a workout
   (`startWatchApp`), sends heart rate every 4 s and "set done", shows the set and rest timer.
   The phone sends today's progress as user info (`DayProgress`); the watch keeps it in a Keychain item
@@ -109,4 +112,5 @@ FitLoop hosts and serves exercise demonstration GIFs at `/api/exercises/<slug>.g
 sets `currentVersion`; `release.env`'s `release_check` refuses a version it doesn't describe.
 `scripts/cut_release.sh fitloop --dry-run`, then for real: it bumps `MARKETING_VERSION`, pushes
 (Cloudflare deploys the Worker) and publishes `fitloop-v<version>` → `fitloop-testflight.yml`
-(iPhone + Watch) and `fitloop-glasses-release.yml` (attaches the `.ehpk`, uploads it to Even Hub and promotes it to Beta; submit for review in the portal).
+(iPhone + Watch), `fitloop-glasses-release.yml` (attaches the `.ehpk`, uploads it to Even Hub and promotes it to Beta; submit for review in the portal)
+and `fitloop-play-internal.yml` (Android → Google Play internal testing; versionCode = minutes since 2020).

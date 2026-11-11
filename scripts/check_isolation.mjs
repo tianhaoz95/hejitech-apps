@@ -25,6 +25,10 @@ export const SHARED_CI_NAMES = new Set([
   "SIGNING_P12_BASE64", "SIGNING_P12_PASSWORD", "DEV_SIGNING_P12_BASE64", "DEV_SIGNING_P12_PASSWORD",
   "MAC_SIGNING_P12_BASE64", "MAC_SIGNING_P12_PASSWORD",
   "EVENHUB_EMAIL", "EVENHUB_PASSWORD",
+  // The HEJI TECH LLC Google Play developer account's upload service account
+  // (play-publisher@heji-play-publishing): like the Apple team, one account for every app, granted
+  // per app in the Play Console.
+  "PLAY_SERVICE_ACCOUNT_JSON",
   // The owner's npm token, for every npm package this repo publishes: a registry account, not a
   // backend setting.
   "NPM_TOKEN",
@@ -82,7 +86,7 @@ export function checkWorkflow(text, project) {
   for (const m of text.matchAll(/\b(vars|secrets)\.([A-Za-z_][A-Za-z0-9_]*)/g)) {
     const name = m[2];
     if (name.startsWith(prefix) || SHARED_CI_NAMES.has(name) || legacy.has(name)) continue;
-    problems.push(`${m[1]}.${name}: project settings must be named ${prefix}… (only Apple, Even Hub and npm credentials are shared)`);
+    problems.push(`${m[1]}.${name}: project settings must be named ${prefix}… (only Apple, Google Play, Even Hub and npm credentials are shared)`);
   }
   return [...new Set(problems)];
 }

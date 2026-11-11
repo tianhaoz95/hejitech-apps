@@ -19,12 +19,12 @@ val keystorePath: String? = System.getenv("FITLOOP_ANDROID_KEYSTORE")
 
 android {
     namespace = "com.hejitech.fitloop"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.hejitech.fitloop"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         // -PversionCode=<n> for a store build (must grow with every upload).
         versionCode = (findProperty("versionCode") as String?)?.toInt() ?: 1
         versionName = marketingVersion
@@ -43,8 +43,18 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8: the bundle drops from ~11 MB (material-icons-extended) to a few MB.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (keystorePath != null) signingConfig = signingConfigs.getByName("release")
+        }
+        // `-PminifyDebug`: a debug build shrunk like release, to test R8 against the local stack.
+        debug {
+            if (project.hasProperty("minifyDebug")) {
+                isMinifyEnabled = true
+                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            }
         }
     }
 
