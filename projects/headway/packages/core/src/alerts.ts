@@ -8,7 +8,8 @@
 //   arrival       the tracked train is arrival_minutes from its stop (any day, any time)
 //
 // Legs are watched only on the chosen days and inside their window; the arrival alert follows
-// the tracked train whenever it runs.
+// the tracked train whenever it runs. A leg whose destination the rider already reached today
+// (`done`, with `alerts.stop_when_done`) says nothing more that day: the commute is over.
 //
 // Priority: a notification is priority when it affects your commute, so your direction inside your
 // watch window (and everything about the train you track). `alerts.scope = "all"` adds the rest for
@@ -16,7 +17,7 @@
 // `q:` keys so a train that later becomes priority still gets its normal alert.
 import { departures, progress, relevantAlerts, station, TIMETABLE, TRAVEL_WORD } from "./schedule.ts";
 import { atLocal, clock, hhmm, serviceDayStart, zoned } from "./time.ts";
-import type { BoardTrain, Direction, Leg, RealtimeSnapshot, ServiceAlert, Settings, Tracked } from "./types.ts";
+import type { BoardTrain, CommuteDone, CommuteDoneCard, Direction, Leg, RealtimeSnapshot, ServiceAlert, Settings, Tracked } from "./types.ts";
 
 const MIN = 60_000;
 /** Delay and cancellation alerts only for trains leaving within this long. */
@@ -49,6 +50,8 @@ export interface AlertInput {
   tracked: Tracked | null;
   /** Keys already sent (recent days). */
   sent: Set<string>;
+  /** The leg the rider finished today, if their location showed it. */
+  done?: CommuteDone | null;
 }
 
 export interface AlertResult {
@@ -64,6 +67,28 @@ export const trainName = (t: { train: string; kind: keyof typeof KIND_NAME }) =>
 function inWindow(leg: Leg, minuteOfDay: number) {
   const s = hhmm(leg.window.start) ?? 0, e = hhmm(leg.window.end) ?? 0;
   return minuteOfDay >= s && minuteOfDay <= e;
+}
+
+/** The leg that's over for today (the rider got there and didn't turn its alerts back on), or null. */
+export function finishedLeg(settings: Settings, done: CommuteDone | null | undefined, now: number): "morning" | "evening" | null {
+  if (!done || done.resumed || settings.alerts.stop_when_done === false) return null;
+  return done.date === zoned(now).date && settings[done.part] ? done.part : null;
+}
+
+/** The "commute done" card: shown while the finished leg's alerts would otherwise still come. */
+export function commuteDoneCard(settings: Settings, done: CommuteDone | null | undefined, now: number): CommuteDoneCard | null {
+  const part = finishedLeg(settings, done, now);
+  const leg = part && settings[part];
+  const to = leg ? station(leg.to) : null;
+  if (!part || !leg || !to || !settings.days.includes(zoned(now).weekday)) return null;
+  const until = atLocal(zoned(now).date, leg.window.end);
+  return now <= until ? { part, to: { id: to.id, name: to.name, short: to.short }, at: done!.at, until } : null;
+}
+
+/** Whether any leg is being watched right now (a commute day, inside a window). */
+export function watchingNow(settings: Settings, now: number): boolean {
+  const z = zoned(now);
+  return settings.days.includes(z.weekday) && [settings.morning, settings.evening].some((l) => l && inWindow(l, z.minuteOfDay));
 }
 
 /** The direction a leg travels (a pair no train serves in that order has none). */
@@ -267,9 +292,10 @@ export function dueNotifications(input: AlertInput): AlertResult {
   const all: Notification[] = [];
   const quiet: Draft[] = [];
   if (settings.days.includes(z.weekday)) {
+    const finished = finishedLeg(settings, input.done, now);
     for (const part of ["morning", "evening"] as const) {
       const leg = settings[part];
-      if (!leg) continue;
+      if (!leg || part === finished) continue;
       if (inWindow(leg, z.minuteOfDay)) all.push(...legNotifications(leg, part, input).map((n) => ({ ...n, priority: true })));
       if (settings.alerts.scope === "all") quiet.push(...quietNotifications(leg, input));
     }

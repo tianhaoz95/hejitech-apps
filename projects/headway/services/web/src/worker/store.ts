@@ -1,7 +1,7 @@
 // Data access for the Worker: the service-role client on the `headway` schema, tokens (only hashes
 // are stored), settings, the realtime snapshot and the tracked train.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { normalizeSettings, type OnTrainMatch, type RealtimeSnapshot, type Settings, type Tracked } from "@headway/core";
+import { normalizeSettings, type CommuteDone, type OnTrainMatch, type RealtimeSnapshot, type Settings, type Tracked } from "@headway/core";
 
 export interface Env {
   OAUTH_KV: KVNamespace;
@@ -253,4 +253,33 @@ export async function loadOnTrain(env: Env, userId: string): Promise<OnTrainSess
 export async function saveOnTrain(env: Env, userId: string, s: OnTrainSession | null): Promise<void> {
   if (!s) return env.OAUTH_KV.delete(onTrainKey(userId));
   await env.OAUTH_KV.put(onTrainKey(userId), JSON.stringify(s), { expirationTtl: ON_TRAIN_TTL_SEC });
+}
+
+// ---------------------------------------------------------------- a commute finished for the day
+
+// KV again: it lasts a day at most and says only which leg is over, never a location.
+const commuteDoneKey = (userId: string) => `headway:commute_done:${userId}`;
+const lastRideKey = (userId: string) => `headway:last_ride:${userId}`;
+
+export async function loadCommuteDone(env: Env, userId: string): Promise<CommuteDone | null> {
+  const raw = await env.OAUTH_KV.get(commuteDoneKey(userId));
+  try { return raw ? (JSON.parse(raw) as CommuteDone) : null; } catch { return null; }
+}
+
+export async function saveCommuteDone(env: Env, userId: string, d: CommuteDone | null): Promise<void> {
+  if (!d) return env.OAUTH_KV.delete(commuteDoneKey(userId));
+  await env.OAUTH_KV.put(commuteDoneKey(userId), JSON.stringify(d), { expirationTtl: 24 * 3600 });
+}
+
+/** The tracked train that just arrived: tracking clears itself then, a minute before the rider is on the platform. */
+export type LastRide = { trip_id: string; to: string };
+
+export async function loadLastRide(env: Env, userId: string): Promise<LastRide | null> {
+  const raw = await env.OAUTH_KV.get(lastRideKey(userId));
+  try { return raw ? (JSON.parse(raw) as LastRide) : null; } catch { return null; }
+}
+
+export async function saveLastRide(env: Env, userId: string, r: LastRide | null): Promise<void> {
+  if (!r) return env.OAUTH_KV.delete(lastRideKey(userId));
+  await env.OAUTH_KV.put(lastRideKey(userId), JSON.stringify(r), { expirationTtl: 30 * 60 });
 }

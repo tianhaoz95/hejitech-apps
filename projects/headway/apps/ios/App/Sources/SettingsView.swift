@@ -38,10 +38,11 @@ struct SettingsView: View {
                     Picker("Which alerts", selection: Binding(get: { model.settings.alerts.scope }, set: { s in Task { await model.setAlertScope(s) } })) {
                         ForEach(AlertScope.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
+                    Toggle("Stop once my commute is done", isOn: Binding(get: { model.settings.alerts.stopWhenDone }, set: { on in Task { await model.setStopWhenDone(on) } }))
                 } header: {
                     Text("iPhone alerts")
                 } footer: {
-                    Text("Priority alerts affect your commute: your direction, inside your watch window, and the train you track. Priority and quiet adds delays and notices for your stations at other times or the other way; those arrive silently in Notification Center. Choose which kinds of alerts in the Commute tab.")
+                    Text("Once your location shows you got off at your commute's stop, Headway stops that leg's delay, cancellation and leave-now alerts for the rest of the day; the Trains tab says so and can turn them back on for the day. Priority alerts affect your commute: your direction, inside your watch window, and the train you track. Priority and quiet adds delays and notices for your stations at other times or the other way; those arrive silently in Notification Center. Choose which kinds of alerts in the Commute tab.")
                 }
                 Section {
                     Picker("When I'm riding", selection: Binding(get: { model.settings.onTrain }, set: { m in Task { await model.setOnTrainMode(m) } })) {

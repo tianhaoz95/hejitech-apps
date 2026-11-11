@@ -9,10 +9,10 @@
 //
 // While someone is matched, stillOnTrain keeps them matched through station stops (speed 0) until
 // the train gets away from them or arrives.
-import { alertDirection } from "./alerts.ts";
+import { alertDirection, legDirection } from "./alerts.ts";
 import { delayAt, distanceM, isFresh, liveTrip, progress, relevantAlerts, serviceRuns, STATIONS, station, TIMETABLE, tripProgressStops } from "./schedule.ts";
-import { addDays, serviceDayStart, zoned } from "./time.ts";
-import type { OnTrainCard, OnTrainMatch, OnTrainSample, RealtimeSnapshot, Settings, Timetable, Tracked, Trip } from "./types.ts";
+import { addDays, atLocal, serviceDayStart, zoned } from "./time.ts";
+import type { CommuteDone, OnTrainCard, OnTrainMatch, OnTrainSample, RealtimeSnapshot, Settings, Timetable, Tracked, Trip } from "./types.ts";
 
 const MIN = 60_000;
 /** About 30 km/h: faster than running, slower than a train between stops. */
@@ -32,6 +32,12 @@ const LATEST_MAX_AGE_MS = 3 * MIN;
 const MATCH_KM = 1.5;
 /** Off the train: it's this far along the line from you. */
 export const LEFT_TRAIN_KM = 4;
+/** Within this of a leg's destination station, off a train that went there: the commute is done. */
+export const ARRIVED_M = 400;
+/** Faster than this they're still moving through, not getting off. */
+const ARRIVED_MAX_MPS = 5;
+/** The train must be due at that station about now (scheduled; this allows for it running late). */
+const ARRIVED_EARLY_MS = 5 * MIN, ARRIVED_LATE_MS = 60 * MIN;
 
 const KM: number[] = (() => {
   const out = [0];
@@ -171,10 +177,41 @@ function destination(trip: Trip, settings: Settings | null, tracked: Tracked | n
   const stopIds = Array.from({ length: trip.stops.length / 3 }, (_, p) => STATIONS[trip.stops[p * 3]].id);
   const ahead = (id: string) => stopIds.indexOf(id) >= nowPos;
   if (tracked?.trip_id === trip.id && ahead(tracked.to)) return { to: tracked.to, source: "tracked" };
+  // The commute's stop whenever this train goes there the leg's way, wherever they boarded.
   for (const leg of [settings?.morning, settings?.evening]) {
-    if (leg && stopIds.includes(leg.from) && ahead(leg.to) && stopIds.indexOf(leg.from) < stopIds.indexOf(leg.to)) return { to: leg.to, source: "commute" };
+    if (leg && ahead(leg.to) && legDirection(leg) === trip.dir) return { to: leg.to, source: "commute" };
   }
   return { to: stopIds[stopIds.length - 1], source: "terminal" };
+}
+
+/**
+ * The leg this ride just finished: the rider is at its destination station, off (or stepping off) a
+ * train that runs the leg's way and is due there about now. Not when they're tracking that train to
+ * another stop (a one-off), on a day off, or after the leg's window. Pure; the fix isn't kept.
+ */
+export function commuteArrival(settings: Settings, ride: { trip_id: string; to?: string }, here: { lat: number; lon: number; speed?: number }, now: number, tt: Timetable = TIMETABLE): CommuteDone | null {
+  const trip = tt.trips.find((t) => t.id === ride.trip_id);
+  const z = zoned(now);
+  if (!trip || !settings.days.includes(z.weekday)) return null;
+  if (typeof here.speed === "number" && here.speed > ARRIVED_MAX_MPS) return null;
+  const stopIds = Array.from({ length: trip.stops.length / 3 }, (_, p) => STATIONS[trip.stops[p * 3]].id);
+  for (const part of ["morning", "evening"] as const) {
+    const leg = settings[part];
+    const to = leg ? station(leg.to) : null;
+    if (!leg || !to || to.lat == null || to.lon == null) continue;
+    if (!stopIds.includes(leg.to) || legDirection(leg) !== trip.dir) continue;
+    if (ride.to && ride.to !== leg.to) continue;
+    if (now > atLocal(z.date, leg.window.end)) continue;
+    if (distanceM(here, to as LatLon) > ARRIVED_M) continue;
+    // An old match for a train that was here hours ago, or isn't here yet, says nothing about now.
+    const arrMin = trip.stops[stopIds.indexOf(leg.to) * 3 + 1];
+    const due = [addDays(z.date, -1), z.date].some((d) => {
+      const arr = serviceDayStart(d) + arrMin * MIN;
+      return now >= arr - ARRIVED_EARLY_MS && now <= arr + ARRIVED_LATE_MS;
+    });
+    if (due) return { date: z.date, part, at: now };
+  }
+  return null;
 }
 
 /** What the in-train card shows, or null when that ride is over. */

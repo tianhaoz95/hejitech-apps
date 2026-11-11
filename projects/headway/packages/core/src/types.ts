@@ -135,6 +135,29 @@ export interface AlertSettings {
   better_train: boolean;
   /** Priority only, or priority plus quiet notifications for everything else on your stations. */
   scope: AlertScope;
+  /** Once your location shows you reached a leg's destination, stop that leg's alerts for the day (default true). */
+  stop_when_done?: boolean;
+}
+
+/** A leg finished for the day: the rider reached its destination. Kept until the next day at most. */
+export interface CommuteDone {
+  /** Pacific calendar date, YYYYMMDD. */
+  date: string;
+  part: "morning" | "evening";
+  /** epoch ms */
+  at: number;
+  /** The rider turned this leg's alerts back on for today: it isn't marked done again. */
+  resumed?: boolean;
+}
+
+/** What the apps show while a finished leg's alerts are held back. */
+export interface CommuteDoneCard {
+  part: "morning" | "evening";
+  to: Pick<Station, "id" | "name" | "short">;
+  /** When they got there, epoch ms. */
+  at: number;
+  /** The end of the leg's watch window, epoch ms: alerts would have stopped then anyway. */
+  until: number;
 }
 
 /**

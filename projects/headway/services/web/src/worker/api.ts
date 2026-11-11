@@ -6,13 +6,13 @@
 //   Supabase session (web, iPhone) settings, pairing codes, devices, push registration, agent tokens, family group, delete data
 import { devClock, now as clockNow } from "./clock.ts";
 import { appleKey, revokeIfPossible } from "./apple.ts";
-import { board, checkSettings, isTravelMode, clock, commuteBoard, detectOnTrain, newLeg, onTrainCard, stillOnTrain, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type ExpressPreference, type OnTrainSample, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
+import { board, checkSettings, isTravelMode, clock, commuteArrival, commuteBoard, commuteDoneCard, detectOnTrain, newLeg, onTrainCard, stillOnTrain, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type CommuteDone, type ExpressPreference, type OnTrainSample, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
 import { NOT_BOARD_ACTIVITY, pushConfigured, sendPush } from "./push.ts";
 import { reviewSignIn } from "./review.ts";
 import { handleFamily, leaveFamily } from "./family.ts";
 import {
-  admin, bearer, createEtaShare, json, loadEtaShare, loadOnTrain, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
-  revokeEtaShares, saveOnTrain, type OnTrainSession, saveSettings, saveTracked, sha256, supabaseUser, updateEtaShareExpiry, type Db, type Env,
+  admin, bearer, createEtaShare, json, loadCommuteDone, loadEtaShare, loadLastRide, loadOnTrain, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
+  revokeEtaShares, saveCommuteDone, saveLastRide, saveOnTrain, type OnTrainSession, saveSettings, saveTracked, sha256, supabaseUser, updateEtaShareExpiry, type Db, type Env,
 } from "./store.ts";
 
 /** Every table holding a user's Headway rows (DELETE /api/account, the review account's reset). */
@@ -29,6 +29,26 @@ const cors = {
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 };
 const reply = (body: unknown, status = 200, extra: Record<string, string> = {}) => json(body, status, { ...cors, ...extra });
+
+type Ride = { trip_id: string; to?: string } | null | undefined;
+
+/**
+ * The leg the rider finished today. With a location (`here`, used for this and dropped), a ride that
+ * ends at a leg's destination marks it; turning its alerts back on for the day (`resumed`) sticks.
+ */
+async function commuteDone(env: Env, userId: string, settings: Settings, rides: () => Ride[] | Promise<Ride[]>, here: { lat: number; lon: number; speed?: number } | null, now: number): Promise<CommuteDone | null> {
+  if (settings.alerts.stop_when_done === false || !(settings.morning || settings.evening)) return null;
+  const existing = await loadCommuteDone(env, userId);
+  if (!here) return existing;
+  for (const ride of await rides()) {
+    const arrived = ride?.trip_id ? commuteArrival(settings, ride, here, now) : null;
+    if (!arrived) continue;
+    if (existing && existing.date === arrived.date && existing.part === arrived.part) return existing;
+    await saveCommuteDone(env, userId, arrived);
+    return arrived;
+  }
+  return existing;
+}
 
 type Caller = { userId: string; via: "session" | "device"; email?: string; name?: string };
 
@@ -177,7 +197,9 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     const p = tracked ? progress(tracked, now, snapshot) : null;
     const ride = settings.on_train === "off" ? null : await loadOnTrain(env, userId);
     const on_train = ride && !(ride.dismissed_until && ride.dismissed_until > now) ? onTrainCard(ride, settings, tracked, now, snapshot) : null;
-    return reply({ board: b, has_commute: Boolean(settings.morning || settings.evening), saved, tracked: tracked && p && !p.arrived ? { ...tracked, progress: p } : null, on_train });
+    // Their location also says when the ride they were on has reached their commute's stop.
+    const done = await commuteDone(env, userId, settings, async () => [ride && !ride.dismissed_until && { trip_id: ride.trip_id, to: tracked?.trip_id === ride.trip_id ? tracked.to : undefined } || null, tracked, await loadLastRide(env, userId)], origin ?? null, now);
+    return reply({ board: b, has_commute: Boolean(settings.morning || settings.evening), saved, tracked: tracked && p && !p.arrived ? { ...tracked, progress: p } : null, on_train, commute_done: commuteDoneCard(settings, done, now) });
   }
   if (path === "/api/track" && req.method === "POST") {
     const t = checkTracked((await req.json().catch(() => null)) as Partial<Tracked> | null);
@@ -245,6 +267,12 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     if (mode === "off") return reply({ on_train: null, auto_tracked: false });
     if (session?.dismissed_until && session.dismissed_until > now) return reply({ on_train: null, auto_tracked: false });
 
+    // Off the train at their commute's stop: that leg is done for today.
+    const last = samples.filter((s) => Number.isFinite(s?.lat) && Number.isFinite(s?.lon) && Number.isFinite(s?.at)).sort((a, b) => a.at - b.at).at(-1);
+    if (last && Math.abs(now - last.at) <= 3 * 60_000) {
+      await commuteDone(env, userId, settings, async () => [session && !session.dismissed_until && { trip_id: session.trip_id, to: tracked?.trip_id === session.trip_id ? tracked.to : undefined } || null, tracked, await loadLastRide(env, userId)], last, now);
+    }
+
     const kept = session && !session.dismissed_until && stillOnTrain(session, samples, now, snapshot) ? session : null;
     const found = detectOnTrain(samples, now, snapshot);
     const sameTrip = kept && found && found.trip_id === kept.trip_id && found.service_date === kept.service_date;
@@ -290,6 +318,13 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     return reply({ ok: true });
   }
 
+  // "Keep alerting me today": the finished leg's alerts come back until tomorrow.
+  if (path === "/api/me/commute-done" && req.method === "DELETE") {
+    const done = await loadCommuteDone(env, userId);
+    if (done && !done.resumed) await saveCommuteDone(env, userId, { ...done, resumed: true });
+    return reply({ ok: true });
+  }
+
   // ------------------------------------------------------------ family group
   if (path === "/api/family" || path.startsWith("/api/family/")) {
     const r = await handleFamily(req, env, db, path, who, now, reply);
@@ -304,6 +339,8 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     if (issues.length) return reply({ error: "the settings have problems", issues }, 422);
     const settings = normalizeSettings(body!.settings);
     await saveSettings(db, userId, settings);
+    // Switching it off forgets today's finished leg too.
+    if (settings.alerts.stop_when_done === false) await saveCommuteDone(env, userId, null);
     return reply({ settings, saved: true });
   }
 
@@ -384,7 +421,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
       const { error } = await db.from(t).delete().eq("user_id", userId);
       if (error) return reply({ error: `couldn't delete ${t}: ${error.message}` }, 500);
     }
-    await saveOnTrain(env, userId, null);
+    await Promise.all([saveOnTrain(env, userId, null), saveCommuteDone(env, userId, null), saveLastRide(env, userId, null)]);
     return reply({ ok: true, apple_revoked: appleRevoked });
   }
 

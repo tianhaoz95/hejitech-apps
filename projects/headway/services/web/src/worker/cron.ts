@@ -1,10 +1,10 @@
 // The every-minute cron: refresh the realtime snapshot, then run the alert engine for everyone with
 // an iPhone registered for alerts, push what's due, and record it so it's never sent twice.
-import { board, boardActivityState, dueNotifications, normalizeSettings, progress, type RealtimeSnapshot, type Tracked } from "@headway/core";
+import { board, boardActivityState, dueNotifications, normalizeSettings, progress, watchingNow, type RealtimeSnapshot, type Tracked } from "@headway/core";
 import { BOARD_ACTIVITY_PREFIX, NOT_BOARD_ACTIVITY, sendPush, sendLiveActivityPush, pushConfigured, type LiveActivityContentState } from "./push.ts";
 import { runFamilyCron } from "./family.ts";
 import { refreshRealtime } from "./realtime.ts";
-import { admin, saveTracked, type Env } from "./store.ts";
+import { admin, loadCommuteDone, saveLastRide, saveTracked, type Env } from "./store.ts";
 
 /** Sent-notification keys are kept this long (service alert ids repeat while an alert lasts). */
 const SENT_RETENTION_DAYS = 14;
@@ -46,8 +46,11 @@ export async function runCron(env: Env, now = new Date()): Promise<CronReport> {
     const t = tracked?.find((x) => x.user_id === userId);
     const trackedTrip: Tracked | null = t ? { trip_id: t.trip_id, service_date: t.service_date, from: t.from_station, to: t.to_station } : null;
     const keys = new Set((sent ?? []).filter((s) => s.user_id === userId).map((s) => s.key as string));
-    const { notifications, trackingDone } = dueNotifications({ now: now.getTime(), settings, snapshot, tracked: trackedTrip, sent: keys });
+    // Read only while a leg is being watched: that's the only time a finished commute changes anything.
+    const done = settings.alerts.stop_when_done !== false && watchingNow(settings, now.getTime()) ? await loadCommuteDone(env, userId).catch(() => null) : null;
+    const { notifications, trackingDone } = dueNotifications({ now: now.getTime(), settings, snapshot, tracked: trackedTrip, sent: keys, done });
     if (trackingDone && trackedTrip) {
+      if (settings.alerts.stop_when_done !== false) await saveLastRide(env, userId, { trip_id: trackedTrip.trip_id, to: trackedTrip.to }).catch(() => undefined);
       await saveTracked(db, userId, null);
       await db.from("activity_tokens").delete().eq("user_id", userId).eq("kind", "update").or(NOT_BOARD_ACTIVITY);
     }

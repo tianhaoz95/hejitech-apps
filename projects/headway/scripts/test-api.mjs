@@ -246,6 +246,48 @@ await step("on a train: off asks nothing, a ride shows a card everywhere, auto t
   await call("/api/track", { method: "DELETE", auth: session });
 });
 
+await step("commute done: reaching the leg's stop holds its alerts, shows the card, and can be turned back on for the day", async () => {
+  const { departures, station } = await import("../packages/core/src/index.ts");
+  const cur = (await call("/api/settings", { auth: session })).body.settings;
+  assert.equal(cur.alerts.stop_when_done, true, "on by default");
+  const put = (alerts, more = {}) => call("/api/settings", { method: "PUT", auth: session, body: { settings: { ...cur, ...more, alerts: { ...cur.alerts, ...alerts } } } });
+  assert.equal((await put({ stop_when_done: "yes" })).status, 422);
+  const leg = { from: "mountain_view", to: "san_francisco", walk_minutes: 10, usual: null, window: { start: "06:00", end: "10:30" } };
+  // Off, then on: forgets a leg finished by an earlier run.
+  assert.equal((await put({ stop_when_done: false }, { morning: leg, days: [0, 1, 2, 3, 4, 5, 6] })).body.settings.alerts.stop_when_done, false);
+  assert.equal((await put({ stop_when_done: true }, { morning: leg, days: [0, 1, 2, 3, 4, 5, 6] })).status, 200);
+
+  // A weekday morning: track a train to San Francisco and be there as it pulls in.
+  const day = new Date(Date.parse("2026-11-09T08:00:00-08:00"));
+  const t = departures("mountain_view", "san_francisco", day.getTime(), null, { lookbackMs: 0 })[0];
+  const sf = station("san_francisco"), mv = station("mountain_view");
+  const here = (s) => `lat=${s.lat}&lon=${s.lon}`;
+  try {
+    await call("/api/dev/clock", { method: "PUT", body: { at: new Date(t.arr - 60_000).toISOString() } });
+    assert.equal((await call("/api/track", { method: "POST", auth: session, body: { trip_id: t.trip_id, service_date: t.service_date, from: "mountain_view", to: "san_francisco" } })).status, 200);
+    assert.equal((await call(`/api/me/board?${here(mv)}`, { auth: session })).body.commute_done, null, "not there yet");
+    assert.equal((await call("/api/me/board", { auth: session })).body.commute_done, null, "no location, no guess");
+    const done = (await call(`/api/me/board?${here(sf)}`, { auth: session })).body.commute_done;
+    assert.equal(done?.part, "morning");
+    assert.equal(done.to.id, "san_francisco");
+    assert.ok(done.until > done.at);
+    assert.equal((await call("/api/me/board", { auth: session })).body.commute_done?.part, "morning", "stays without a location");
+    assert.equal((await call("/api/me/board", { auth: other })).body.commute_done, null, "theirs only");
+    assert.equal((await call("/api/me/commute-done", { method: "DELETE", auth: SEED_DEVICE })).status, 403, "the app's button, not the glasses'");
+    assert.equal((await call("/api/me/commute-done", { method: "DELETE", auth: session })).status, 200);
+    assert.equal((await call(`/api/me/board?${here(sf)}`, { auth: session })).body.commute_done, null, "back on for today, and it sticks");
+    // A one-off to another stop isn't the commute.
+    await put({ stop_when_done: false }, { morning: leg });
+    await put({ stop_when_done: true }, { morning: leg, days: [0, 1, 2, 3, 4, 5, 6] });
+    await call("/api/track", { method: "POST", auth: session, body: { trip_id: t.trip_id, service_date: t.service_date, from: "mountain_view", to: "22nd_street" } });
+    assert.equal((await call(`/api/me/board?${here(sf)}`, { auth: session })).body.commute_done, null, "tracked to another stop");
+  } finally {
+    await call("/api/track", { method: "DELETE", auth: session });
+    await call("/api/dev/clock", { method: "PUT", body: { at: null } });
+    await call("/api/settings", { method: "PUT", auth: session, body: { settings: cur } });
+  }
+});
+
 await step("priority: the alert choice is saved", async () => {
   const cur = (await call("/api/settings", { auth: session })).body.settings;
   const r = await call("/api/settings", { method: "PUT", auth: session, body: { settings: { ...cur, alerts: { ...cur.alerts, scope: "all" } } } });

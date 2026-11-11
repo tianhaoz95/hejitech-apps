@@ -277,7 +277,9 @@ data class AlertSettings(
     val arrival: Boolean = true,
     @SerialName("arrival_minutes") val arrivalMinutes: Int = 5,
     @SerialName("better_train") val betterTrain: Boolean = true,
-    val scope: AlertScope = AlertScope.PRIORITY
+    val scope: AlertScope = AlertScope.PRIORITY,
+    /** Kept as saved elsewhere: Android gets no commute alerts yet, so it has no switch for it. */
+    @SerialName("stop_when_done") val stopWhenDone: Boolean = true
 )
 
 @Serializable

@@ -212,6 +212,7 @@ async function render() {
   const arrivalSw = toggle(a.arrival, "Arrival alert for tracked train");
   const arrivalMin = num(a.arrival_minutes, 1, 60, "num-inline");
   const betterTrainSw = toggle(a.better_train, "Better train alerts");
+  const doneSw = toggle(a.stop_when_done !== false, "Stop alerts once my commute is done");
   const scope = choice(a.scope ?? "priority", [["priority", "Priority only"], ["all", "Priority and quiet"]], "Which notifications");
   const onTrainMode = choice(s.on_train ?? "card", [
     ["off", "Off"],
@@ -239,6 +240,7 @@ async function render() {
         arrival_minutes: Number(arrivalMin.value),
         better_train: betterTrainSw.checked,
         scope: scope.value as Settings["alerts"]["scope"],
+        stop_when_done: doneSw.checked,
       },
       on_train: onTrainMode.value as Settings["on_train"],
     };
@@ -307,6 +309,10 @@ async function render() {
           "Faster train available",
           "Notify when a later-departing express train reaches your stop sooner",
           betterTrainSw),
+        settingRow(
+          "Stop once my commute is done",
+          "After your location shows you reached a leg's destination, no more alerts for that leg that day",
+          doneSw),
         settingRow(
           "Leave-now reminder",
           "Fires your walk time before your usual train's predicted departure",

@@ -5,7 +5,7 @@ import { hhmm } from "./time.ts";
 import type { AlertScope, AlertSettings, ExpressPreference, Leg, OnTrainMode, Settings } from "./types.ts";
 
 export const DEFAULT_ALERTS: AlertSettings = {
-  delay: true, delay_threshold: 5, cancellation: true, service: true, leave_now: true, arrival: true, arrival_minutes: 5, better_train: true, scope: "priority",
+  delay: true, delay_threshold: 5, cancellation: true, service: true, leave_now: true, arrival: true, arrival_minutes: 5, better_train: true, scope: "priority", stop_when_done: true,
 };
 
 export const DEFAULT_ON_TRAIN: OnTrainMode = "card";
@@ -72,6 +72,7 @@ export function checkSettings(s: unknown): Issue[] {
     if (!int(a.delay_threshold, 1, 60)) issues.push({ path: "alerts.delay_threshold", message: "must be 1–60 minutes" });
     if (!int(a.arrival_minutes, 1, 60)) issues.push({ path: "alerts.arrival_minutes", message: "must be 1–60 minutes" });
     if (a.scope !== undefined && !validScope(a.scope)) issues.push({ path: "alerts.scope", message: 'must be "priority" or "all"' });
+    if (a.stop_when_done !== undefined && !bool(a.stop_when_done)) issues.push({ path: "alerts.stop_when_done", message: "must be true or false" });
   }
   if (v.express_preference !== undefined && !validPref(v.express_preference)) {
     issues.push({ path: "express_preference", message: 'must be "all", "prefer_express", or "express_only"' });
@@ -114,5 +115,5 @@ export function normalizeSettings(s: unknown): Settings {
 
 function normalizedAlerts(a: unknown, base: AlertSettings): AlertSettings {
   const merged = { ...base, ...(typeof a === "object" && a ? a : {}) } as AlertSettings;
-  return { ...merged, scope: validScope(merged.scope) ? merged.scope : base.scope };
+  return { ...merged, scope: validScope(merged.scope) ? merged.scope : base.scope, stop_when_done: merged.stop_when_done !== false };
 }

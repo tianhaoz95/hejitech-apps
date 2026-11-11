@@ -483,7 +483,7 @@ fun OnTrainBanner(card: OnTrainCard, onTrack: (String?) -> Unit, onDismiss: () -
                     Button(onClick = { onTrack(null) }) { Text("Track") }
                 }
                 Box {
-                    OutlinedButton(onClick = { pickStop = true }) { Text("Getting off at") }
+                    OutlinedButton(onClick = { pickStop = true }) { Text("Get off at ${card.to.short} ▾", maxLines = 1) }
                     DropdownMenu(expanded = pickStop, onDismissRequest = { pickStop = false }) {
                         card.stops.filter { it.status != "done" }.forEach { s ->
                             DropdownMenuItem(text = { Text(s.name) }, onClick = {

@@ -191,3 +191,31 @@ notifications yet (no server push to Android: it needs FCM, to be revisited).
   `trip_id` `follow:<sharer>:<trip>`; the cron updates and ends it, and ends any whose share or follow is gone.
   The app never ends those itself (only `endAllActivities` on sign-out or deleting data). Merging your own and
   followed trains into one activity is the fallback if iOS's activity limit bites.
+
+## Commute done, and the get-off stop (2026-11-11)
+
+The owner's choices: the on-train card's get-off stop defaults to the commute's, with the picker only for
+a one-off; and once the rider's location shows they reached the commute's destination, no more alerts
+about catching a train that day, even inside the watch window. A setting, on by default
+(`alerts.stop_when_done`), and a card on the Trains tab with a button to turn the alerts back on for
+that one day.
+
+- **The button names the stop** ("Get off at SF"), with the current one ticked in its menu; it used to
+  read "Getting off at" whatever was chosen. The commute's stop is the default whenever the train runs
+  the leg's way and stops there, wherever the rider boarded (before, the train also had to stop at the
+  leg's `from`, so boarding elsewhere fell back to the end of the line).
+- **Done needs a ride and a place** (`core/ontrain.ts`, `commuteArrival`): a fix within 400 m of the
+  leg's destination, not moving faster than 5 m/s, and a train the rider was on (detected, tracked, or
+  the tracked train that just arrived) that runs the leg's way and is due at that station about now
+  (5 min early to 60 late). Not on days off, not after the window, not when that train is tracked to
+  another stop. Fixes arrive with board requests and on-train reports the apps already make.
+- **What stops** (`dueNotifications`, `done`): everything for that leg, priority and quiet. The other
+  leg, the tracked train's arrival alert and family notifications carry on.
+- **Kept in KV for a day at most** (`headway:commute_done:<user>`: date, leg, time; no location), like
+  the on-train match. "Keep alerting me today" marks it `resumed`, so the next fix doesn't finish the
+  leg again; switching the setting off forgets it. The cron reads it only while a leg is being watched.
+- **It needs a fix at the station**: the app open (or opened within the hour), or "with the app
+  closed" on-train mode, where a wake soon after a ride now reports even when standing still. Without
+  one, alerts go on as before. Android keeps the setting as saved but has no switch: it gets no
+  commute alerts yet.
+

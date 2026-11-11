@@ -39,6 +39,13 @@ struct BoardView: View {
                     .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                     .listRowBackground(Color.clear)
                 }
+                if let done = model.commuteDone {
+                    Section {
+                        CommuteDoneCardView(card: done)
+                    }
+                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                    .listRowBackground(Color.clear)
+                }
                 if let t = model.tracked {
                     Section("Tracking") { TrackedRow(tracked: t, now: now, compact: model.onTrain?.tripId == t.tripId) }
                 }
@@ -644,6 +651,31 @@ struct StationPickerRow: View {
     }
 }
 
+/// Your location showed you reached your commute's stop: no more alerts for that leg today, unless you ask.
+struct CommuteDoneCardView: View {
+    @Environment(AppModel.self) private var model
+    let card: CommuteDoneCard
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("\(card.part == "evening" ? "Evening" : "Morning") commute done", systemImage: "checkmark.circle.fill")
+                .font(.headline)
+                .foregroundStyle(.green)
+            Text("You reached \(card.to.name) at \(Clock.time(card.at)), so Headway won't send more alerts about catching a train until \(Clock.time(card.until)).")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Keep alerting me today") { Task { await model.resumeCommuteAlerts() } }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityElement(children: .contain)
+    }
+}
+
 /// Shown once your location says you're riding: what's next on this train, not when to leave for one.
 struct OnTrainCardView: View {
     @Environment(AppModel.self) private var model
@@ -700,12 +732,19 @@ struct OnTrainCardView: View {
                         .lineLimit(1)
                         .fixedSize()
                 }
-                Menu("Getting off at") {
-                    ForEach(stopsAhead) { s in
-                        Button(s.name) { Task { await model.trackOnTrain(to: s.id) } }
+                // Your commute's stop unless you pick another for this ride.
+                Menu {
+                    Picker("Get off at", selection: Binding(get: { card.to.id }, set: { id in Task { await model.trackOnTrain(to: id) } })) {
+                        ForEach(stopsAhead) { s in Text(s.name).tag(s.id) }
                     }
+                } label: {
+                    Label("Get off at \(card.to.short)", systemImage: "chevron.up.chevron.down")
+                        .labelStyle(.titleAndIcon)
+                        .lineLimit(1)
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Get off at \(card.to.name)")
+                .accessibilityHint("Pick another stop for this ride")
                 Spacer()
                 if !card.tracked {
                     Button("Not on it") { Task { await model.dismissOnTrain() } }

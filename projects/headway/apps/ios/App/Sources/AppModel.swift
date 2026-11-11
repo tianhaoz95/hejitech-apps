@@ -23,6 +23,8 @@ final class AppModel {
     var tracked: TrackedWithProgress?
     /// The train your location shows you riding.
     var onTrain: OnTrainCard?
+    /// The leg you finished today, while its alerts are held back.
+    var commuteDone: CommuteDoneCard?
     var settings = Settings.defaults
     var settingsSaved = false
     var stations: [Station] = []
@@ -253,6 +255,7 @@ final class AppModel {
             backend.signOut()
             board = nil
             tracked = nil
+            commuteDone = nil
             family = nil
             settings = .defaults
             phase = .signedOut
@@ -298,6 +301,8 @@ final class AppModel {
             hasCommute = r.hasCommute
             tracked = r.tracked
             onTrain = r.onTrain
+            commuteDone = r.commuteDone
+            if onTrain != nil || tracked != nil { UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: Self.lastRideKey) }
             #if os(iOS) && canImport(ActivityKit)
             await LiveActivityManager.shared.syncTracked(tracked, backend: backend)
             await LiveActivityManager.shared.syncBoard(board)
@@ -380,10 +385,13 @@ final class AppModel {
 
     func handleBackgroundFixes(_ fixes: [OnTrainSample]) {
         guard fixes.count >= 2, backend.session != nil else { return }
-        guard fixes.suffix(3).contains(where: { ($0.speed ?? 0) >= 5 }) else { return }
+        // Moving like a train, or soon after a ride: standing still then may be the platform you get off at.
+        let rodeLately = Date().timeIntervalSince1970 - UserDefaults.standard.double(forKey: Self.lastRideKey) < 2 * 3600
+        guard rodeLately || fixes.suffix(3).contains(where: { ($0.speed ?? 0) >= 5 }) else { return }
         Task { _ = try? await backend.reportOnTrain(samples: fixes, background: true) }
     }
 
+    private static let lastRideKey = "lastRideAt"
     private static let onTrainModeKey = "onTrainMode"
     private func rememberOnTrainMode() { UserDefaults.standard.set(settings.onTrain.rawValue, forKey: Self.onTrainModeKey) }
 
@@ -412,6 +420,23 @@ final class AppModel {
         var next = settings
         next.alerts.scope = scope
         _ = await save(next)
+    }
+
+    /// Settings: stop a leg's alerts for the day once your location shows you got there.
+    func setStopWhenDone(_ on: Bool) async {
+        var next = settings
+        next.alerts.stopWhenDone = on
+        _ = await save(next)
+    }
+
+    /// The card's button: this leg's alerts come back for today only.
+    func resumeCommuteAlerts() async {
+        let was = commuteDone
+        commuteDone = nil
+        do { try await backend.resumeCommuteAlerts() } catch {
+            commuteDone = was
+            self.error = error.localizedDescription
+        }
     }
 
     /// Tracks the train you're on, to a stop you pick or the one the card expects.

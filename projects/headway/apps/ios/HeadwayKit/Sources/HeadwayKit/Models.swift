@@ -301,11 +301,24 @@ public struct MyBoard: Codable, Sendable {
     public var saved: Bool
     public var tracked: TrackedWithProgress?
     public var onTrain: OnTrainCard?
+    /// The leg you finished today, while its alerts are held back.
+    public var commuteDone: CommuteDoneCard?
 
     enum CodingKeys: String, CodingKey {
         case board, saved, tracked
-        case hasCommute = "has_commute", onTrain = "on_train"
+        case hasCommute = "has_commute", onTrain = "on_train", commuteDone = "commute_done"
     }
+}
+
+/// Your location showed you reached a leg's destination: no more alerts for it today.
+public struct CommuteDoneCard: Codable, Hashable, Sendable {
+    /// "morning" or "evening".
+    public var part: String
+    public var to: StationRef
+    /// When you got there, epoch ms.
+    public var at: Double
+    /// The end of the leg's watch window, epoch ms.
+    public var until: Double
 }
 
 /// One location fix sent to tell which train you're on. Used for that answer and never stored.
@@ -462,6 +475,8 @@ public struct AlertSettings: Codable, Hashable, Sendable {
     public var arrivalMinutes: Int
     public var betterTrain: Bool
     public var scope: AlertScope = .priority
+    /// Once your location shows you reached a leg's destination, stop that leg's alerts for the day.
+    public var stopWhenDone: Bool = true
 
     public init(delay: Bool = true, delayThreshold: Int = 5, cancellation: Bool = true, service: Bool = true, leaveNow: Bool = true, arrival: Bool = true, arrivalMinutes: Int = 5, betterTrain: Bool = true) {
         self.delay = delay
@@ -476,7 +491,7 @@ public struct AlertSettings: Codable, Hashable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case delay, cancellation, service, arrival, scope
-        case delayThreshold = "delay_threshold", leaveNow = "leave_now", arrivalMinutes = "arrival_minutes", betterTrain = "better_train"
+        case delayThreshold = "delay_threshold", leaveNow = "leave_now", arrivalMinutes = "arrival_minutes", betterTrain = "better_train", stopWhenDone = "stop_when_done"
     }
 
     public init(from decoder: Decoder) throws {
@@ -490,6 +505,7 @@ public struct AlertSettings: Codable, Hashable, Sendable {
         arrivalMinutes = try c.decode(Int.self, forKey: .arrivalMinutes)
         betterTrain = (try? c.decodeIfPresent(Bool.self, forKey: .betterTrain)) ?? true
         scope = (try? c.decodeIfPresent(AlertScope.self, forKey: .scope)) ?? .priority
+        stopWhenDone = (try? c.decodeIfPresent(Bool.self, forKey: .stopWhenDone)) ?? true
     }
 }
 

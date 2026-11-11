@@ -156,4 +156,18 @@ final class HeadwayKitTests: XCTestCase {
         XCTAssertEqual(b.onTrain?.train, "513")
         XCTAssertTrue(b.onTrain?.isSure == true)
     }
+
+    func testCommuteDoneCardAndItsSetting() throws {
+        let json = #"{"board":null,"has_commute":true,"saved":true,"tracked":null,"on_train":null,"commute_done":{"part":"morning","to":{"id":"san_francisco","name":"San Francisco","short":"SF"},"at":1000,"until":2000}}"#
+        let b = try JSONDecoder().decode(MyBoard.self, from: Data(json.utf8))
+        XCTAssertEqual(b.commuteDone?.to.short, "SF")
+        XCTAssertEqual(b.commuteDone?.part, "morning")
+        // Older servers and saved settings don't have the switch: it's on.
+        let old = #"{"delay":true,"delay_threshold":5,"cancellation":true,"service":true,"leave_now":true,"arrival":true,"arrival_minutes":5}"#
+        var a = try JSONDecoder().decode(AlertSettings.self, from: Data(old.utf8))
+        XCTAssertTrue(a.stopWhenDone)
+        a.stopWhenDone = false
+        let sent = try JSONSerialization.jsonObject(with: JSONEncoder().encode(a)) as? [String: Any]
+        XCTAssertEqual(sent?["stop_when_done"] as? Bool, false)
+    }
 }

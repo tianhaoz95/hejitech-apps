@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alertAffectsLeg, departures, dueNotifications, station, type RealtimeSnapshot, type ServiceAlert, type Settings, type Tracked } from "../src/index.ts";
+import { alertAffectsLeg, commuteDoneCard, departures, dueNotifications, normalizeSettings, station, type CommuteDone, type RealtimeSnapshot, type ServiceAlert, type Settings, type Tracked } from "../src/index.ts";
 import { at, commuter, firstTrain, SATURDAY, snapshot, WEEKDAY } from "./helpers.ts";
 
 const MIN = 60_000;
@@ -218,5 +218,44 @@ describe("priority and quiet notifications", () => {
     const s = commuter();
     const r = dueNotifications({ now: t.arr - 60_000, settings: s, snapshot: null, tracked: { trip_id: t.trip_id, service_date: t.service_date, from: "mountain_view", to: "san_francisco" }, sent: new Set() });
     expect(r.notifications.find((n) => n.kind === "arrival")?.priority).toBe(true);
+  });
+});
+
+describe("commute done", () => {
+  const now = t.dep - 20 * MIN;
+  const done: CommuteDone = { date: WEEKDAY, part: "morning", at: now - 5 * MIN };
+  const due = (d: CommuteDone | null, over: Partial<Settings> = {}, when = now, tracked: Tracked | null = null, lateMin = 12) =>
+    dueNotifications({ now: when, settings: commuter(over), snapshot: late(lateMin, when), tracked, sent: new Set(), done: d }).notifications;
+
+  it("stops the finished leg's alerts for the rest of its window", () => {
+    expect(due(null).some((n) => n.kind === "delay")).toBe(true);
+    expect(due(done)).toHaveLength(0);
+    const leaveAt = t.dep - 10 * MIN;
+    expect(due(null, {}, leaveAt, null, 0).some((n) => n.kind === "leave_now")).toBe(true);
+    expect(due(done, {}, leaveAt, null, 0)).toHaveLength(0);
+    expect(due(done, { alerts: { ...commuter().alerts, scope: "all" } }).filter((n) => n.priority)).toHaveLength(0);
+  });
+  it("is on unless switched off, and old settings get it", () => {
+    expect(commuter().alerts.stop_when_done).toBe(true);
+    const old = { ...commuter(), alerts: { ...commuter().alerts } } as Settings;
+    delete old.alerts.stop_when_done;
+    expect(normalizeSettings(old).alerts.stop_when_done).toBe(true);
+    expect(due(done, { alerts: { ...commuter().alerts, stop_when_done: false } }).some((n) => n.kind === "delay")).toBe(true);
+  });
+  it("comes back when turned on for today, the next day, and for the other leg", () => {
+    expect(due({ ...done, resumed: true }).some((n) => n.kind === "delay")).toBe(true);
+    expect(due({ ...done, date: "20261026" }).some((n) => n.kind === "delay")).toBe(true);
+    expect(due({ ...done, part: "evening" }).some((n) => n.kind === "delay")).toBe(true);
+  });
+  it("keeps the tracked train's arrival alert", () => {
+    const tracked: Tracked = { trip_id: t.trip_id, service_date: WEEKDAY, from: "mountain_view", to: "san_francisco" };
+    expect(due(done, {}, t.arr - 3 * MIN, tracked, 0).map((n) => n.kind)).toEqual(["arrival"]);
+  });
+  it("shows the card until the window ends", () => {
+    expect(commuteDoneCard(commuter(), done, now)).toMatchObject({ part: "morning", to: { id: "san_francisco" }, at: done.at, until: at(WEEKDAY, "10:30") });
+    expect(commuteDoneCard(commuter(), done, at(WEEKDAY, "10:31"))).toBeNull();
+    expect(commuteDoneCard(commuter(), { ...done, resumed: true }, now)).toBeNull();
+    expect(commuteDoneCard(commuter({ alerts: { ...commuter().alerts, stop_when_done: false } }), done, now)).toBeNull();
+    expect(commuteDoneCard(commuter(), null, now)).toBeNull();
   });
 });

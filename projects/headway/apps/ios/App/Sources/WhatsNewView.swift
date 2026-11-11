@@ -20,10 +20,14 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.2.2"
+    static let currentVersion = "1.3.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.3.0", date: "November 2026", items: [
+            WhatsNewItem(icon: "checkmark.circle.fill", title: "Quiet once your commute is done", description: "When your location shows you got off at your commute's stop, Headway stops that leg's delay, cancellation and leave-now alerts for the rest of the day. The Trains tab tells you, with a button to keep them coming that day. Switch it off in Settings under iPhone alerts."),
+            WhatsNewItem(icon: "mappin.and.ellipse", title: "Your stop, already picked", description: "On a train, the card's button now shows where you get off, set to your commute's stop wherever you boarded. Tap it only when you're getting off somewhere else this once."),
+        ]),
         ReleaseNotes(version: "1.2.2", date: "November 2026", items: [
             WhatsNewItem(icon: "tram.fill", title: "No leave-by card on the train", description: "Once the train you're tracking has left your station, the Trains tab and your glasses stop telling you when to leave and how long the trip to the station takes."),
         ]),

@@ -18,7 +18,7 @@ echo "SUPABASE_SERVICE_ROLE_KEY=<local service key>" > projects/headway/services
 npm run dev:worker -w @headway/web                     # 127.0.0.1:8792 (+ TRANSIT_511_API_KEY in .dev.vars for live data)
 curl "http://127.0.0.1:8792/cdn-cgi/handler/scheduled?cron=*+*+*+*+*"   # run the cron once
 curl -X PUT 127.0.0.1:8792/api/dev/clock -d '{"at":"2026-11-09T07:40:00-08:00"}'   # local only: pretend it's then ({"at":null} resets)
-node projects/headway/scripts/test-api.mjs             # integration (24 checks: boards, on-train, pairing, push, family, MCP/OAuth, RLS)
+node projects/headway/scripts/test-api.mjs             # integration (25 checks: boards, on-train, commute done, pairing, push, family, MCP/OAuth, RLS)
 projects/headway/scripts/glasses-sim.sh [--e2e]        # the plugin in the Even Hub simulator, paired to the seed rider
 npm run package -w @headway/glasses                    # apps/glasses/build/headway.ehpk (version = MARKETING_VERSION)
 

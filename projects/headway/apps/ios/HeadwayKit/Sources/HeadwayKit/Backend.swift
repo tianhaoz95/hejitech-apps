@@ -253,6 +253,8 @@ public final class Backend: @unchecked Sendable {
     }
     /// "Not on this train": no card for a while.
     public func dismissOnTrain() async throws { let _: OK = try await call("DELETE", "/api/me/on-train") }
+    /// "Keep alerting me today": the finished leg's alerts come back until tomorrow.
+    public func resumeCommuteAlerts() async throws { let _: OK = try await call("DELETE", "/api/me/commute-done") }
     public func pairingCode() async throws -> PairingCode { try await call("POST", "/api/pairing-code") }
     public func devices() async throws -> [PairedDevice] { try await call("GET", "/api/devices") }
     public func unpair(_ id: String) async throws { let _: OK = try await call("DELETE", "/api/devices/\(id)") }

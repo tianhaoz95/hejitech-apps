@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectOnTrain, departures, onLine, onTrainCard, stillOnTrain, station, type OnTrainSample } from "../src/index.ts";
+import { commuteArrival, detectOnTrain, departures, onLine, onTrainCard, stillOnTrain, station, type OnTrainSample } from "../src/index.ts";
 import { at, commuter, snapshot, WEEKDAY } from "./helpers.ts";
 
 const MIN = 60_000;
@@ -116,6 +116,20 @@ describe("onTrainCard", () => {
     expect(card.stops.at(-1)?.id).toBe("san_francisco");
   });
 
+  it("heads for the commute's stop when the train skips their usual station", () => {
+    const trains = departures("mountain_view", "san_francisco", at(WEEKDAY, "07:00"), null, { lookbackMs: 0, limit: 20 });
+    const skips = (id: string, tripId: string) => !departures(id, "san_francisco", at(WEEKDAY, "05:00"), null, { lookbackMs: 0, limit: 200, horizonMs: 8 * 60 * MIN }).some((x) => x.trip_id === tripId);
+    const t = trains.find((x) => skips("san_antonio", x.trip_id));
+    if (!t) throw new Error("every morning train stops at San Antonio");
+    const settings = commuter();
+    settings.morning = { ...settings.morning!, from: "san_antonio" };
+    const card = onTrainCard({ trip_id: t.trip_id, service_date: t.service_date, confidence: "high" }, settings, null, t.dep + MIN, null)!;
+    expect(card.to_source).toBe("commute");
+    expect(card.to.id).toBe("san_francisco");
+    // The evening leg runs the other way: it never names this train's stop.
+    expect(onTrainCard({ trip_id: t.trip_id, service_date: t.service_date, confidence: "high" }, commuter({ morning: null }), null, t.dep + MIN, null)!.to_source).toBe("terminal");
+  });
+
   it("falls back to the end of the line without a commute", () => {
     const { t, toNext } = northbound();
     const now = Math.round((toNext!.dep + toNext!.arr) / 2);
@@ -145,6 +159,39 @@ describe("onTrainCard", () => {
     const { t } = northbound();
     const card = onTrainCard({ trip_id: t.trip_id, service_date: t.service_date, confidence: "high" }, commuter(), { trip_id: t.trip_id, service_date: t.service_date, from: "mountain_view", to: "san_francisco" }, t.arr + 5 * MIN, null);
     expect(card).toBeNull();
+  });
+});
+
+describe("commuteArrival", () => {
+  const { t } = northbound();
+  const sf = station("san_francisco")!, mv = station("mountain_view")!;
+  const atSF = { lat: sf.lat!, lon: sf.lon!, speed: 0 };
+  const ride = { trip_id: t.trip_id };
+
+  it("says the morning leg is done at its destination station", () => {
+    expect(commuteArrival(commuter(), ride, atSF, t.arr)).toEqual({ date: WEEKDAY, part: "morning", at: t.arr });
+    expect(commuteArrival(commuter(), { ...ride, to: "san_francisco" }, { lat: sf.lat! + 0.002, lon: sf.lon! }, t.arr)?.part).toBe("morning");
+  });
+  it("needs them to be there, and not passing through", () => {
+    expect(commuteArrival(commuter(), ride, { lat: mv.lat!, lon: mv.lon!, speed: 0 }, t.arr)).toBeNull();
+    expect(commuteArrival(commuter(), ride, { lat: sf.lat! + 0.01, lon: sf.lon! }, t.arr)).toBeNull();
+    expect(commuteArrival(commuter(), ride, { ...atSF, speed: 20 }, t.arr)).toBeNull();
+  });
+  it("leaves a one-off alone: tracked to another stop, another direction, a day off, after the window", () => {
+    expect(commuteArrival(commuter(), { ...ride, to: "palo_alto" }, atSF, t.arr)).toBeNull();
+    const south = departures("san_francisco", "mountain_view", at(WEEKDAY, "08:00"), null, { lookbackMs: 0 })[0];
+    expect(commuteArrival(commuter({ evening: null }), { trip_id: south.trip_id }, atSF, t.arr)).toBeNull();
+    expect(commuteArrival(commuter({ days: [5, 6] }), ride, atSF, t.arr)).toBeNull();
+    expect(commuteArrival(commuter(), ride, atSF, at(WEEKDAY, "10:45"))).toBeNull();
+  });
+  it("ignores a train that isn't due there now", () => {
+    expect(commuteArrival(commuter(), ride, atSF, t.arr - 20 * MIN)).toBeNull();
+    expect(commuteArrival(commuter(), ride, atSF, t.arr + 61 * MIN)).toBeNull();
+    expect(commuteArrival(commuter(), ride, atSF, t.arr + 10 * MIN)?.part).toBe("morning");
+  });
+  it("finishes the evening leg at home", () => {
+    const south = departures("san_francisco", "mountain_view", at(WEEKDAY, "17:00"), null, { lookbackMs: 0 })[0];
+    expect(commuteArrival(commuter(), { trip_id: south.trip_id }, { lat: mv.lat!, lon: mv.lon! }, south.arr)?.part).toBe("evening");
   });
 });
 
