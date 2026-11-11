@@ -117,8 +117,8 @@ are quiet and Priority only is the default.
 - **Stopping auto-tracking sticks for the ride** (`auto_tracked`), and "Not on it" holds 20 minutes.
 - **Background on iPhone wakes on significant moves**, then takes 45 seconds of fixes (speed needs a few
   in a row), rather than following continuously: battery, and App Review. Android can only follow from a
-  foreground service, so a notification shows while it watches; its session is in memory, so it stops
-  with the app process until a sign-in survives one.
+  foreground service, so a notification shows while it watches; it reads the stored session, so it carries on
+  after the app process is restarted.
 - **Lingering is for boards only.** `lingerMs` is set by `board()`; the alert engine still ignores trains
   that left. A board also keeps trains you can't reach from where you are ("Missed"): you may be on the
   platform. They no longer win "First to" or a tip.
@@ -235,3 +235,24 @@ Functions (they need the paid plan and a second deploy path), no Analytics, no g
 - **One table for both platforms**: `push_devices` has `apns_token` or `fcm_token` (a check keeps it to
   one), so the cron and family passes notify every phone of a user the same way. Live Activities stay
   iPhone-only.
+
+## The Android app does what the iPhone app does (2026-11-11)
+
+Until 1.4.0 the Android app was a prototype: a debug sign-in for the seed rider, a session in memory,
+a plain list of trains. It now follows the iPhone app screen for screen, with the same wording and rules.
+
+- **Sign-in is Google through the browser** (PKCE, back to `headway://login-callback`, the redirect
+  the iPhone app already uses), or email for accounts Headway hands out. No Sign in with Apple on
+  Android: an account made with Apple on iPhone can't sign in here yet. Signed out, the app shows the
+  sign-in screen, as on iPhone; the public board without an account is gone from Android.
+- **The session is stored**, encrypted with a Keystore key (`SessionStore`), so ride-watching with the
+  app closed and the watch's track button work after the process is restarted (the earlier note that
+  Android's session "is in memory" no longer holds; the service is now `START_STICKY`).
+- **Left out because Android has no counterpart** rather than faked: Live Activities (your train, a
+  followed family member's train, the pinned board) and so the family "Lock Screen" follow switch; the
+  Home Screen widget (a Glance widget would be separate work); deleting data needs no Apple token step.
+- **Alerts are asked for once**, the first time the app opens signed in, and from Settings after that.
+- **A flip or picked pair lasts two hours**, then the board is the commute again, as on iPhone and watch.
+- **Debug builds default to production**; the local stack is a switch (it signs you out: a session
+  belongs to one backend) and `--ez autoSignIn true`.
+

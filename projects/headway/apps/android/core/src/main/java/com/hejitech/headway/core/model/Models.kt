@@ -62,12 +62,21 @@ data class BoardTrain(
     val status: TrainStatus,
     @SerialName("stops_between") val stopsBetween: Int = 0,
     /** Its time at your station has passed; it stays listed for a few minutes because real trains run late. */
-    @SerialName("past_due") val pastDue: Boolean = false
+    @SerialName("past_due") val pastDue: Boolean = false,
+    /** When to leave for it (commute boards with minutes to the station), and whether you still can: "ok", "leave", "run" or "missed". */
+    @SerialName("leave_by") val leaveBy: Double? = null,
+    @SerialName("catch") val catchState: String? = null,
+    @SerialName("buffer_min") val bufferMin: Int? = null,
+    @SerialName("ride_min") val rideMin: Int? = null,
+    @SerialName("overtaken_by") val overtakenBy: String? = null,
+    @SerialName("overtaken_by_train") val overtakenByTrain: String? = null,
+    @SerialName("first_in") val firstIn: Boolean? = null,
+    val shortest: Boolean? = null
 ) {
     val id: String get() = "$serviceDate:$tripId"
 
     /** What to say about a train past its time: right after it, it's probably just arriving. */
-    fun dueLabel(nowMs: Long = System.currentTimeMillis()): String =
+    fun dueLabel(nowMs: Long = Clock.now()): String =
         if (nowMs - maxOf(dep, predDep) < 120_000) "Due" else "May have left"
 
     val kindName: String
@@ -99,8 +108,47 @@ data class Board(
     val live: Boolean = false,
     val trains: List<BoardTrain> = emptyList(),
     val alerts: List<ServiceAlert> = emptyList(),
-    @SerialName("express_preference") val expressPreference: String? = null
+    @SerialName("express_preference") val expressPreference: String? = null,
+    /** Minutes to the station for this leg (commute boards only): the leave-by card shows with it. */
+    @SerialName("walk_minutes") val walkMinutes: Int? = null,
+    /** A later express that gets you there sooner than a delayed train. */
+    val tip: BoardTip? = null,
+    /** The trip to the station estimated from where the phone is (Settings › Location). */
+    val travel: TravelEstimate? = null
 )
+
+@Serializable
+data class BoardTip(
+    @SerialName("wait_for") val waitFor: String,
+    @SerialName("wait_for_kind") val waitForKind: String,
+    @SerialName("wait_for_dep") val waitForDep: Double,
+    @SerialName("wait_for_arr") val waitForArr: Double,
+    @SerialName("instead_of") val insteadOf: String,
+    @SerialName("instead_of_arr") val insteadOfArr: Double,
+    @SerialName("saves_min") val savesMin: Int
+)
+
+/** How you get to the station: the Worker's `travel_mode` strings, with how they read. */
+enum class TravelMode(val value: String, val title: String, val verb: String) {
+    WALK("walk", "Walk", "walk"),
+    BIKE("bike", "Bike", "bike ride"),
+    EBIKE("ebike", "E-bike", "e-bike ride"),
+    SCOOTER("scooter", "E-scooter", "scooter ride"),
+    DRIVE("drive", "Drive", "drive");
+
+    companion object {
+        fun of(value: String?): TravelMode = entries.firstOrNull { it.value == value } ?: WALK
+    }
+}
+
+@Serializable
+data class TravelEstimate(
+    val mode: String = "walk",
+    @SerialName("distance_m") val distanceM: Int = 0,
+    val minutes: Int = 0
+) {
+    val travelMode: TravelMode get() = TravelMode.of(mode)
+}
 
 @Serializable
 data class Tracked(
@@ -132,8 +180,12 @@ data class TrainProgress(
     @SerialName("stops_left") val stopsLeft: Int = 0,
     val cancelled: Boolean = false,
     val arrived: Boolean = false,
+    val departed: Boolean? = null,
     val live: Boolean = false
-)
+) {
+    /** It has left your station and hasn't arrived: when to leave for a train is beside the point. */
+    val riding: Boolean get() = departed == true && !arrived && !cancelled
+}
 
 @Serializable
 data class TrackedWithProgress(
@@ -150,7 +202,24 @@ data class MyBoard(
     @SerialName("has_commute") val hasCommute: Boolean = false,
     val saved: Boolean = false,
     val tracked: TrackedWithProgress? = null,
-    @SerialName("on_train") val onTrain: OnTrainCard? = null
+    @SerialName("on_train") val onTrain: OnTrainCard? = null,
+    @SerialName("commute_done") val commuteDone: CommuteDoneCard? = null
+)
+
+/** The leg you finished today, while its alerts are held back. */
+@Serializable
+data class CommuteDoneCard(
+    val part: String,
+    val to: StationRef,
+    val at: Double,
+    val until: Double
+)
+
+@Serializable
+data class EtaShareResponse(
+    val token: String,
+    val url: String,
+    @SerialName("expires_at") val expiresAt: String
 )
 
 /** One location fix sent to tell which train you're on. Used for that answer and never stored. */
@@ -231,6 +300,7 @@ enum class OnTrainMode(val title: String, val detail: String) {
     @SerialName("background") BACKGROUND("Also with the app closed", "Headway keeps watching for a ride with a notification showing, and tells you when it starts tracking. Needs location access all the time.");
 
     val usesLocation: Boolean get() = this != OFF
+    val startsTracking: Boolean get() = this == AUTO || this == BACKGROUND
 }
 
 @Serializable
@@ -247,9 +317,11 @@ data class Leg(
     val usual: String? = null,
     val window: TimeWindow,
     @SerialName("express_preference") val expressPreference: ExpressPreference = ExpressPreference.ALL,
-    /** "walk", "drive", "bike", "ebike" or "scooter" (chosen in the iPhone app); kept so saving here doesn't reset it. */
+    /** "walk", "drive", "bike", "ebike" or "scooter": see [TravelMode]. */
     @SerialName("travel_mode") val travelMode: String = "walk"
 ) {
+    val mode: TravelMode get() = TravelMode.of(travelMode)
+
     companion object {
         fun morning(from: String, to: String) = Leg(
             from = from,
@@ -278,9 +350,11 @@ data class AlertSettings(
     @SerialName("arrival_minutes") val arrivalMinutes: Int = 5,
     @SerialName("better_train") val betterTrain: Boolean = true,
     val scope: AlertScope = AlertScope.PRIORITY,
-    /** Kept as saved elsewhere: Android gets no commute alerts yet, so it has no switch for it. */
+    /** Stop a leg's alerts for the day once your location shows you got there. */
     @SerialName("stop_when_done") val stopWhenDone: Boolean = true
-)
+) {
+    val anyOn: Boolean get() = delay || cancellation || service || leaveNow || arrival
+}
 
 @Serializable
 data class Settings(
@@ -290,7 +364,7 @@ data class Settings(
     val days: List<Int> = listOf(0, 1, 2, 3, 4),
     val alerts: AlertSettings = AlertSettings(),
     @SerialName("express_preference") val expressPreference: ExpressPreference = ExpressPreference.ALL,
-    /** Kept so saving here doesn't clear it. */
+    /** Shown on the live ETA page when you share a ride. */
     @SerialName("share_name") val shareName: String? = null,
     @SerialName("on_train") val onTrain: OnTrainMode = OnTrainMode.CARD
 ) {

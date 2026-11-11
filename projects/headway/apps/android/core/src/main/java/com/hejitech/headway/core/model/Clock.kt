@@ -9,6 +9,13 @@ import kotlin.math.floor
 object Clock {
     val PACIFIC: TimeZone = TimeZone.getTimeZone("America/Los_Angeles")
 
+    /** Milliseconds added to the phone's clock: the local stack's demo clock (Debug only), 0 otherwise. */
+    @Volatile
+    var offsetMs: Long = 0
+
+    /** "Now" as boards mean it. */
+    fun now(): Long = System.currentTimeMillis() + offsetMs
+
     private val timeFormat = SimpleDateFormat("h:mm", Locale.US).apply {
         timeZone = PACIFIC
     }
@@ -32,7 +39,7 @@ object Clock {
     /**
      * Relative time string: "12m", "now", "1h05"
      */
-    fun until(epochMs: Double, nowMs: Long = System.currentTimeMillis()): String {
+    fun until(epochMs: Double, nowMs: Long = now()): String {
         val diffMin = floor((epochMs - nowMs) / 60000.0).toInt()
         return when {
             diffMin <= 0 -> "now"

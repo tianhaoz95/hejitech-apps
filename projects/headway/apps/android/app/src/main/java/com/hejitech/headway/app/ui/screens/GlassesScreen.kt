@@ -158,6 +158,18 @@ fun GlassesScreen(viewModel: HeadwayViewModel) {
                 }
             }
 
+            item {
+                FormCard {
+                    Text("On the R1 ring", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    listOf("Swipe" to "next trains", "Tap" to "flip direction", "Hold" to "menu: track, stations, alerts", "Double-tap" to "exit").forEach { (gesture, does) ->
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            Text(gesture, modifier = Modifier.weight(1f))
+                            Text(does, color = Color.Gray)
+                        }
+                    }
+                }
+            }
+
             item { Spacer(modifier = Modifier.height(20.dp)) }
         }
     }

@@ -189,8 +189,6 @@ private fun SectionCard(onClick: (() -> Unit)? = null, content: @Composable Colu
 @Composable
 private fun Header(text: String) = Text(text, style = MaterialTheme.typography.titleSmall, color = StatusGrey, modifier = Modifier.padding(top = 8.dp))
 
-@Composable
-private fun Note(text: String) = Text(text, style = MaterialTheme.typography.bodySmall, color = StatusGrey)
 
 @Composable
 private fun Avatar(name: String) {
@@ -241,7 +239,20 @@ private fun MemberDialog(m: FamilyMemberView, owner: Boolean, viewModel: Headway
                     Spacer(Modifier.height(4.dp))
                     Text("Shares with you: ${m.sharedWithMe.joinToString { it.followTitle.lowercase() }}.", style = MaterialTheme.typography.bodySmall, color = StatusGrey)
                 }
-                Text("Notifications about ${m.displayName} come to Headway on iPhone for now.", style = MaterialTheme.typography.bodySmall, color = StatusGrey)
+                if (m.sharedWithMe.isEmpty()) {
+                    Text("${m.displayName} doesn't share anything with you. When they do, you can choose to be told about it here.", style = MaterialTheme.typography.bodySmall, color = StatusGrey)
+                } else {
+                    Text("Tell me about", style = MaterialTheme.typography.titleSmall)
+                    m.sharedWithMe.forEach { kind ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(kind.followTitle, Modifier.weight(1f))
+                            Switch(checked = m.follow.notify.contains(kind), onCheckedChange = { on ->
+                                viewModel.setFollow(m.userId, m.follow.copy(notify = if (on) m.follow.notify + kind else m.follow.notify - kind))
+                            })
+                        }
+                    }
+                    Text("Notifications come when ${m.displayName} gets on a train, it's late, cancelled or arrives, when their usual train is late, or they set a status: only for what you turn on.", style = MaterialTheme.typography.bodySmall, color = StatusGrey)
+                }
                 if (owner) {
                     if (confirmRemove) {
                         Button(onClick = { viewModel.familyChange(done = { if (it) onDismiss() }) { c -> c.removeMember(m.userId) } }, colors = ButtonDefaults.buttonColors(containerColor = StatusRed)) { Text("Remove ${m.displayName}") }

@@ -47,6 +47,17 @@ class RideLocation(private val context: Context) : LocationListener {
     @Synchronized
     fun samples(): List<OnTrainSample> = fixes.toList()
 
+    /** Roughly where the phone is, for the trip estimate to the station: a recent fix, or the system's last one. */
+    @SuppressLint("MissingPermission")
+    fun lastKnown(): Pair<Double, Double>? {
+        if (!hasAccess()) return null
+        synchronized(this) { fixes.lastOrNull() }?.takeIf { System.currentTimeMillis() - it.at < 5 * 60_000 }?.let { return it.lat to it.lon }
+        val best = manager.getProviders(true).mapNotNull { runCatching { manager.getLastKnownLocation(it) }.getOrNull() }
+            .filter { System.currentTimeMillis() - it.time < 30 * 60_000 }
+            .maxByOrNull { it.time }
+        return best?.let { it.latitude to it.longitude }
+    }
+
     @Synchronized
     override fun onLocationChanged(location: Location) {
         if (location.hasAccuracy() && location.accuracy > 200f) return

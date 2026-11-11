@@ -5,7 +5,8 @@ description: Take a HEJI project's Android app from no Google Play presence to C
 
 # Google Play: app, upload key, internal testing, CI
 
-Done once for FitLoop (2026-11-10); this is that run, generalised. `<name>` is the project
+Done for FitLoop (2026-11-10) and Headway (2026-11-11); this is those runs, generalised. Building and
+testing the app itself: skill `heji-android-app`. `<name>` is the project
 (`projects/<name>/`), `<pkg>` its `applicationId` (`com.hejitech.<name>`), `<NAME>` the upper-case
 secret prefix. Read the root `CLAUDE.md` first (isolation, releases).
 
@@ -30,6 +31,15 @@ secret prefix. Read the root `CLAUDE.md` first (isolation, releases).
 
 Everything else in this flow is pre-approved by "set up Google Play for <name>".
 
+Say before you start what testers will get: an app whose only sign-in is a debug button ships as
+public screens only (Headway's first upload did). The owner may want real sign-in first.
+
+**Order that worked** (one sitting, about an hour): 1 app record → 2 upload key and GitHub secrets →
+3 Gradle (target API, R8, signing, version) with a `-PminifyDebug` run on the phone → 4 hand upload
+to internal testing → 5 service account → 6 workflow and `release.env` → commit, push, wait for CI →
+`scripts/cut_release.sh <name>` ships the next version through CI. Steps 1 and 2 can overlap (Play
+takes a few seconds to create the app).
+
 ## Steps
 
 ### 1. App record (Play Console, Chrome)
@@ -38,6 +48,12 @@ Everything else in this flow is pre-approved by "set up Google Play for <name>".
 now; press *Check availability*), language en-US, App, Free (free can't become paid later), leave
 automatic protection on, tick both declarations (owner OK), *Create app*. Note the app ID from the
 URL (`/app/<id>/app-dashboard`) for the workflow's environment URL.
+
+- The name is not unique on Play, but keep it in step with the App Store one or use
+  `<Name>: <short descriptor>` (Headway is "Headway: Caltrain Alerts"), at most 30 characters.
+- The radios and checkboxes are not in the accessibility tree: click them from a screenshot. Choosing
+  *Free* inserts a box and **moves the declarations down**, so scroll and take a new screenshot before
+  ticking them, then zoom in to confirm both are ticked before *Create app*.
 
 ### 2. Upload key (Android Studio's keytool)
 
@@ -48,6 +64,9 @@ PW=$(openssl rand -base64 30 | tr -dc 'A-Za-z0-9' | head -c 32)
   -keystore $D/android-upload-keystore.jks -storetype PKCS12 -alias upload -keyalg RSA -keysize 4096 \
   -validity 10000 -storepass "$PW" -keypass "$PW" -dname "CN=HEJI TECH LLC, O=HEJI TECH LLC, C=US"
 ```
+
+Then put the three values in GitHub secrets at once (step 6's commands): credentials always go to
+`~/Credentials` **and** GitHub secrets in the same sitting.
 
 Write `$D/android-upload.env` (`chmod 600`) with `<NAME>_ANDROID_KEYSTORE=…`,
 `<NAME>_ANDROID_KEYSTORE_PASSWORD=…`, `<NAME>_ANDROID_KEY_ALIAS=upload`. Play App Signing keeps the
@@ -66,6 +85,9 @@ Model: `projects/fitloop/apps/android/app/build.gradle.kts`.
   Claude in Chrome's `file_upload` takes at most 10 MB. A `-PminifyDebug` switch builds a shrunk
   **debug** app: test that against the local stack (sign in, a check-in, a settings save, a restart)
   before uploading, since R8 breaks JSON mapping silently if the keep rules are wrong.
+- **Release lint** runs in `bundleRelease` and fails the build: `InvalidFragmentVersionForActivityResult`
+  (Play services or Firebase pull in an old Fragment while the app uses permission launchers) is fixed
+  by depending on `androidx.fragment:fragment` 1.8+.
 - `versionCode = minutes since 2020-01-01 UTC`: `$(( ($(date -u +%s) - 1577836800) / 60 ))`. Always
   rising, the same scheme by hand and in CI, far below Play's 2.1 billion limit.
 
@@ -91,11 +113,19 @@ keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab | g
 
 Testers join at the track's "Join on the web" link (Testers tab), then install from Play.
 
+The hand upload carries whatever `MARKETING_VERSION` says today (Headway's was 1.2.2 while 1.3.0 was
+being cut); the release that follows uploads the new version through CI, which is fine.
+
 ### 5. Give the service account the app
 
-`…/users-and-permissions/invite`: email `play-publisher@heji-play-publishing.iam.gserviceaccount.com`,
-*Add app* → the new app only → keep the read-only defaults and tick **Release apps to testing
-tracks** (never "Release to production"), *Apply*, *Invite user*, *Send invite*. It's active at once.
+The account is already a user, so don't invite it again: `…/users-and-permissions` → its row →
+*Manage* → *Add app* → tick the new app only → *Apply* → in the permissions sheet keep the read-only
+defaults and tick **Release apps to testing tracks** (never "Release to production") → *Apply* →
+*Save changes* → *Yes*. It's active at once. (Only a brand-new service account goes through
+`…/users-and-permissions/invite` with the same choices, then *Invite user*, *Send invite*.)
+
+Changing who may release an app is the owner's call: if the session's permission check stops the
+*Apply* click, ask the owner and retry once they say so, rather than leaving the workflow to fail.
 
 ```sh
 node .claude/skills/heji-google-play/play.mjs check <pkg>    # lists each track; changes nothing
@@ -118,13 +148,21 @@ core tests, builds the signed bundle and rolls it out to `internal` with
 `r0adkll/upload-google-play@v1` (`status: completed`, the R8 mapping file attached).
 
 In `projects/<name>/release.env`: add the workflow to `RELEASE_WORKFLOWS` and the four secrets to
-`REQUIRED_SECRETS`. Then `node scripts/check_isolation.mjs`.
+`REQUIRED_SECRETS`. Then `node scripts/check_isolation.mjs`. Also update the root `CLAUDE.md`
+"Releases" paragraph for the project, and the project's `CLAUDE.md` (Play app name, package, app ID,
+where the key is).
 
 ### 7. Prove it
 
 Commit and push (owner's OK), then `gh workflow run <name>-play-internal.yml --ref main` and watch
-it (`gh run watch`). Done means the run is green **and** `play.mjs check <pkg>` shows the new
-version code on `internal`. Afterwards, `scripts/cut_release.sh <name>` ships Android with the rest.
+it (`gh run watch`), or cut the next release if one is due. Done means the run is green **and**
+`play.mjs check <pkg>` shows the new version code on `internal`. Afterwards,
+`scripts/cut_release.sh <name>` ships Android with the rest.
+
+`cut_release.sh` wants a clean tree and green CI. An untracked file anywhere in the repo stops it:
+commit or ignore the file (ask whose it is); don't reach for `--force`, which also skips the CI check.
+A red CI run whose log says a port was "already in use" when starting Supabase is the runner's fault:
+`gh run rerun <id> --failed`.
 
 ## Pitfalls seen
 
@@ -136,3 +174,6 @@ version code on `internal`. Afterwards, `scripts/cut_release.sh <name>` ships An
 - Gradle needs JDK 17 (`/opt/homebrew/opt/openjdk@17`); Android Studio's bundled JDK is too new
   for Gradle 8.11, but its `keytool`/`jarsigner` are fine.
 - `adb shell pm grant` is blocked on OnePlus/OPPO phones; the app asks for notifications itself.
+- Pushing `main` doesn't always start Cloudflare's Workers Build for the project: after a release,
+  check the commit for a "Workers Builds: <name>" check or `wrangler deployments list`, and tell the
+  owner if the Worker is stale (a hand deploy is their call).

@@ -12,7 +12,20 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-class HeadwayApiException(val statusCode: Int, message: String) : Exception("HTTP $statusCode: $message")
+class HeadwayApiException(val statusCode: Int, val body: String) : Exception("HTTP $statusCode: $body") {
+    val isUnauthorized: Boolean get() = statusCode == 401
+
+    /** The Worker's `{ "error": "…" }`, or a short form of what came back. */
+    val userMessage: String
+        get() = runCatching { Json.parseToJsonElement(body).jsonObject["error"]?.jsonPrimitive?.content }.getOrNull()
+            ?: "Server error: ${body.take(160)}"
+}
+
+/** No session, or it could not be refreshed: the app goes back to sign-in. */
+class NotSignedInException : Exception("Not signed in")
+
+/** A browser sign-in to open, and the PKCE verifier to keep until the browser comes back. */
+data class OAuthStart(val url: String, val verifier: String)
 
 class HeadwayApiClient(
     var config: BackendConfig = BackendConfig.PRODUCTION,
@@ -33,8 +46,104 @@ class HeadwayApiClient(
     var session: AuthSession? = null
         private set
 
+    /** Persist the session (the app keeps it encrypted): called on sign-in, refresh and sign-out. */
+    var onSessionChange: ((AuthSession?) -> Unit)? = null
+
     fun setSession(authSession: AuthSession?) {
         session = authSession
+        onSessionChange?.invoke(authSession)
+    }
+
+    /** Adopts a stored session without telling [onSessionChange] (it came from there). */
+    fun restoreSession(authSession: AuthSession?) {
+        session = authSession
+    }
+
+    fun signOut() = setSession(null)
+
+    // ---------------------------------------------------------------- Supabase Auth (no SDK)
+
+    /**
+     * Browser sign-in (Google) with PKCE: open the URL, which returns to [redirect] with a `code`;
+     * hand that and the verifier to [exchangeCode].
+     */
+    fun oauthStart(provider: String, redirect: String): OAuthStart {
+        val verifier = b64url(ByteArray(48).also { java.security.SecureRandom().nextBytes(it) })
+        val challenge = b64url(java.security.MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII)))
+        val enc = { v: String -> java.net.URLEncoder.encode(v, "UTF-8") }
+        return OAuthStart(
+            "${config.supabaseUrl}/auth/v1/authorize?provider=${enc(provider)}&redirect_to=${enc(redirect)}&code_challenge=$challenge&code_challenge_method=s256",
+            verifier
+        )
+    }
+
+    suspend fun exchangeCode(code: String, verifier: String): AuthSession = withContext(Dispatchers.IO) {
+        authRequest("token?grant_type=pkce", buildJsonObject { put("auth_code", code); put("code_verifier", verifier) })
+    }
+
+    /** Email and password for accounts Headway hands out (the store review demo account): checked by the Worker. Not a sign-up. */
+    suspend fun reviewSignIn(email: String, password: String): AuthSession = withContext(Dispatchers.IO) {
+        val body = buildJsonObject { put("email", email); put("password", password) }.toString().toRequestBody(jsonMediaType)
+        adopt(executeRaw(Request.Builder().url("${config.site}/api/review-sign-in").post(body).build()))
+    }
+
+    /** Gets a new access token when this one is about to expire. Blocking: call from an IO context. */
+    private fun refreshIfNeeded() {
+        val s = session ?: throw NotSignedInException()
+        if (s.expiresAtMs - System.currentTimeMillis() > 60_000) return
+        synchronized(refreshLock) {
+            val now = session ?: throw NotSignedInException()
+            if (now.expiresAtMs - System.currentTimeMillis() > 60_000) return
+            try {
+                authRequest("token?grant_type=refresh_token", buildJsonObject { put("refresh_token", now.refreshToken) })
+            } catch (e: HeadwayApiException) {
+                // A refused refresh token is a dead session; anything else (offline) keeps it for the next try.
+                if (e.statusCode == 400 || e.statusCode == 401) {
+                    setSession(null)
+                    throw NotSignedInException()
+                }
+                throw e
+            }
+        }
+    }
+
+    private val refreshLock = Any()
+
+    private fun authRequest(path: String, body: JsonObject): AuthSession {
+        val request = Request.Builder()
+            .url("${config.supabaseUrl}/auth/v1/$path")
+            .addHeader("apikey", config.anonKey)
+            .post(body.toString().toRequestBody(jsonMediaType))
+            .build()
+        return adopt(executeRaw(request))
+    }
+
+    /** Keeps the session from a Supabase token response (`access_token`, `refresh_token`, `user`, …). */
+    private fun adopt(respBody: String): AuthSession {
+        val parsed = runCatching { json.parseToJsonElement(respBody).jsonObject }.getOrNull()
+        val access = parsed?.get("access_token")?.jsonPrimitive?.contentOrNull
+        val refresh = parsed?.get("refresh_token")?.jsonPrimitive?.contentOrNull
+        val user = parsed?.get("user") as? JsonObject
+        val userId = user?.get("id")?.jsonPrimitive?.contentOrNull
+        if (access == null || refresh == null || userId == null) throw HeadwayApiException(500, "Unexpected sign-in response")
+        val expiresIn = parsed["expires_in"]?.jsonPrimitive?.longOrNull ?: 3600L
+        val authSession = AuthSession(
+            accessToken = access,
+            refreshToken = refresh,
+            userId = userId,
+            email = user["email"]?.jsonPrimitive?.contentOrNull,
+            expiresAtMs = System.currentTimeMillis() + expiresIn * 1000
+        )
+        setSession(authSession)
+        return authSession
+    }
+
+    private fun b64url(bytes: ByteArray): String = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+
+    /** The local stack's demo clock (Debug builds on the local stack only): how far "now" is moved, in ms. */
+    suspend fun devClockOffsetMs(): Long = withContext(Dispatchers.IO) {
+        val obj: JsonObject = executeAndDecode(Request.Builder().url("${config.site}/api/dev/clock").get().build())
+        obj["offset_ms"]?.jsonPrimitive?.doubleOrNull?.toLong() ?: 0L
     }
 
     suspend fun getStations(): List<Station> = withContext(Dispatchers.IO) {
@@ -64,9 +173,12 @@ class HeadwayApiClient(
     suspend fun getMyBoard(
         from: String? = null,
         to: String? = null,
-        express: ExpressPreference? = null
+        express: ExpressPreference? = null,
+        /** The rider's location for a rough trip estimate to the departure station (not stored). */
+        origin: Pair<Double, Double>? = null
     ): MyBoard = withContext(Dispatchers.IO) {
         val params = mutableListOf<String>()
+        if (origin != null) params.add(String.format(java.util.Locale.US, "lat=%.4f&lon=%.4f", origin.first, origin.second))
         if (from != null && to != null) {
             params.add("from=$from&to=$to")
         }
@@ -187,50 +299,34 @@ class HeadwayApiClient(
         executeEmpty(builder.build())
     }
 
+    /** "Keep alerting me today": the finished leg's alerts come back until tomorrow. */
+    suspend fun resumeCommuteAlerts() = withContext(Dispatchers.IO) {
+        val builder = Request.Builder().url("${config.site}/api/me/commute-done").delete()
+        addAuthHeader(builder)
+        executeEmpty(builder.build())
+    }
+
+    /** A link to a page that follows the tracked train live. */
+    suspend fun createEtaShare(name: String? = null): EtaShareResponse = withContext(Dispatchers.IO) {
+        val body = buildJsonObject { put("name", name) }.toString().toRequestBody(jsonMediaType)
+        val builder = Request.Builder().url("${config.site}/api/me/share").post(body)
+        addAuthHeader(builder)
+        executeAndDecode(builder.build())
+    }
+
+    /** Deletes everything Headway keeps about this account (not the HEJI sign-in itself), then signs out. */
     suspend fun deleteAccount() = withContext(Dispatchers.IO) {
         val reqBuilder = Request.Builder()
             .url("${config.site}/api/account")
-            .delete()
+            .delete("{}".toRequestBody(jsonMediaType))
         addAuthHeader(reqBuilder)
         executeEmpty(reqBuilder.build())
-        session = null
+        setSession(null)
     }
 
+    /** Email and password straight to Supabase: the local seed account only (Debug builds). */
     suspend fun signInEmail(email: String, password: String): AuthSession = withContext(Dispatchers.IO) {
-        val bodyObj = buildJsonObject {
-            put("email", email)
-            put("password", password)
-        }
-        val body = bodyObj.toString().toRequestBody(jsonMediaType)
-        val request = Request.Builder()
-            .url("${config.supabaseUrl}/auth/v1/token?grant_type=password")
-            .addHeader("apikey", config.anonKey)
-            .post(body)
-            .build()
-
-        val resp = httpClient.newCall(request).execute()
-        val respBody = resp.body?.string().orEmpty()
-        if (!resp.isSuccessful) {
-            throw HeadwayApiException(resp.code, respBody)
-        }
-        val parsed = json.parseToJsonElement(respBody).jsonObject
-        val access = parsed["access_token"]?.jsonPrimitive?.content
-            ?: throw HeadwayApiException(500, "Missing access_token")
-        val refresh = parsed["refresh_token"]?.jsonPrimitive?.content ?: ""
-        val userObj = parsed["user"]?.jsonObject
-        val userId = userObj?.get("id")?.jsonPrimitive?.content ?: ""
-        val userEmail = userObj?.get("email")?.jsonPrimitive?.content
-        val expiresIn = parsed["expires_in"]?.jsonPrimitive?.longOrNull ?: 3600L
-
-        val authSession = AuthSession(
-            accessToken = access,
-            refreshToken = refresh,
-            userId = userId,
-            email = userEmail,
-            expiresAtMs = System.currentTimeMillis() + (expiresIn * 1000)
-        )
-        session = authSession
-        authSession
+        authRequest("token?grant_type=password", buildJsonObject { put("email", email); put("password", password) })
     }
 
     // ---------------------------------------------------------------- family group
@@ -280,27 +376,24 @@ class HeadwayApiClient(
 
     suspend fun clearStatus(): FamilyState = family("DELETE", "/status")
 
+    /** Every signed-in call goes through here (on an IO thread): refreshes the token first. */
     private fun addAuthHeader(builder: Request.Builder) {
-        val token = session?.accessToken
-        if (!token.isNullOrEmpty()) {
-            builder.addHeader("Authorization", "Bearer $token")
+        refreshIfNeeded()
+        val token = session?.accessToken ?: throw NotSignedInException()
+        builder.addHeader("Authorization", "Bearer $token")
+    }
+
+    private fun executeRaw(request: Request): String {
+        httpClient.newCall(request).execute().use { resp ->
+            val respBody = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) throw HeadwayApiException(resp.code, respBody)
+            return respBody
         }
     }
 
-    private inline fun <reified T> executeAndDecode(request: Request): T {
-        val resp = httpClient.newCall(request).execute()
-        val respBody = resp.body?.string().orEmpty()
-        if (!resp.isSuccessful) {
-            throw HeadwayApiException(resp.code, respBody)
-        }
-        return json.decodeFromString(respBody)
-    }
+    private inline fun <reified T> executeAndDecode(request: Request): T = json.decodeFromString(executeRaw(request))
 
     private fun executeEmpty(request: Request) {
-        val resp = httpClient.newCall(request).execute()
-        val respBody = resp.body?.string().orEmpty()
-        if (!resp.isSuccessful) {
-            throw HeadwayApiException(resp.code, respBody)
-        }
+        executeRaw(request)
     }
 }

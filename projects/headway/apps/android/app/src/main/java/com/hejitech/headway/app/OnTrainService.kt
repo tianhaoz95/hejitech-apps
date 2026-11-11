@@ -55,12 +55,12 @@ class OnTrainService : Service() {
                 }
             }
         }
-        // The session lives in memory: after a restart there's nothing to report with until the app opens.
-        return START_NOT_STICKY
+        // The session is stored, so Android may restart this after the app process is gone.
+        return START_STICKY
     }
 
     private suspend fun check() {
-        val client = api ?: return
+        val client = api ?: AppBackend.client(this).also { api = it }
         if (client.session == null) return
         val fixes = location.samples()
         if (fixes.size < 2 || fixes.takeLast(3).none { (it.speed ?: 0.0) >= 5.0 }) return

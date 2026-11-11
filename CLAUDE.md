@@ -35,6 +35,8 @@ Always prefer the connected physical device over a simulator/emulator when testi
 simulator only when no device is connected or the test can't run on one, and say so. Debug device
 builds sign with the team's existing Apple Development identity via the App Store Connect API key
 (`-allowProvisioningUpdates` with `-authenticationKey…`); never let signing mint a new certificate.
+Android apps (build, the local stack over `adb reverse`, driving the phone, sign-in and FCM patterns):
+the `heji-android-app` skill; putting one on Google Play: `heji-google-play`.
 
 ## Releases
 

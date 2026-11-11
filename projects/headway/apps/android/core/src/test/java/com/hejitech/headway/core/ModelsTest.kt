@@ -97,4 +97,43 @@ class ModelsTest {
         assertEquals("Due", t.dueLabel(1_060_000))
         assertEquals("May have left", t.dueLabel(1_200_000))
     }
+
+    @Test
+    fun `decodes a commute board with leave-by, badges, a tip, a travel estimate and a finished leg`() {
+        val raw = """{"board":{"from":{"id":"mountain_view","name":"Mountain View","short":"MTN VIEW"},"to":{"id":"san_francisco","name":"San Francisco","short":"SF"},
+            "leg":"morning","generated_at":1,"live":true,"walk_minutes":10,
+            "tip":{"wait_for":"511","wait_for_kind":"EXP","wait_for_dep":3,"wait_for_arr":9,"instead_of":"113","instead_of_arr":12,"saves_min":4},
+            "travel":{"mode":"ebike","distance_m":2400,"minutes":9},
+            "trains":[{"trip_id":"409","train":"409","kind":"LTD","dir":"N","service_date":"2026-11-10","dep":1,"arr":5,"pred_dep":2,"pred_arr":6,"status":"late","delay_min":3,
+              "stops_between":10,"leave_by":1.5,"catch":"leave","buffer_min":4,"ride_min":52,"first_in":true,"overtaken_by":"511x","overtaken_by_train":"511"}],
+            "alerts":[]},
+            "has_commute":true,"saved":true,
+            "tracked":{"trip_id":"409","service_date":"2026-11-10","from":"mountain_view","to":"san_francisco",
+              "progress":{"trip_id":"409","train":"409","kind":"LTD","service_date":"2026-11-10","to":{"id":"san_francisco","name":"San Francisco","short":"SF"},"pred_arr":6,"arr":5,"stops_left":3,"departed":true}},
+            "commute_done":{"part":"morning","to":{"id":"san_francisco","name":"San Francisco","short":"SF"},"at":7,"until":8}}"""
+        val my = json.decodeFromString<MyBoard>(raw)
+        val board = my.board!!
+        assertEquals(10, board.walkMinutes)
+        assertEquals("511", board.tip?.waitFor)
+        assertEquals(TravelMode.EBIKE, board.travel?.travelMode)
+        val t = board.trains.single()
+        assertEquals("leave", t.catchState)
+        assertEquals(1.5, t.leaveBy!!, 0.0)
+        assertEquals(true, t.firstIn)
+        assertNull(t.shortest)
+        assertEquals("511", t.overtakenByTrain)
+        assertTrue(my.tracked!!.progress.riding)
+        assertEquals("morning", my.commuteDone?.part)
+        // An unknown travel mode from a newer server reads as walking rather than failing.
+        assertEquals(TravelMode.WALK, TravelMode.of("hoverboard"))
+    }
+
+    @Test
+    fun `a leg is sent whole, with a cleared usual train as null`() {
+        val leg = Leg.morning("mountain_view", "san_francisco").copy(travelMode = TravelMode.DRIVE.value)
+        val out = json.encodeToString(Settings(morning = leg))
+        assertTrue(out.contains("\"usual\":null"))
+        assertTrue(out.contains("\"evening\":null"))
+        assertTrue(out.contains("\"travel_mode\":\"drive\""))
+    }
 }

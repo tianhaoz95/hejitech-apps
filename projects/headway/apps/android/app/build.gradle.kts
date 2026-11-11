@@ -92,6 +92,8 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
     implementation(libs.navigation.compose)
+    // Google sign-in opens in a browser tab and comes back to headway://login-callback.
+    implementation(libs.browser)
 
     implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.play.services)

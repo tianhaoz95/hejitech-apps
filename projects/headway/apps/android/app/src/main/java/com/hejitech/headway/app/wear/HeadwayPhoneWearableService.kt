@@ -20,7 +20,8 @@ import kotlinx.serialization.json.jsonPrimitive
 class HeadwayPhoneWearableService : WearableListenerService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val client = HeadwayApiClient(BackendConfig.PRODUCTION)
+    /** Signed in with the stored session: the watch can track a train with the phone app closed. */
+    private val client by lazy { com.hejitech.headway.app.AppBackend.client(this) }
     private val json = Json { ignoreUnknownKeys = true }
 
     override fun onMessageReceived(messageEvent: MessageEvent) {

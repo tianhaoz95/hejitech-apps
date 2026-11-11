@@ -1,6 +1,6 @@
 # Headway
 
-Caltrain status on Even G2 glasses, steered with the R1 ring, with iPhone alerts for delays,
+Caltrain status on Even G2 glasses, steered with the R1 ring, with iPhone and Android alerts for delays,
 cancellations, leaving on time and arriving at your stop. Docs:
 <https://tianhaoz95.github.io/hejitech-apps/headway/>. Working on it: [`CLAUDE.md`](CLAUDE.md).
 

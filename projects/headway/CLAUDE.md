@@ -65,7 +65,7 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|f
   App Group), the tracked-train Live Activity and the "next trains" board Live Activity (pinned from the Trains
   tab; the cron pushes it via update tokens whose `trip_id` is `board:<from>><to>`).
 - **Apple Watch app** (`apps/ios/Watch`): Companion watchOS app with glanceable departure board, live delays, countdowns, direction flip, express filtering, and train progress tracking synced with the iPhone app via WatchConnectivity and able to refresh directly.
-- **Android app** (`apps/android/app`): Native Jetpack Compose Material 3 phone app. Tabs: Trains (board, live delays, flip, station picker, track train), Commute (legs, alerts), Family (group, shares, status, invites), Glasses (pairing code), Settings. Keeps paired Wear OS watches in step via Google Play Services Wearable Data Layer (`/headway/sync_state`). Alerts arrive through FCM (`PushService`; token registered at sign-in with `POST /api/push {platform: "android"}`; Firebase is configured by `res/values/firebase.xml`, no google-services plugin). Debug: `adb shell am start -n com.hejitech.headway/.app.MainActivity --ez autoSignIn true` signs the seed rider in on the local stack (a phone on USB needs `adb reverse tcp:8792 tcp:8792; adb reverse tcp:55421 tcp:55421`).
+- **Android app** (`apps/android/app`): Native Jetpack Compose Material 3 phone app, kept at parity with the iPhone app (what has no counterpart: Live Activities and pinning to the Lock Screen, the Home Screen widget, Sign in with Apple). `HeadwayViewModel` mirrors `AppModel` (`Phase`; `route()` ends every sign-in path); `SessionStore` keeps the session encrypted (Keystore) and `AppBackend.client()` gives services a signed-in client. Sign-in: Google in a browser tab with PKCE back to `headway://login-callback`, or email for issued accounts (`/api/review-sign-in`). Tabs: Trains (leave-by card, tip, badges, sort, flip, pick stations, track, share live ETA, on-train and commute-done cards), Commute (both legs in full, alert days, every alert), Family (group, shares, follows, status, invites), Glasses (pairing code), Settings (alerts, on-train mode, location estimate, account, What's New, delete data). Skill: `heji-android-app`. Keeps paired Wear OS watches in step via Google Play Services Wearable Data Layer (`/headway/sync_state`). Alerts arrive through FCM (`PushService`; token registered at sign-in with `POST /api/push {platform: "android"}`; Firebase is configured by `res/values/firebase.xml`, no google-services plugin). Debug builds default to production and can switch to the local stack (Settings › Developer, or the sign-in screen); `adb shell am start -n com.hejitech.headway/.app.MainActivity --ez autoSignIn true` switches and signs the seed rider in, `--es screen commute` opens a tab (a phone on USB needs `adb reverse tcp:8792 tcp:8792; adb reverse tcp:55421 tcp:55421`). On the local stack the app follows the Worker's demo clock (`Clock.offsetMs`).
 - **Wear OS app** (`apps/android/wear`): Companion smartwatch app built with Wear Compose. Features live wrist departure board, one-tap trip tracking, a glanceable Wear OS Tile (`HeadwayBoardTileService`) on the watch carousel, and a watch face complication (`NextTrainComplicationService`) for departure countdowns.
 - **Android Core library** (`apps/android/core`): Shared Kotlin data models, Caltrain station index, Pacific time conversions (`Clock`), coroutine HTTP API client (`HeadwayApiClient`), and Wearable Data Layer message serialization (`WatchSyncState`).
 
@@ -103,8 +103,9 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|f
 
 ## Releasing
 
-**What's New** (`apps/ios/App/Sources/WhatsNewView.swift`): every release prepends its notes and
-sets `currentVersion`; `release.env`'s `release_check` refuses a version it doesn't describe.
+**What's New** (`apps/ios/App/Sources/WhatsNewView.swift` and Android's `ui/screens/WhatsNew.kt`): every
+release prepends its notes to both and sets `currentVersion` / `CURRENT_VERSION`; `release.env`'s
+`release_check` refuses a version either doesn't describe.
 `scripts/cut_release.sh headway --dry-run`, then for real: it bumps `MARKETING_VERSION`, pushes
 (Cloudflare deploys the Worker) and publishes `headway-v<version>` → `headway-testflight.yml`
 (iPhone), `headway-glasses-release.yml` (the `.ehpk`, attached to the release, uploaded to Even Hub and promoted to Beta)
@@ -113,5 +114,6 @@ and `headway-play-internal.yml` (the Android app, same version, to Google Play's
 **Google Play**: app "Headway: Caltrain Alerts" (`com.hejitech.headway`, Play app ID 4975322077562037950), internal
 testing only, tester list "HEJI owner", no store listing yet. Upload key in `~/Credentials/headway/` and the
 `HEADWAY_ANDROID_*` GitHub secrets. `versionName` is read from `apps/ios/project.yml`'s MARKETING_VERSION; release
-builds are R8-shrunk (`app/proguard-rules.pro`) and target API 36. The Android app still only has the debug
-seed-rider sign-in, so testers get public boards. Steps: skill `heji-google-play`.
+builds are R8-shrunk (`app/proguard-rules.pro`) and target API 36. The Android app signs in with Google (browser
+PKCE to `headway://login-callback`, session kept encrypted by `SessionStore`) or the review email account; its What's New
+(`ui/screens/WhatsNew.kt`) is checked by `release_check` alongside the iPhone one. Steps: skill `heji-google-play`.
