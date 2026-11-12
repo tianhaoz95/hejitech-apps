@@ -1,6 +1,6 @@
 {
   "name": "@tradeboard/executor",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "type": "module",
   "description": "Trading Plan Board local executor: polls the board, validates approved plans against the policy, re-quotes, sanity-checks with a local model and places orders through the official Robinhood MCP (loopback OAuth). Runs on the owner's own machine.",
