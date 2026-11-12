@@ -106,7 +106,9 @@ export async function authBegin(req: Request, env: Env): Promise<Response> {
   if (account.totp_enrolled_at) return json({ enroll: false });
   const secret = newTotpSecret();
   await db.from("accounts").update({ totp_pending_enc: await seal(env, secret) }).eq("user_id", user.id);
-  return json({ enroll: true, secret, otpauth: otpauthUri(secret, user.email || "account") });
+  const host = new URL(env.PUBLIC_URL).hostname;
+  const issuer = host && host !== "127.0.0.1" && host !== "localhost" ? host : "tradeboard.hejitech.workers.dev";
+  return json({ enroll: true, secret, otpauth: otpauthUri(secret, user.email || "account", issuer) });
 }
 
 /** POST /api/auth/verify {access_token, code}: the second factor; sets the session cookie. */

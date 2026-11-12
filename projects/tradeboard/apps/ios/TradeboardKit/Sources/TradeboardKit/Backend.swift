@@ -1,5 +1,88 @@
 import CryptoKit
 import Foundation
+import Security
+
+public struct SavedSession: Codable, Equatable, Sendable {
+    public var cookie: String
+    public var email: String?
+
+    public init(cookie: String, email: String? = nil) {
+        self.cookie = cookie
+        self.email = email
+    }
+}
+
+/// Persists the verified portal session cookie in the iOS Keychain (`kSecAttrAccessibleAfterFirstUnlock`),
+/// scoped per backend host so local development and production sessions stay independent.
+public enum SessionStore {
+    private static let service = "com.hejitech.tradeboard"
+    private static let installFlagKey = "tradeboard.installed"
+
+    public static func accountKey(for config: BackendConfig) -> String {
+        "session.\(config.site.host ?? "default")"
+    }
+
+    /// The iOS Keychain survives app deletion; clear any leftover session on the first launch of a fresh install.
+    public static func clearIfFreshInstall(defaults: UserDefaults = .standard) {
+        if !defaults.bool(forKey: installFlagKey) {
+            clearAll()
+            defaults.set(true, forKey: installFlagKey)
+        }
+    }
+
+    public static func load(for config: BackendConfig) -> SavedSession? {
+        let account = accountKey(for: config)
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+              let data = item as? Data else {
+            return nil
+        }
+        if let saved = try? JSONDecoder().decode(SavedSession.self, from: data), !saved.cookie.isEmpty {
+            return saved
+        }
+        if let rawCookie = String(data: data, encoding: .utf8), !rawCookie.isEmpty {
+            return SavedSession(cookie: rawCookie)
+        }
+        return nil
+    }
+
+    public static func save(_ session: SavedSession?, for config: BackendConfig) {
+        let account = accountKey(for: config)
+        let base: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+        ]
+        SecItemDelete(base as CFDictionary)
+        guard let session, !session.cookie.isEmpty,
+              let data = try? JSONEncoder().encode(session) else {
+            return
+        }
+        var add = base
+        add[kSecValueData as String] = data
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        SecItemAdd(add as CFDictionary, nil)
+    }
+
+    public static func clear(for config: BackendConfig) {
+        save(nil, for: config)
+    }
+
+    public static func clearAll() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+}
 
 public struct BackendConfig: Hashable, Sendable {
     public var site: URL
@@ -418,17 +501,27 @@ public final class TradeboardBackend: @unchecked Sendable {
         )
     }
 
-    private static func extractSessionCookie(from response: HTTPURLResponse) -> String? {
-        // Look in Set-Cookie headers
+    static func extractSessionCookie(from response: HTTPURLResponse) -> String? {
+        let cookieNames: Set<String> = ["__Host-tb_session", "tb_session"]
         if let allHeaderFields = response.allHeaderFields as? [String: String] {
-            for (key, val) in allHeaderFields {
-                if key.lowercased() == "set-cookie" {
-                    if let cookiePart = val.components(separatedBy: ";").first,
-                       let eqIdx = cookiePart.firstIndex(of: "=") {
-                        return String(cookiePart[cookiePart.index(after: eqIdx)...])
+            for (key, val) in allHeaderFields where key.lowercased() == "set-cookie" {
+                for part in val.components(separatedBy: ";") {
+                    for sub in part.components(separatedBy: ",") {
+                        let item = sub.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard let eqIdx = item.firstIndex(of: "=") else { continue }
+                        let name = String(item[..<eqIdx]).trimmingCharacters(in: .whitespaces)
+                        let value = String(item[item.index(after: eqIdx)...])
+                        if cookieNames.contains(name), !value.isEmpty {
+                            return value.removingPercentEncoding ?? value
+                        }
                     }
                 }
             }
+        }
+        if let url = response.url,
+           let cookies = HTTPCookieStorage.shared.cookies(for: url),
+           let match = cookies.first(where: { cookieNames.contains($0.name) && !$0.value.isEmpty }) {
+            return match.value.removingPercentEncoding ?? match.value
         }
         return nil
     }

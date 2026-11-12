@@ -27,8 +27,10 @@ public final class AppModel {
 
     public var config: BackendConfig {
         didSet {
-            backend = TradeboardBackend(config: config, sessionCookie: backend.sessionCookie)
+            let saved = SessionStore.load(for: config)
+            backend = TradeboardBackend(config: config, sessionCookie: saved?.cookie)
             setupBackendCallbacks()
+            authPhase = saved != nil ? .authenticated(email: saved?.email) : .unauthenticated
         }
     }
 
@@ -42,24 +44,41 @@ public final class AppModel {
     public var error: String?
 
     public init(config: BackendConfig = .production) {
+        SessionStore.clearIfFreshInstall()
         #if DEBUG
         // Default to local stack in debug unless specified
         let defaultConf: BackendConfig = ProcessInfo.processInfo.arguments.contains("-production") ? .production : .local
         #else
         let defaultConf: BackendConfig = .production
         #endif
+        let saved = SessionStore.load(for: defaultConf)
         self.config = defaultConf
-        self.backend = TradeboardBackend(config: defaultConf)
+        self.backend = TradeboardBackend(config: defaultConf, sessionCookie: saved?.cookie)
+        if let saved {
+            self.authPhase = .authenticated(email: saved.email)
+        }
         setupBackendCallbacks()
+    }
+
+    private var authenticatedEmail: String? {
+        if case .authenticated(let email) = authPhase { return email }
+        return SessionStore.load(for: config)?.email
     }
 
     private func setupBackendCallbacks() {
         backend.onSessionChange = { [weak self] cookie in
+            guard let self else { return }
+            let cfg = self.config
+            if let cookie {
+                SessionStore.save(SavedSession(cookie: cookie, email: self.authenticatedEmail), for: cfg)
+            } else {
+                SessionStore.clear(for: cfg)
+            }
             Task { @MainActor in
                 if cookie == nil {
-                    self?.authPhase = .unauthenticated
-                    self?.board = nil
-                    self?.selectedPlan = nil
+                    self.authPhase = .unauthenticated
+                    self.board = nil
+                    self.selectedPlan = nil
                 }
             }
         }
@@ -73,17 +92,32 @@ public final class AppModel {
         defer { isLoading = false }
 
         // If we have a session cookie, verify with /api/me
-        if backend.isSignedIn {
-            do {
-                let me = try await backend.getMe()
-                if me.signed_in {
-                    authPhase = .authenticated(email: me.email)
-                    await refresh()
-                    return
+        if let cookie = backend.sessionCookie {
+            let savedEmail = SessionStore.load(for: config)?.email
+            await Task { @MainActor in
+                do {
+                    let me = try await backend.getMe()
+                    if me.signed_in {
+                        let email = me.email ?? savedEmail
+                        SessionStore.save(SavedSession(cookie: cookie, email: email), for: config)
+                        authPhase = .authenticated(email: email)
+                        await refresh()
+                        return
+                    }
+                    backend.setSessionCookie(nil)
+                    authPhase = .unauthenticated
+                } catch {
+                    if (error as? BackendError)?.isUnauthorized == true {
+                        backend.setSessionCookie(nil)
+                        authPhase = .unauthenticated
+                    } else {
+                        // Transient network error: keep the persisted session and stay signed in.
+                        authPhase = .authenticated(email: savedEmail)
+                        self.error = error.localizedDescription
+                    }
                 }
-            } catch {
-                backend.setSessionCookie(nil)
-            }
+            }.value
+            return
         }
 
         authPhase = .unauthenticated
@@ -101,6 +135,7 @@ public final class AppModel {
             } catch {
                 self.error = error.localizedDescription
                 if (error as? BackendError)?.isUnauthorized == true {
+                    backend.setSessionCookie(nil)
                     authPhase = .unauthenticated
                 }
             }
@@ -190,7 +225,12 @@ public final class AppModel {
         do {
             try await backend.authVerify(supabaseAccessToken: session.accessToken, code: code)
             let me = try await backend.getMe()
-            authPhase = .authenticated(email: me.email ?? session.email)
+            let email = me.email ?? session.email
+            if let cookie = backend.sessionCookie {
+                SessionStore.save(SavedSession(cookie: cookie, email: email), for: config)
+            }
+            authPhase = .authenticated(email: email)
+            error = nil
             await refresh()
         } catch {
             self.error = error.localizedDescription
@@ -206,7 +246,11 @@ public final class AppModel {
         do {
             try await backend.reviewSignIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
             let me = try await backend.getMe()
-            authPhase = .authenticated(email: me.email ?? email)
+            let resolvedEmail = me.email ?? email
+            if let cookie = backend.sessionCookie {
+                SessionStore.save(SavedSession(cookie: cookie, email: resolvedEmail), for: config)
+            }
+            authPhase = .authenticated(email: resolvedEmail)
             error = nil
             await refresh()
             return true

@@ -76,6 +76,35 @@ final class AccountRequestsTests: XCTestCase {
         } catch { XCTFail("\(error)") }
         XCTAssertNil(b.sessionCookie)
     }
+
+    func testExtractSessionCookieIgnoresUnrelatedCookiesAndDecodesValue() throws {
+        let resp = try XCTUnwrap(HTTPURLResponse(
+            url: BackendConfig.production.site,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: ["Set-Cookie": "__cf_bm=ignored; Path=/; HttpOnly, __Host-tb_session=tok%2B123; Path=/; HttpOnly; SameSite=Strict; Secure"]
+        ))
+        XCTAssertEqual(TradeboardBackend.extractSessionCookie(from: resp), "tok+123")
+    }
+
+    func testSessionStorePersistsAndClearsPerEnvironment() {
+        let testConfig = BackendConfig(
+            site: URL(string: "https://test-unit.tradeboard.local")!,
+            supabaseURL: BackendConfig.local.supabaseURL,
+            anonKey: BackendConfig.local.anonKey
+        )
+        defer { SessionStore.clear(for: testConfig) }
+
+        SessionStore.clear(for: testConfig)
+        XCTAssertNil(SessionStore.load(for: testConfig))
+
+        let saved = SavedSession(cookie: "cookie-abc", email: "owner@example.com")
+        SessionStore.save(saved, for: testConfig)
+        XCTAssertEqual(SessionStore.load(for: testConfig), saved)
+
+        SessionStore.clear(for: testConfig)
+        XCTAssertNil(SessionStore.load(for: testConfig))
+    }
 }
 
 final class PlanViewDecodingTests: XCTestCase {

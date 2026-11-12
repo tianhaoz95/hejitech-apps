@@ -130,6 +130,19 @@ const app = {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
+    if (path === "/.well-known/apple-app-site-association" || path === "/apple-app-site-association") {
+      return harden(
+        json({
+          applinks: {
+            apps: [],
+            details: [{ appIDs: ["68CTFST8W2.com.hejitech.tradeboard"], components: [{ "/": "/*" }] }],
+          },
+          webcredentials: {
+            apps: ["68CTFST8W2.com.hejitech.tradeboard"],
+          },
+        }),
+      );
+    }
     if (path === "/authorize") return harden(await authorize(req, env));
 
     if (path.startsWith("/api/executor/")) {

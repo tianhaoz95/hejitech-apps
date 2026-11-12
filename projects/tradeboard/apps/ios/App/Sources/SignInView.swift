@@ -1,6 +1,7 @@
 import AuthenticationServices
 import SwiftUI
 import TradeboardKit
+import UIKit
 
 public struct SignInView: View {
     @Environment(AppModel.self) private var model
@@ -173,14 +174,13 @@ public struct SignInView: View {
             }
 
             HStack {
-                TextField("000000", text: $totpCode)
-                    .keyboardType(.numberPad)
-                    .textContentType(.oneTimeCode)
-                    .multilineTextAlignment(.center)
-                    .font(.system(size: 28, weight: .bold, design: .monospaced))
-                    .frame(width: 180, height: 50)
-                    .background(Color.secondary.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                OneTimeCodeField(text: $totpCode) { code in
+                    guard !model.isLoading else { return }
+                    Task { await model.verifyTOTP(code: code) }
+                }
+                .frame(width: 180, height: 50)
+                .background(Color.secondary.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
             }
 
             Button {
@@ -198,6 +198,7 @@ public struct SignInView: View {
             .disabled(totpCode.count < 6 || model.isLoading)
 
             Button("Back to sign-in") {
+                totpCode = ""
                 Task { await model.signOut() }
             }
             .font(.footnote)
@@ -206,6 +207,81 @@ public struct SignInView: View {
         .padding()
         .background(Color.secondary.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .onAppear {
+            totpCode = ""
+        }
+    }
+}
+
+/// Native UIKit `UITextField` configured with `.oneTimeCode` before becoming first responder so iOS
+/// AutoFill (QuickType verification code bar + Passwords AutoFill menu) reliably triggers on tap.
+private struct OneTimeCodeField: UIViewRepresentable {
+    @Binding var text: String
+    var onComplete: ((String) -> Void)?
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeUIView(context: Context) -> UITextField {
+        let tf = UITextField()
+        tf.textContentType = .oneTimeCode
+        tf.keyboardType = .numberPad
+        tf.autocorrectionType = .no
+        tf.autocapitalizationType = .none
+        tf.spellCheckingType = .no
+        tf.smartQuotesType = .no
+        tf.smartDashesType = .no
+        tf.smartInsertDeleteType = .no
+        tf.textAlignment = .center
+        tf.font = .monospacedSystemFont(ofSize: 28, weight: .bold)
+        tf.textColor = .label
+        tf.tintColor = .tintColor
+        tf.attributedPlaceholder = NSAttributedString(
+            string: "000000",
+            attributes: [
+                .foregroundColor: UIColor.placeholderText,
+                .font: UIFont.monospacedSystemFont(ofSize: 28, weight: .bold),
+            ]
+        )
+        tf.delegate = context.coordinator
+        tf.addTarget(context.coordinator, action: #selector(Coordinator.editingChanged(_:)), for: .editingChanged)
+        tf.accessibilityIdentifier = "totp-code"
+        return tf
+    }
+
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        context.coordinator.parent = self
+        if uiView.text != text {
+            uiView.text = text
+        }
+        if text.isEmpty {
+            context.coordinator.lastSubmitted = nil
+        }
+    }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: OneTimeCodeField
+        var lastSubmitted: String?
+
+        init(_ parent: OneTimeCodeField) {
+            self.parent = parent
+        }
+
+        @objc func editingChanged(_ sender: UITextField) {
+            let digits = String((sender.text ?? "").filter { $0.isASCII && $0.isNumber }.prefix(6))
+            if sender.text != digits {
+                sender.text = digits
+            }
+            parent.text = digits
+            if digits.count == 6, lastSubmitted != digits {
+                lastSubmitted = digits
+                sender.resignFirstResponder()
+                parent.onComplete?(digits)
+            } else if digits.count < 6 {
+                lastSubmitted = nil
+            }
+        }
     }
 }
 

@@ -43,6 +43,9 @@ targets:
       path: App/App.entitlements
       properties:
         com.apple.developer.applesignin: [Default]
+        com.apple.developer.associated-domains:
+          - webcredentials:tradeboard.hejitech.workers.dev
+          - applinks:tradeboard.hejitech.workers.dev
     info:
       path: App/Info.plist
       properties:
