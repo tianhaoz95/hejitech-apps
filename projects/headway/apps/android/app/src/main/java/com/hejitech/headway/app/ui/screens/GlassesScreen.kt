@@ -1,11 +1,13 @@
 package com.hejitech.headway.app.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Refresh
@@ -24,10 +26,17 @@ import com.hejitech.headway.app.ui.theme.DarkSurfaceVariant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GlassesScreen(viewModel: HeadwayViewModel) {
+fun GlassesScreen(
+    viewModel: HeadwayViewModel,
+    onBack: (() -> Unit)? = null
+) {
     val pairingCode by viewModel.pairingCode.collectAsState()
     val pairedDevices by viewModel.pairedDevices.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+
+    if (onBack != null) {
+        BackHandler(onBack = onBack)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadDevices()
@@ -37,6 +46,13 @@ fun GlassesScreen(viewModel: HeadwayViewModel) {
         topBar = {
             TopAppBar(
                 title = { Text("Even G2 Glasses", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 )

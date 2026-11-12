@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.DirectionsTransit
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -30,7 +29,6 @@ import androidx.core.content.ContextCompat
 import com.hejitech.headway.app.ui.screens.BoardScreen
 import com.hejitech.headway.app.ui.screens.CommuteScreen
 import com.hejitech.headway.app.ui.screens.FamilyScreen
-import com.hejitech.headway.app.ui.screens.GlassesScreen
 import com.hejitech.headway.app.ui.screens.SettingsScreen
 import com.hejitech.headway.app.ui.screens.SignInScreen
 import com.hejitech.headway.app.ui.screens.WhatsNew
@@ -42,7 +40,6 @@ enum class MainTab(val title: String) {
     TRAINS("Trains"),
     COMMUTE("Commute"),
     FAMILY("Family"),
-    GLASSES("Glasses"),
     SETTINGS("Settings")
 }
 
@@ -138,7 +135,10 @@ class MainActivity : ComponentActivity() {
             viewModel.signInLocalSeed()
         }
         val firstTab = (if (BuildConfig.DEBUG) intent.getStringExtra("screen") else null)
-            ?.let { name -> MainTab.entries.firstOrNull { it.name.equals(name, ignoreCase = true) } } ?: MainTab.TRAINS
+            ?.let { name ->
+                if (name.equals("glasses", ignoreCase = true)) MainTab.SETTINGS
+                else MainTab.entries.firstOrNull { it.name.equals(name, ignoreCase = true) }
+            } ?: MainTab.TRAINS
 
         setContent {
             HeadwayTheme {
@@ -188,7 +188,6 @@ class MainActivity : ComponentActivity() {
                                     MainTab.TRAINS -> Icons.Default.DirectionsTransit
                                     MainTab.COMMUTE -> Icons.Default.Schedule
                                     MainTab.FAMILY -> Icons.Default.People
-                                    MainTab.GLASSES -> Icons.Default.Visibility
                                     MainTab.SETTINGS -> Icons.Default.Settings
                                 }
                                 val invites = if (tab == MainTab.FAMILY) family?.invites?.size ?: 0 else 0
@@ -208,7 +207,6 @@ class MainActivity : ComponentActivity() {
                     MainTab.TRAINS -> BoardScreen(viewModel = viewModel)
                     MainTab.COMMUTE -> CommuteScreen(viewModel = viewModel, onAskNotifications = ::requestNotifications)
                     MainTab.FAMILY -> FamilyScreen(viewModel = viewModel)
-                    MainTab.GLASSES -> GlassesScreen(viewModel = viewModel)
                     MainTab.SETTINGS -> SettingsScreen(
                         viewModel = viewModel,
                         onRideModeChosen = ::requestRideAccess,

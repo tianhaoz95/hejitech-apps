@@ -10,10 +10,13 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -56,7 +59,13 @@ fun SettingsScreen(
     val error by viewModel.errorMessage.collectAsState()
     var whatsNew by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var showGlasses by rememberSaveable { mutableStateOf(false) }
     val site = viewModel.apiClient.config.site
+
+    if (showGlasses) {
+        GlassesScreen(viewModel = viewModel, onBack = { showGlasses = false })
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -136,6 +145,28 @@ fun SettingsScreen(
                     Text("Location", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     SwitchRow("Estimate my trip from where I am", useLocation) { onUseLocation(it) }
                     Note("Headway measures how far you are from your departure station and estimates the walk or drive (set per leg in Commute) at an average speed, so leave-by times and how many minutes you have to spare fit where you are. It's a rough estimate without routes or traffic. Your location goes with each board request and is never stored.")
+                }
+            }
+
+            // Devices (Even G2 Glasses)
+            item {
+                FormCard {
+                    Text("Devices", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showGlasses = true }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Visibility, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Even G2 Glasses", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                            Text("Pairing code & R1 ring controls", style = MaterialTheme.typography.bodySmall, color = StatusGrey)
+                        }
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = StatusGrey)
+                    }
                 }
             }
 

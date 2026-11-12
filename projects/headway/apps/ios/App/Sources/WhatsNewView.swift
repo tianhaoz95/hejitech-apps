@@ -20,10 +20,13 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.4.0"
+    static let currentVersion = "1.4.1"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.4.1", date: "November 2026", items: [
+            WhatsNewItem(icon: "gearshape", title: "Glasses moved into Settings", description: "Even G2 smart glasses pairing and R1 ring controls now live in Settings under Devices, keeping the main tab bar focused on your trains, commute and family."),
+        ]),
         ReleaseNotes(version: "1.4.0", date: "November 2026", items: [
             WhatsNewItem(icon: "iphone.and.arrow.forward", title: "Headway on Android, in full", description: "The Android app now signs in with Google to the same account and does what this one does: when to leave, every commute and alert choice, family follows, live ETA sharing and alerts on the phone. Family members on Android are told about your train the same way."),
         ]),
