@@ -11,7 +11,7 @@
 # scripts/upload_store_screenshots.mjs sends to App Store Connect.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-PROJECT="${1:?usage: store_screenshots.sh <tradeboard|g2digest>}"
+PROJECT="${1:?usage: store_screenshots.sh <tradeboard|g2digest|headway>}"
 
 IPHONE="${IPHONE_SIM:-iPhone 18 Pro Max}"   # 6.9": 1320 x 2868
 IPAD="${IPAD_SIM:-iPad Pro 13-inch (M5)}"   # 13": 2064 x 2752
@@ -48,6 +48,20 @@ case "$PROJECT" in
       "editions|Native|-showHistory"
     )
     ;;
+  headway)
+    # Needs the local Headway Worker (npm run dev:worker -w @headway/web) with its demo clock on a weekday
+    # morning (PUT /api/dev/clock) and, for the Family shot, the seed rider in a group whose members share.
+    IOS=projects/headway/apps/ios; SCHEME_PROJ=Headway.xcodeproj; APP_NAME=Headway; BUNDLE=com.hejitech.headway
+    DEVICES=("$IPHONE")
+    defaults_for() { echo "last_seen_whats_new_version $(grep -oE 'currentVersion = "[0-9.]+"' "$IOS/App/Sources/WhatsNewView.swift" | grep -oE '[0-9.]+')"; }
+    # name|launch arguments (the seed rider on the local stack)
+    SHOTS=(
+      "trains|-autoSignIn -screen trains"
+      "commute|-autoSignIn -screen commute"
+      "family|-autoSignIn -screen family"
+      "settings|-autoSignIn -screen settings"
+    )
+    ;;
   *) echo "no shot list for $PROJECT" >&2; exit 2 ;;
 esac
 
@@ -79,7 +93,7 @@ for DEV in "${DEVICES[@]}"; do
     if [ "$PROJECT" = g2digest ]; then EXTRA=(-g2digest_view_mode "$a"); args="$b"; else args="$a"; fi
     xcrun simctl terminate "$ID" "$BUNDLE" 2>/dev/null || true
     # shellcheck disable=SC2086
-    xcrun simctl launch "$ID" "$BUNDLE" "${PREFS[@]}" "${EXTRA[@]}" $args >/dev/null
+    xcrun simctl launch "$ID" "$BUNDLE" ${PREFS[@]+"${PREFS[@]}"} ${EXTRA[@]+"${EXTRA[@]}"} $args >/dev/null
     sleep "${SHOT_WAIT:-9}"
     f="$OUT/$(printf '%02d' $n)-$name.png"
     timeout 30 xcrun simctl io "$ID" screenshot "$f" >/dev/null 2>&1
