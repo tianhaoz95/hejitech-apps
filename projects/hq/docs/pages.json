@@ -1,0 +1,14 @@
+{
+  "name": "HQ",
+  "sidebar": [
+    {
+      "text": "HQ",
+      "items": [
+        { "text": "Overview", "link": "" },
+        { "text": "Decisions", "link": "decisions" },
+        { "text": "Deployment", "link": "DEPLOY" },
+        { "text": "App Store", "link": "app-store" }
+      ]
+    }
+  ]
+}
