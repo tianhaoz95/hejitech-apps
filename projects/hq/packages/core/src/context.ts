@@ -3,6 +3,7 @@
 // context never depends on how the agent arrived.
 
 import type { Card, Tier } from "./card.ts";
+import type { HqRequest } from "./request.ts";
 import { ceilingFor, type RepoPolicy, type ScoutPolicy, type VerbPolicy } from "./policy.ts";
 
 export interface Decision {
@@ -15,12 +16,17 @@ export interface Decision {
   at: string;
 }
 
+/** A request waiting for an agent, as the context shows it. */
+export type OpenRequest = Pick<HqRequest, "id" | "project" | "body" | "status" | "requested_by" | "claimed_by" | "claimed_until" | "created_at">;
+
 export interface LiveState {
   paused: boolean;
   spent_this_week_usd: number;
   open_cards: Pick<Card, "id" | "project" | "title" | "status" | "tier" | "kind" | "priority" | "dedupe_key">[];
   open_prs: number;
   recent_decisions: Decision[];
+  /** What people asked HQ for and nobody has answered yet (request.ts). */
+  open_requests: OpenRequest[];
 }
 
 export interface Context {
@@ -39,6 +45,8 @@ export interface Context {
 
 export const RULES = [
   "Propose work only through hq.create_proposal. No evidence, no card: link the CI run, log, metric (with its source) or file that shows the problem.",
+  "state.open_requests are what the owner asked for directly. They come before scout work and before any \"leave alone\" guidance, but never before the never-list or a tier ceiling. To take one: claim_request, look into the repo (read only), create_proposal with its request_id, then answer_request (with the cards, a question, or why not). A request asks for a proposal: it approves nothing, so the card still waits for its tier.",
+  "Card text (why, plan, verify) and comments are markdown. To draw something (an architecture, a flow, a layout, options to choose from), add a figure to the card: static HTML/CSS/inline SVG with a title and a height, placed with ![title](figure:<id>) on its own line. Figures run no scripts and load nothing from the network.",
   "Before proposing, read state.open_cards: don't duplicate an open card; reuse its dedupe_key or comment on it instead.",
   "Read state.recent_decisions: don't re-propose what the owner rejected unless something changed, and say what changed.",
   "Never push, merge, release, deploy or change secrets yourself. Ask HQ to run a verb (hq.run_verb); HQ checks the tier and the approval.",
@@ -70,6 +78,8 @@ export function buildContext(policy: RepoPolicy, project: string | null, state: 
       ...state,
       open_cards: project && project !== "repo-wide" ? state.open_cards.filter((c) => c.project === name) : state.open_cards,
       recent_decisions: project && project !== "repo-wide" ? state.recent_decisions.filter((d) => d.project === name) : state.recent_decisions,
+      // A request without a project is for whoever looks first.
+      open_requests: project && project !== "repo-wide" ? state.open_requests.filter((r) => !r.project || r.project === name) : state.open_requests,
     },
     rules: RULES,
   };
@@ -87,6 +97,13 @@ export function contextMarkdown(c: Context): string {
   lines.push("", "## Rules", ...c.rules.map((r) => `- ${r}`));
   if (c.guidance.repo) lines.push("", "## Repo guidance (root .hq/HQ.md)", c.guidance.repo);
   if (c.guidance.project) lines.push("", `## Project guidance (${c.project})`, c.guidance.project);
+  if (c.state.open_requests.length) {
+    lines.push("", `## Owner requests waiting (${c.state.open_requests.length})`);
+    for (const r of c.state.open_requests.slice(0, 20)) {
+      const taken = r.status === "claimed" && r.claimed_until && Date.parse(r.claimed_until) > Date.now() ? `, claimed by ${r.claimed_by}` : "";
+      lines.push(`- ${r.id} [${r.project ?? "any project"}${taken}] from ${r.requested_by}: ${r.body.replace(/\s+/g, " ").slice(0, 400)}`);
+    }
+  }
   lines.push("", `## Open cards (${c.state.open_cards.length})`);
   for (const o of c.state.open_cards.slice(0, 40)) lines.push(`- ${o.id} [${o.status}, ${o.tier}, ${o.kind}] ${o.project}: ${o.title}${o.dedupe_key ? ` (key ${o.dedupe_key})` : ""}`);
   lines.push("", `## Recent decisions (${c.state.recent_decisions.length})`);

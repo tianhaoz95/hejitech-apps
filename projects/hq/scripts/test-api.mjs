@@ -2,7 +2,8 @@
 // Integration test against a running HQ Worker and the local Supabase stack (CI: `supabase start`,
 // then `npm run dev:worker -w @hq/web`). Two teams sign up, each with its own workspace (one repo);
 // it drives the whole loop in one and proves the other can't see or touch it: sign-in → workspace →
-// invites and roles → tokens → sync → propose (and every refusal) → rank → approve → claim → build →
+// invites and roles → tokens → sync → propose (and every refusal) → rank → figures → requests (ask,
+// claim, propose, answer, follow up) → approve → claim → build →
 // review → discuss → verbs (tier and role checks) → pause → schedule → isolation → audit.
 //
 //   node projects/hq/scripts/test-api.mjs     (HQ_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY default to local)
@@ -186,7 +187,7 @@ await step("MCP: instructions, tools; agents can't approve", async () => {
   const init = await call(agent, "POST", "/mcp", { jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
   assert.match(init.data.result.instructions, /get_context/);
   const names = (await call(agent, "POST", "/mcp", { jsonrpc: "2.0", id: 2, method: "tools/list" })).data.result.tools.map((t) => t.name);
-  for (const n of ["get_context", "create_proposal", "list_cards", "get_card", "comment", "attach_evidence", "run_verb", "rank_cards", "withdraw_card"]) assert.ok(names.includes(n), n);
+  for (const n of ["get_context", "create_proposal", "list_cards", "get_card", "comment", "attach_evidence", "run_verb", "rank_cards", "withdraw_card", "list_requests", "claim_request", "answer_request"]) assert.ok(names.includes(n), n);
   assert.equal((await fetch(U + "/mcp", { headers: { Authorization: `Bearer ${agent}` } })).status, 405, "no server stream");
 });
 
@@ -239,6 +240,137 @@ await step("the inbox is capped; the CEO's ranking decides what shows", async ()
   ib = (await call(ada.token, "GET", W("/inbox"))).data;
   assert.equal(ib.decide[0].id, ids[5]);
   for (const id of ids) assert.equal((await tool(agent, "withdraw_card", { id, reason: "test filler" })).error, null);
+});
+
+await step("card text is markdown; figures are static drawings and anything else is refused", async () => {
+  const svg = '<svg viewBox="0 0 320 80" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="20" width="120" height="40" rx="8" fill="var(--soft)" stroke="var(--line)"/><text x="64" y="45" text-anchor="middle">runner</text></svg>';
+  const fig = { id: "flow", title: "Retry flow", html: svg, height: 160 };
+  const r = await tool(agent, "create_proposal", card({ title: "Card with a drawing", plan: "## Steps\n\n1. Retry **twice**.\n\n![Retry flow](figure:flow)", figures: [fig] }));
+  assert.equal(r.error, null, r.error);
+  const d = (await tool(agent, "get_card", { id: r.value.id })).value;
+  assert.equal(d.card.figures[0].html, svg);
+  assert.equal(d.card.figures[0].height, 160);
+  const row = (await call(cy.token, "GET", W("/inbox"))).data.decide.find((c) => c.id === r.value.id);
+  assert.deepEqual(row.figures, [{ id: "flow", title: "Retry flow", html: "", height: 160 }], "lists carry no drawings");
+  assert.match((await tool(agent, "create_proposal", card({ figures: [{ ...fig, html: "<script>fetch('/api/me')</script>" }] }))).error, /only static HTML/);
+  assert.match((await tool(agent, "create_proposal", card({ figures: [{ ...fig, html: '<img src="https://example.com/p.gif">' }] }))).error, /no network/);
+  assert.match((await tool(agent, "create_proposal", card({ figures: [{ ...fig, html: '<div onclick="x()">a</div>' }] }))).error, /event handler/);
+  assert.match((await tool(agent, "create_proposal", card({ figures: Array.from({ length: 7 }, (_, i) => ({ ...fig, id: `f${i}` })) }))).error, /at most 6/);
+  assert.match((await tool(agent, "create_proposal", card({ figures: [fig, fig] }))).error, /unique/);
+  // The portal itself only runs its own scripts and frames nothing from elsewhere.
+  const csp = (await fetch(U + "/")).headers.get("content-security-policy") ?? "";
+  assert.match(csp, /script-src 'self'/);
+  assert.match(csp, /frame-src 'none'/);
+  await tool(agent, "withdraw_card", { id: r.value.id, reason: "test" });
+});
+
+await step("requests: people ask, one agent claims, proposes and answers; asking approves nothing", async () => {
+  const claimNext = async () => (await call(runner, "POST", "/api/runs/claim", { runner: "ci", capabilities: ["any"] })).data;
+  // Who may ask.
+  assert.equal((await call(cy.token, "POST", W("/requests"), { body: "x" })).status, 403, "viewers can't ask");
+  assert.equal((await call(agent, "POST", "/api/requests", { body: "x" })).status, 403, "agents can't ask");
+  assert.equal((await call(bo.token, "POST", W("/requests"), { body: "  " })).status, 422);
+  assert.equal((await call(bo.token, "POST", W("/requests"), { body: "x", project: "beta" })).status, 422, "unknown project");
+  const asked = await call(bo.token, "POST", W("/requests"), { body: "Propose a redesign of the **logo**", project: "alpha" });
+  assert.equal(asked.status, 201, JSON.stringify(asked.data));
+  const id = asked.data.request.id;
+  assert.equal(asked.data.request.status, "open");
+  assert.equal(asked.data.request.requested_by, bo.email);
+
+  // Agents find it where they already look.
+  assert.match((await tool(agent, "get_context", {})).value.markdown, new RegExp(`Owner requests waiting \\(1\\)[\\s\\S]*${id} \\[alpha\\]`));
+  assert.equal((await tool(agent, "get_context", { project: "alpha", format: "json" })).value.state.open_requests[0].id, id);
+  assert.equal((await tool(agent, "list_requests", {})).value.requests[0].id, id);
+  assert.deepEqual((await tool(otherAgent, "list_requests", {})).value.requests, [], "another workspace sees none");
+
+  // One agent takes it; a second one is told to leave it.
+  const agent2 = (await call(ada.token, "POST", W("/tokens"), { name: "second-agent", role: "agent" })).data.token;
+  const claimed = await tool(agent, "claim_request", { id });
+  assert.equal(claimed.value.request.status, "claimed");
+  assert.equal(claimed.value.request.claimed_by, "agent:ci-agent");
+  assert.match((await tool(agent2, "claim_request", { id })).error, /claimed by agent:ci-agent/);
+  assert.match((await tool(agent2, "answer_request", { id, outcome: "note", body: "mine" })).error, /claimed by agent:ci-agent/);
+  assert.equal((await tool(agent, "claim_request", { id })).error, null, "claiming again extends the lease");
+  assert.match((await tool(otherAgent, "claim_request", { id })).error, /no request/);
+  assert.equal((await call(bo.token, "POST", W(`/requests/${id}/claim`))).status, 403, "people don't claim");
+
+  // "proposed" needs a card that carries the request.
+  assert.match((await tool(agent, "answer_request", { id, outcome: "proposed", body: "done" })).error, /needs a card/);
+  assert.match((await tool(agent, "create_proposal", card({ request_id: "req-20000101-nope" }))).error, /no request/);
+  const made = await tool(agent, "create_proposal", card({ title: "New logo: three directions", tier: "L2", kind: "opportunity", request_id: id, evidence: [{ type: "request", ref: id, text: "Propose a redesign of the logo" }] }));
+  assert.equal(made.error, null, made.error);
+  assert.equal(made.value.status, "proposed", "asking is not approving");
+
+  // What was asked for is never held back by the cap, however the rest ranks.
+  const fillers = [];
+  for (let i = 0; i < 6; i++) fillers.push((await tool(agent, "create_proposal", card({ title: `Cap filler ${i}` }))).value.id);
+  await tool(agent, "rank_cards", { ranks: fillers.map((f) => ({ id: f, priority: 99 })) });
+  let ib = (await call(ada.token, "GET", W("/inbox"))).data;
+  assert.equal(ib.decide[0].id, made.value.id);
+  assert.equal(ib.decide[0].request_id, id);
+  assert.equal(ib.decide.length, 6, "the cap of 5, plus what was asked for");
+  for (const f of fillers) await tool(agent, "withdraw_card", { id: f, reason: "test filler" });
+
+  const answered = await tool(agent, "answer_request", { id, outcome: "proposed", body: `Filed ${made.value.id}.` });
+  assert.equal(answered.value.request.status, "answered");
+  assert.equal(answered.value.request.outcome, "proposed");
+  assert.equal(answered.value.cards[0].id, made.value.id);
+  assert.equal(answered.value.messages[0].kind, "answer");
+  ib = (await call(cy.token, "GET", W("/inbox"))).data;
+  assert.equal(ib.requests[0].id, id, "members see it in the inbox");
+  assert.equal(ib.requests[0].cards.length, 1);
+
+  // The run queued for the runner is dropped: an agent got there first.
+  assert.equal((await claimNext()).run, null);
+  assert.ok((await call(ada.token, "GET", W("/runs"))).data.some((r) => r.kind === "request" && r.request_id === id && r.status === "cancelled"));
+
+  // A follow-up reopens it and the runner gets the whole thread. An agent that never answers
+  // doesn't leave it hanging.
+  const again = await call(bo.token, "POST", W(`/requests/${id}/messages`), { body: "Make one of them monochrome." });
+  assert.equal(again.data.request.status, "open");
+  assert.equal((await call(cy.token, "POST", W(`/requests/${id}/messages`), { body: "x" })).status, 403);
+  let c = await claimNext();
+  assert.equal(c.run.kind, "request");
+  assert.equal(c.request.request.id, id);
+  assert.deepEqual(c.request.messages.map((m) => m.kind), ["answer", "reply"]);
+  assert.equal(c.request.cards.length, 1);
+  await call(runner, "POST", `/api/runs/${c.run.id}/finish`, { status: "done", summary: "commented on the card" });
+  let d = (await call(ada.token, "GET", W(`/requests/${id}`))).data;
+  assert.equal(d.request.status, "answered");
+  assert.match(d.messages.at(-1).body, /finished without answering.*commented on the card/);
+
+  // A failed run leaves the request open, with a note; a person can ask again or close it.
+  const second = (await call(ada.token, "POST", W("/requests"), { body: "Why did the Mac build get slower?" })).data.request.id;
+  c = await claimNext();
+  assert.equal(c.request.request.id, second);
+  await call(runner, "POST", `/api/runs/${c.run.id}/finish`, { status: "failed", summary: "agent crashed" });
+  d = (await call(ada.token, "GET", W(`/requests/${second}`))).data;
+  assert.equal(d.request.status, "open");
+  assert.match(d.messages.at(-1).body, /run failed.*agent crashed/);
+  assert.equal((await call(cy.token, "POST", W(`/requests/${second}/retry`))).status, 403);
+  assert.equal((await call(bo.token, "POST", W(`/requests/${second}/retry`))).status, 202);
+  assert.equal((await call(ada.token, "POST", W(`/requests/${second}/close`))).data.request.status, "closed");
+  assert.equal((await claimNext()).run, null, "closing cancels the queued run");
+  assert.match((await tool(agent, "claim_request", { id: second })).error, /is closed/);
+
+  // A question from the agent waits for the person, and counts in "need you".
+  const before = (await call(ada.token, "GET", W("/digest"))).data.needs_you;
+  const third = (await call(ada.token, "POST", W("/requests"), { body: "Make it faster" })).data.request.id;
+  const q = await tool(agent2, "answer_request", { id: third, outcome: "question", body: "Which screen feels slow?" });
+  assert.equal(q.value.request.outcome, "question");
+  assert.equal((await call(ada.token, "GET", W("/digest"))).data.needs_you, before + 1);
+  assert.equal((await claimNext()).run, null);
+  await call(ada.token, "POST", W(`/requests/${third}/close`));
+
+  // Isolation, as for cards.
+  assert.equal((await call(eve.token, "GET", W("/requests"))).status, 403);
+  assert.equal((await call(eve.token, "GET", W(`/requests/${id}`))).status, 403);
+  const direct = async (token, table) => (await fetch(`${SB}/rest/v1/${table}?select=id`, { headers: { apikey: ANON, Authorization: `Bearer ${token}`, "Accept-Profile": "hq" } })).json();
+  assert.equal((await direct(eve.token, "requests")).length, 0, "RLS: eve reads none of ada's requests");
+  assert.ok((await direct(cy.token, "requests")).some((r) => r.id === id), "RLS: a member reads them");
+  assert.equal((await direct(eve.token, "request_messages")).length, 0);
+  await call(ada.token, "POST", W(`/requests/${id}/close`));
+  await tool(agent, "withdraw_card", { id: made.value.id, reason: "test" });
 });
 
 await step("roles: viewers and agents can't approve; an approver can, and that queues a build", async () => {
@@ -328,7 +460,7 @@ await step("health lands on the board; the audit log records who did what (admin
   const h = (await call(cy.token, "GET", W("/health"))).data;
   assert.equal(h.projects.find((p) => p.project === "alpha").health.ok, false);
   const log = (await call(ada.token, "GET", W("/audit"))).data;
-  for (const a of ["workspace.create", "member.join", "policy.sync", "card.create", "workspace.pause", "verb.refused", "run.finish"]) assert.ok(log.some((x) => x.action === a), a);
+  for (const a of ["workspace.create", "member.join", "policy.sync", "card.create", "request.create", "request.claim", "request.answer", "request.close", "workspace.pause", "verb.refused", "run.finish"]) assert.ok(log.some((x) => x.action === a), a);
   assert.ok(log.some((x) => x.actor === bo.email && x.action === "card.status"), "decisions are attributed to the person");
   assert.equal((await call(bo.token, "GET", W("/audit"))).status, 403);
 });

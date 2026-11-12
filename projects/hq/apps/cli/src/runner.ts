@@ -4,14 +4,14 @@
 //
 // Run kinds: health (every .hq/bin/health), verb (one .hq/bin verb), scout, ceo, build (in its own
 // git worktree on branch hq/<card>), review (a second agent checks the build), reply (answer the
-// owner's comment).
+// owner's comment), request (turn what a person asked for into a proposal).
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { contextMarkdown, type Context, type RepoPolicy } from "@hq/core";
 import { runAgent, type Role } from "./adapters.ts";
 import type { HqClient } from "./client.ts";
-import { buildPrompt, ceoPrompt, replyPrompt, reviewPrompt, scoutPrompt, type CardDetail } from "./prompts.ts";
+import { buildPrompt, ceoPrompt, replyPrompt, requestPrompt, reviewPrompt, scoutPrompt, type CardDetail, type RequestDetail } from "./prompts.ts";
 import { runVerb } from "./repo.ts";
 
 export interface RunnerOptions {
@@ -30,6 +30,7 @@ interface Claimed {
   run: { id: string; kind: string; project: string | null; scout: string | null; card_id: string | null; verb: string | null; args: Record<string, unknown>; agent: string | null; session: string | null } | null;
   context?: Context;
   card?: CardDetail | null;
+  request?: RequestDetail | null;
   policy?: RepoPolicy;
   paused?: boolean;
   over_budget?: boolean;
@@ -53,7 +54,7 @@ export async function runOnce(client: HqClient, o: RunnerOptions): Promise<"work
     return "idle";
   }
   const run = c.run;
-  o.log(`run ${run.id}: ${run.kind}${run.scout ? ` ${run.scout}` : ""}${run.verb ? ` ${run.verb}` : ""}${run.project ? ` (${run.project})` : ""}${run.card_id ? ` card ${run.card_id}` : ""}`);
+  o.log(`run ${run.id}: ${run.kind}${run.scout ? ` ${run.scout}` : ""}${run.verb ? ` ${run.verb}` : ""}${run.project ? ` (${run.project})` : ""}${run.card_id ? ` card ${run.card_id}` : ""}${c.request ? ` ${c.request.request.id}` : ""}`);
   const finish = (body: Record<string, unknown>) => client.call("POST", `/api/runs/${run.id}/finish`, body);
   try {
     const policy = c.policy!;
@@ -194,6 +195,11 @@ async function agentRun(client: HqClient, o: RunnerOptions, c: Claimed, finish: 
       prompt = reviewPrompt({ card, context: ctx, worktree: cwd, base: o.base, branch: card.card.branch });
       break;
     }
+    case "request":
+      role = "request";
+      if (!c.request) throw new Error("the request is gone");
+      prompt = requestPrompt({ request: c.request, context: ctx, cardLimit: Number(run.args.card_limit ?? 3) });
+      break;
     case "reply":
       role = "reply";
       prompt = replyPrompt({ card: c.card!, context: ctx });

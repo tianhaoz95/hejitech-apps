@@ -1,0 +1,7 @@
+# Sent with every page and asset (Workers static assets). Scripts only from this site: text and
+# drawings that agents write can never run code here (figures are sandboxed frames built from
+# srcdoc, which frame-src 'none' still allows; it stops a frame from loading anything else).
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https: http: wss: ws:; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin

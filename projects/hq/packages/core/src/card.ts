@@ -1,6 +1,10 @@
 // The proposal card: the one format every scout, the CEO, executors, the Worker, the portal and the
 // iOS app speak (PRD §4). validateCard() is the server's gate in hq.create_proposal: a card without
 // evidence, a plan or a way to verify it is refused.
+//
+// `why`, `plan` and `verify` (and comments) are markdown (markdown.ts renders them, raw HTML never
+// passes). Drawings travel apart from the text as `figures`: static HTML/SVG that the portal and
+// the app show in a sandboxed frame with no scripts and no network, placed by `![title](figure:id)`.
 
 export const TIERS = ["L0", "L1", "L2", "L3"] as const;
 export type Tier = (typeof TIERS)[number];
@@ -14,7 +18,7 @@ export type Effort = (typeof EFFORTS)[number];
 export const RISKS = ["low", "medium", "high"] as const;
 export type Risk = (typeof RISKS)[number];
 
-export const EVIDENCE_TYPES = ["ci_run", "metric", "link", "log", "test", "screenshot", "commit", "file", "review"] as const;
+export const EVIDENCE_TYPES = ["ci_run", "metric", "link", "log", "test", "screenshot", "commit", "file", "review", "request"] as const;
 export type EvidenceType = (typeof EVIDENCE_TYPES)[number];
 
 /** Lifecycle (PRD §4). L0 cards skip `proposed` and start at `approved`. */
@@ -46,6 +50,19 @@ export interface Evidence {
   source?: string;
 }
 
+/** A static drawing (HTML, CSS, inline SVG) shown in a sandboxed frame. */
+export interface Figure {
+  /** Referenced from markdown as `![title](figure:<id>)`. */
+  id: string;
+  title: string;
+  /** Empty in card lists: only a card's detail carries the drawing. */
+  html: string;
+  /** Height of the frame in CSS pixels; content taller than this scrolls inside it. */
+  height: number;
+}
+
+export const FIGURE_LIMITS = { count: 6, html: 60_000, title: 120, minHeight: 80, maxHeight: 1200, defaultHeight: 360 } as const;
+
 export interface CardSource {
   scout?: string;
   agent?: string;
@@ -69,6 +86,10 @@ export interface CardInput {
   source?: CardSource;
   /** A stable key for "the same finding" so a scout re-running daily doesn't duplicate its card. */
   dedupe_key?: string;
+  /** Drawings the markdown fields place with `![title](figure:<id>)`. */
+  figures?: Figure[];
+  /** The owner's request (request.ts) this card answers. */
+  request_id?: string;
 }
 
 export interface Card extends Required<Pick<CardInput, "project" | "kind" | "title" | "why" | "evidence" | "plan" | "verify" | "tier">> {
@@ -80,6 +101,8 @@ export interface Card extends Required<Pick<CardInput, "project" | "kind" | "tit
   verbs: string[];
   source: CardSource;
   dedupe_key: string | null;
+  figures: Figure[];
+  request_id: string | null;
   status: Status;
   /** Higher is more important; set by the CEO (rank_cards) or defaulted from tier/risk. */
   priority: number;
@@ -113,6 +136,34 @@ export function validateEvidence(e: unknown, i = 0): string[] {
   return errs;
 }
 
+/** What a frame without scripts or network can't use, refused so the agent hears about it. */
+const FIGURE_BANNED: [RegExp, string][] = [
+  [/<\s*(script|iframe|frame|object|embed|link|meta|base|form)\b/i, "only static HTML, CSS and inline SVG (no script, frame, object, embed, link, meta, base or form elements)"],
+  [/\son[a-z]+\s*=\s*["'{]/i, "no event handler attributes (scripts never run in a figure)"],
+  [/javascript\s*:/i, "no javascript: URLs"],
+  [/@import\b|url\(\s*["']?\s*(https?:)?\/\//i, "no network: inline every style and image (data: URLs are fine)"],
+  [/\b(src|href|xlink:href)\s*=\s*["']?\s*(https?:)?\/\//i, "no network or links: inline images as data: URLs and put links in the card's text"],
+];
+
+export function validateFigure(f: unknown, i = 0): string[] {
+  const at = `figures[${i}]`;
+  if (!f || typeof f !== "object") return [`${at}: must be an object`];
+  const x = f as Record<string, unknown>;
+  const errs: string[] = [];
+  if (typeof x.id !== "string" || !/^[a-z0-9][a-z0-9-]{0,39}$/.test(x.id)) errs.push(`${at}.id: lowercase letters, digits and dashes (up to 40)`);
+  if (!isStr(x.title)) errs.push(`${at}.title: required (shown where the drawing can't be)`);
+  else if (x.title.length > FIGURE_LIMITS.title) errs.push(`${at}.title: at most ${FIGURE_LIMITS.title} characters`);
+  if (!isStr(x.html)) errs.push(`${at}.html: required`);
+  else {
+    if (x.html.length > FIGURE_LIMITS.html) errs.push(`${at}.html: at most ${FIGURE_LIMITS.html} characters`);
+    for (const [re, why] of FIGURE_BANNED) if (re.test(x.html)) errs.push(`${at}.html: ${why}`);
+  }
+  if (x.height !== undefined && (typeof x.height !== "number" || !Number.isFinite(x.height) || x.height < FIGURE_LIMITS.minHeight || x.height > FIGURE_LIMITS.maxHeight)) {
+    errs.push(`${at}.height: ${FIGURE_LIMITS.minHeight}–${FIGURE_LIMITS.maxHeight} pixels`);
+  }
+  return errs;
+}
+
 /** The server-side gate. Returns a normalised input or every problem at once. */
 export function validateCard(input: unknown): Result<CardInput> {
   if (!input || typeof input !== "object") return { ok: false, errors: ["card must be an object"] };
@@ -136,6 +187,16 @@ export function validateCard(input: unknown): Result<CardInput> {
   else c.evidence.forEach((e, i) => errs.push(...validateEvidence(e, i)));
   if (c.verbs !== undefined && (!Array.isArray(c.verbs) || !c.verbs.every((v) => typeof v === "string" && /^[a-z][a-z0-9-]*$/.test(v)))) errs.push("verbs: a list of verb names");
   if (c.dedupe_key !== undefined && (typeof c.dedupe_key !== "string" || c.dedupe_key.length > 200)) errs.push("dedupe_key: a string up to 200 characters");
+  if (c.figures !== undefined) {
+    if (!Array.isArray(c.figures)) errs.push("figures: a list of { id, title, html, height }");
+    else if (c.figures.length > FIGURE_LIMITS.count) errs.push(`figures: at most ${FIGURE_LIMITS.count}`);
+    else {
+      c.figures.forEach((f, i) => errs.push(...validateFigure(f, i)));
+      const ids = c.figures.map((f) => (f as Figure)?.id);
+      if (new Set(ids).size !== ids.length) errs.push("figures: ids must be unique");
+    }
+  }
+  if (c.request_id !== undefined && (typeof c.request_id !== "string" || !/^req-[\w-]{1,40}$/.test(c.request_id))) errs.push("request_id: the id of an owner request (req-…)");
   if (errs.length) return { ok: false, errors: errs };
   const src = (c.source ?? {}) as Record<string, unknown>;
   return {
@@ -159,6 +220,8 @@ export function validateCard(input: unknown): Result<CardInput> {
         session: typeof src.session === "string" ? src.session : undefined,
       },
       dedupe_key: typeof c.dedupe_key === "string" ? c.dedupe_key : undefined,
+      figures: ((c.figures as Figure[]) ?? []).map((f) => ({ id: f.id, title: f.title.trim(), html: f.html, height: Math.round(f.height ?? FIGURE_LIMITS.defaultHeight) })),
+      request_id: typeof c.request_id === "string" ? c.request_id : undefined,
     },
   };
 }

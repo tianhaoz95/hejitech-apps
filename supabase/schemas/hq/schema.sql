@@ -45,6 +45,34 @@ create table hq.invites (
 );
 create index invites_workspace on hq.invites(workspace_id);
 
+-- On-demand requests: what a person asked HQ for (projects/hq/packages/core/src/request.ts). An
+-- agent claims one (a lease), files cards that carry its id, and answers in the thread.
+create table hq.requests (
+  id text primary key,
+  workspace_id uuid not null references hq.workspaces(id) on delete cascade,
+  project text,
+  body text not null,
+  status text not null check (status in ('open', 'claimed', 'answered', 'closed')),
+  outcome text check (outcome in ('proposed', 'question', 'declined', 'note')),
+  requested_by text not null,
+  claimed_by text,
+  claimed_until timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index requests_workspace_status on hq.requests(workspace_id, status, created_at desc);
+
+create table hq.request_messages (
+  id bigint generated always as identity primary key,
+  workspace_id uuid not null references hq.workspaces(id) on delete cascade,
+  request_id text not null references hq.requests(id) on delete cascade,
+  author text not null,
+  kind text not null check (kind in ('reply', 'answer', 'system')),
+  body text not null,
+  created_at timestamptz not null default now()
+);
+create index request_messages_request on hq.request_messages(request_id, id);
+
 -- Proposal cards (projects/hq/packages/core/src/card.ts).
 create table hq.cards (
   id text primary key,
@@ -64,6 +92,10 @@ create table hq.cards (
   verbs jsonb not null default '[]',
   source jsonb not null default '{}',
   dedupe_key text,
+  -- Drawings shown in a sandboxed frame: [{ id, title, html, height }].
+  figures jsonb not null default '[]',
+  -- The request this card answers, if a person asked for it.
+  request_id text references hq.requests(id) on delete set null,
   status text not null,
   priority integer not null default 0,
   decided_by text,
@@ -74,6 +106,7 @@ create table hq.cards (
 );
 create index cards_workspace_status on hq.cards(workspace_id, status, priority desc);
 create index cards_workspace_dedupe on hq.cards(workspace_id, dedupe_key);
+create index cards_request on hq.cards(request_id) where request_id is not null;
 
 create table hq.comments (
   id bigint generated always as identity primary key,
@@ -109,7 +142,7 @@ create table hq.attachments (
 );
 create index attachments_card on hq.attachments(card_id, id);
 
--- Work for runners: scout, ceo, build, review, reply, verb, health.
+-- Work for runners: scout, ceo, build, review, reply, request, verb, health.
 create table hq.runs (
   id text primary key,
   workspace_id uuid not null references hq.workspaces(id) on delete cascade,
@@ -117,6 +150,7 @@ create table hq.runs (
   project text,
   scout text,
   card_id text references hq.cards(id) on delete cascade,
+  request_id text references hq.requests(id) on delete cascade,
   verb text,
   args jsonb not null default '{}',
   runs_on text not null default 'any',
@@ -186,6 +220,8 @@ grant execute on function hq.has_role(uuid, text[]) to authenticated, service_ro
 alter table hq.workspaces enable row level security;
 alter table hq.members enable row level security;
 alter table hq.invites enable row level security;
+alter table hq.requests enable row level security;
+alter table hq.request_messages enable row level security;
 alter table hq.cards enable row level security;
 alter table hq.comments enable row level security;
 alter table hq.decisions enable row level security;
@@ -198,6 +234,8 @@ alter table hq.audit enable row level security;
 create policy "members read their workspaces" on hq.workspaces for select using (hq.has_role(id));
 create policy "members read members" on hq.members for select using (hq.has_role(workspace_id));
 create policy "admins read invites" on hq.invites for select using (hq.has_role(workspace_id, array['admin']));
+create policy "members read requests" on hq.requests for select using (hq.has_role(workspace_id));
+create policy "members read request messages" on hq.request_messages for select using (hq.has_role(workspace_id));
 create policy "members read cards" on hq.cards for select using (hq.has_role(workspace_id));
 create policy "members read comments" on hq.comments for select using (hq.has_role(workspace_id));
 create policy "members read decisions" on hq.decisions for select using (hq.has_role(workspace_id));

@@ -23,14 +23,16 @@ export type Action =
   | "tokens"
   | "members"
   | "connect_agent" // approve an OAuth MCP client
-  | "audit";
+  | "audit"
+  | "request" // ask HQ for something (an on-demand request), follow up on it, close it
+  | "answer_request"; // claim and answer a request (agents and runners)
 
 const ALLOWED: Record<Role, readonly Action[]> = {
-  admin: ["read", "comment", "propose", "decide", "set_status", "run_verb", "run_l3_verb", "start_run", "attach", "sync", "pause", "tokens", "members", "connect_agent", "audit"],
-  approver: ["read", "comment", "propose", "decide", "set_status", "run_verb", "run_l3_verb", "start_run", "attach", "connect_agent"],
+  admin: ["read", "comment", "propose", "decide", "set_status", "run_verb", "run_l3_verb", "start_run", "attach", "sync", "pause", "tokens", "members", "connect_agent", "audit", "request"],
+  approver: ["read", "comment", "propose", "decide", "set_status", "run_verb", "run_l3_verb", "start_run", "attach", "connect_agent", "request"],
   viewer: ["read", "comment"],
-  runner: ["read", "comment", "propose", "attach", "claim", "sync", "run_verb"],
-  agent: ["read", "comment", "propose", "attach", "run_verb", "rank"],
+  runner: ["read", "comment", "propose", "attach", "claim", "sync", "run_verb", "answer_request"],
+  agent: ["read", "comment", "propose", "attach", "run_verb", "rank", "answer_request"],
 };
 
 export const can = (role: Role, action: Action): boolean => ALLOWED[role].includes(action);

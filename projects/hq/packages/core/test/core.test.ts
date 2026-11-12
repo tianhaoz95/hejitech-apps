@@ -152,8 +152,15 @@ describe("context", () => {
         { id: "b1", project: "beta", title: "B", status: "proposed" as const, tier: "L1" as const, kind: "reliability" as const, priority: 1, dedupe_key: null },
       ],
       recent_decisions: [],
+      open_requests: [
+        { id: "req-1", project: null, body: "Propose a new logo", status: "open" as const, requested_by: "ann@example.com", claimed_by: null, claimed_until: null, created_at: "2026-11-11T00:00:00Z" },
+        { id: "req-2", project: "beta", body: "Speed up launch", status: "open" as const, requested_by: "ann@example.com", claimed_by: null, claimed_until: null, created_at: "2026-11-11T00:00:00Z" },
+      ],
     };
     const c = buildContext(r.value, "alpha", state);
+    // A request without a project reaches every project's agents; another project's doesn't.
+    expect(c.state.open_requests.map((x) => x.id)).toEqual(["req-1"]);
+    expect(contextMarkdown(c)).toContain("req-1 [any project] from ann@example.com: Propose a new logo");
     expect(c.state.open_cards.map((x) => x.id)).toEqual(["a1"]);
     expect(c.limits.budget_left_usd).toBe(15);
     expect(c.never).toEqual(["live-orders"]);
@@ -182,5 +189,100 @@ describe("roles", () => {
     expect(can("runner", "claim") && can("runner", "sync")).toBe(true);
     expect(can("agent", "claim") || can("agent", "sync")).toBe(false);
     expect(can("agent", "rank") && !can("runner", "rank")).toBe(true);
+  });
+});
+
+import { figureDocument, figureRefs, isClaimable, plainText, renderMarkdown, validateFigure, validateRequest } from "../src/index.ts";
+
+describe("markdown", () => {
+  it("renders the usual blocks and inline styles", () => {
+    const html = renderMarkdown("# Title\n\nSome **bold**, *soft*, `code` and a [link](https://example.com/a?b=1&c=2).\n\n- one\n- two\n  - nested\n\n1. first\n2. second\n\n> quoted\n\n```ts\nconst a = \"<b>\";\n```\n\n| a | b |\n|---|--:|\n| 1 | 2 |\n\n---");
+    expect(html).toContain("<h4>Title</h4>");
+    expect(html).toContain("<strong>bold</strong>");
+    expect(html).toContain("<em>soft</em>");
+    expect(html).toContain("<code>code</code>");
+    expect(html).toContain('<a href="https://example.com/a?b=1&amp;c=2" target="_blank" rel="noopener noreferrer nofollow">link</a>');
+    expect(html).toContain("<ul><li>one</li><li>");
+    expect(html).toContain("<ul><li>nested</li></ul>");
+    expect(html).toContain("<ol><li>first</li><li>second</li></ol>");
+    expect(html).toContain("<blockquote><p>quoted</p></blockquote>");
+    expect(html).toContain("<pre><code>const a = &quot;&lt;b&gt;&quot;;</code></pre>");
+    expect(html).toContain('<td style="text-align:right">2</td>');
+    expect(html).toContain("<hr>");
+  });
+  it("keeps plain text plain: single newlines break lines, snake_case stays", () => {
+    expect(renderMarkdown("line one\nline two")).toBe("<p>line one<br>line two</p>");
+    expect(renderMarkdown("run check_isolation_now.mjs")).toBe("<p>run check_isolation_now.mjs</p>");
+  });
+  it("never lets HTML, scripts or unsafe links through", () => {
+    const html = renderMarkdown('<script>alert(1)</script> <img src=x onerror=alert(1)>\n\n[x](javascript:alert(1)) [y](data:text/html,hi) ![z](https://evil.example/t.gif)\n\n<a href="https://a.example" onclick="x()">a</a>');
+    // What isn't allowed stays visible as text; none of it becomes a tag or an address.
+    expect(html).not.toMatch(/<script|<img|<a [^>]*on\w+=|href="(javascript|data):/);
+    expect(html).toContain("&lt;script&gt;");
+    // An image is never loaded: it becomes a link to it.
+    expect(html).toContain('<a href="https://evil.example/t.gif" target="_blank" rel="noopener noreferrer nofollow">z</a>');
+    // Every tag in the output is one the renderer writes.
+    const tags = new Set([...html.matchAll(/<\/?([a-z0-9]+)/g)].map((m) => m[1]));
+    for (const t of tags) expect(["p", "a", "br"]).toContain(t);
+  });
+  it("places figures by reference and reads as one plain line", () => {
+    const md = "The flow today:\n\n![Request flow](figure:flow)\n\nSee `store.ts`.";
+    expect(renderMarkdown(md)).toContain('<div class="md-figure" data-figure="flow" data-title="Request flow"></div>');
+    expect(figureRefs(md)).toEqual(["flow"]);
+    expect(plainText("## Why\n\nThe **build** fails in `ci.yml`, see [run](https://x.example/1).\n- twice")).toBe("Why The build fails in ci.yml, see run. twice");
+    expect(plainText("a".repeat(300), 20)).toHaveLength(20);
+  });
+});
+
+describe("figures", () => {
+  const fig = { id: "flow", title: "Request flow", html: '<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" fill="var(--soft)"/></svg>', height: 200 };
+  it("accepts static HTML and SVG, with limits", () => {
+    expect(validateFigure(fig)).toEqual([]);
+    expect(validateFigure({ ...fig, html: "<div style=\"display:flex\"><button>Approve</button><input value=\"x\"></div>" })).toEqual([]);
+    const r = validateCard({ ...good, figures: [fig] });
+    expect(r.ok && r.value.figures?.[0].height).toBe(200);
+    expect(validateCard({ ...good, figures: [fig, fig] }).ok).toBe(false);
+    expect(validateCard({ ...good, figures: Array.from({ length: 7 }, (_, i) => ({ ...fig, id: `f${i}` })) }).ok).toBe(false);
+    expect(validateFigure({ ...fig, height: 5000 })).toHaveLength(1);
+    expect(validateFigure({ ...fig, title: "" })).toHaveLength(1);
+    expect(validateFigure({ ...fig, id: "Bad Id" })).toHaveLength(1);
+  });
+  it("refuses scripts, frames, handlers and anything from the network", () => {
+    for (const html of [
+      "<script>alert(1)</script>", "<SCRIPT src=x></SCRIPT>", '<iframe src="https://a.example"></iframe>', '<img src="https://a.example/x.png">', "<img src=//a.example/x.png>",
+      '<div onclick="x()">a</div>', '<a href="javascript:alert(1)">a</a>', '<a href="https://a.example">a</a>', "<style>@import 'x.css';</style>",
+      '<div style="background:url(https://a.example/x.png)"></div>', '<meta http-equiv="refresh" content="0;url=https://a.example">', '<form action="/x"></form>', '<base href="/">',
+    ]) expect(validateFigure({ ...fig, html }), html).not.toEqual([]);
+  });
+  it("is shown in a document with no scripts and no network", () => {
+    const doc = figureDocument(fig.html);
+    expect(doc).toContain("default-src 'none'");
+    expect(doc).not.toContain("script-src");
+    expect(doc).toContain(fig.html);
+  });
+});
+
+describe("requests", () => {
+  it("need words; the project is optional", () => {
+    expect(validateRequest({ body: "  " }).ok).toBe(false);
+    expect(validateRequest({ body: "x".repeat(4001) }).ok).toBe(false);
+    const r = validateRequest({ body: " Propose a new logo ", project: "repo-wide" });
+    expect(r.ok && r.value).toEqual({ body: "Propose a new logo", project: null });
+    expect(validateRequest({ body: "x", project: "Bad Name" }).ok).toBe(false);
+    expect(validateCard({ ...good, request_id: "req-20261111-abcd" }).ok).toBe(true);
+    expect(validateCard({ ...good, request_id: "nope" }).ok).toBe(false);
+  });
+  it("can be claimed when open or when the lease ran out", () => {
+    const at = new Date("2026-11-11T12:00:00Z");
+    expect(isClaimable({ status: "open", claimed_until: null }, at)).toBe(true);
+    expect(isClaimable({ status: "claimed", claimed_until: "2026-11-11T12:10:00Z" }, at)).toBe(false);
+    expect(isClaimable({ status: "claimed", claimed_until: "2026-11-11T11:59:00Z" }, at)).toBe(true);
+    expect(isClaimable({ status: "answered", claimed_until: null }, at)).toBe(false);
+  });
+  it("only admins and approvers ask; only agents and runners answer", () => {
+    expect(can("admin", "request") && can("approver", "request")).toBe(true);
+    expect(can("viewer", "request") || can("agent", "request") || can("runner", "request")).toBe(false);
+    expect(can("agent", "answer_request") && can("runner", "answer_request")).toBe(true);
+    expect(can("admin", "answer_request") || can("viewer", "answer_request")).toBe(false);
   });
 });

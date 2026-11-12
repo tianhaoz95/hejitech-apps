@@ -58,3 +58,24 @@ v0.1 (the owner said "use your best judgement"; each is easy to change).
   and this also works when the CLI is on a server over SSH. Only admins can allow it, because it creates tokens. The
   saved file is plain JSON readable only by its owner, like other CLIs' token files; agents the
   runner starts run as the same user, so the deny-list, not the file, is what limits them.
+- **On-demand requests** (2026-11-12): people can ask HQ for something in their own words ("Propose
+  a redesign of the logo") from the portal or the app. A request is its own record, not a card: it
+  has no evidence, plan or verify step, so it couldn't pass the card gate. Filing one queues a
+  `request` run for the runner (push), and every MCP agent sees open requests in `get_context`
+  (pull), so "check on HQ" works in any agent session. An agent claims it with a 30-minute lease
+  (`claim_request`, so two agents don't both answer), files cards carrying its `request_id`, and must
+  answer (`answer_request`: proposed, question, declined or note); a run that ends without an answer
+  leaves a note and, if it failed, reopens the request. Asking approves nothing: cards still go
+  through their tier. Only admins and approvers ask, because the words reach an agent with repo
+  access. Requested cards rank above scout findings and are never held back by the inbox cap; their
+  runs count toward the weekly budget but the budget doesn't block them, since a person is waiting.
+- **Markdown and figures on cards** (2026-11-12): `why`, `plan`, `verify`, comments and request
+  threads are markdown. The renderer (`packages/core/src/markdown.ts`, mirrored in the app's
+  `Markdown.swift`) escapes everything and writes every tag itself, so raw HTML never passes; links
+  are http(s)/mailto only and images become links (nothing loads from the network). Drawings travel
+  apart from the text as `figures` (id, title, static HTML/CSS/SVG, height; at most 6 of 60 KB),
+  placed with `![title](figure:<id>)`. The server refuses scripts, frames, handlers and network
+  references; the portal shows each in `<iframe sandbox srcdoc>` (no scripts, its own origin, so no
+  session) under the page's CSP, and the app in a web view with JavaScript off and navigation
+  refused. Lists carry figures without their drawing. Mermaid was left out: it needs a script
+  renderer on both surfaces, and sandboxed SVG covers the same need.

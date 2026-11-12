@@ -11,20 +11,31 @@ import {
   checkCardAgainstPolicy,
   checkVerb,
   defaultPriority,
+  isClaimable,
   isDue,
   isMember,
+  leaseUntil,
   MEMBER_ROLES,
   OPEN_STATUSES,
   overBudget,
+  REQUEST_LIMITS,
+  REQUEST_OUTCOMES,
+  REQUEST_PRIORITY_BOOST,
   validateCard,
   validateEvidence,
+  validateRequest,
   type Action,
   type Actor,
   type Card,
   type Context,
   type Decision,
   type Evidence,
+  type Figure,
+  type HqRequest,
   type MemberRole,
+  type OpenRequest,
+  type RequestMessage,
+  type RequestOutcome,
   type RepoPolicy,
   type Role,
   type Status,
@@ -87,6 +98,7 @@ const rand = (n: number) => {
 };
 export const newCardId = () => `hq-${now().slice(0, 10).replace(/-/g, "")}-${rand(4)}`;
 export const newRunId = () => `run-${rand(10)}`;
+export const newRequestId = () => `req-${now().slice(0, 10).replace(/-/g, "")}-${rand(4)}`;
 
 export async function sha256(s: string): Promise<string> {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
@@ -274,12 +286,21 @@ export async function getContext(x: Ctx, c: Caller, project: string | null): Pro
   }[];
   const decisions: Decision[] = dec.map((d) => ({ card_id: d.card_id, decision: d.decision, reason: d.reason, at: d.at, title: d.cards?.title ?? "", project: d.cards?.project ?? "", kind: d.cards?.kind ?? "" }));
   const prs = await count(x.db.from("cards").select("id", { count: "exact", head: true }).eq("workspace_id", ws).not("pr_url", "is", null).in("status", ["building", "in_review"]));
-  return buildContext(policy, project, { paused: await isPaused(x, ws), spent_this_week_usd: await spentThisWeek(x, ws), open_cards: open, open_prs: prs, recent_decisions: decisions });
+  const requests = must(
+    await x.db.from("requests").select("id, project, body, status, requested_by, claimed_by, claimed_until, created_at").eq("workspace_id", ws).in("status", ["open", "claimed"]).order("created_at").limit(REQUEST_LIMITS.openPerWorkspace),
+    "open requests"
+  ) as OpenRequest[];
+  return buildContext(policy, project, { paused: await isPaused(x, ws), spent_this_week_usd: await spentThisWeek(x, ws), open_cards: open, open_prs: prs, recent_decisions: decisions, open_requests: requests });
 }
 
 // ── cards ────────────────────────────────────────────────────────────────────────────────────
 
-const toCard = (r: Record<string, unknown>): Card => ({ ...(r as unknown as Card), evidence: (r.evidence as Evidence[]) ?? [], verbs: (r.verbs as string[]) ?? [], source: (r.source as Card["source"]) ?? {} });
+const toCard = (r: Record<string, unknown>): Card => ({
+  ...(r as unknown as Card), evidence: (r.evidence as Evidence[]) ?? [], verbs: (r.verbs as string[]) ?? [], source: (r.source as Card["source"]) ?? {},
+  figures: (r.figures as Figure[]) ?? [], request_id: (r.request_id as string) ?? null,
+});
+/** Lists carry a figure's title and size, not its drawing: only a card's detail does. */
+const withoutDrawings = (c: Card): Card => ({ ...c, figures: c.figures.map((f) => ({ ...f, html: "" })) });
 
 export async function getCard(x: Ctx, c: Caller, id: string): Promise<Card> {
   const r = must(await x.db.from("cards").select("*").eq("workspace_id", c.workspaceId).eq("id", id).maybeSingle(), "card");
@@ -311,7 +332,7 @@ export async function listCards(x: Ctx, c: Caller, opts: { status?: string[]; pr
   if (opts.status?.length) q = q.in("status", opts.status);
   if (opts.project) q = q.eq("project", opts.project);
   const r = must(await q.order("priority", { ascending: false }).order("created_at", { ascending: false }).limit(Math.min(opts.limit ?? 100, 500)), "cards");
-  return (r as Record<string, unknown>[]).map(toCard);
+  return (r as Record<string, unknown>[]).map(toCard).map(withoutDrawings);
 }
 
 /** The inbox: what needs a person, capped so it stays a few minutes a day (PRD §9). */
@@ -323,7 +344,11 @@ export async function inbox(x: Ctx, c: Caller) {
     listCards(x, c, { status: ["in_review"] }),
     listCards(x, c, { status: ["approved", "building"] }),
   ]);
-  return { cap: policy.inbox_cap, decide: proposed.slice(0, policy.inbox_cap), backlog: proposed.slice(policy.inbox_cap), discussing, ready, working };
+  // What a person asked for is never held back by the cap: the cap is for what scouts found.
+  const asked = proposed.filter((p) => p.request_id);
+  const found = proposed.filter((p) => !p.request_id);
+  const requests = can(c.role, "read") ? await listRequests(x, c, { status: ["open", "claimed", "answered"], limit: 30 }) : [];
+  return { cap: policy.inbox_cap, decide: [...asked, ...found.slice(0, policy.inbox_cap)], backlog: found.slice(policy.inbox_cap), discussing, ready, working, requests };
 }
 
 export async function createProposal(x: Ctx, c: Caller, input: unknown) {
@@ -335,6 +360,13 @@ export async function createProposal(x: Ctx, c: Caller, input: unknown) {
   const problems = checkCardAgainstPolicy(v.value, policy);
   if (problems.length) throw new HttpError(422, "card refused by policy", problems);
   const card = v.value;
+  if (card.request_id) {
+    const req = must(await x.db.from("requests").select("id, status").eq("workspace_id", ws).eq("id", card.request_id).maybeSingle(), "request") as { id: string; status: string } | null;
+    if (!req) throw new HttpError(422, "card refused", [`request_id: no request ${card.request_id} in this workspace`]);
+    if (req.status === "closed") throw new HttpError(422, "card refused", [`request_id: ${card.request_id} is closed`]);
+    const linked = await count(x.db.from("cards").select("id", { count: "exact", head: true }).eq("workspace_id", ws).eq("request_id", card.request_id));
+    if (linked >= REQUEST_LIMITS.cardsPerRequest) throw new HttpError(422, "card refused", [`request_id: ${card.request_id} already has ${linked} cards; comment on one of them instead`]);
+  }
   if (card.dedupe_key) {
     const dup = must(await x.db.from("cards").select("id, status").eq("workspace_id", ws).eq("dedupe_key", card.dedupe_key).in("status", [...OPEN_STATUSES]).limit(1).maybeSingle(), "dedupe") as { id: string; status: string } | null;
     if (dup) return { id: dup.id, status: dup.status, duplicate: true, note: `an open card already has dedupe_key ${card.dedupe_key}; comment on it instead` };
@@ -353,7 +385,8 @@ export async function createProposal(x: Ctx, c: Caller, input: unknown) {
     await x.db.from("cards").insert({
       id, workspace_id: ws, repo: policy.repo, project: card.project, kind: card.kind, title: card.title, why: card.why, evidence: card.evidence, plan: card.plan,
       verify: card.verify, tier: card.tier, effort: card.effort ?? "M", risk: card.risk ?? "medium", risk_reason: card.risk_reason ?? null, verbs: card.verbs ?? [],
-      source: { ...card.source, agent: card.source?.agent ?? c.name }, dedupe_key: card.dedupe_key ?? null, status, priority: defaultPriority(card),
+      source: { ...card.source, agent: card.source?.agent ?? c.name }, dedupe_key: card.dedupe_key ?? null, figures: card.figures ?? [], request_id: card.request_id ?? null,
+      status, priority: defaultPriority(card) + (card.request_id ? REQUEST_PRIORITY_BOOST : 0),
       decided_by: status === "approved" ? "auto" : null, created_at: t, updated_at: t,
     }),
     "create card"
@@ -362,7 +395,7 @@ export async function createProposal(x: Ctx, c: Caller, input: unknown) {
     must(await x.db.from("decisions").insert({ workspace_id: ws, card_id: id, decision: "approved", reason: "L0: approved by policy", by: "auto" }), "auto decision");
     await enqueueRun(x, ws, { kind: "build", card_id: id, project: card.project, agent: policy.agents.executor, requested_by: "system" });
   }
-  await audit(x, c, "card.create", id, { tier: card.tier, project: card.project, status });
+  await audit(x, c, "card.create", id, { tier: card.tier, project: card.project, status, request: card.request_id });
   return { id, status, duplicate: false };
 }
 
@@ -466,10 +499,164 @@ export async function getFile(x: Ctx, c: Caller, key: string) {
   return r.data;
 }
 
+// ── on-demand requests ───────────────────────────────────────────────────────────────────────
+// A person asks; an agent claims, proposes cards that carry the request's id, and answers
+// (packages/core/src/request.ts). Asking approves nothing: the cards go through their tiers.
+
+type LinkedCard = Pick<Card, "id" | "title" | "status" | "tier" | "project" | "kind">;
+export interface RequestDetail {
+  request: HqRequest;
+  messages: RequestMessage[];
+  cards: LinkedCard[];
+}
+export type RequestRow = HqRequest & { cards: LinkedCard[]; last_message: string | null };
+
+const REQUEST_COLUMNS = "id, project, body, status, outcome, requested_by, claimed_by, claimed_until, created_at, updated_at";
+
+async function getRequest(x: Ctx, ws: string, id: string): Promise<HqRequest> {
+  const r = must(await x.db.from("requests").select(REQUEST_COLUMNS).eq("workspace_id", ws).eq("id", id).maybeSingle(), "request") as HqRequest | null;
+  if (!r) throw new HttpError(404, `no request ${id}`);
+  return r;
+}
+
+const requestNote = (x: Ctx, ws: string, id: string, author: string, kind: RequestMessage["kind"], body: string) =>
+  x.db.from("request_messages").insert({ workspace_id: ws, request_id: id, author, kind, body: body.trim().slice(0, REQUEST_LIMITS.message) });
+
+async function queueRequestRun(x: Ctx, ws: string, r: Pick<HqRequest, "id" | "project">, by: string) {
+  const policy = (await getPolicy(x, ws))?.policy;
+  return enqueueRun(x, ws, { kind: "request", request_id: r.id, project: r.project, agent: policy?.agents.scout ?? null, requested_by: by });
+}
+
+export async function createRequest(x: Ctx, c: Caller, input: unknown) {
+  need(c, "request");
+  const v = validateRequest(input);
+  if (!v.ok) throw new HttpError(422, "request refused", v.errors);
+  const ws = c.workspaceId;
+  const policy = await requirePolicy(x, ws);
+  if (v.value.project && !policy.projects[v.value.project]) throw new HttpError(422, "request refused", [`project: "${v.value.project}" has no .hq/HQ.md (known: ${Object.keys(policy.projects).join(", ") || "none"})`]);
+  const waiting = await count(x.db.from("requests").select("id", { count: "exact", head: true }).eq("workspace_id", ws).in("status", ["open", "claimed"]));
+  if (waiting >= REQUEST_LIMITS.openPerWorkspace) throw new HttpError(429, `${waiting} requests are still waiting for an agent: close some first`);
+  const id = newRequestId();
+  const t = now();
+  must(await x.db.from("requests").insert({ id, workspace_id: ws, project: v.value.project, body: v.value.body, status: "open", requested_by: c.name, created_at: t, updated_at: t }), "create request");
+  await queueRequestRun(x, ws, { id, project: v.value.project }, c.name);
+  await audit(x, c, "request.create", id, { project: v.value.project });
+  return requestDetail(x, c, id);
+}
+
+export async function requestDetail(x: Ctx, c: Caller, id: string): Promise<RequestDetail> {
+  need(c, "read");
+  const request = await getRequest(x, c.workspaceId, id);
+  const [messages, cards] = await Promise.all([
+    x.db.from("request_messages").select("id, author, kind, body, created_at").eq("request_id", id).order("id"),
+    x.db.from("cards").select("id, title, status, tier, project, kind").eq("workspace_id", c.workspaceId).eq("request_id", id).order("created_at"),
+  ]);
+  return { request, messages: must(messages, "request messages") as RequestMessage[], cards: must(cards, "request cards") as LinkedCard[] };
+}
+
+export async function listRequests(x: Ctx, c: Caller, opts: { status?: string[]; limit?: number } = {}): Promise<RequestRow[]> {
+  need(c, "read");
+  const ws = c.workspaceId;
+  let q = x.db.from("requests").select(REQUEST_COLUMNS).eq("workspace_id", ws);
+  if (opts.status?.length) q = q.in("status", opts.status);
+  const rows = must(await q.order("created_at", { ascending: false }).limit(Math.min(opts.limit ?? 50, 200)), "requests") as HqRequest[];
+  if (!rows.length) return [];
+  const ids = rows.map((r) => r.id);
+  const [cards, messages] = await Promise.all([
+    x.db.from("cards").select("id, title, status, tier, project, kind, request_id").eq("workspace_id", ws).in("request_id", ids).order("created_at"),
+    x.db.from("request_messages").select("request_id, body, id").eq("workspace_id", ws).in("request_id", ids).order("id"),
+  ]);
+  const byCard = must(cards, "request cards") as (LinkedCard & { request_id: string })[];
+  const last: Record<string, string> = {};
+  for (const m of must(messages, "request messages") as { request_id: string; body: string }[]) last[m.request_id] = m.body;
+  return rows.map((r) => ({ ...r, cards: byCard.filter((k) => k.request_id === r.id).map(({ request_id: _r, ...k }) => k), last_message: last[r.id] ?? null }));
+}
+
+/** An agent takes a request: a lease, so two agents checking at once don't both answer it. */
+export async function claimRequest(x: Ctx, c: Caller, id: string): Promise<RequestDetail> {
+  need(c, "answer_request");
+  const ws = c.workspaceId;
+  const r = await getRequest(x, ws, id);
+  const me = who(c);
+  if (r.status === "answered" || r.status === "closed") throw new HttpError(409, `request ${id} is ${r.status}`);
+  if (!isClaimable(r) && r.claimed_by !== me) throw new HttpError(409, `request ${id} is claimed by ${r.claimed_by} until ${r.claimed_until}: leave it to them`);
+  // Conditional on what was read, so the slower of two agents loses.
+  let q = x.db.from("requests").update({ status: "claimed", claimed_by: me, claimed_until: leaseUntil(), updated_at: now() }).eq("workspace_id", ws).eq("id", id).eq("status", r.status);
+  q = r.claimed_by === null ? q.is("claimed_by", null) : q.eq("claimed_by", r.claimed_by);
+  const got = must(await q.select("id"), "claim request") as { id: string }[];
+  if (!got.length) throw new HttpError(409, `request ${id} was just claimed by another agent: leave it to them`);
+  await audit(x, c, "request.claim", id);
+  return requestDetail(x, c, id);
+}
+
+export async function answerRequest(x: Ctx, c: Caller, id: string, outcome: string, body: string): Promise<RequestDetail> {
+  need(c, "answer_request");
+  const ws = c.workspaceId;
+  if (!(REQUEST_OUTCOMES as readonly string[]).includes(outcome)) throw new HttpError(400, `outcome: one of ${REQUEST_OUTCOMES.join(", ")}`);
+  if (!body?.trim()) throw new HttpError(400, "body: say what you did, what you need, or why not");
+  const r = await getRequest(x, ws, id);
+  const me = who(c);
+  if (r.status === "closed") throw new HttpError(409, `request ${id} is closed`);
+  if (r.status === "claimed" && !isClaimable(r) && r.claimed_by !== me) throw new HttpError(409, `request ${id} is claimed by ${r.claimed_by}: leave the answer to them`);
+  if (outcome === "proposed") {
+    const linked = await count(x.db.from("cards").select("id", { count: "exact", head: true }).eq("workspace_id", ws).eq("request_id", id));
+    if (!linked) throw new HttpError(422, "answer refused", [`outcome "proposed" needs a card: call create_proposal with request_id "${id}" first`]);
+  }
+  must(await requestNote(x, ws, id, me, "answer", body), "answer");
+  must(await x.db.from("requests").update({ status: "answered", outcome: outcome as RequestOutcome, claimed_by: null, claimed_until: null, updated_at: now() }).eq("workspace_id", ws).eq("id", id), "answer request");
+  await audit(x, c, "request.answer", id, { outcome });
+  return requestDetail(x, c, id);
+}
+
+/** The person follows up: the request is open again and an agent is asked to look. */
+export async function replyToRequest(x: Ctx, c: Caller, id: string, body: string): Promise<RequestDetail> {
+  need(c, "request");
+  if (!body?.trim()) throw new HttpError(400, "body: required");
+  const ws = c.workspaceId;
+  const r = await getRequest(x, ws, id);
+  must(await requestNote(x, ws, id, c.name, "reply", body), "reply");
+  must(await x.db.from("requests").update({ status: "open", outcome: null, claimed_by: null, claimed_until: null, updated_at: now() }).eq("workspace_id", ws).eq("id", id), "reopen request");
+  await queueRequestRun(x, ws, r, c.name);
+  await audit(x, c, "request.reply", id);
+  return requestDetail(x, c, id);
+}
+
+/** Ask an agent to look again at a request that is still waiting (its run failed, or no runner was up). */
+export async function retryRequest(x: Ctx, c: Caller, id: string) {
+  need(c, "request");
+  const r = await getRequest(x, c.workspaceId, id);
+  if (r.status !== "open" && !(r.status === "claimed" && isClaimable(r))) throw new HttpError(409, `request ${id} is ${r.status}`);
+  return { run_id: await queueRequestRun(x, c.workspaceId, r, c.name) };
+}
+
+export async function closeRequest(x: Ctx, c: Caller, id: string): Promise<RequestDetail> {
+  need(c, "request");
+  const ws = c.workspaceId;
+  await getRequest(x, ws, id);
+  must(await x.db.from("requests").update({ status: "closed", claimed_by: null, claimed_until: null, updated_at: now() }).eq("workspace_id", ws).eq("id", id), "close request");
+  must(await x.db.from("runs").update({ status: "cancelled", finished_at: now() }).eq("workspace_id", ws).eq("request_id", id).eq("status", "queued"), "cancel request runs");
+  await audit(x, c, "request.close", id);
+  return requestDetail(x, c, id);
+}
+
+/** A request run ended. If the agent never answered, the request must not sit there silently. */
+async function settleRequestRun(x: Ctx, ws: string, id: string, ok: boolean, summary: string) {
+  const r = must(await x.db.from("requests").select(REQUEST_COLUMNS).eq("workspace_id", ws).eq("id", id).maybeSingle(), "request") as HqRequest | null;
+  if (!r || (r.status !== "open" && r.status !== "claimed")) return;
+  const linked = await count(x.db.from("cards").select("id", { count: "exact", head: true }).eq("workspace_id", ws).eq("request_id", id));
+  if (ok || linked) {
+    await requestNote(x, ws, id, "system", "system", `The agent finished without answering.${summary ? ` Its summary: ${summary}` : ""}`);
+    must(await x.db.from("requests").update({ status: "answered", outcome: linked ? "proposed" : "note", claimed_by: null, claimed_until: null, updated_at: now() }).eq("workspace_id", ws).eq("id", id), "settle request");
+  } else {
+    await requestNote(x, ws, id, "system", "system", `The run failed before an answer${summary ? `: ${summary}` : "."} The request is still open: try again, or follow up.`);
+    must(await x.db.from("requests").update({ status: "open", claimed_by: null, claimed_until: null, updated_at: now() }).eq("workspace_id", ws).eq("id", id), "reopen request");
+  }
+}
+
 // ── runs ─────────────────────────────────────────────────────────────────────────────────────
 
 export interface Run {
-  id: string; workspace_id: string; kind: string; project: string | null; scout: string | null; card_id: string | null; verb: string | null;
+  id: string; workspace_id: string; kind: string; project: string | null; scout: string | null; card_id: string | null; request_id: string | null; verb: string | null;
   args: Record<string, unknown>; runs_on: string; agent: string | null; status: string; requested_by: string; runner: string | null;
   created_at: string; started_at: string | null; finished_at: string | null; summary: string | null; output: string | null; cost_usd: number; session: string | null;
 }
@@ -478,19 +665,19 @@ const toRun = (r: Record<string, unknown>): Run => ({ ...(r as unknown as Run), 
 export async function enqueueRun(
   x: Ctx,
   ws: string,
-  r: { kind: string; project?: string | null; scout?: string | null; card_id?: string | null; verb?: string | null; args?: Record<string, unknown>; runs_on?: string; agent?: string | null; requested_by: string; session?: string | null }
+  r: { kind: string; project?: string | null; scout?: string | null; card_id?: string | null; request_id?: string | null; verb?: string | null; args?: Record<string, unknown>; runs_on?: string; agent?: string | null; requested_by: string; session?: string | null }
 ) {
-  // One queued run per (kind, scout, project, card, verb, args): re-enqueueing is a no-op. Verb runs
+  // One queued run per (kind, scout, project, card, request, verb, args): re-enqueueing is a no-op. Verb runs
   // differ by their arguments too: a real run must never merge into a queued dry run.
-  const open = must(await x.db.from("runs").select("id, scout, project, card_id, verb, args").eq("workspace_id", ws).eq("kind", r.kind).in("status", ["queued", "running"]), "dedupe runs") as {
-    id: string; scout: string | null; project: string | null; card_id: string | null; verb: string | null; args: Record<string, unknown>;
+  const open = must(await x.db.from("runs").select("id, scout, project, card_id, request_id, verb, args").eq("workspace_id", ws).eq("kind", r.kind).in("status", ["queued", "running"]), "dedupe runs") as {
+    id: string; scout: string | null; project: string | null; card_id: string | null; request_id: string | null; verb: string | null; args: Record<string, unknown>;
   }[];
   const args = r.args ?? {};
-  const dup = open.find((o) => (o.scout ?? "") === (r.scout ?? "") && (o.project ?? "") === (r.project ?? "") && (o.card_id ?? "") === (r.card_id ?? "") && (o.verb ?? "") === (r.verb ?? "") && (r.kind !== "verb" || JSON.stringify(o.args) === JSON.stringify(args)));
+  const dup = open.find((o) => (o.scout ?? "") === (r.scout ?? "") && (o.project ?? "") === (r.project ?? "") && (o.card_id ?? "") === (r.card_id ?? "") && (o.request_id ?? "") === (r.request_id ?? "") && (o.verb ?? "") === (r.verb ?? "") && (r.kind !== "verb" || JSON.stringify(o.args) === JSON.stringify(args)));
   if (dup) return dup.id;
   const id = newRunId();
   must(
-    await x.db.from("runs").insert({ id, workspace_id: ws, kind: r.kind, project: r.project ?? null, scout: r.scout ?? null, card_id: r.card_id ?? null, verb: r.verb ?? null, args, runs_on: r.runs_on ?? "any", agent: r.agent ?? null, status: "queued", requested_by: r.requested_by, session: r.session ?? null }),
+    await x.db.from("runs").insert({ id, workspace_id: ws, kind: r.kind, project: r.project ?? null, scout: r.scout ?? null, card_id: r.card_id ?? null, request_id: r.request_id ?? null, verb: r.verb ?? null, args, runs_on: r.runs_on ?? "any", agent: r.agent ?? null, status: "queued", requested_by: r.requested_by, session: r.session ?? null }),
     "enqueue"
   );
   return id;
@@ -519,7 +706,8 @@ export async function requestVerb(x: Ctx, c: Caller, project: string, verb: stri
   return { run_id: id, reason: check.reason };
 }
 
-const KIND_ORDER = ["verb", "reply", "review", "build", "health", "ceo", "scout"];
+// What a person is waiting on comes first: their verbs, their questions, their requests.
+const KIND_ORDER = ["verb", "reply", "request", "review", "build", "health", "ceo", "scout"];
 
 /** A runner asks for work in its workspace. Respects the kill switch, the budget (scouts and the CEO only) and WIP limits. */
 export async function claimRun(x: Ctx, c: Caller, runner: string, capabilities: string[]) {
@@ -554,10 +742,19 @@ export async function claimRun(x: Ctx, c: Caller, runner: string, capabilities: 
       }
       await setStatus(x, asRunner, ws, r.card_id, "building");
     }
+    let request: RequestDetail | null = null;
+    if (r.kind === "request") {
+      request = r.request_id ? await requestDetail(x, asRunner, r.request_id).catch(() => null) : null;
+      // Answered or closed since it was queued (an agent connected over MCP got there first).
+      if (!request || !["open", "claimed"].includes(request.request.status)) {
+        await finishRun(x, asRunner, r.id, { status: "cancelled", summary: `request is ${request?.request.status ?? "gone"}` });
+        continue;
+      }
+    }
     await audit(x, c, "run.claim", r.id, { kind: r.kind, runner });
     const context = await getContext(x, asRunner, r.project);
     const card = r.card_id ? await cardDetail(x, asRunner, r.card_id) : null;
-    return { run: { ...r, status: "running", runner }, context, card, policy };
+    return { run: { ...r, status: "running", runner }, context, card, request, policy };
   }
   return { run: null, paused: w.paused, over_budget: overBudget(spent, policy) };
 }
@@ -586,6 +783,7 @@ export async function finishRun(x: Ctx, c: Caller, id: string, r: { status: stri
       }
     }
   }
+  if (run.kind === "request" && run.request_id && r.status !== "cancelled") await settleRequestRun(x, ws, run.request_id, r.status === "done", (r.summary ?? "").slice(0, 1500));
   if (run.card_id && run.kind === "reply" && r.session) {
     const card = await getCard(x, asRunner, run.card_id);
     must(await x.db.from("cards").update({ source: { ...card.source, session: r.session } }).eq("id", run.card_id), "session");
@@ -597,7 +795,7 @@ export async function finishRun(x: Ctx, c: Caller, id: string, r: { status: stri
 export async function listRuns(x: Ctx, c: Caller, limit = 50) {
   need(c, "read");
   const r = must(
-    await x.db.from("runs").select("id, kind, project, scout, card_id, verb, runs_on, agent, status, requested_by, runner, created_at, started_at, finished_at, summary, cost_usd").eq("workspace_id", c.workspaceId).order("created_at", { ascending: false }).limit(Math.min(limit, 200)),
+    await x.db.from("runs").select("id, kind, project, scout, card_id, request_id, verb, runs_on, agent, status, requested_by, runner, created_at, started_at, finished_at, summary, cost_usd").eq("workspace_id", c.workspaceId).order("created_at", { ascending: false }).limit(Math.min(limit, 200)),
     "runs"
   ) as Record<string, unknown>[];
   return r.map((row) => ({ ...row, cost_usd: Number(row.cost_usd ?? 0) }));
@@ -701,7 +899,8 @@ export async function digest(x: Ctx, c: Caller, hours = 24) {
     proposed: await count(x.db.from("cards").select("id", { count: "exact", head: true }).eq("workspace_id", ws).gte("created_at", since)),
     failed: await count(cards("failed")),
     runs_failed: await count(x.db.from("runs").select("id", { count: "exact", head: true }).eq("workspace_id", ws).eq("status", "failed").gte("finished_at", since)),
-    needs_you: ib ? ib.decide.length + ib.discussing.length + ib.ready.length : 0,
+    // A request the agent answered with a question (or couldn't do) waits for the person too.
+    needs_you: ib ? ib.decide.length + ib.discussing.length + ib.ready.length + ib.requests.filter((r) => r.status === "answered" && r.outcome !== "proposed").length : 0,
     spent_this_week_usd: await spentThisWeek(x, ws),
     paused: (await getWorkspace(x, ws)).paused,
   };

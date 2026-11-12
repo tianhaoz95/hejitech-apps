@@ -14,7 +14,9 @@ hero:
 
 features:
   - title: Evidence or no card
-    details: Every proposal links the CI run, log line or measured number behind it, says how HQ will know the fix worked, and names its autonomy tier.
+    details: Every proposal links the CI run, log line or measured number behind it, says how HQ will know the fix worked, and names its autonomy tier. Agents can draw the architecture or the options right on the card.
+  - title: Ask in your own words
+    details: Type what you want proposed, like "a redesign of the logo". An agent looks into the repo and answers with a card you can decide on, a question, or a reason it won't.
   - title: Guardrails in code
     details: Tier ceilings, verb checks, budgets, WIP limits and a kill switch are enforced by the server. Agents can't approve, release, push or change policy.
   - title: Any repo, any agent

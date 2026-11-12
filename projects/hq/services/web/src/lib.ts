@@ -1,5 +1,6 @@
 // Shared by the portal pages: DOM building, the Supabase session, the current workspace, API calls.
 import { createClient, type Session } from "@supabase/supabase-js";
+import { figureDocument, renderMarkdown } from "@hq/core";
 import { config } from "./config.ts";
 
 export const supabase = createClient(config.supabaseURL, config.supabaseAnonKey, {
@@ -25,6 +26,36 @@ export function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs =
   };
   children.forEach(add);
   return n;
+}
+
+export type Figure = { id: string; title: string; html: string; height: number };
+
+/**
+ * A drawing an agent wrote, in a frame it can't get out of: `sandbox` with no flags means no
+ * scripts, no forms, no navigation of this page and an origin of its own (so no session), and the
+ * document's own policy (figureDocument) loads nothing from the network.
+ */
+export function figureFrame(f: Figure): HTMLElement {
+  const frame = el("iframe", { sandbox: "", referrerpolicy: "no-referrer", title: f.title, tabindex: "-1" });
+  frame.srcdoc = figureDocument(f.html);
+  frame.style.height = `${Math.min(Math.max(Number(f.height) || 360, 80), 1200)}px`;
+  return el("figure", { class: "fig" }, frame, el("figcaption", { class: "small muted" }, f.title));
+}
+
+/**
+ * Markdown as DOM. renderMarkdown escapes everything it's given and writes every tag itself, so
+ * its output is safe to parse; figure placeholders are then swapped for sandboxed frames.
+ * `placed` collects the ids of the figures the text placed.
+ */
+export function md(text: string | null | undefined, figures: Figure[] = [], placed?: Set<string>): HTMLElement {
+  const box = el("div", { class: "md" });
+  box.innerHTML = renderMarkdown(text ?? "");
+  for (const slot of box.querySelectorAll<HTMLElement>("[data-figure]")) {
+    const f = figures.find((x) => x.id === slot.dataset.figure && x.html);
+    if (f) { placed?.add(f.id); slot.replaceWith(figureFrame(f)); }
+    else slot.replaceWith(el("p", { class: "muted small" }, `[figure: ${slot.dataset.title || slot.dataset.figure}]`));
+  }
+  return box;
 }
 
 export async function session(): Promise<Session | null> {

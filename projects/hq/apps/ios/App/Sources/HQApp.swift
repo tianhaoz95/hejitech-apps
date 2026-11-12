@@ -49,7 +49,7 @@ final class AppModel {
     init() {
         #if DEBUG
         // Debug hooks so screens can be reached without taps: -signInEmail <e> -signInPassword <p>
-        // (local accounts) and -screen inbox|health|runs|settings|card:<id>.
+        // (local accounts) and -screen inbox|requests|health|runs|settings|card:<id>|request:<id>.
         if UserDefaults.standard.string(forKey: "screen") != nil { WhatsNew.markSeen() }
         #endif
     }
@@ -117,6 +117,10 @@ struct RootTabs: View {
                 if tab.hasPrefix("card:") { CardDetailView(cardID: String(tab.dropFirst(5)), reasons: []) } else { InboxView() }
             }
             .tabItem { Label("Inbox", systemImage: "tray.full") }.tag(tab.hasPrefix("card:") ? tab : "inbox")
+            NavigationStack {
+                if tab.hasPrefix("request:") { RequestDetailView(requestID: String(tab.dropFirst(8))) } else { RequestsView() }
+            }
+            .tabItem { Label("Requests", systemImage: "bubble.left.and.text.bubble.right") }.tag(tab.hasPrefix("request:") ? tab : "requests")
             NavigationStack { HealthView() }.tabItem { Label("Health", systemImage: "heart.text.square") }.tag("health")
             NavigationStack { RunsView() }.tabItem { Label("Runs", systemImage: "gearshape.2") }.tag("runs")
             NavigationStack { SettingsView() }.tabItem { Label("Settings", systemImage: "slider.horizontal.3") }.tag("settings")

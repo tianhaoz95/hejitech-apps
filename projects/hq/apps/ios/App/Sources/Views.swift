@@ -46,11 +46,12 @@ struct CardRowView: View {
                 TierBadge(tier: card.tier)
                 Chip(text: card.project)
                 Chip(text: card.kind)
+                if card.request_id != nil { Text("you asked").font(.caption2.weight(.bold)).foregroundStyle(.orange) }
                 Spacer()
                 Text(relativeTime(card.created_at)).font(.caption2).foregroundStyle(.secondary)
             }
             Text(card.title).font(.subheadline.weight(.semibold)).lineLimit(2)
-            Text(card.why).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            Text(Markdown.plain(card.why)).font(.caption).foregroundStyle(.secondary).lineLimit(2)
         }
         .padding(.vertical, 3)
     }
@@ -62,6 +63,8 @@ struct InboxView: View {
     @State private var inbox: Inbox?
     @State private var digest: Digest?
     @State private var error: String?
+    @State private var asking = false
+    @Environment(AppModel.self) private var model
 
     var body: some View {
         List {
@@ -82,6 +85,11 @@ struct InboxView: View {
                 Section { Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red) }
             }
             if let inbox {
+                if let asks = inbox.requests, !asks.isEmpty {
+                    Section {
+                        ForEach(asks) { r in NavigationLink { RequestDetailView(requestID: r.id) } label: { RequestRowView(request: r) } }
+                    } header: { HStack { Text("Your requests"); Spacer(); Text("\(asks.count)") } }
+                }
                 group("Decide", inbox.decide, empty: "Nothing to decide. HQ shows at most \(inbox.cap) at a time.")
                 group("Ready to ship", inbox.ready, empty: "No finished builds waiting.")
                 group("Discussing", inbox.discussing, empty: "No open discussions.")
@@ -92,6 +100,10 @@ struct InboxView: View {
             }
         }
         .navigationTitle("Inbox")
+        .toolbar {
+            if model.canDecide { Button { asking = true } label: { Label("Ask HQ", systemImage: "plus.bubble") } }
+        }
+        .sheet(isPresented: $asking) { AskView { _ in Task { await load() } } }
         .navigationDestination(for: Card.self) { CardDetailView(cardID: $0.id, reasons: inbox?.reject_reasons ?? []) }
         .refreshable { await load() }
         .task { await load() }
@@ -153,12 +165,18 @@ struct CardDetailView: View {
                     Text(c.title).font(.title3.weight(.semibold))
                     Text("\(tierHelp[c.tier] ?? "") · effort \(c.effort) · risk \(c.risk)\(c.risk_reason.map { " (\($0))" } ?? "") · from \(c.source.scout ?? c.source.agent ?? "unknown")")
                         .font(.caption).foregroundStyle(.secondary)
+                    if let rid = c.request_id {
+                        NavigationLink { RequestDetailView(requestID: rid) } label: { Label("You asked for this", systemImage: "bubble.left.and.text.bubble.right").font(.footnote.weight(.semibold)) }
+                    }
                     actions(c)
                 }
-                Section("Why") { Text(c.why).font(.callout) }
+                let figs = c.figures ?? []
+                Section("Why") { MarkdownText(text: c.why, figures: figs) }
                 Section("Evidence") { ForEach(c.evidence, id: \.self) { EvidenceView(e: $0) } }
-                Section("Plan") { Text(c.plan).font(.callout) }
-                Section("How we'll know it worked") { Text(c.verify).font(.callout) }
+                Section("Plan") { MarkdownText(text: c.plan, figures: figs) }
+                let loose = unplacedFigures(figs, in: [c.why, c.plan, c.verify])
+                if !loose.isEmpty { Section(loose.count == 1 ? "Figure" : "Figures") { ForEach(loose) { FigureView(figure: $0) } } }
+                Section("How we'll know it worked") { MarkdownText(text: c.verify, figures: figs) }
                 if c.branch != nil || c.pr_url != nil {
                     Section("Change") {
                         if let b = c.branch { LabeledContent("Branch", value: b).font(.footnote.monospaced()) }
@@ -178,7 +196,7 @@ struct CardDetailView: View {
                     ForEach(d.comments) { m in
                         VStack(alignment: .leading, spacing: 3) {
                             Text("\(m.author == "owner" ? "You" : m.author) · \(relativeTime(m.created_at))").font(.caption2).foregroundStyle(.secondary)
-                            Text(m.body).font(.callout)
+                            MarkdownText(text: m.body)
                         }
                     }
                     TextField("Ask a question or suggest a change", text: $comment, axis: .vertical)

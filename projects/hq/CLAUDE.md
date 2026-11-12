@@ -18,7 +18,8 @@ monorepo is its first customer.
 ## Layout
 
 ```
-packages/core/      @hq/core: the three contracts in code: card schema + lifecycle (card.ts),
+packages/core/      @hq/core: the contracts in code: card schema + lifecycle (card.ts), on-demand
+                    requests (request.ts), the safe markdown renderer and figure frame (markdown.ts),
                     HQ.md policy merge, tiers, verb checks, budget, schedules (policy.ts),
                     get_context (context.ts), who may do what (roles.ts). Shared by the Worker and the CLI.
 services/web/       @hq/web: Cloudflare Worker (KV for OAuth, hourly cron) on the shared Supabase
@@ -26,7 +27,7 @@ services/web/       @hq/web: Cloudflare Worker (KV for OAuth, hourly cron) on th
   src/worker/       store.ts (every rule, workspace scoping and role check), api.ts (people:
                     /api/me, /api/workspaces, /api/w/<id>/…; tokens: /api/…), mcp.ts (agents),
                     index.ts (OAuth 2.1 for MCP with a workspace picker, tokens, cron)
-  src/main.ts       the portal (sign-in, workspace switcher, inbox, card, health, runs, settings
+  src/main.ts       the portal (sign-in, workspace switcher, inbox with the Ask box, card, requests, health, runs, settings
                     with members and invites), vanilla TS + supabase-js
 apps/cli/           @hejitech/hq (published to npm and GitHub Packages): `hq login | logout | lint | policy | sync | context | verb | runner | init`
   src/credentials.ts  where the address and tokens come from (environment, then the saved login);
@@ -35,7 +36,8 @@ apps/cli/           @hejitech/hq (published to npm and GitHub Packages): `hq log
                     every launch prompt (context included)
   test/fixture/     a repo HQ has never seen (portability tests)
 apps/ios/           SwiftUI app (XcodeGen): sign-in (Google PKCE, Apple, Debug email),
-                    workspace setup/switch, inbox, card, health, runs, settings with members
+                    workspace setup/switch, inbox, card, requests (Ask HQ), health, runs, settings
+                    with members; Markdown.swift mirrors the portal's markdown and figure frame
 scripts/            test-api.mjs (Worker integration, CI), check_coupling.mjs
 .hq/                HQ as a managed project of this repo (like every other project)
 ```
@@ -54,7 +56,7 @@ npm run -s hq -- verb tradeboard health  # run a verb as the runner would
 # Local: `supabase start` (repo root), then the Worker on 127.0.0.1:8799 with email sign-in
 echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > projects/hq/services/web/.dev.vars
 npm run dev:worker -w @hq/web
-node projects/hq/scripts/test-api.mjs     # 25 steps: two teams, roles, isolation, the whole loop
+node projects/hq/scripts/test-api.mjs     # 27 steps: two teams, roles, isolation, the whole loop
 
 # Sign in once per machine (asks for the address, then the browser or a pasted token), then sync
 npm run -s hq -- login && npm run -s hq -- sync
@@ -64,7 +66,7 @@ HQ_DENY_TOOLS='Bash(*cut_release.sh*)' npm run -s hq -- runner     # --once to d
 ```
 
 iOS: `cd apps/ios && xcodegen generate`, then build the `App` scheme. Debug builds use the local
-stack; launch arguments `-signInEmail <e> -signInPassword <p> -screen inbox|health|runs|settings|card:<id>`
+stack; launch arguments `-signInEmail <e> -signInPassword <p> -screen inbox|requests|health|runs|settings|card:<id>|request:<id>` (and `-hq.workspace <id>` to pick the workspace)
 reach any screen without taps (`-production` for the hosted HQ, `-serverURL` for another Worker).
 
 ## How it works
@@ -72,6 +74,14 @@ reach any screen without taps (`-production` for the hosted HQ, `-serverURL` for
 - **Cards** (`packages/core/src/card.ts`): `create_proposal` refuses a card without evidence, a
   plan or a verify step, with a tier more autonomous than the project's ceiling, or for an unknown
   project/verb. L0 cards are approved by policy and queue a build at once.
+- **Card text** is markdown (`why`, `plan`, `verify`, comments, request threads); drawings are
+  `figures` (static HTML/CSS/SVG) placed with `![title](figure:<id>)` and shown in a sandboxed frame
+  with no scripts and no network. Only `markdown.ts`'s output goes into `innerHTML`; never render
+  agent text any other way. The portal sends a CSP (`services/web/public/_headers`).
+- **Requests** (`packages/core/src/request.ts`): admins and approvers ask in their own words; that
+  queues a `request` run, and open requests appear in every agent's `get_context`. An agent
+  `claim_request`s (a 30-minute lease), files cards with `request_id`, then `answer_request`s
+  (proposed, question, declined, note). Asking approves nothing. Requested cards skip the inbox cap.
 - **Tiers**: L0 just do it · L1 build, then ask · L2 ask, then build · L3 never autonomous. A
   project's `tier_ceiling` can only be stricter than the root's. `policy` cards are always L3.
 - **Verbs** (`.hq/bin/<verb>`): JSON on stdout, meaningful exit code, `--dry-run` for anything with

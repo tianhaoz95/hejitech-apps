@@ -1,10 +1,13 @@
 // The portal: sign in, pick a workspace (one repo + its members), then the inbox (decide, ready to
 // ship, discussing, working, backlog), card detail with evidence and discussion, health, runs, and
 // settings (members and invites, kill switch, tokens, connected agents, audit).
-// Single page, hash routes: #/ · #/card/<id> · #/health · #/runs · #/run/<id> · #/settings ·
-// #/new (create a workspace) · #/join/<code> (accept an invite).
+// Single page, hash routes: #/ · #/card/<id> · #/requests · #/request/<id> · #/health · #/runs ·
+// #/run/<id> · #/settings · #/new (create a workspace) · #/join/<code> (accept an invite).
+// Text agents wrote (card fields, comments, request threads) is markdown, rendered by md(); their
+// drawings (figures) are shown in sandboxed frames (lib.ts).
 import "./style.css";
-import { ago, api, ApiError, currentWorkspaceId, el, fileUrl, session, setCurrentWorkspace, signInView, spinner, supabase, toast, type Workspace } from "./lib.ts";
+import { plainText } from "@hq/core";
+import { ago, api, ApiError, currentWorkspaceId, el, figureFrame, fileUrl, md, session, setCurrentWorkspace, signInView, spinner, supabase, toast, type Figure, type Workspace } from "./lib.ts";
 
 const root = document.getElementById("app")!;
 const nav = document.getElementById("nav")!;
@@ -19,7 +22,15 @@ type Card = {
   effort: string; risk: string; risk_reason: string | null; status: string; priority: number; evidence: Evidence[];
   verbs: string[]; source: { scout?: string; agent?: string; session?: string }; branch: string | null; pr_url: string | null;
   decided_by: string | null; created_at: string; updated_at: string; dedupe_key: string | null;
+  figures: Figure[]; request_id: string | null;
 };
+type LinkedCard = { id: string; title: string; status: string; tier: string; project: string; kind: string };
+type Req = {
+  id: string; project: string | null; body: string; status: "open" | "claimed" | "answered" | "closed"; outcome: "proposed" | "question" | "declined" | "note" | null;
+  requested_by: string; claimed_by: string | null; claimed_until: string | null; created_at: string; updated_at: string;
+};
+type ReqRow = Req & { cards: LinkedCard[]; last_message: string | null };
+type ReqMessage = { id: number; author: string; kind: "reply" | "answer" | "system"; body: string; created_at: string };
 type Evidence = { type: string; ref?: string; text?: string; name?: string; value?: number; unit?: string; source?: string };
 
 const TIER_HELP: Record<string, string> = {
@@ -55,9 +66,9 @@ const tierChip = (t: string) => el("span", { class: `chip tier ${t}`, title: TIE
 
 function cardRow(c: Card) {
   return el("a", { class: "card-row", href: `#/card/${c.id}` },
-    el("div", { class: "row-top" }, tierChip(c.tier), chip(c.project), chip(c.kind, "soft"), el("span", { class: "muted small grow right" }, ago(c.created_at))),
+    el("div", { class: "row-top" }, tierChip(c.tier), chip(c.project), chip(c.kind, "soft"), c.request_id && chip("you asked", "asked"), c.figures?.length ? chip(`${c.figures.length} figure${c.figures.length === 1 ? "" : "s"}`, "soft") : null, el("span", { class: "muted small grow right" }, ago(c.created_at))),
     el("div", { class: "row-title" }, c.title),
-    el("div", { class: "row-why muted" }, c.why.split("\n")[0].slice(0, 180)),
+    el("div", { class: "row-why muted" }, plainText(c.why, 180)),
     c.branch && el("div", { class: "small mono" }, `branch ${c.branch}`));
 }
 
@@ -68,10 +79,104 @@ function section(title: string, cards: Card[], empty: string, note?: string) {
     cards.length ? el("div", { class: "list" }, cards.map(cardRow)) : el("p", { class: "empty" }, empty));
 }
 
+// ── requests: ask HQ for something ───────────────────────────────────────────────────────────
+
+/** Where a request stands, in the asker's words. */
+function requestState(r: Req): { label: string; cls: string } {
+  if (r.status === "closed") return { label: "closed", cls: "soft" };
+  if (r.status === "open") return { label: "waiting for an agent", cls: "soft" };
+  if (r.status === "claimed") return { label: "an agent is on it", cls: "working" };
+  if (r.outcome === "proposed") return { label: "proposed", cls: "status shipped" };
+  if (r.outcome === "question") return { label: "needs your answer", cls: "needs" };
+  if (r.outcome === "declined") return { label: "declined", cls: "status rejected" };
+  return { label: "answered", cls: "needs" };
+}
+
+function requestRow(r: ReqRow) {
+  const st = requestState(r);
+  return el("a", { class: "card-row", href: `#/request/${r.id}` },
+    el("div", { class: "row-top" }, chip(st.label, st.cls), chip(r.project ?? "any project"), r.cards.length ? chip(`${r.cards.length} card${r.cards.length === 1 ? "" : "s"}`, "soft") : null, el("span", { class: "muted small grow right" }, ago(r.created_at))),
+    el("div", { class: "row-title" }, plainText(r.body, 140)),
+    r.last_message && el("div", { class: "row-why muted" }, plainText(r.last_message, 180)));
+}
+
+/** The box a request is written in. Admins and approvers ask; an agent turns it into a card. */
+function askBox(projects: string[], after: (id: string) => void) {
+  const text = el("textarea", { rows: 2, maxlength: 4000, placeholder: "Ask HQ for a proposal: “Propose a redesign of the logo”, “Find out why the Mac build got slower”…", "aria-label": "Ask HQ" });
+  const project = el("select", { "aria-label": "Project" }, el("option", { value: "" }, "Any project"), projects.map((p) => el("option", { value: p }, p)));
+  const send = el("button", { class: "btn primary", type: "submit" }, "Ask");
+  return el("form", {
+    class: "panel ask",
+    onsubmit: async (e: Event) => {
+      e.preventDefault();
+      if (!text.value.trim()) return text.focus();
+      send.disabled = true;
+      try {
+        const d = await api<{ request: Req }>("~/requests", { method: "POST", json: { body: text.value, project: project.value || null } });
+        toast("Asked: an agent will propose a card");
+        after(d.request.id);
+      } catch (err) {
+        toast(err instanceof ApiError ? `${err.message}${err.details.length ? ": " + err.details.join("; ") : ""}` : String(err), true);
+        send.disabled = false;
+      }
+    },
+  }, text, el("div", { class: "ask-row" }, project, el("span", { class: "muted small grow" }, "An agent looks into the repo and files a card for you to decide. Asking approves nothing."), send));
+}
+
+const projectNames = async (): Promise<string[]> => Object.keys(((await api("~/config").catch(() => null))?.policy?.projects ?? {}) as Record<string, unknown>).sort();
+
+async function requests() {
+  view(spinner());
+  const [list, projects] = await Promise.all([api<ReqRow[]>("~/requests?limit=100"), canDecide() ? projectNames() : Promise.resolve([])]);
+  const open = list.filter((r) => r.status !== "closed");
+  const closed = list.filter((r) => r.status === "closed");
+  view(
+    el("h1", {}, "Requests"),
+    el("p", { class: "muted" }, "What people asked HQ for. An agent claims each one, looks into the repo and answers with a card, a question or a reason."),
+    canDecide() ? askBox(projects, (id) => { location.hash = `#/request/${id}`; }) : null,
+    el("section", { class: "group" }, el("h2", {}, "Open", el("span", { class: "count" }, String(open.length))), open.length ? el("div", { class: "list" }, open.map(requestRow)) : el("p", { class: "empty" }, "Nothing asked yet.")),
+    closed.length ? el("section", { class: "group" }, el("h2", {}, "Closed", el("span", { class: "count" }, String(closed.length))), el("div", { class: "list" }, closed.map(requestRow))) : null);
+}
+
+async function request(id: string) {
+  view(spinner());
+  const d = await api<{ request: Req; messages: ReqMessage[]; cards: LinkedCard[] }>(`~/requests/${id}`);
+  const r = d.request;
+  const st = requestState(r);
+  const reload = () => request(id);
+  const act = async (fn: () => Promise<unknown>, msg: string) => {
+    try { await fn(); toast(msg); reload(); } catch (e) { toast(e instanceof ApiError ? e.message : String(e), true); }
+  };
+  const box = el("textarea", { rows: 3, placeholder: r.outcome === "question" ? "Answer the agent's question…" : "Follow up: say what to change, or add detail. An agent picks it up again.", "aria-label": "Follow up" });
+  const waiting = r.status === "open" || r.status === "claimed";
+  view(
+    el("a", { class: "back", href: "#/requests" }, "← Requests"),
+    el("article", { class: "panel card" },
+      el("div", { class: "row-top" }, chip(st.label, st.cls), chip(r.project ?? "any project"), el("span", { class: "muted small grow right mono" }, r.id)),
+      md(r.body),
+      el("p", { class: "muted small" }, "asked by ", r.requested_by, " · ", ago(r.created_at), r.status === "claimed" && r.claimed_by ? ` · claimed by ${r.claimed_by}` : ""),
+      canDecide() ? el("div", { class: "actions" },
+        r.status !== "closed" ? el("button", { class: "btn", onclick: () => act(() => api(`~/requests/${id}/close`, { method: "POST" }), "Closed") }, "Done, close it") : null,
+        waiting ? el("button", { class: "btn ghost", onclick: () => act(() => api(`~/requests/${id}/retry`, { method: "POST" }), "Queued for an agent again") }, "Ask an agent again") : null) : null),
+    d.cards.length ? el("section", { class: "panel" },
+      el("h2", {}, "Cards for this request", el("span", { class: "count" }, String(d.cards.length))),
+      el("div", { class: "list" }, d.cards.map((c) => el("a", { class: "card-row", href: `#/card/${c.id}` },
+        el("div", { class: "row-top" }, tierChip(c.tier), chip(c.project), chip(c.kind, "soft"), chip(c.status.replace("_", " "), `status ${c.status}`)),
+        el("div", { class: "row-title" }, c.title))))) : null,
+    el("section", { class: "panel" },
+      el("h2", {}, "Thread"),
+      d.messages.length ? el("div", { class: "thread" }, d.messages.map((m) =>
+        el("div", { class: `msg ${m.kind === "reply" ? "me" : m.kind === "system" ? "sys" : ""}` }, el("div", { class: "small muted" }, m.kind === "system" ? "HQ" : m.author, " · ", ago(m.created_at)), md(m.body))))
+        : el("p", { class: "empty" }, waiting ? "No answer yet. A runner picks this up on its next check; an agent connected over MCP sees it in its context." : "No messages."),
+      canDecide() ? el("form", { class: "comment", onsubmit: (e: Event) => { e.preventDefault(); if (!box.value.trim()) return; act(() => api(`~/requests/${id}/messages`, { method: "POST", json: { body: box.value } }), "Sent: an agent will pick it up"); } },
+        box, el("button", { class: "btn", type: "submit" }, r.status === "closed" ? "Reopen with this" : "Send")) : null));
+}
+
 async function inbox() {
   view(spinner());
-  const [ib, dg] = await Promise.all([api("~/inbox"), api("~/digest")]);
-  const needs = ib.decide.length + ib.ready.length + ib.discussing.length;
+  const [ib, dg, projects] = await Promise.all([api("~/inbox"), api("~/digest"), canDecide() ? projectNames() : Promise.resolve([])]);
+  const asks: ReqRow[] = ib.requests ?? [];
+  const needs = dg.needs_you;
   view(
     el("div", { class: "digest" },
       el("div", {}, el("b", {}, String(needs)), el("span", {}, "need you")),
@@ -80,7 +185,11 @@ async function inbox() {
       el("div", { class: dg.failed + dg.runs_failed ? "bad" : "" }, el("b", {}, String(dg.failed + dg.runs_failed)), el("span", {}, "failed 24 h")),
       el("div", {}, el("b", {}, `$${dg.spent_this_week_usd.toFixed(2)}`), el("span", {}, "this week"))),
     dg.paused && el("div", { class: "banner" }, "HQ is paused. Nothing runs until you resume it in ", el("a", { href: "#/settings" }, "Settings"), "."),
-    section("Decide", ib.decide, "Nothing to decide. HQ shows at most " + ib.cap + " at a time.", `Top ${ib.cap} by priority; the rest wait in the backlog.`),
+    canDecide() ? askBox(projects, () => inbox()) : null,
+    asks.length ? el("section", { class: "group" },
+      el("h2", {}, "Your requests", el("span", { class: "count" }, String(asks.length)), el("a", { class: "small muted grow right", href: "#/requests" }, "All requests")),
+      el("div", { class: "list" }, asks.map(requestRow))) : null,
+    section("Decide", ib.decide, "Nothing to decide. HQ shows at most " + ib.cap + " at a time.", `Top ${ib.cap} by priority, plus everything you asked for; the rest wait in the backlog.`),
     section("Ready to ship", ib.ready, "No finished builds waiting."),
     section("Discussing", ib.discussing, "No open discussions."),
     section("Working", ib.working, "Nothing being built."),
@@ -96,7 +205,7 @@ function evidenceItem(e: Evidence) {
     chip(e.type, "soft"),
     e.type === "metric" ? el("b", {}, ` ${e.name ?? "metric"}: ${e.value}${e.unit ? " " + e.unit : ""} `) : " ",
     link,
-    e.text && el("div", { class: e.type === "log" ? "pre" : "" }, e.text),
+    e.text && el("div", { class: ["log", "test", "commit"].includes(e.type) ? "pre" : "" }, e.text),
     e.source && el("div", { class: "muted small" }, `source: ${e.source}`));
 }
 
@@ -154,6 +263,10 @@ async function card(id: string) {
   }
 
   const attachments = await Promise.all(d.attachments.map(attachmentView));
+  // Figures the text places appear there; the rest follow the plan, so none is ever lost.
+  const placed = new Set<string>();
+  const why = md(c.why, c.figures, placed), plan = md(c.plan, c.figures, placed), verify = md(c.verify, c.figures, placed);
+  const loose = c.figures.filter((f) => !placed.has(f.id));
   const commentBox = el("textarea", { placeholder: "Ask a question or suggest a change. The agent that wrote this card answers here.", rows: 3, "aria-label": "Comment" });
 
   const verbBar = c.verbs.length && canDecide()
@@ -168,20 +281,22 @@ async function card(id: string) {
     el("article", { class: "panel card" },
       el("div", { class: "row-top" }, tierChip(c.tier), chip(c.project), chip(c.kind, "soft"), chip(c.status.replace("_", " "), `status ${c.status}`), el("span", { class: "muted small grow right mono" }, c.id)),
       el("h1", {}, c.title),
+      c.request_id ? el("p", { class: "small" }, el("a", { class: "chip asked", href: `#/request/${c.request_id}` }, "You asked for this"), " ", el("a", { href: `#/request/${c.request_id}` }, "see the request")) : null,
       el("p", { class: "muted small" }, TIER_HELP[c.tier], " · effort ", c.effort, " · risk ", c.risk, c.risk_reason ? ` (${c.risk_reason})` : "", " · from ", c.source.scout ?? c.source.agent ?? "unknown", " · ", ago(c.created_at)),
       actions.length ? el("div", { class: "actions" }, actions) : null,
       rejectBox,
       c.branch || c.pr_url ? el("p", { class: "small" }, c.pr_url ? el("a", { href: c.pr_url, target: "_blank", rel: "noopener" }, "Pull request") : null, c.branch ? el("span", { class: "mono" }, ` branch ${c.branch}`) : null) : null,
-      el("h3", {}, "Why"), el("div", { class: "prose" }, c.why),
+      el("h3", {}, "Why"), why,
       el("h3", {}, "Evidence"), el("ul", { class: "evidence" }, c.evidence.map(evidenceItem)),
-      el("h3", {}, "Plan"), el("div", { class: "prose" }, c.plan),
-      el("h3", {}, "How we'll know it worked"), el("div", { class: "prose" }, c.verify),
+      el("h3", {}, "Plan"), plan,
+      loose.length ? el("div", {}, el("h3", {}, loose.length === 1 ? "Figure" : "Figures"), loose.map(figureFrame)) : null,
+      el("h3", {}, "How we'll know it worked"), verify,
       verbBar),
     attachments.length ? el("section", { class: "panel" }, el("h2", {}, "Build & review evidence"), attachments) : null,
     el("section", { class: "panel", id: "discuss" },
       el("h2", {}, "Discussion"),
       d.comments.length ? el("div", { class: "thread" }, d.comments.map((m: { author: string; body: string; created_at: string }) =>
-        el("div", { class: `msg ${m.author === "owner" ? "me" : ""}` }, el("div", { class: "small muted" }, m.author === "owner" ? "You" : m.author, " · ", ago(m.created_at)), el("div", { class: "prose" }, m.body)))) : el("p", { class: "empty" }, "No discussion yet."),
+        el("div", { class: `msg ${m.author === "owner" ? "me" : ""}` }, el("div", { class: "small muted" }, m.author === "owner" ? "You" : m.author, " · ", ago(m.created_at)), md(m.body)))) : el("p", { class: "empty" }, "No discussion yet."),
       el("form", { class: "comment", onsubmit: (e: Event) => { e.preventDefault(); if (!commentBox.value.trim()) return; act(() => api(`~/cards/${id}/comments`, { method: "POST", json: { body: commentBox.value } }), "Sent: the agent will answer"); } },
         commentBox, el("button", { class: "btn", type: "submit" }, "Send"))),
     el("section", { class: "panel" },
@@ -229,10 +344,10 @@ async function runs() {
       el("button", { class: "btn", onclick: () => start({ kind: "health" }, "Health run queued") }, "Check health now"),
       scouts.map((s) => el("button", { class: "btn ghost", onclick: () => start({ kind: "scout", scout: s.name, project: s.project }, `${s.name} queued`) }, `${s.name} · ${s.project}`))),
     el("div", { class: "table" },
-      list.map((r: { id: string; kind: string; project: string | null; scout: string | null; verb: string | null; status: string; agent: string | null; created_at: string; summary: string | null; cost_usd: number; card_id: string | null }) =>
+      list.map((r: { id: string; kind: string; project: string | null; scout: string | null; verb: string | null; status: string; agent: string | null; created_at: string; summary: string | null; cost_usd: number; card_id: string | null; request_id: string | null }) =>
         el("a", { class: `run ${r.status}`, href: `#/run/${r.id}` },
           el("span", { class: "chip soft" }, r.kind), el("span", { class: `chip status ${r.status}` }, r.status),
-          el("span", { class: "grow" }, [r.scout, r.verb, r.project, r.card_id].filter(Boolean).join(" · ")),
+          el("span", { class: "grow" }, [r.scout, r.verb, r.project, r.card_id, r.request_id].filter(Boolean).join(" · ")),
           el("span", { class: "small muted" }, `$${(r.cost_usd ?? 0).toFixed(2)} · ${ago(r.created_at)}`),
           r.summary ? el("div", { class: "small muted full" }, r.summary) : null)))
   );
@@ -248,6 +363,7 @@ async function run(id: string) {
       el("h1", {}, [r.scout, r.verb, r.project].filter(Boolean).join(" · ") || r.kind),
       el("p", { class: "muted small" }, `agent ${r.agent ?? "—"} · runner ${r.runner ?? "—"} · requested by ${r.requested_by} · $${(r.cost_usd ?? 0).toFixed(2)}`),
       r.card_id ? el("p", {}, el("a", { href: `#/card/${r.card_id}` }, `Card ${r.card_id}`)) : null,
+      r.request_id ? el("p", {}, el("a", { href: `#/request/${r.request_id}` }, `Request ${r.request_id}`)) : null,
       r.summary ? el("div", { class: "prose" }, r.summary) : null,
       r.output ? el("pre", { class: "log" }, r.output) : el("p", { class: "empty" }, "No output yet."))
   );
@@ -415,9 +531,11 @@ async function route() {
   if (!current || h === "/new") return newWorkspace(!current);
   nav.hidden = false;
   if (!current.synced_at && h !== "/settings") return notSynced();
-  for (const a of nav.querySelectorAll("a")) a.classList.toggle("on", a.getAttribute("href") === `#${h}` || (h.startsWith("/card") && a.getAttribute("href") === "#/"));
+  for (const a of nav.querySelectorAll("a")) a.classList.toggle("on", a.getAttribute("href") === `#${h}` || (h.startsWith("/card") && a.getAttribute("href") === "#/") || (h.startsWith("/request/") && a.getAttribute("href") === "#/requests"));
   try {
     if ((m = h.match(/^\/card\/([\w-]+)/))) await card(m[1]);
+    else if ((m = h.match(/^\/request\/([\w-]+)/))) await request(m[1]);
+    else if (h === "/requests") await requests();
     else if ((m = h.match(/^\/run\/([\w-]+)/))) await run(m[1]);
     else if (h === "/health") await health();
     else if (h === "/runs") await runs();

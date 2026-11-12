@@ -9,7 +9,8 @@
 //   …    /api/<route>                     the same routes for tokens (their workspace is implied)
 import { REJECT_REASONS, type Evidence, type MemberRole, type Status } from "@hq/core";
 import {
-  acceptInvite, admin, approveCliLogin, attachEvidence, auditLog, cardDetail, changeStatus, claimCliLogin, claimRun, comment, createInvite, createProposal, createToken,
+  acceptInvite, admin, answerRequest, approveCliLogin, attachEvidence, auditLog, cardDetail, changeStatus, claimCliLogin, claimRequest, claimRun, closeRequest, comment, createInvite, createProposal,
+  createRequest, createToken, listRequests, replyToRequest, requestDetail, retryRequest,
   createWorkspace, decide, deleteAccount, digest, finishRun, getContext, getFile, getPolicy, getRun, getWorkspace, healthBoard, HttpError, inbox, listCards,
   listMembers, listRuns, listTokens, memberRole, myWorkspaces, need, putFile, putHealth, removeMember, requestVerb, resolveToken, revokeToken,
   scheduleWorkspace, setMemberRole, setPaused, startRun, supabaseUser, syncPolicy,
@@ -164,6 +165,22 @@ async function workspaceRoute(x: Ctx, req: Request, url: URL, c: Caller, p: stri
   if (mm && m === "GET") {
     const blob = await getFile(x, c, decodeURIComponent(mm[1]));
     return new Response(blob, { headers: { "Content-Type": blob.type || "application/octet-stream", "Cache-Control": "private, max-age=3600" } });
+  }
+
+  // on-demand requests: people ask (POST), follow up and close; agents and runners claim and answer
+  if (p === "/requests" && m === "GET") return json(await listRequests(x, c, { status: q.get("status")?.split(",").filter(Boolean), limit: Number(q.get("limit") ?? 50) }));
+  if (p === "/requests" && m === "POST") return json(await createRequest(x, c, await body(req)), 201);
+  mm = p.match(/^\/requests\/([\w-]+)$/);
+  if (mm && m === "GET") return json(await requestDetail(x, c, mm[1]));
+  mm = p.match(/^\/requests\/([\w-]+)\/(messages|close|retry|claim|answer)$/);
+  if (mm && m === "POST") {
+    const id = mm[1];
+    if (mm[2] === "close") return json(await closeRequest(x, c, id));
+    if (mm[2] === "retry") return json(await retryRequest(x, c, id), 202);
+    if (mm[2] === "claim") return json(await claimRequest(x, c, id));
+    const b = await body<{ body?: string; outcome?: string }>(req);
+    if (mm[2] === "answer") return json(await answerRequest(x, c, id, String(b.outcome ?? ""), String(b.body ?? "")));
+    return json(await replyToRequest(x, c, id, String(b.body ?? "")));
   }
 
   // verbs

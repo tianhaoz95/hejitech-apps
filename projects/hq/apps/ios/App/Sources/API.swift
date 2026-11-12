@@ -38,6 +38,8 @@ struct Card: Codable, Identifiable, Hashable {
     var branch: String?
     var pr_url: String?
     var created_at: String
+    var figures: [Figure]?
+    var request_id: String?
 }
 
 struct Inbox: Codable {
@@ -48,6 +50,7 @@ struct Inbox: Codable {
     var ready: [Card]
     var working: [Card]
     var reject_reasons: [String]
+    var requests: [HQRequest]?
 }
 
 struct Digest: Codable {
@@ -127,6 +130,8 @@ struct HealthBoard: Codable {
 
 /// Any JSON value, for health data whose keys vary by project.
 enum JSONValue: Codable, Hashable, CustomStringConvertible {
+    /// Decodes anything and keeps nothing (for objects we only need the keys of).
+    struct Ignored: Decodable { init(from decoder: Decoder) throws {} }
     case string(String), number(Double), bool(Bool), null, other(String)
     init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
@@ -202,6 +207,28 @@ struct HQClient {
     func runs() async throws -> [RunRow] { try await b.get("~/runs?limit=40") }
     func members() async throws -> [Member] { try await b.get("~/members") }
 
+    // Requests: ask HQ for something; an agent answers with cards, a question or a reason.
+    func requests() async throws -> [HQRequest] { try await b.get("~/requests?limit=100") }
+    func request(_ id: String) async throws -> RequestDetail { try await b.get("~/requests/\(id)") }
+    func ask(_ text: String, project: String?) async throws -> RequestDetail {
+        var body: [String: Any] = ["body": text]
+        if let project { body["project"] = project }
+        return try JSONDecoder().decode(RequestDetail.self, from: try await b.request("POST", "~/requests", body: body))
+    }
+    func replyToRequest(_ id: String, _ text: String) async throws -> RequestDetail {
+        try JSONDecoder().decode(RequestDetail.self, from: try await b.request("POST", "~/requests/\(id)/messages", body: ["body": text]))
+    }
+    func closeRequest(_ id: String) async throws -> RequestDetail {
+        try JSONDecoder().decode(RequestDetail.self, from: try await b.request("POST", "~/requests/\(id)/close"))
+    }
+    func retryRequest(_ id: String) async throws { _ = try await b.request("POST", "~/requests/\(id)/retry") }
+    /// The projects HQ manages in this workspace (from the synced policy), for the Ask picker.
+    func projects() async throws -> [String] {
+        struct Config: Decodable { struct Policy: Decodable { var projects: [String: JSONValue.Ignored] }; var policy: Policy? }
+        let c: Config? = try await b.get("~/config")
+        return (c?.policy?.projects.keys).map { Array($0).sorted() } ?? []
+    }
+
     func decide(_ id: String, approve: Bool, reason: String? = nil) async throws {
         var body: [String: Any] = ["decision": approve ? "approved" : "rejected"]
         if let reason { body["reason"] = reason }
@@ -229,5 +256,6 @@ func relativeTime(_ iso: String) -> String {
     let f = ISO8601DateFormatter()
     f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     guard let d = f.date(from: iso) ?? ISO8601DateFormatter().date(from: iso) else { return "" }
-    return RelativeDateTimeFormatter().localizedString(for: d, relativeTo: Date())
+    // A server clock slightly ahead of the phone's would read "in 0 seconds".
+    return RelativeDateTimeFormatter().localizedString(for: min(d, Date()), relativeTo: Date())
 }

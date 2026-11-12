@@ -10,7 +10,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-export type Role = "scout" | "ceo" | "build" | "review" | "reply";
+export type Role = "scout" | "ceo" | "build" | "review" | "reply" | "request";
 
 export interface AgentRun {
   agent: string;
@@ -43,6 +43,8 @@ const READ_ONLY_DENY = ["Edit", "Write", "NotebookEdit", "Bash(git commit:*)", "
 
 const ALLOW: Record<Role, string[]> = {
   scout: ["mcp__hq__*", "Read", "Grep", "Glob", "Bash(gh run list:*)", "Bash(gh run view:*)", "Bash(gh api:*)", "Bash(git log:*)", "Bash(git show:*)", "Bash(git diff:*)", "Bash(ls:*)", "Bash(cat:*)", "Bash(node --version)", "Bash(npm outdated:*)", "Bash(npm view:*)", "Bash(npm ls:*)", "WebSearch", "WebFetch", "Skill"],
+  // Answering what a person asked for: the same read-only reach as a scout.
+  request: ["mcp__hq__*", "Read", "Grep", "Glob", "Bash(gh run list:*)", "Bash(gh run view:*)", "Bash(gh api:*)", "Bash(git log:*)", "Bash(git show:*)", "Bash(git diff:*)", "Bash(ls:*)", "Bash(cat:*)", "Bash(npm outdated:*)", "Bash(npm view:*)", "Bash(npm ls:*)", "WebSearch", "WebFetch", "Skill"],
   ceo: ["mcp__hq__*", "Read", "Grep", "Glob", "Bash(git log:*)", "Bash(gh run list:*)", "Bash(gh run view:*)"],
   review: ["mcp__hq__*", "Read", "Grep", "Glob", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)", "Bash(npm test:*)", "Bash(npm run:*)"],
   reply: ["mcp__hq__*", "Read", "Grep", "Glob", "Bash(git log:*)", "Bash(gh run view:*)"],

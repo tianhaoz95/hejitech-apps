@@ -126,3 +126,36 @@ ol.steps code { word-break: break-all; }
 .doc li { margin: .25rem 0; }
 footer.site { text-align: center; font-size: .85rem; color: var(--muted); padding: 2rem 1rem 3rem; }
 footer.site a { margin: 0 .5rem; }
+
+/* Markdown that agents wrote (card text, comments, request threads): see lib.ts md(). */
+.md { line-height: 1.5; overflow-wrap: anywhere; }
+.md > :first-child { margin-top: 0; } .md > :last-child { margin-bottom: 0; }
+.md p, .md ul, .md ol, .md pre, .md blockquote, .md .md-table { margin: 0 0 .65rem; }
+.md h4, .md h5, .md h6 { margin: 1rem 0 .35rem; line-height: 1.3; text-transform: none; letter-spacing: 0; color: inherit; }
+.md h4 { font-size: 1.05rem; } .md h5 { font-size: .96rem; } .md h6 { font-size: .9rem; color: var(--muted); }
+.md ul, .md ol { padding-left: 1.3rem; } .md li { margin: .15rem 0; } .md li > ul, .md li > ol { margin: .15rem 0 0; }
+.md code { background: var(--soft); padding: .05rem .3rem; border-radius: 5px; }
+.md pre { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: .65rem .8rem; overflow-x: auto; }
+.md pre code { background: none; padding: 0; font-size: .8rem; white-space: pre; }
+.md blockquote { border-left: 3px solid var(--line); padding: .1rem 0 .1rem .8rem; color: var(--muted); }
+.md a { color: var(--L1); text-underline-offset: 2px; }
+.md hr { border: 0; border-top: 1px solid var(--line); margin: .9rem 0; }
+.md .md-table { overflow-x: auto; }
+.md table { border-collapse: collapse; font-size: .88rem; min-width: 50%; }
+.md th, .md td { border: 1px solid var(--line); padding: .3rem .55rem; text-align: left; vertical-align: top; }
+.md th { background: var(--soft); font-weight: 650; }
+
+/* A figure: an agent's static drawing in a sandboxed frame (no scripts, no network). */
+.fig { margin: 0 0 .8rem; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); overflow: hidden; }
+.fig iframe { display: block; width: 100%; border: 0; background: transparent; color-scheme: light dark; }
+.fig figcaption { padding: .35rem .7rem; border-top: 1px solid var(--line); background: var(--panel); }
+
+/* Asking HQ for something. */
+.ask { display: grid; gap: .55rem; padding: .8rem .9rem; }
+.ask-row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.ask-row select { padding: .45rem .5rem; font-size: .88rem; max-width: 46vw; }
+.chip.asked { background: color-mix(in srgb, var(--gold) 26%, var(--panel)); color: var(--ink); text-decoration: none; }
+.chip.needs { background: color-mix(in srgb, var(--L2) 22%, var(--panel)); }
+.chip.working { background: color-mix(in srgb, var(--L1) 20%, var(--panel)); }
+h2 a.right { font-weight: 400; }
+.msg.sys { background: transparent; border: 1px dashed var(--line); color: var(--muted); max-width: 100%; }
