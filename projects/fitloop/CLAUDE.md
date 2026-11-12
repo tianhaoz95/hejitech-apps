@@ -35,7 +35,9 @@ Local tokens from the seed: glasses `fld_dev_local_device`, agent `fla_dev_local
 `fitloop-review-dev` (wrangler.jsonc vars); production via `scripts/review_account.sh fitloop`
 (`review.env`, skill heji-review-account). iPhone launch arguments (Debug): `-autoSignIn` (seed athlete on the
 local stack), `-reviewSignIn` (the App Review sign-in path), `-screen today|plan|progress|feedback|settings`, `-date YYYY-MM-DD`, `-openWorkout`
-(the day's first workout in the player), `-noHealth` (no Health sheet), `-production`.
+(the day's first workout in the player), `-noHealth` (no Health sheet), `-production`. Watch (Debug):
+`-demoWorkout` shows a workout as the phone would send it (simulators don't pair). Store screenshots:
+`scripts/store_screenshots.sh fitloop`.
 
 ## Architecture
 

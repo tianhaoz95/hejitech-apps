@@ -11,7 +11,7 @@
 # scripts/upload_store_screenshots.mjs sends to App Store Connect.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-PROJECT="${1:?usage: store_screenshots.sh <tradeboard|g2digest|headway>}"
+PROJECT="${1:?usage: store_screenshots.sh <tradeboard|g2digest|headway|fitloop>}"
 
 IPHONE="${IPHONE_SIM:-iPhone 18 Pro Max}"   # 6.9": 1320 x 2868
 IPAD="${IPAD_SIM:-iPad Pro 13-inch (M5)}"   # 13": 2064 x 2752
@@ -60,6 +60,21 @@ case "$PROJECT" in
       "commute|-autoSignIn -screen commute"
       "family|-autoSignIn -screen family"
       "settings|-autoSignIn -screen settings"
+    )
+    ;;
+  fitloop)
+    # Needs the local FitLoop Worker (npm run dev:worker -w @fitloop/web) and the seeded athlete
+    # (supabase/seeds/fitloop.sql: the plan follows the current week).
+    IOS=projects/fitloop/apps/ios; SCHEME_PROJ=FitLoop.xcodeproj; APP_NAME=FitLoop; BUNDLE=com.hejitech.fitloop
+    DEVICES=("$IPHONE")
+    defaults_for() { echo "last_seen_whats_new_version $(grep -oE 'currentVersion = "[0-9.]+"' "$IOS/App/Sources/WhatsNewView.swift" | grep -oE '[0-9.]+')"; }
+    # name|launch arguments (the seeded athlete on the local stack; -noHealth skips the Health prompt)
+    SHOTS=(
+      "today|-autoSignIn -noHealth -screen today"
+      "workout|-autoSignIn -noHealth -screen today -openWorkout"
+      "plan|-autoSignIn -noHealth -screen plan"
+      "progress|-autoSignIn -noHealth -screen progress"
+      "feedback|-autoSignIn -noHealth -screen feedback"
     )
     ;;
   *) echo "no shot list for $PROJECT" >&2; exit 2 ;;

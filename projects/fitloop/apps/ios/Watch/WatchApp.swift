@@ -19,7 +19,13 @@ struct FitLoopWatchApp: App {
 final class WatchDelegate: NSObject, WKApplicationDelegate {
     let workout = WorkoutManager()
 
-    func applicationDidFinishLaunching() { workout.activate() }
+    func applicationDidFinishLaunching() {
+        workout.activate()
+        #if DEBUG
+        // `-demoWorkout` shows a workout as the iPhone would send it (store screenshots: simulators don't pair).
+        if ProcessInfo.processInfo.arguments.contains("-demoWorkout") { workout.showDemo() }
+        #endif
+    }
 
     /// The iPhone's startWatchApp(with:) lands here: start measuring.
     func handle(_ workoutConfiguration: HKWorkoutConfiguration) {
@@ -88,6 +94,19 @@ final class WorkoutManager: NSObject {
         send([WatchMessage.kind: WatchMessage.kindEnded])
     }
 
+    #if DEBUG
+    /// Set by `-demoWorkout`: the (empty) context from an unpaired simulator mustn't clear the demo.
+    private var demo = false
+    func showDemo() {
+        demo = true
+        title = "Full body B"
+        exercise = "Dumbbell Romanian deadlift"
+        setLine = "Set 2/3 · 10 reps @ 2x22 kg"
+        progress = "3/13"
+        heartRate = 124
+    }
+    #endif
+
     func setDone() {
         WKInterfaceDevice.current().play(.success)
         send([WatchMessage.kind: WatchMessage.kindSetDone])
@@ -102,6 +121,9 @@ final class WorkoutManager: NSObject {
     }
 
     fileprivate func apply(_ context: [String: Any]) {
+        #if DEBUG
+        if demo { return }
+        #endif
         let ref = context[WatchMessage.workoutRef] as? String ?? ""
         if ref.isEmpty {
             title = ""
