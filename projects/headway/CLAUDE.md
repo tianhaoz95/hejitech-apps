@@ -112,7 +112,11 @@ release prepends its notes to both and sets `currentVersion` / `CURRENT_VERSION`
 and `headway-play-internal.yml` (the Android app, same version, to Google Play's internal testing track).
 
 **Google Play**: app "Headway: Caltrain Alerts" (`com.hejitech.headway`, Play app ID 4975322077562037950), internal
-testing only, tester list "HEJI owner", no store listing yet. Upload key in `~/Credentials/headway/` and the
+testing (phone `internal`, watch `wear:internal`: the Wear OS app shares the package and its version code is the
+phone's + 1), tester list "HEJI owner". Store listing, screenshots, declaration answers and the background-location
+demo video: `GooglePlay/` (`LISTING.md` says which Play forms are still the owner's). Background location ("On a
+train → Also with the app closed") is behind an in-app disclosure (`SettingsScreen.kt` `LocationDisclosure`) that
+Play's policy requires before Android's prompt; keep it if that flow changes. Upload key in `~/Credentials/headway/` and the
 `HEADWAY_ANDROID_*` GitHub secrets. `versionName` is read from `apps/ios/project.yml`'s MARKETING_VERSION; release
 builds are R8-shrunk (`app/proguard-rules.pro`) and target API 36. The Android app signs in with Google (browser
 PKCE to `headway://login-callback`, session kept encrypted by `SessionStore`) or the review email account; its What's New

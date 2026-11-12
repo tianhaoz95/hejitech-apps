@@ -453,6 +453,7 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun hasLocationAccess(): Boolean = rideLocation.hasAccess()
+    fun hasBackgroundLocationAccess(): Boolean = rideLocation.hasBackgroundAccess()
 
     fun setOnTrainMode(mode: OnTrainMode) {
         saveSettings(_settings.value.copy(onTrain = mode)) { ok ->

@@ -10,32 +10,32 @@
       <div class="wrap narrow doc">
         <div class="page-head">
           <h1>Privacy Policy</h1>
-          <p class="muted small">Last updated October 31, 2026</p>
+          <p class="muted small">Last updated November 12, 2026</p>
         </div>
         <div class="panel">
           <h2>What Headway keeps</h2>
           <ul>
             <li><b>Your account</b>: you sign in with Apple or Google. Headway receives your email address and an account id from the sign-in, shared with other HEJI apps that use the same sign-in.</li>
             <li><b>Your commute</b>: the morning and evening stations you save, walking times, the train time you usually take, alert windows, days and which alerts you want.</li>
-            <li><b>Your devices</b>: a token for each paired pair of glasses, and your iPhone's push notification token so alerts reach it. Only a hash of glasses and assistant tokens is stored.</li>
+            <li><b>Your devices</b>: a token for each paired pair of glasses, and your phone's push notification token (iPhone or Android) so alerts reach it. Only a hash of glasses and assistant tokens is stored.</li>
             <li><b>The train you're tracking</b>, until it arrives, and a short log of the alerts already sent to you (so none is sent twice), kept for 14 days.</li>
             <li><b>Your family group</b>, if you create or join one: the group's name, your name in it, what you choose to share and with whom, what you follow of the others, and a status you set (until it runs out). An invite keeps the email address the owner typed for up to 7 days. Nothing is shared with the group until you turn it on, and only with the members you pick: the train you track or are riding, that your usual train is late or cancelled (not your stations or times), or your status. Your location is never shared. Leaving the group removes all of it at once; when the owner leaves, the group is deleted.</li>
           </ul>
           <h2>What Headway doesn't do</h2>
           <ul>
-            <li>No location tracking. If you turn on "Estimate my trip from where I am" in the iPhone app (or allow location for the glasses app), your phone sends its rough location with each board request so Headway can estimate your walk or drive to the station. It is used for that one answer and never stored or logged. With it off, leave-by times use the minutes you enter. Leave-now push reminders always use the minutes you enter.</li>
-            <li>On a train. While you have the app open, it sends recent location fixes and your speed so Headway can tell whether you're riding a train and which one, unless you turn "On a train" off in Settings. If you choose "Also with the app closed", your phone (with your Always location permission) does this in the background too, only when it notices you've moved. The fixes are used for that one answer and never stored or logged: Headway keeps only the train you seem to be on, for at most 30 minutes.</li>
+            <li>No location tracking. If you turn on "Estimate my trip from where I am" in the iPhone or Android app (or allow location for the glasses app), your phone sends its rough location with each board request so Headway can estimate your walk or drive to the station. It is used for that one answer and never stored or logged. With it off, leave-by times use the minutes you enter. Leave-now push reminders always use the minutes you enter.</li>
+            <li>On a train. While you have the app open, it sends recent location fixes and your speed so Headway can tell whether you're riding a train and which one, unless you turn "On a train" off in Settings. If you choose "Also with the app closed", your phone (with your Always / "Allow all the time" location permission) does this in the background too, only when it notices you've moved; on Android a notification shows while it watches. The fixes are used for that one answer and never stored or logged: Headway keeps only the train you seem to be on, for at most 30 minutes.</li>
             <li>No ads, no analytics, no selling or sharing your data.</li>
           </ul>
           <h2>Where it goes</h2>
-          <p>Your data is stored with Supabase and processed by a Cloudflare Worker. Alerts are delivered through Apple Push Notification service. Caltrain departure data comes from Caltrain's published timetable and 511.org; nothing about you is sent to them.</p>
+          <p>Your data is stored with Supabase and processed by a Cloudflare Worker. Alerts are delivered through Apple Push Notification service (iPhone) and Firebase Cloud Messaging (Android). The Wear OS app asks our server for public departures only and gets anything personal from your phone. Caltrain departure data comes from Caltrain's published timetable and 511.org; nothing about you is sent to them.</p>
           <p>The video on the home page is hosted on YouTube. Nothing loads from YouTube until you press play; then the player comes from youtube-nocookie.com, under Google's privacy policy.</p>
           <h2>The glasses app</h2>
           <p>The Headway app for Even Realities G2 glasses asks for two permissions. Network: it talks only to headway.hejitech.workers.dev, our server, and fetches departures and your saved commute, and tells the server which train you track. Location: when you allow it, it sends your phone's rough location with each board request to estimate your trip to the station (never stored). It stores its pairing token and its last data in the Even app on your phone. It uses no microphone or camera.</p>
           <h2>Who we are</h2>
           <p>Headway is made by HEJI TECHNOLOGY LLC. The server at headway.hejitech.workers.dev and the database behind it (on Supabase) are operated by us.</p>
           <h2>Deleting it</h2>
-          <p>In the iPhone app (Settings → Delete my Headway data) or on the web (<a href="/settings/">Settings</a> → Delete my Headway data). This removes everything above at once and disconnects your assistants. Questions: <a href="mailto:info@hejitech.com">info@hejitech.com</a>.</p>
+          <p>In the iPhone or Android app (Settings → Delete my Headway data) or on the web (<a href="/settings/">Settings</a> → Delete my Headway data). This removes everything above at once and disconnects your assistants. Questions: <a href="mailto:info@hejitech.com">info@hejitech.com</a>.</p>
         </div>
       </div>
     </main>

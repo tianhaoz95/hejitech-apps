@@ -60,6 +60,8 @@ fun SettingsScreen(
     var whatsNew by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var showGlasses by rememberSaveable { mutableStateOf(false) }
+    // Google Play's prominent disclosure: say what location is for before Android's permission prompt.
+    var disclosure by remember { mutableStateOf<LocationDisclosure?>(null) }
     val site = viewModel.apiClient.config.site
 
     if (showGlasses) {
@@ -130,8 +132,16 @@ fun SettingsScreen(
                     Column(modifier = Modifier.selectableGroup()) {
                         OnTrainMode.entries.forEach { mode ->
                             RadioRow(mode.title, settings.onTrain == mode) {
-                                onRideModeChosen(mode)
-                                viewModel.setOnTrainMode(mode)
+                                val needsAsk = mode.usesLocation && (
+                                    !viewModel.hasLocationAccess() ||
+                                        (mode == OnTrainMode.BACKGROUND && !viewModel.hasBackgroundLocationAccess())
+                                    )
+                                if (needsAsk) {
+                                    disclosure = LocationDisclosure.Ride(mode)
+                                } else {
+                                    onRideModeChosen(mode)
+                                    viewModel.setOnTrainMode(mode)
+                                }
                             }
                         }
                     }
@@ -143,7 +153,9 @@ fun SettingsScreen(
             item {
                 FormCard {
                     Text("Location", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    SwitchRow("Estimate my trip from where I am", useLocation) { onUseLocation(it) }
+                    SwitchRow("Estimate my trip from where I am", useLocation) { on ->
+                        if (on && !viewModel.hasLocationAccess()) disclosure = LocationDisclosure.Estimate else onUseLocation(on)
+                    }
                     Note("Headway measures how far you are from your departure station and estimates the walk or drive (set per leg in Commute) at an average speed, so leave-by times and how many minutes you have to spare fit where you are. It's a rough estimate without routes or traffic. Your location goes with each board request and is never stored.")
                 }
             }
@@ -222,6 +234,27 @@ fun SettingsScreen(
 
     if (whatsNew) WhatsNewDialog(onDismiss = { whatsNew = false })
 
+    disclosure?.let { d ->
+        AlertDialog(
+            onDismissRequest = { disclosure = null },
+            title = { Text("Headway uses your location") },
+            text = { Text(d.message) },
+            confirmButton = {
+                TextButton(onClick = {
+                    disclosure = null
+                    when (d) {
+                        is LocationDisclosure.Ride -> {
+                            onRideModeChosen(d.mode)
+                            viewModel.setOnTrainMode(d.mode)
+                        }
+                        LocationDisclosure.Estimate -> onUseLocation(true)
+                    }
+                }) { Text("Continue") }
+            },
+            dismissButton = { TextButton(onClick = { disclosure = null }) { Text("Not now") } }
+        )
+    }
+
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
@@ -251,4 +284,25 @@ private fun LinkRow(label: String, external: Boolean = true, onClick: () -> Unit
         Text(label, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.secondary)
         if (external) Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = StatusGrey, modifier = Modifier.size(16.dp))
     }
+}
+
+
+/** What Headway asks location for, shown before Android's own prompt (Google Play's prominent disclosure). */
+private sealed class LocationDisclosure(val message: String) {
+    class Ride(val mode: OnTrainMode) : LocationDisclosure(
+        if (mode == OnTrainMode.BACKGROUND)
+            "Headway collects your location to notice when you board a Caltrain train and start tracking it, " +
+                "even when the app is closed or not in use. A notification shows while it watches. Your location " +
+                "is sent to Headway only to find the train you're on; it is never stored or shared. Next, Android " +
+                "asks for location access, then for \"Allow all the time\"."
+        else
+            "Headway collects your location while the app is open to notice when you're on a Caltrain train and " +
+                "show your next stop and arrival. Your location is sent to Headway only to find the train you're " +
+                "on; it is never stored or shared. Next, Android asks for location access."
+    )
+    object Estimate : LocationDisclosure(
+        "Headway collects your location while the app is open to estimate how long it takes you to reach your " +
+            "station, so leave-by times fit where you are. It goes with each board request and is never stored " +
+            "or shared. Next, Android asks for location access."
+    )
 }

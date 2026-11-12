@@ -1,9 +1,11 @@
 name: Headway → Google Play (internal testing)
 
 # Publishing a GitHub Release tagged headway-v<version> (scripts/cut_release.sh headway) builds the
-# Android app at that version, signs it with Headway's upload key and rolls it out to the Play
-# Console's internal testing track (testers: the "HEJI owner" email list). Other projects' releases
-# are skipped. Also from the Actions tab (then the version is whatever apps/ios/project.yml says).
+# Android phone app and the Wear OS app at that version, signs both with Headway's upload key and
+# rolls them out to internal testing: the phone bundle to `internal`, the watch bundle to
+# `wear:internal` (the Wear OS form factor's own track; same package, one Play listing). Testers:
+# the "HEJI owner" email list. Other projects' releases are skipped. Also from the Actions tab
+# (then the version is whatever apps/ios/project.yml says).
 # Deliberately not on push: it publishes a real build.
 #
 # Secrets: HEADWAY_ANDROID_KEYSTORE_BASE64 / _PASSWORD / HEADWAY_ANDROID_KEY_ALIAS (the upload key,
@@ -62,7 +64,8 @@ jobs:
           echo "HEADWAY_ANDROID_KEYSTORE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
 
       # versionCode: minutes since 2020-01-01 UTC, so every build (CI or a hand upload) is higher
-      # than the last and it stays far below Play's 2,100,000,000 limit.
+      # than the last and it stays far below Play's 2,100,000,000 limit. The watch bundle gets the
+      # same number plus one (wear/build.gradle.kts): one listing, so codes must differ.
       - name: Test and build the signed bundle
         env:
           HEADWAY_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.HEADWAY_ANDROID_KEYSTORE_PASSWORD }}
@@ -70,10 +73,11 @@ jobs:
         run: |
           VC=$(( ($(date -u +%s) - 1577836800) / 60 ))
           echo "VERSION_CODE=$VC" >> "$GITHUB_ENV"
-          ./gradlew :core:test :app:bundleRelease -PversionCode="$VC" --no-daemon
+          ./gradlew :core:test :app:bundleRelease :wear:bundleRelease -PversionCode="$VC" --no-daemon
           jarsigner -verify app/build/outputs/bundle/release/app-release.aab | tail -1
+          jarsigner -verify wear/build/outputs/bundle/release/wear-release.aab | tail -1
 
-      - name: Upload to the internal testing track
+      - name: Upload the phone app to the internal testing track
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
@@ -82,6 +86,17 @@ jobs:
           mappingFile: projects/headway/apps/android/app/build/outputs/mapping/release/mapping.txt
           releaseName: ${{ env.VERSION }} (${{ env.VERSION_CODE }})
           track: internal
+          status: completed
+
+      - name: Upload the watch app to the Wear OS internal testing track
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.hejitech.headway
+          releaseFiles: projects/headway/apps/android/wear/build/outputs/bundle/release/wear-release.aab
+          mappingFile: projects/headway/apps/android/wear/build/outputs/mapping/release/mapping.txt
+          releaseName: ${{ env.VERSION }} watch (${{ env.VERSION_CODE }})
+          track: wear:internal
           status: completed
 
       - name: Clean up signing material

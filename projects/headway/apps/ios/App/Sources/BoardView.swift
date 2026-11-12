@@ -256,7 +256,8 @@ struct CatchCard: View {
                             }
                         } else {
                             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                Text("Leave in")
+                                // "Leave now", not "Leave in now", once it's time to go.
+                                Text(Clock.until(leaveBy, now: now) == "now" ? "Leave" : "Leave in")
                                     .font(.title2)
                                 Text(Clock.until(leaveBy, now: now))
                                     .font(.title2.weight(.bold))
@@ -500,7 +501,7 @@ struct TrainRow: View {
                             Text("Leave \(Clock.time(leaveBy))")
                                 .font(.subheadline.weight(.semibold).monospacedDigit())
                                 .foregroundStyle(catchState == "leave" ? Color.accentColor : Color.primary)
-                            Text("in \(Clock.until(leaveBy, now: now))")
+                            Text(Clock.until(leaveBy, now: now) == "now" ? "now" : "in \(Clock.until(leaveBy, now: now))")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }

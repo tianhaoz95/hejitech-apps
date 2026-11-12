@@ -7,17 +7,56 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// One version for every Headway surface (apps/ios/project.yml's MARKETING_VERSION).
+val marketingVersion: String = Regex("""MARKETING_VERSION:\s*"([^"]+)"""")
+    .find(rootProject.file("../ios/project.yml").readText())?.groupValues?.get(1)
+    ?: error("MARKETING_VERSION not found in apps/ios/project.yml")
+
+// Release signing comes from the environment (the same upload key as the phone app).
+val keystorePath: String? = System.getenv("HEADWAY_ANDROID_KEYSTORE")
+
 android {
     namespace = "com.hejitech.headway.wear"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.hejitech.headway.wear"
+        // Same package as the phone app: one Play listing (Wear OS form factor) and the Wearable
+        // Data Layer only connects apps with the same package and signing key.
+        applicationId = "com.hejitech.headway"
         minSdk = 30 // Wear OS 3+
-        targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        targetSdk = 36
+        // Phone and watch share the listing, so their version codes must differ: the watch bundle
+        // is the phone's -PversionCode plus one.
+        versionCode = (findProperty("versionCode") as String?)?.toInt()?.plus(1) ?: 1
+        versionName = marketingVersion
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (keystorePath != null) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("HEADWAY_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("HEADWAY_ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("HEADWAY_ANDROID_KEY_PASSWORD") ?: System.getenv("HEADWAY_ANDROID_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (keystorePath != null) signingConfig = signingConfigs.getByName("release")
+        }
+        // `-PminifyDebug`: a debug build shrunk like release, to test R8 on the watch.
+        debug {
+            if (project.hasProperty("minifyDebug")) {
+                isMinifyEnabled = true
+                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            }
+        }
     }
 
     buildFeatures {

@@ -111,7 +111,7 @@ class HeadwayBoardTileService : TileService() {
                     .build()
             )
             column.addContent(
-                Text.Builder(this, "$until · #$statusText")
+                Text.Builder(this, "$until · $statusText")
                     .setTypography(Typography.TYPOGRAPHY_BODY2)
                     .setColor(argb(statusColor))
                     .build()

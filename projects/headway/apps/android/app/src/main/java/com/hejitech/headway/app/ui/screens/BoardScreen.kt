@@ -420,8 +420,10 @@ private fun CatchCard(board: Board, walkMinutes: Int, now: Long) {
                         }
                     } else {
                         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Leave in", style = MaterialTheme.typography.titleLarge)
-                            Text(Clock.until(leaveBy, now), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = accent)
+                            // "Leave now", not "Leave in now", once it's time to go.
+                            val leaveIn = Clock.until(leaveBy, now)
+                            Text(if (leaveIn == "now") "Leave" else "Leave in", style = MaterialTheme.typography.titleLarge)
+                            Text(leaveIn, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = accent)
                         }
                     }
                     val late = train.delayMin?.takeIf { it > 0 }?.let { " ($it min late)" } ?: ""
@@ -616,7 +618,7 @@ fun TrainCard(train: BoardTrain, destinationShort: String, now: Long, isTracked:
                                 "Leave ${Clock.time(leaveBy)}", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
                                 color = if (train.catchState == "leave") MaterialTheme.colorScheme.secondary else Color.White
                             )
-                            Text("in ${Clock.until(leaveBy, now)}", style = MaterialTheme.typography.labelSmall, color = StatusGrey)
+                            Clock.until(leaveBy, now).let { Text(if (it == "now") "now" else "in $it", style = MaterialTheme.typography.labelSmall, color = StatusGrey) }
                         }
                     }
                     else -> Text(Clock.until(train.predDep, now), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
