@@ -57,31 +57,41 @@ No ads, no analytics, no tracking. Location is optional, used for one estimate a
 
 Caltrain times come from Caltrain's published timetable and 511.org live data. Headway is not affiliated with Caltrain.
 
-## Play Console declarations (filled 2026-11-12, except where marked "owner")
+## Play Console declarations (state on 2026-11-12)
 
-- Privacy policy, ads (none), government / financial / health (none): done.
-- Data safety (saved, submits once the target audience is set): encrypted in transit; accounts by OAuth;
-  deletion URL https://headway.hejitech.workers.dev/privacy/ ("Deleting it": everything Headway keeps is
-  removed; the shared HEJI sign-in record itself is not). Collected, none shared:
-  - Precise location: ephemeral, optional, app functionality (ride detection, trip estimate).
-  - Name (family group name): stored, optional, app functionality.
-  - Email address, User IDs: stored, required, app functionality + account management.
-  - Other user-generated content (commute, tracked train, family shares/status): stored, required, app functionality.
-  - Device or other IDs (FCM push token): stored, optional, app functionality.
-- **Sign in details (owner):** "Yes, restricted". The review account from `scripts/review_account.sh headway`
-  (appreview+headway@hejitech.com, password in `~/Credentials/review-accounts.env`). Instructions: "On the
-  sign-in screen tap 'Sign in with email' and enter these credentials. The account has a saved commute and
-  a family group."
-- **Content rating (owner):** IARC terms + questionnaire: Travel/transit utility, no violence, sexual
-  content, language, controlled substances, gambling; users interact (family groups among invited
-  people, no open chat); shares location only with Headway's server, never with other users.
-- **Target audience (owner):** 18 and over (commuters); not designed for children.
-- **Location permissions (owner, after Sign in details):** background location is used for "On a train →
-  Also with the app closed": Headway notices when you board a Caltrain train and starts tracking it so
-  delay and arrival alerts follow your ride, with a "Watching for your train" notification showing.
-  Video: `background-location-demo.mp4` (upload to YouTube as unlisted; the form wants a link). It shows
-  the in-app disclosure, both Android prompts and the ongoing notification.
-- **Foreground service permissions (owner):** type `location`, "user-initiated location sharing /
-  navigation-like": watches for the user's ride while the app is closed, only after they choose "Also
-  with the app closed"; stops when they pick another option. Same video.
-- **Trader status (owner):** confirm "Yes, my trader status applies".
+Done and saved: privacy policy, ads (none), government / financial / health (none), advertising ID
+(not used: the merged manifest has no AD_ID permission), trader status (yes, terms URL
+https://headway.hejitech.workers.dev/terms/), target audience 18 and over, sign-in details (without
+the password; sharing them with Google's device-testing partners switched off).
+
+- **Data safety (saved):** encrypted in transit; accounts by OAuth; deletion URL
+  https://headway.hejitech.workers.dev/privacy/. Collected, none shared: precise location (ephemeral,
+  optional, app functionality); name (stored, optional, app functionality); email address and user IDs
+  (stored, required, app functionality + account management); other user-generated content (stored,
+  required, app functionality); device or other IDs, the FCM token (stored, optional, app functionality).
+- **Content rating (saved):** All Other App Types; users interact (family groups, invited only, the
+  owner can remove people; no reporting or chat moderation); no location shared with other users; no
+  purchases, rewards, browser or news. ESRB Everyone, ClassInd All ages, "Users Interact".
+- **Production:** United States only (Wear OS inherits it); drafts for phone 3611065 and watch 3611066
+  (1.4.3) with release notes.
+
+Still the owner's:
+
+1. **Sign-in password:** App content › Sign in details › edit "Review account" (appreview+headway@hejitech.com),
+   add `HEADWAY_REVIEW_PASSWORD` from `~/Credentials/review-accounts.env`, save.
+2. **AI asset declaration:** Store listings › Default › Next › "Don't label assets" › Save (no Headway
+   asset is AI-made). Until then the listing is a draft and the release preview says "Add a full description".
+3. **Video:** upload `background-location-demo.mp4` (in-app disclosure, both Android prompts, the ongoing
+   notification) to the HEJI TECH channel as unlisted, then paste the link into:
+   - **Location permissions.** App purpose: "Headway shows live Caltrain departures, delays and leave-by
+     times for a rider's commute and alerts them when their train is late, cancelled or about to arrive
+     at their stop. It also tracks the train the rider is on so delay and arrival alerts follow the
+     ride." Location access: "On-train detection (Settings > On a train > 'Also with the app closed').
+     When the rider turns it on, Headway notices when they board a Caltrain train, even with the app
+     closed, and starts tracking that train so delay and arrival alerts follow the ride. A 'Watching
+     for your train' notification shows while it runs. An in-app disclosure explains this before
+     Android's location prompts; the rider can switch it off at any time. Location is only used to match
+     the train and is not stored."
+   - **Foreground service permissions:** FOREGROUND_SERVICE_LOCATION › Background location updates ›
+     Other, same link.
+4. Publishing overview: send the production releases for review.
