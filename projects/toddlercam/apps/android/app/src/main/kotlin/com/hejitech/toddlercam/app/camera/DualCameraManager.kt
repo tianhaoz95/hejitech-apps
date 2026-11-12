@@ -53,6 +53,10 @@ class DualCameraManager(private val context: Context) {
     var isDemoMode: Boolean = false
         private set
 
+    // The PreviewView is usually created before ProcessCameraProvider is ready; remember it and
+    // bind once the provider arrives (otherwise the preview stayed black until a camera swap).
+    private var pendingBind: Pair<LifecycleOwner, androidx.camera.view.PreviewView>? = null
+
     init {
         initCameraProvider()
     }
@@ -68,11 +72,18 @@ class DualCameraManager(private val context: Context) {
             } catch (_: Exception) {
                 isDemoMode = true
             }
+            pendingBind?.let { (owner, view) ->
+                pendingBind = null
+                bindCamera(owner, view)
+            }
         }, ContextCompat.getMainExecutor(context))
     }
 
     fun bindCamera(lifecycleOwner: LifecycleOwner, previewView: androidx.camera.view.PreviewView) {
-        val provider = cameraProvider ?: return
+        val provider = cameraProvider ?: run {
+            pendingBind = lifecycleOwner to previewView
+            return
+        }
         if (isDemoMode) return
 
         try {

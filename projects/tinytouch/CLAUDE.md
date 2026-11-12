@@ -35,7 +35,9 @@ since 2026-10-19 (imported with its history from `tianhaoz95/TinyTouch`, now arc
   `tinytouch-play-internal.yml` builds both on every `tinytouch-v*` release, signs them with the upload key
   (`~/Credentials/tinytouch/android-upload.env`, GitHub secrets `TINYTOUCH_ANDROID_*`) and rolls them out to
   `internal` and `wear:internal` (testers: "HEJI owner"). Version name = `MARKETING_VERSION`.
-  Steps and checks: the `heji-google-play` skill (`play.mjs check com.hejitech.tinytouch`).
+  Steps and checks: the `heji-google-play` skill (`play.mjs check com.hejitech.tinytouch`). Store
+  listing text and assets (phone, 7"/10" tablet and Wear OS screenshots from the emulators):
+  `metadata/google-play/`.
 - **Signing:** team `68CTFST8W2`, automatic. CI uses the team-wide HEJI secrets (`SIGNING_P12_*`
   distribution, `DEV_SIGNING_P12_*` development, `ASC_*`, `APPLE_TEAM_ID`) via
   `.github/actions/apple-signing`; the old repo's own secrets and `upload_ci_secrets.py` are gone.

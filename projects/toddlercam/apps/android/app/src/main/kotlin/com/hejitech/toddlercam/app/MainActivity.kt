@@ -95,10 +95,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkPermissions() {
-        val permissions = arrayOf(
-            Manifest.permission.CAMERA,
-            Manifest.permission.RECORD_AUDIO
-        )
+        // Camera only: the app takes photos, never records audio (a kids app must not ask for more).
+        val permissions = arrayOf(Manifest.permission.CAMERA)
         val missing = permissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }

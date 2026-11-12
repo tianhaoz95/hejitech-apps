@@ -152,44 +152,36 @@ fun ParentHubDialog(
                                     color = Color.White
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    OutlinedButton(
-                                        onClick = { onSelectMask(null) },
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            contentColor = if (state.activeFaceEmoji == "none") Color(0xFFFF5252) else Color.Gray
-                                        )
+                                // "None" plus all nine masks in two rows of five equal chips (two
+                                // fixed rows used to push four masks off the card).
+                                val choices: List<FaceEmojiType?> = listOf(null) + FaceEmojiType.entries
+                                choices.chunked(5).forEachIndexed { rowIndex, row ->
+                                    if (rowIndex > 0) Spacer(modifier = Modifier.height(6.dp))
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Text("None", fontSize = 11.sp)
-                                    }
-                                    for (emoji in FaceEmojiType.entries.take(4)) {
-                                        OutlinedButton(
-                                            onClick = { onSelectMask(emoji) },
-                                            colors = ButtonDefaults.outlinedButtonColors(
-                                                contentColor = if (state.activeFaceEmoji == emoji.rawValue) Color(0xFFFFB74D) else Color.White
-                                            )
-                                        ) {
-                                            Text(emoji.emoji, fontSize = 16.sp)
+                                        for (emoji in row) {
+                                            val selected = if (emoji == null) state.activeFaceEmoji == "none"
+                                            else state.activeFaceEmoji == emoji.rawValue
+                                            OutlinedButton(
+                                                onClick = { onSelectMask(emoji) },
+                                                modifier = Modifier.weight(1f),
+                                                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 8.dp),
+                                                colors = ButtonDefaults.outlinedButtonColors(
+                                                    contentColor = when {
+                                                        emoji == null && selected -> Color(0xFFFF5252)
+                                                        emoji == null -> Color.Gray
+                                                        selected -> Color(0xFFFFB74D)
+                                                        else -> Color.White
+                                                    }
+                                                )
+                                            ) {
+                                                if (emoji == null) Text("None", fontSize = 10.sp, maxLines = 1)
+                                                else Text(emoji.emoji, fontSize = 16.sp)
+                                            }
                                         }
-                                    }
                                 }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    for (emoji in FaceEmojiType.entries.drop(4)) {
-                                        OutlinedButton(
-                                            onClick = { onSelectMask(emoji) },
-                                            colors = ButtonDefaults.outlinedButtonColors(
-                                                contentColor = if (state.activeFaceEmoji == emoji.rawValue) Color(0xFFFFB74D) else Color.White
-                                            )
-                                        ) {
-                                            Text(emoji.emoji, fontSize = 16.sp)
-                                        }
-                                    }
                                 }
                             }
                         }

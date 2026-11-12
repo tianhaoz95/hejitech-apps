@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -285,11 +286,19 @@ private fun TimerSection(
                     onClick = { onSetTimer(mins) },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
+                    // The default 24dp side padding wrapped "Unlimited" onto two lines on phones.
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isSelected) Color(0xFF2196F3) else Color(0xFF1E1E1E)
                     )
                 ) {
-                    Text(if (mins == 0) "Unlimited" else "${mins}m", color = Color.White, fontSize = 12.sp)
+                    Text(
+                        if (mins == 0) "Unlimited" else "${mins}m",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        softWrap = false
+                    )
                 }
             }
         }

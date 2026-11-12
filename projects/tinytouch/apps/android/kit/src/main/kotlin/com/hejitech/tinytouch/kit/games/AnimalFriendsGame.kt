@@ -129,10 +129,11 @@ fun AnimalFriendsGame(env: PlayEnv, modifier: Modifier = Modifier) {
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.padding(top = env.topInset)
             ) {
-                // Animal stage circle
+                // Animal stage circle. On a round watch everything shrinks so the picker row below
+                // stays inside the circle (the 140dp layout ran ~244dp tall on a 227dp screen).
                 Box(
                     modifier = Modifier
-                        .size(140.dp)
+                        .size(if (env.round) 100.dp else 140.dp)
                         .clip(CircleShape)
                         .background(animal.color.copy(alpha = 0.25f))
                         .clickable { animateAnimal() },
@@ -140,36 +141,43 @@ fun AnimalFriendsGame(env: PlayEnv, modifier: Modifier = Modifier) {
                 ) {
                     BasicText(
                         text = animal.emoji,
-                        style = TextStyle(fontSize = 76.sp),
+                        style = TextStyle(fontSize = if (env.round) 54.sp else 76.sp),
                         modifier = Modifier
                             .scale(bounceScale.value)
                             .rotate(bounceAngle.value)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(if (env.round) 6.dp else 10.dp))
 
                 BasicText(
                     text = animal.name,
                     style = TextStyle(
                         color = animal.color,
-                        fontSize = 18.sp,
+                        fontSize = if (env.round) 16.sp else 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(if (env.round) 6.dp else 12.dp))
 
                 // Animal mini carousel selector
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (env.round) 4.dp else 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ANIMALS.forEachIndexed { idx, item ->
                         val isSelected = idx == selectedIndex
                         Box(
                             modifier = Modifier
-                                .size(if (isSelected) 30.dp else 24.dp)
+                                .size(
+                                    when {
+                                        env.round && isSelected -> 26.dp
+                                        env.round -> 20.dp
+                                        isSelected -> 30.dp
+                                        else -> 24.dp
+                                    }
+                                )
                                 .clip(CircleShape)
                                 .background(
                                     if (isSelected) item.color.copy(alpha = 0.4f)

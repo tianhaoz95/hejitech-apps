@@ -28,13 +28,14 @@ v1.2.1 … v1.2.3 tags). The root `CLAUDE.md` has the shared rules; what matters
   runs weekly on Wednesdays (18:30 UTC) from `main`. Don't run the script by hand in place of a
   release, and don't create tags or releases yourself. App Store submission is by hand in App Store
   Connect (`AppStore/APP_STORE_METADATA.md`).
-- **Google Play:** app "ToddlerCam: Dual Baby Camera" (`com.hejitech.toddlercam`, Play app ID `4975262664896253012`) in the
+- **Google Play:** app "ToddlerCam: Toddler Camera" (no "Dual": the Android app takes single-camera photos) (`com.hejitech.toddlercam`, Play app ID `4975262664896253012`) in the
   HEJI TECH LLC console, Wear OS form factor added. Phone and watch apps share the package (one
   listing; the Wear Data Layer also needs it) and differ in version code (watch = phone + 1).
   `toddlercam-play-internal.yml` builds both on every `toddlercam-v*` release, signs them with the upload key
   (`~/Credentials/toddlercam/android-upload.env`, GitHub secrets `TODDLERCAM_ANDROID_*`) and rolls them out to
   `internal` and `wear:internal` (testers: "HEJI owner"). Version name = `MARKETING_VERSION`.
-  Steps and checks: the `heji-google-play` skill (`play.mjs check com.hejitech.toddlercam`).
+  Steps and checks: the `heji-google-play` skill (`play.mjs check com.hejitech.toddlercam`). Store
+  listing text and assets (phone, 7"/10" tablet and Wear OS screenshots from the emulators): `GooglePlay/`.
 - **Signing:** team `68CTFST8W2`, automatic. CI uses the team-wide HEJI secrets (`SIGNING_P12_*`
   distribution, `DEV_SIGNING_P12_*` development, `ASC_*`, `APPLE_TEAM_ID`) via
   `.github/actions/apple-signing`. ToddlerCam-only CI settings would be named `TODDLERCAM_…`.

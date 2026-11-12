@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,7 +72,11 @@ fun ToddlerPlayStage(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = 12.dp, top = 8.dp)
+                    // Round watches cut the corner off: move the shield inside the circle.
+                    .padding(
+                        start = if (env.round) 30.dp else 12.dp,
+                        top = if (env.round) 30.dp else 8.dp
+                    )
             ) {
                 ParentShieldButton(
                     holdDurationSeconds = lockHoldDuration,
@@ -104,22 +109,30 @@ fun ToddlerPlayStage(
             visible = showCoPlayToast,
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
             exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            // On a round watch the bottom corners are cut off: inset the banner so its text stays
+            // inside the circle.
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 12.dp, start = 16.dp, end = 16.dp)
+                .padding(
+                    bottom = if (env.round) 26.dp else 12.dp,
+                    start = if (env.round) 40.dp else 16.dp,
+                    end = if (env.round) 40.dp else 16.dp
+                )
         ) {
             Box(
                 modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.85f), shape = CircleShape)
-                    .border(1.dp, Color.White.copy(alpha = 0.2f), shape = CircleShape)
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .background(Color.Black.copy(alpha = 0.85f), shape = RoundedCornerShape(16.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.2f), shape = RoundedCornerShape(16.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 BasicText(
                     text = mode.coPlayPrompt,
+                    maxLines = 2,
                     style = TextStyle(
                         color = Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontSize = if (env.round) 10.sp else 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center
                     )
                 )
             }
