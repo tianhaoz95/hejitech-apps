@@ -20,10 +20,16 @@ data class ReleaseNotes(val version: String, val date: String, val items: List<W
  * app's `WhatsNewView.swift` (release.env's release_check refuses a version either doesn't describe).
  */
 object WhatsNew {
-    const val CURRENT_VERSION = "1.4.2"
+    const val CURRENT_VERSION = "1.4.3"
     private const val KEY_SEEN = "last_seen_whats_new_version"
 
     val releases = listOf(
+        ReleaseNotes(version = "1.4.3", date = "November 2026", items = listOf(
+            WhatsNewItem("Headway on your Wear OS watch", "The watch app now installs from Google Play with the phone app, and its tile works: add Headway to your tiles for a countdown to your next train."),
+            WhatsNewItem("Leave now", "When it's time to go, the card says \"Leave now\" instead of \"Leave in now\"."),
+            WhatsNewItem("Clearer about location", "Before Android asks for location, Headway explains what it's for: noticing when you're on a train, and estimating your walk to the station. It's never stored."),
+            WhatsNewItem("Easier to read", "The status bar stays readable when your phone uses the light theme."),
+        )),
         ReleaseNotes(version = "1.4.2", date = "November 2026", items = listOf(
             WhatsNewItem("A fresh build", "Nothing new to try in this one: it's a new build of 1.4.1, with Glasses still in Settings under Devices."),
         )),

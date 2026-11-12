@@ -20,10 +20,13 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.4.2"
+    static let currentVersion = "1.4.3"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.4.3", date: "November 2026", items: [
+            WhatsNewItem(icon: "figure.walk", title: "Leave now", description: "When it's time to go, the card says \"Leave now\" instead of \"Leave in now\"."),
+        ]),
         ReleaseNotes(version: "1.4.2", date: "November 2026", items: [
             WhatsNewItem(icon: "arrow.triangle.2.circlepath", title: "A fresh build", description: "Nothing new to try in this one: it's a new build of 1.4.1, with Glasses still in Settings under Devices."),
         ]),
