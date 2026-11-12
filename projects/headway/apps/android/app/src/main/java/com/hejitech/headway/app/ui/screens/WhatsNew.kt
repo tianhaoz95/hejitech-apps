@@ -20,10 +20,13 @@ data class ReleaseNotes(val version: String, val date: String, val items: List<W
  * app's `WhatsNewView.swift` (release.env's release_check refuses a version either doesn't describe).
  */
 object WhatsNew {
-    const val CURRENT_VERSION = "1.4.1"
+    const val CURRENT_VERSION = "1.4.2"
     private const val KEY_SEEN = "last_seen_whats_new_version"
 
     val releases = listOf(
+        ReleaseNotes(version = "1.4.2", date = "November 2026", items = listOf(
+            WhatsNewItem("A fresh build", "Nothing new to try in this one: it's a new build of 1.4.1, with Glasses still in Settings under Devices."),
+        )),
         ReleaseNotes(version = "1.4.1", date = "November 2026", items = listOf(
             WhatsNewItem("Glasses moved into Settings", "Even G2 smart glasses pairing and R1 ring controls now live in Settings under Devices, keeping the main tab bar focused on your trains, commute and family."),
         )),
