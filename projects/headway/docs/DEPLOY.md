@@ -76,8 +76,10 @@ curl -s https://headway.hejitech.workers.dev/.well-known/oauth-authorization-ser
 3. The release runs `headway-testflight.yml` (team-wide signing secrets) and waits for App Store
    Connect's processing verdict.
 
-Privacy answers for the listing: email address and user id (app functionality, linked to the user,
-not used for tracking); no location, no analytics. Privacy policy:
+Privacy answers for the listing (published 2026-11-12): name (family display name), email address,
+user id and other user content (commute, tracked train, family shares and status), all app
+functionality, linked to the user, not used for tracking; no location (used for one answer, never
+kept), no analytics. Content rights: uses third-party content (Caltrain, 511.org). Privacy policy:
 `https://headway.hejitech.workers.dev/privacy/`; support: `https://headway.hejitech.workers.dev/support/`.
 
 ## 5. Even Hub plugin
