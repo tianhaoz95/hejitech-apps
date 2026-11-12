@@ -250,7 +250,9 @@ await step("commute done: reaching the leg's stop holds its alerts, shows the ca
   const { departures, station } = await import("../packages/core/src/index.ts");
   const cur = (await call("/api/settings", { auth: session })).body.settings;
   assert.equal(cur.alerts.stop_when_done, true, "on by default");
-  const put = (alerts, more = {}) => call("/api/settings", { method: "PUT", auth: session, body: { settings: { ...cur, ...more, alerts: { ...cur.alerts, ...alerts } } } });
+  // Morning leg only: the on-train step above leaves a real ride from the wall clock (kept 30 min), and on a
+  // morning run a southbound train due at Mountain View would otherwise "finish" the seed's evening leg.
+  const put = (alerts, more = {}) => call("/api/settings", { method: "PUT", auth: session, body: { settings: { ...cur, evening: null, ...more, alerts: { ...cur.alerts, ...alerts } } } });
   assert.equal((await put({ stop_when_done: "yes" })).status, 422);
   const leg = { from: "mountain_view", to: "san_francisco", walk_minutes: 10, usual: null, window: { start: "06:00", end: "10:30" } };
   // Off, then on: forgets a leg finished by an earlier run.
