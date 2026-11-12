@@ -164,6 +164,24 @@ commit or ignore the file (ask whose it is); don't reach for `--force`, which al
 A red CI run whose log says a port was "already in use" when starting Supabase is the runner's fault:
 `gh run rerun <id> --failed`.
 
+### Wear OS apps (TinyTouch, ToddlerCam, 2026-11-11)
+
+A watch app goes in the **same** Play app as the phone app, never a listing of its own:
+- **Same `applicationId`** on phone and watch (the Wear Data Layer needs it too; ToddlerCam's watch
+  used `….wear` and had to change). Code namespaces may differ.
+- **Different version codes:** the watch module uses the phone's `-PversionCode` plus one
+  (`versionCode = (findProperty("versionCode") as String?)?.toInt()?.plus(1) ?: 1`).
+- **Form factor:** Test and release → Advanced settings → *Form factors* → *Add form factor* →
+  *Wear OS*. That creates Wear-only tracks: the form-factor selector at the top of a track page
+  switches to *Wear OS only*, which has its **own testers** (tick "HEJI owner" there too) and its own
+  first hand upload. The opt-in/review step there only matters for production.
+- **API track names** are `wear:internal`, `wear:beta`, `wear:production` (`play.mjs check` lists
+  them). The workflow uploads the phone bundle to `internal` and the watch bundle to
+  `wear:internal` in two `r0adkll/upload-google-play` steps. Models:
+  `.github/workflows/tinytouch-play-internal.yml`, `toddlercam-play-internal.yml`.
+- Wear modules need `uses-feature android.hardware.type.watch` and the
+  `com.google.android.wearable.standalone` meta-data; target API 36 like the phone.
+
 ## Pitfalls seen
 
 - `~/Downloads` is behind macOS privacy: a sandboxed shell hangs listing it. Move a downloaded key
