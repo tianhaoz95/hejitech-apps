@@ -6,18 +6,38 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-val marketingVersion = "1.5.6"
+// One version for every TinyTouch surface: scripts/cut_release.sh bumps MARKETING_VERSION in the
+// Xcode project, and the Android apps read it from there.
+val marketingVersion: String = Regex("""MARKETING_VERSION = ([0-9.]+);""")
+    .find(rootProject.file("../../ToddlerPlay.xcodeproj/project.pbxproj").readText())?.groupValues?.get(1)
+    ?: error("MARKETING_VERSION not found in ToddlerPlay.xcodeproj")
+
+// Release signing comes from the environment (the owner's upload key in ~/Credentials/); without
+// it a release build stays unsigned.
+val keystorePath: String? = System.getenv("TINYTOUCH_ANDROID_KEYSTORE")
 
 android {
     namespace = "com.hejitech.tinytouch.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.tianhaoz.tinytouch"
+        applicationId = "com.hejitech.tinytouch"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        // -PversionCode=<n> for a store build (minutes since 2020-01-01 UTC, grows with every upload).
+        versionCode = (findProperty("versionCode") as String?)?.toInt() ?: 1
         versionName = marketingVersion
+    }
+
+    signingConfigs {
+        if (keystorePath != null) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("TINYTOUCH_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("TINYTOUCH_ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("TINYTOUCH_ANDROID_KEY_PASSWORD") ?: System.getenv("TINYTOUCH_ANDROID_KEYSTORE_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -25,6 +45,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (keystorePath != null) signingConfig = signingConfigs.getByName("release")
         }
         debug {
             if (project.hasProperty("minifyDebug")) {

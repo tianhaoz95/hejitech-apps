@@ -28,6 +28,13 @@ v1.2.1 … v1.2.3 tags). The root `CLAUDE.md` has the shared rules; what matters
   runs weekly on Wednesdays (18:30 UTC) from `main`. Don't run the script by hand in place of a
   release, and don't create tags or releases yourself. App Store submission is by hand in App Store
   Connect (`AppStore/APP_STORE_METADATA.md`).
+- **Google Play:** app "ToddlerCam: Dual Baby Camera" (`com.hejitech.toddlercam`, Play app ID `4975262664896253012`) in the
+  HEJI TECH LLC console, Wear OS form factor added. Phone and watch apps share the package (one
+  listing; the Wear Data Layer also needs it) and differ in version code (watch = phone + 1).
+  `toddlercam-play-internal.yml` builds both on every `toddlercam-v*` release, signs them with the upload key
+  (`~/Credentials/toddlercam/android-upload.env`, GitHub secrets `TODDLERCAM_ANDROID_*`) and rolls them out to
+  `internal` and `wear:internal` (testers: "HEJI owner"). Version name = `MARKETING_VERSION`.
+  Steps and checks: the `heji-google-play` skill (`play.mjs check com.hejitech.toddlercam`).
 - **Signing:** team `68CTFST8W2`, automatic. CI uses the team-wide HEJI secrets (`SIGNING_P12_*`
   distribution, `DEV_SIGNING_P12_*` development, `ASC_*`, `APPLE_TEAM_ID`) via
   `.github/actions/apple-signing`. ToddlerCam-only CI settings would be named `TODDLERCAM_…`.
@@ -48,13 +55,20 @@ v1.2.1 … v1.2.3 tags). The root `CLAUDE.md` has the shared rules; what matters
 ## Commands
 
 ```sh
+# iOS & watchOS
 xcodegen generate          # after changing project.yml or adding/removing files
 ./Scripts/build.sh         # regenerates sounds + project, builds all three targets for the simulator
 ./Scripts/run_tests.sh     # iOS unit tests (simulator)
+
+# Android & Wear OS
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+cd apps/android
+./gradlew :core:test :app:assembleDebug :wear:assembleDebug -q
 ```
 
 Test on the attached iPhone (and paired watch) whenever the change touches the cameras,
 WatchConnectivity or haptics: the simulator falls back to `SimulatorCameraStreamer` and demo media.
+For Android, test on the attached phone (`adb -s <device> install -r app/build/outputs/apk/debug/app-debug.apk`).
 
 The screenshot tests in `KidsCamTests` write the App Store screenshots into `AppStore/Screenshots/`
 of the checkout they run from. Every test run rewrites them; commit them only when you mean to
@@ -71,3 +85,16 @@ update the store listing.
 - `KidsCamWatch/Intents`: App Intents & `AppShortcutsProvider` for Siri, Shortcuts app, Action Button, and URL launcher schemes (`toddlercam://`, `kidscam://`).
 - `KidsCamWatchWidgets`: WidgetKit complications.
 - `KidsCam/GuidedAccess`, `KidsCam/WatchFace`, `KidsCam/Audio` (synthesized by `Scripts/generate_sounds.py`).
+
+### Android & Wear OS (`apps/android`)
+
+- `core/`: shared Kotlin models (`FaceEmojiType`, `SoundType`, `CameraCaptureMode`, `ToddlerState`), `WatchConstants`, `WatchActionMessage`, and unit tests.
+- `app/`: phone app (`com.hejitech.toddlercam`) built with Jetpack Compose & CameraX:
+  - `camera/DualCameraManager`: CameraX multi-camera preview, PIP swap, 1200x1600 keepsake composite renderer, and MediaStore saving.
+  - `audio/SoundManager`: low-latency `SoundPool` engine loading raw WAV soundboard effects.
+  - `ui/`: `ToddlerCameraScreen`, chunky 86dp bouncy shutter button, `ToddlerLockOverlay` bubble popping canvas, `ParentGateDialog` math challenge, and `ParentHubDialog`.
+  - `wear/`: `PhoneWearableManager` and `PhoneWearableService` syncing state and sending photo thumbnails to connected Wear OS watches over Google Play services Wearable Data Layer API.
+- `wear/`: Wear OS parent remote app (package `com.hejitech.toddlercam`, code namespace `…toddlercam.wear`) with Wear Compose:
+  - `WearApp`: giant wrist shutter button with haptic feedback, attention grabber buttons (🐶 Puppy, 🦆 Duck, 🐱 Kitty, 👶 Baby), camera flip, screen lock toggle, face mask selector, and last photo preview.
+  - `ToddlerCamTileService`: Wear OS carousel tile for quick wrist shutter and remote launch.
+  - `ToddlerCamComplicationService`: watch face complication.

@@ -87,11 +87,15 @@ team-wide signing secrets). Android goes to Play Console by hand. See `projects/
 
 For ToddlerCam it bumps `MARKETING_VERSION` in `projects/toddlercam/project.yml` and publishes
 `toddlercam-v<version>`, which runs `toddlercam-testflight.yml` (iPhone app with the watch app and
-complications embedded, same team-wide signing secrets). See `projects/toddlercam/CLAUDE.md`.
+complications embedded, same team-wide signing secrets) and `toddlercam-play-internal.yml` (the Android
+phone app and its Wear OS app, same version, to Google Play's internal testing tracks: `internal` and
+`wear:internal`). See `projects/toddlercam/CLAUDE.md`.
 
 For TinyTouch it bumps `MARKETING_VERSION` in `projects/tinytouch/ToddlerPlay.xcodeproj/project.pbxproj`
 (written by its own `tools/generate_project.py`, no XcodeGen) and publishes `tinytouch-v<version>`,
-which runs `tinytouch-testflight.yml`. See `projects/tinytouch/CLAUDE.md`.
+which runs `tinytouch-testflight.yml` and `tinytouch-play-internal.yml` (the Android phone app and its
+Wear OS app, same version, to Google Play's internal testing tracks: `internal` and `wear:internal`).
+See `projects/tinytouch/CLAUDE.md`.
 
 For G2 Digest it bumps the Even Hub plugin's version in `projects/g2digest/apps/glasses/package.json`
 (stamped into `app.json` when packing) and publishes `g2digest-v<version>`, which runs

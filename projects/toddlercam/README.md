@@ -4,7 +4,7 @@
 
 > Part of the [HEJI monorepo](https://github.com/tianhaoz95/hejitech-apps) (`projects/toddlercam`, moved from `tianhaoz95/toddler-cam` on 2026-10-19). Releases: `scripts/cut_release.sh toddlercam` from the repo root; see [`CLAUDE.md`](CLAUDE.md).
 
-> **ToddlerCam** (`com.hejitech.kidscam`) is a child-friendly, privacy-focused iOS and watchOS dual-camera app tailored for toddlers and parents. It captures both the front and rear cameras simultaneously, features a parent Apple Watch remote control with attention-grabber animal sounds, includes an educational Guided Access toddler lock setup, and includes a dedicated Apple Watch Face & Complication Studio in the iPhone app.
+> **ToddlerCam** (`com.hejitech.kidscam` on Apple App Store, `com.hejitech.toddlercam` on Android) is a child-friendly, privacy-focused iOS/watchOS and Android/Wear OS dual-camera app tailored for toddlers and parents. It captures both the front and rear cameras simultaneously, features a parent wrist remote control (Apple Watch & Wear OS) with attention-grabber animal sounds, includes a toddler safe lock setup, and saves keepsake dual-camera photos directly to the photo library.
 
 ▶ **[Watch it in 30 seconds](https://youtu.be/kvPABm2YNLU)** · [the Short](https://youtube.com/shorts/y3sMewPdtH4)
 

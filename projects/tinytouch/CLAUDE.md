@@ -25,6 +25,17 @@ since 2026-10-19 (imported with its history from `tianhaoz95/TinyTouch`, now arc
   TestFlight, build number = UTC timestamp). The same workflow runs weekly on Wednesdays (18:45 UTC)
   from `main`. Pushes no longer upload builds. Don't run the script by hand in place of a release,
   and don't create tags or releases yourself. App Store submission is by hand (`metadata/`).
+- **Android & Wear OS** (`apps/android`: `kit/` shared Data Layer code, `app/` phone companion,
+  `wear/` watch app): `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+  ./gradlew :core:test :app:assembleDebug :wear:assembleDebug` from `apps/android`; `-PminifyDebug`
+  builds a debug app shrunk like release, to test R8 on the phone.
+- **Google Play:** app "TinyTouch: Toddler Lock & Play" (`com.hejitech.tinytouch`, Play app ID `4975430100626607403`) in the
+  HEJI TECH LLC console, Wear OS form factor added. Phone and watch apps share the package (one
+  listing; the Wear Data Layer also needs it) and differ in version code (watch = phone + 1).
+  `tinytouch-play-internal.yml` builds both on every `tinytouch-v*` release, signs them with the upload key
+  (`~/Credentials/tinytouch/android-upload.env`, GitHub secrets `TINYTOUCH_ANDROID_*`) and rolls them out to
+  `internal` and `wear:internal` (testers: "HEJI owner"). Version name = `MARKETING_VERSION`.
+  Steps and checks: the `heji-google-play` skill (`play.mjs check com.hejitech.tinytouch`).
 - **Signing:** team `68CTFST8W2`, automatic. CI uses the team-wide HEJI secrets (`SIGNING_P12_*`
   distribution, `DEV_SIGNING_P12_*` development, `ASC_*`, `APPLE_TEAM_ID`) via
   `.github/actions/apple-signing`; the old repo's own secrets and `upload_ci_secrets.py` are gone.

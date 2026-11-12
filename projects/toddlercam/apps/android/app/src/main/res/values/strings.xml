@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">ToddlerCam</string>
+    <string name="camera_permission_rationale">ToddlerCam needs camera permission to capture toddler photos and videos.</string>
+</resources>
