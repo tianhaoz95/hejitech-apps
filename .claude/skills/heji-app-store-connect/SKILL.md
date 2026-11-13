@@ -99,6 +99,15 @@ for iPad apps, 2064x2752; `APP_IPHONE_DUO` for iPhone Duo, 2853x2007 inner scree
 and waits for Apple's COMPLETE. The owner's iPhone 13 is 6.1", too small for the required size. Look
 at every shot before uploading: taking them found two real bugs.
 
+- **Captioned slides**: `node scripts/store_captions.mjs projects/<p>/apps/ios/AppStore/captions.json`
+  puts a headline over each iPhone, watch or Even G2 shot (1320x2868); upload those as `APP_IPHONE_67`.
+- **App previews** (video, 15–30 s, up to 3 per size): takes of the current Debug app on the local stack
+  with `branding/promo-videos/scripts/app-preview-record.mjs <p>` (Headway and FitLoop; ios-uidriver),
+  the edit in `branding/promo-videos/src/app-preview` (886x1920, 30 fps, headline over the screen, launch
+  music), re-encoded to H.264 high + 256k stereo AAC, then `node $A upload-previews com.hejitech.<slug>
+  IPHONE_67 <mp4>`. Apple only allows footage of the app itself: no glasses or other hardware. Apple's
+  processing can take over 10 minutes: re-check `videoDeliveryState` with GET `v1/appPreviews/<id>`.
+
 - **iPhone Duo** (required from April 2027): the app must be built with the iOS 27.1+ SDK to use the
   unfolded display (older SDKs letterbox), so the TestFlight workflow runs on `runs-on: xcode-27` with
   `xcode-version: "27.2"`. simctl can't unfold the Duo simulator: unfold it in Device Hub (ask the owner

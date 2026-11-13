@@ -10,6 +10,7 @@
 //   asc.mjs register-bundle <bundle id> <name>                  # idempotent
 //   asc.mjs invite-tester <bundle id> <email> [group name]      # internal group (default "Team"),
 //                                                               # add the tester, send the invite
+//   asc.mjs upload-previews <bundle id> <preview type> <mp4…>     # replace its app preview videos (e.g. IPHONE_67)
 //   asc.mjs upload-screenshots <bundle id> <display type> <png…>  # replace the editable version's
 //                                                               # en-US set (APP_IPHONE_67, APP_IPAD_PRO_3GEN_129…)
 //   asc.mjs upload-creative <bundle id> <header|search> <png>  # iOS 27+ product page header (3840x1646)
@@ -169,6 +170,50 @@ try {
       console.log(`== invitation not sent yet (${e.status}): rerun after the first build is processed`);
       console.log(`   ${e.message.split("\n")[0].slice(0, 300)}`);
     }
+  } else if (cmd === "upload-previews") {
+    // Replaces the app preview videos (15–30 s, e.g. 886 x 1920 for IPHONE_67, H.264 + stereo AAC) of one
+    // preview type in the editable version's en-US localization; poster frame at 2 s. Same flow as screenshots.
+    const [id, previewType, ...files] = args;
+    if (!id || !previewType || !files.length) die("usage: asc.mjs upload-previews <bundle id> <preview type> <mp4…>");
+    const app = await findApp(id);
+    if (!app) die(`no app record for ${id} yet (SKILL.md step 2)`, 3);
+    const versions = (await asc("GET", `v1/apps/${app.id}/appStoreVersions?filter[appStoreState]=PREPARE_FOR_SUBMISSION,DEVELOPER_REJECTED,REJECTED,METADATA_REJECTED`)).data;
+    if (!versions.length) die(`no editable App Store version for ${id}`, 3);
+    const loc = (await asc("GET", `v1/appStoreVersions/${versions[0].id}/appStoreVersionLocalizations`)).data.find((l) => l.attributes.locale === "en-US");
+    if (!loc) die("no en-US localization on the editable version");
+    let set = (await asc("GET", `v1/appStoreVersionLocalizations/${loc.id}/appPreviewSets?limit=50`)).data.find((x) => x.attributes.previewType === previewType);
+    if (set) {
+      for (const p of (await asc("GET", `v1/appPreviewSets/${set.id}/appPreviews?limit=50`)).data) await asc("DELETE", `v1/appPreviews/${p.id}`);
+    } else {
+      set = (await asc("POST", "v1/appPreviewSets", { data: { type: "appPreviewSets", attributes: { previewType },
+        relationships: { appStoreVersionLocalization: { data: { type: "appStoreVersionLocalizations", id: loc.id } } } } })).data;
+    }
+    const ids = [];
+    for (const f of files) {
+      const bytes = readFileSync(f);
+      const pv = (await asc("POST", "v1/appPreviews", { data: { type: "appPreviews", attributes: { fileName: basename(f), fileSize: bytes.length, mimeType: "video/mp4" },
+        relationships: { appPreviewSet: { data: { type: "appPreviewSets", id: set.id } } } } })).data;
+      for (const op of pv.attributes.uploadOperations) {
+        const headers = Object.fromEntries((op.requestHeaders ?? []).map((h) => [h.name, h.value]));
+        const put = await fetch(op.url, { method: op.method, headers, body: bytes.subarray(op.offset, op.offset + op.length) });
+        if (!put.ok) die(`upload of ${f} failed: ${put.status} ${await put.text()}`, 1);
+      }
+      await asc("PATCH", `v1/appPreviews/${pv.id}`, { data: { type: "appPreviews", id: pv.id,
+        attributes: { uploaded: true, sourceFileChecksum: createHash("md5").update(bytes).digest("hex"), previewFrameTimeCode: "00:00:02:00" } } });
+      ids.push([pv.id, basename(f)]);
+    }
+    for (const [pid, name] of ids) {
+      let state = "";
+      for (let i = 0; i < 120; i++) {
+        const a = (await asc("GET", `v1/appPreviews/${pid}`)).data.attributes;
+        const d = a.videoDeliveryState ?? a.assetDeliveryState;
+        state = d?.state ?? "";
+        if (state === "COMPLETE") break;
+        if (state === "FAILED") die(`${name}: FAILED ${JSON.stringify(d.errors)}`, 1);
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+      console.log(`== ${previewType} ${name}: ${state}`);
+    }
   } else if (cmd === "upload-screenshots") {
     // Replaces the screenshots of one display type in the editable version's en-US localization:
     // reserve each file, PUT its bytes to the upload operations Apple returns, commit with the MD5,
@@ -254,7 +299,7 @@ try {
         appStoreVersionLocalization: { data: { type: "appStoreVersionLocalizations", id: loc.id } } } } })).data;
     console.log(`== ${placementType} ${basename(file)} (${a.imageAsset?.width}x${a.imageAsset?.height}): placed, ${placed.attributes.state}`);
   } else {
-    die("usage: asc.mjs <GET|POST|PATCH|DELETE> <path> [body] | status <bundle id> | register-bundle <id> <name> | invite-tester <bundle id> <email> [group] | upload-screenshots <bundle id> <display type> <png…> | upload-creative <bundle id> <header|search> <png>");
+    die("usage: asc.mjs <GET|POST|PATCH|DELETE> <path> [body] | status <bundle id> | register-bundle <id> <name> | invite-tester <bundle id> <email> [group] | upload-screenshots <bundle id> <display type> <png…> | upload-previews <bundle id> <preview type> <mp4…> | upload-creative <bundle id> <header|search> <png>");
   }
 } catch (e) {
   die(e.message, 1);

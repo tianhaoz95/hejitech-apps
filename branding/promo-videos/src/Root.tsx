@@ -1,3 +1,4 @@
+import { AppPreviews } from "./app-preview/Composition";
 import { FitloopDemo } from "./fitloop-demo/Composition";
 import { FitloopLaunch } from "./fitloop-launch/Composition";
 import { G2digestDemo } from "./g2digest-demo/Composition";
@@ -25,6 +26,7 @@ export const RemotionRoot: React.FC = () => {
       <G2digestLaunch />
       <G2digestDemo />
       <WaypackLaunch />
+      <AppPreviews />
     </>
   );
 };
