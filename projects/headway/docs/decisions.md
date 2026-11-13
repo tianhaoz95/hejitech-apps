@@ -102,7 +102,7 @@ calls made while building, with the reason for each.
   leave-by and catch states follow it) and each train gets `buffer_min`. Leave-now pushes still use the
   leg's `walk_minutes`: the cron has no location, by design.
   Within `AT_STATION_M` (250 m, the same radius on-train detection uses) the estimate is 0 and the apps
-  say "At <station>": a station is one point but its platform runs 200–300 m, so a rider on it read
+  say `At <station>`: a station is one point but its platform runs 200–300 m, so a rider on it read
   76 m away and, set to drive, got the 5 parking minutes (~6 min) (2026-11-13; was 50 m). Past 250 m a
   walk is never quicker than the chosen mode, so there's no walk fallback.
 
