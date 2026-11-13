@@ -132,7 +132,9 @@ export function boardLines(world: World, cursor: number): string[] {
     ? (b.trains.find((t) => t.catch === "leave") ?? b.trains.find((t) => t.catch === "run"))
     : null;
   // From the rider's location the trip is an estimate ("drive ~12m"); otherwise the leg's walk.
-  const trip = b.travel ? `${TRAVEL_WORD[b.travel.mode] ?? b.travel.mode} ~${b.travel.minutes}m` : `walk ${b.walk_minutes}`;
+  const trip = b.travel
+    ? b.travel.minutes === 0 ? "at station" : `${TRAVEL_WORD[b.travel.mode] ?? b.travel.mode} ~${b.travel.minutes}m`
+    : `walk ${b.walk_minutes}`;
   const short = leaveTrain?.buffer_min != null && leaveTrain.buffer_min < 0 ? -leaveTrain.buffer_min : 0;
   const leaveHint = leaveTrain && leaveTrain.leave_by != null
     ? fitPx(short

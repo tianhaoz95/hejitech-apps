@@ -39,6 +39,13 @@ describe("board screen", () => {
     fits(lines);
     expect(lines.at(-2)).toMatch(/^Leave (in \d+m|now) for \d+ \(drive ~\d+m\)$|^Hurry: \d+ is \d+m tight \(drive ~\d+m\)$/);
   });
+  it("says they're at the station when the rider is on the platform", () => {
+    const mv = station("mountain_view")!;
+    const b = commuteBoard(commuter(), now, null, undefined, { origin: { lat: mv.lat + 0.00068, lon: mv.lon }, travelMode: "drive" });
+    const lines = new Navigator().lines(world({ board: b }));
+    fits(lines);
+    expect(lines.at(-2)).toMatch(/\(at station\)$/);
+  });
   it("drops the leave hint once the tracked train has left their station", () => {
     const t = firstTrain(WEEKDAY, "07:00");
     const later = t.dep + 3 * 60_000;

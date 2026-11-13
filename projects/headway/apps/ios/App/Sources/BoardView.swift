@@ -229,7 +229,11 @@ struct CatchCard: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    if let t = board.travel {
+                    if let t = board.travel, t.minutes == 0 {
+                        Label("At \(board.from.short) · \(Self.distance(t.distanceM))", systemImage: "mappin.and.ellipse")
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    } else if let t = board.travel {
                         Label("~\(t.minutes) min \(t.mode.verb) to \(board.from.short) · \(Self.distance(t.distanceM))", systemImage: t.mode.symbol)
                             .font(.footnote.weight(.medium))
                             .foregroundStyle(.secondary)

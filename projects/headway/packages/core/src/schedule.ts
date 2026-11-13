@@ -165,13 +165,20 @@ export function distanceM(a: { lat: number; lon: number }, b: { lat: number; lon
 }
 
 /**
+ * Within this many metres of a station's point the rider is at the station: Caltrain platforms run
+ * 200–300 m and phone fixes drift tens of metres, so someone on the platform can read 100 m+ away.
+ */
+export const AT_STATION_M = 250;
+
+/**
  * Roughly how long from `origin` to the station: straight-line distance times a detour factor at an
  * average speed, plus a few fixed minutes. No routing or traffic, on purpose: it's an estimate.
+ * Within AT_STATION_M it's 0 (past it, a walk never beats the other modes, so no fallback is needed).
  */
 export function travelEstimate(mode: TravelMode, origin: { lat: number; lon: number }, to: { lat: number; lon: number }): TravelEstimate {
   const distance_m = Math.round(distanceM(origin, to));
   const t = TRAVEL[mode];
-  const minutes = distance_m < 50 ? 0 : Math.min(180, Math.ceil((distance_m * t.detour) / t.speed + t.extra));
+  const minutes = distance_m <= AT_STATION_M ? 0 : Math.min(180, Math.ceil((distance_m * t.detour) / t.speed + t.extra));
   return { mode, distance_m, minutes };
 }
 

@@ -405,7 +405,8 @@ private fun CatchCard(board: Board, walkMinutes: Int, now: Long) {
                     contentDescription = null, tint = StatusGrey, modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    if (travel != null) "~${travel.minutes} min ${mode.verb} to ${board.from.short} · ${distanceText(travel.distanceM)}"
+                    if (travel != null && travel.minutes == 0) "At ${board.from.short} · ${distanceText(travel.distanceM)}"
+                    else if (travel != null) "~${travel.minutes} min ${mode.verb} to ${board.from.short} · ${distanceText(travel.distanceM)}"
                     else "$walkMinutes min walk to ${board.from.short}",
                     style = MaterialTheme.typography.bodySmall, color = StatusGrey
                 )

@@ -316,6 +316,19 @@ describe("travel estimate from the rider's location", () => {
     expect(drive.minutes).toBeLessThanOrEqual(11);
     expect(travelEstimate("walk", mv, mv).minutes).toBe(0);
   });
+  it("counts anywhere on the platform as at the station, whatever the mode", () => {
+    // ~76 m (250 ft) off the station's point: the reported Sunnyvale case, where a drive read ~6 min.
+    const platform = { lat: mv.lat + 0.00068, lon: mv.lon };
+    for (const m of TRAVEL_MODES) expect(travelEstimate(m, platform, mv).minutes).toBe(0);
+    const edge = { lat: mv.lat + 0.0022, lon: mv.lon }; // ~245 m
+    expect(travelEstimate("drive", edge, mv).minutes).toBe(0);
+  });
+  it("never makes a walk quicker than the chosen mode once off the station", () => {
+    for (let lat = 0.0023; lat < 0.02; lat += 0.0003) {
+      const o = { lat: mv.lat + lat, lon: mv.lon }, walk = travelEstimate("walk", o, mv).minutes;
+      for (const m of TRAVEL_MODES) expect(travelEstimate(m, o, mv).minutes).toBeLessThanOrEqual(walk);
+    }
+  });
   it("bikes at ~15 km/h, e-bikes at ~20, scooters at ~16, each plus a couple of minutes", () => {
     const walk = travelEstimate("walk", home, mv).minutes, bike = travelEstimate("bike", home, mv).minutes;
     const ebike = travelEstimate("ebike", home, mv).minutes, scooter = travelEstimate("scooter", home, mv).minutes;

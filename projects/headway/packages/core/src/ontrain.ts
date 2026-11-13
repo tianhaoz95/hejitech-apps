@@ -10,7 +10,7 @@
 // While someone is matched, stillOnTrain keeps them matched through station stops (speed 0) until
 // the train gets away from them or arrives.
 import { alertDirection, legDirection } from "./alerts.ts";
-import { delayAt, distanceM, isFresh, liveTrip, progress, relevantAlerts, serviceRuns, STATIONS, station, TIMETABLE, tripProgressStops } from "./schedule.ts";
+import { AT_STATION_M, delayAt, distanceM, isFresh, liveTrip, progress, relevantAlerts, serviceRuns, STATIONS, station, TIMETABLE, tripProgressStops } from "./schedule.ts";
 import { addDays, atLocal, serviceDayStart, zoned } from "./time.ts";
 import type { CommuteDone, OnTrainCard, OnTrainMatch, OnTrainSample, RealtimeSnapshot, Settings, Timetable, Tracked, Trip } from "./types.ts";
 
@@ -21,7 +21,6 @@ export const TRAIN_MIN_MPS = 8.3;
 export const TRAIN_FAST_MPS = 22;
 /** How far from the line (straight between stations) a fix may be. */
 export const CORRIDOR_M = 500;
-export const AT_STATION_M = 250;
 /** How far off its timing a train may be and still match. Without live data trains may be later than we know. */
 export const MATCH_LIVE_MIN = 3;
 export const MATCH_TIMETABLE_MIN = 6;
