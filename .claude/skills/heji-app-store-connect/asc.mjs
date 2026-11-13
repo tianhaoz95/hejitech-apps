@@ -12,6 +12,9 @@
 //                                                               # add the tester, send the invite
 //   asc.mjs upload-screenshots <bundle id> <display type> <png…>  # replace the editable version's
 //                                                               # en-US set (APP_IPHONE_67, APP_IPAD_PRO_3GEN_129…)
+//   asc.mjs upload-creative <bundle id> <header|search> <png>  # iOS 27+ product page header (3840x1646)
+//                                                               # or search results asset (3:2) through the
+//                                                               # Asset Library, placed on the editable version's en-US
 //
 // Exit codes: 0 ok, 1 API error, 2 usage, 3 the app record doesn't exist yet.
 import { createHash, createSign } from "node:crypto";
@@ -211,8 +214,47 @@ try {
       }
       console.log(`== ${displayType} ${name}: ${state}`);
     }
+  } else if (cmd === "upload-creative") {
+    // Uploads an image to the app's Asset Library (category CREATIVE_ASSETS), waits for Apple to process
+    // it, then places it on the editable version's en-US localization as the product page header or the
+    // search results asset, replacing what was placed there. Reviewed with the version.
+    const [id, kind, file] = args;
+    const placementType = { header: "PRODUCT_PAGE_HEADER_ASSET", search: "APP_STORE_SEARCH_RESULTS_ASSET" }[kind];
+    if (!id || !placementType || !file) die("usage: asc.mjs upload-creative <bundle id> <header|search> <png>");
+    const app = await findApp(id);
+    if (!app) die(`no app record for ${id} yet (SKILL.md step 2)`, 3);
+    const versions = (await asc("GET", `v1/apps/${app.id}/appStoreVersions?filter[appStoreState]=PREPARE_FOR_SUBMISSION,DEVELOPER_REJECTED,REJECTED,METADATA_REJECTED`)).data;
+    if (!versions.length) die(`no editable App Store version for ${id}`, 3);
+    const loc = (await asc("GET", `v1/appStoreVersions/${versions[0].id}/appStoreVersionLocalizations`)).data.find((l) => l.attributes.locale === "en-US");
+    if (!loc) die("no en-US localization on the editable version");
+    const lib = (await asc("GET", `v1/apps/${app.id}/assetLibrary`)).data;
+    const bytes = readFileSync(file);
+    const img = (await asc("POST", "v1/appAssetLibraryImages", { data: { type: "appAssetLibraryImages",
+      attributes: { fileName: basename(file), fileSize: bytes.length, category: "CREATIVE_ASSETS", referenceName: `${kind} ${basename(file)} ${new Date().toISOString().slice(0, 10)}` },
+      relationships: { assetLibrary: { data: { type: "appAssetLibraries", id: lib.id } } } } })).data;
+    for (const op of img.attributes.uploadOperations) {
+      const headers = Object.fromEntries((op.requestHeaders ?? []).map((h) => [h.name, h.value]));
+      const put = await fetch(op.url, { method: op.method, headers, body: bytes.subarray(op.offset, op.offset + op.length) });
+      if (!put.ok) die(`upload of ${file} failed: ${put.status} ${await put.text()}`, 1);
+    }
+    await asc("PATCH", `v1/appAssetLibraryImages/${img.id}`, { data: { type: "appAssetLibraryImages", id: img.id, attributes: { uploaded: true } } });
+    let a = {};
+    for (let i = 0; i < 90; i++) {
+      a = (await asc("GET", `v1/appAssetLibraryImages/${img.id}`)).data.attributes;
+      if (a.state === "PREPARE_FOR_SUBMISSION") break;
+      if (a.state === "FAILED") die(`${basename(file)}: FAILED ${JSON.stringify(a.stateDetails ?? a)}`, 1);
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+    if (a.state !== "PREPARE_FOR_SUBMISSION") die(`${basename(file)}: still ${a.state} after 7.5 min`, 1);
+    for (const p of (await asc("GET", `v1/appStoreVersionLocalizations/${loc.id}/placements?limit=50`)).data)
+      if (p.attributes.placementType === placementType) await asc("DELETE", `v1/appAssetLibraryPlacements/${p.id}`);
+    const placed = (await asc("POST", "v1/appAssetLibraryPlacements", { data: { type: "appAssetLibraryPlacements",
+      attributes: { placementType, placementGroup: "DEFAULT_PROFILE" },
+      relationships: { image: { data: { type: "appAssetLibraryImages", id: img.id } },
+        appStoreVersionLocalization: { data: { type: "appStoreVersionLocalizations", id: loc.id } } } } })).data;
+    console.log(`== ${placementType} ${basename(file)} (${a.imageAsset?.width}x${a.imageAsset?.height}): placed, ${placed.attributes.state}`);
   } else {
-    die("usage: asc.mjs <GET|POST|PATCH|DELETE> <path> [body] | status <bundle id> | register-bundle <id> <name> | invite-tester <bundle id> <email> [group] | upload-screenshots <bundle id> <display type> <png…>");
+    die("usage: asc.mjs <GET|POST|PATCH|DELETE> <path> [body] | status <bundle id> | register-bundle <id> <name> | invite-tester <bundle id> <email> [group] | upload-screenshots <bundle id> <display type> <png…> | upload-creative <bundle id> <header|search> <png>");
   }
 } catch (e) {
   die(e.message, 1);

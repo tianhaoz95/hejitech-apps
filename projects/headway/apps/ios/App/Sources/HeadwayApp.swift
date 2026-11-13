@@ -103,5 +103,20 @@ struct MainTabs: View {
                 .badge(model.family?.invites.count ?? 0)
             Tab("Settings", systemImage: "gearshape", value: "settings") { SettingsView() }
         }
+        .modifier(ReadableContentWidth())
+    }
+}
+
+/// On wide windows (iPad, the unfolded iPhone Duo) lists and scroll views keep a readable width,
+/// centered. Narrower windows (every iPhone) pass nil, which keeps the system's own margins (a 0 would
+/// remove them). Always applied (never conditionally) so folding or resizing doesn't reset the tabs.
+struct ReadableContentWidth: ViewModifier {
+    var maxWidth: CGFloat = 760
+
+    func body(content: Content) -> some View {
+        GeometryReader { geo in
+            let margin = (geo.size.width - maxWidth) / 2
+            content.contentMargins(.horizontal, margin > 20 ? margin : nil, for: .scrollContent)
+        }
     }
 }

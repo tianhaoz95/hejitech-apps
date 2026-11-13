@@ -95,8 +95,24 @@ Screenshots: `scripts/store_screenshots.sh <project>` takes them in simulators (
 Max, 13" iPad Pro) from a Debug build on the local stack, one launch per shot through the app's own
 Debug launch arguments (Tradeboard and G2 Digest have shot lists; add one for another app), then
 `node $A upload-screenshots com.hejitech.<slug> APP_IPHONE_67 <png…>` (and `APP_IPAD_PRO_3GEN_129`
-for iPad apps) replaces that set and waits for Apple's COMPLETE. The owner's iPhone 13 is 6.1", too
-small for the required size. Look at every shot before uploading: taking them found two real bugs.
+for iPad apps, 2064x2752; `APP_IPHONE_DUO` for iPhone Duo, 2853x2007 inner screen) replaces that set
+and waits for Apple's COMPLETE. The owner's iPhone 13 is 6.1", too small for the required size. Look
+at every shot before uploading: taking them found two real bugs.
+
+- **iPhone Duo** (required from April 2027): the app must be built with the iOS 27.1+ SDK to use the
+  unfolded display (older SDKs letterbox), so the TestFlight workflow runs on `runs-on: xcode-27` with
+  `xcode-version: "27.2"`. simctl can't unfold the Duo simulator: unfold it in Device Hub (ask the owner
+  if Device Hub access is refused), then `SHOT_DEVICES="iPhone Duo" scripts/store_screenshots.sh <p>`;
+  the inner screen is natively landscape, and the tab bar turns vertical.
+- **iPad**: `TARGETED_DEVICE_FAMILY: "1,2"` plus all four `UISupportedInterfaceOrientations~ipad`; a
+  `ReadableContentWidth` modifier on the TabView (contentMargins, `nil` on iPhone — a 0 removes the
+  list's own margins) keeps lists readable on iPad and the unfolded Duo. iPad screenshots only go live
+  with a build that supports iPad.
+- **Header and search results** (iOS 27+ product page): `node scripts/store_creatives.mjs <p>` renders
+  `AppStore/creative/{header,search-results}.png` (opaque PNG, 3840x1646 and 3840x2560, key content in
+  Apple's centered safe areas; `--safe` outlines them) from the brand and the iPhone shots; then
+  `node $A upload-creative <bundle id> header|search <png>` uploads to the Asset Library and places it
+  on the editable version (placement group `DEFAULT_PROFILE`).
 
 ## 6. Hand back
 
