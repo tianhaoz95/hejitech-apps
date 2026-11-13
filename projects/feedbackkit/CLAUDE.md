@@ -306,8 +306,10 @@ deep links (e.g. `/projects/abc`) needs SPA fallback routing to
 `index.html`, since there's no server to resolve those paths.
 
 The web dashboard is deployed to **Cloudflare Workers Static Assets**
-(`https://feedback-kit.hejitech.workers.dev`) via Git integration using
-`wrangler.jsonc`. `base` in `web/vite.config.ts` dynamically resolves to `"/"`
+(`https://feedback-kit.hejitech.workers.dev`) by Cloudflare Workers Builds on every push to `main`
+touching `projects/feedbackkit/`: it runs `scripts/deploy-dashboard.sh` (builds `web/` with the
+public Supabase values from `backend.env`, then `wrangler deploy` with `wrangler.jsonc`; other
+branches get `--preview`, a version upload). `base` in `web/vite.config.ts` dynamically resolves to `"/"`
 for root-domain hosting. PR builds become Cloudflare Previews, which ignore
 `not_found_handling`, so `web/worker.js` (runs only when no asset matches)
 serves `index.html` for page navigations — without it every deep link on a

@@ -33,9 +33,9 @@ npm run deploy                                                       # https://h
 curl -s https://hq.hejitech.workers.dev/api/health-check
 ```
 
-Then link Workers Builds in the dashboard like the other projects: repo root, build `npm ci`,
+Workers Builds is linked (since 2026-11-13) like the other projects: repo root, build `npm ci`,
 deploy `npm run deploy -w @hq/web`, non-production `npm run upload-version -w @hq/web`, watch path
-`projects/hq/*`.
+`projects/hq/*`. Every push to `main` touching `projects/hq/` redeploys the Worker.
 
 ## 4. A workspace for this repo
 

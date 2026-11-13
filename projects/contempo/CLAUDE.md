@@ -86,8 +86,9 @@ lists the only files allowed to hold the project's URL/key. Rules for schema cha
   to this repo, so put a `FeedbackKit: <id>` trailer on the fix commit and run
   `npx feedbackkit-cli link <id> --commit <sha> --summary "…"`. There is no feedback table or
   admin page in Contempo anymore (dropped 2026-10-17).
-- **Deploy:** the Worker deploys from the repo with `npm run deploy -w @contempo/web` (Workers
-  Builds can run the same on push). `.github/workflows/contempo-ci.yml` typechecks, tests and
+- **Deploy:** Workers Builds deploys the Worker on every push to `main` touching
+  `projects/contempo/` (`npm ci`, then `npm run deploy -w @contempo/web`; other branches
+  `npm run upload-version -w @contempo/web`); the same command works by hand. `.github/workflows/contempo-ci.yml` typechecks, tests and
   builds it.
 - **Package names:** Android `applicationId` is `com.hejitech.contempoapp` (Play Console locked
   it; Gradle `namespace` stays `com.hejitech.contempo`), Wear `com.hejitech.contempoappwear`,

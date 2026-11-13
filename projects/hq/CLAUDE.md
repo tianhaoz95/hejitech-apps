@@ -151,5 +151,5 @@ version (`npm run build -w @hejitech/hq` bundles `@hq/core` and js-yaml into `di
 package has no dependencies and runs on Node 20), checks the tarball on Node 20 and publishes it as
 `@hejitech/hq` to npm (provenance, with the repo's shared npm token `NPM_TOKEN`) and as
 `@<repo owner>/hq` to GitHub Packages (the workflow's own token). Run it by hand without a tag to
-rehearse from a branch; it publishes nothing. Setup: `docs/DEPLOY.md` §7. The Worker deploys on push once Workers Builds is linked (`docs/DEPLOY.md`).
+rehearse from a branch; it publishes nothing. Setup: `docs/DEPLOY.md` §7. The Worker deploys on every push to `main` touching `projects/hq/` (Workers Builds, `docs/DEPLOY.md`).
 App Store steps and copy: `docs/app-store.md`.
