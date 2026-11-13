@@ -182,6 +182,17 @@ A watch app goes in the **same** Play app as the phone app, never a listing of i
 - Wear modules need `uses-feature android.hardware.type.watch` and the
   `com.google.android.wearable.standalone` meta-data; target API 36 like the phone.
 
+### Promo video (store listing)
+
+Play takes only a YouTube link (Main store listing → Video), public or **unlisted**, ads off; landscape
+reads best. Headway and FitLoop's (2026-11-13) are the Android Debug app on the emulator with the local
+stack: `branding/promo-videos/scripts/play-video-record.mjs <p>` (adb screenrecord; same demo data as
+the App Store previews, `app-preview-stage.mjs`), edited as the 1920x1080 compositions `<p>-play` in
+`branding/promo-videos/src/app-preview`, re-encoded to H.264 high + 256k AAC, uploaded unlisted to the
+HEJI TECH channel through Claude in Chrome (`youtube-channel` memory). Show the Android app, not iPhone
+footage. Studio's daily upload limit drops an upload silently at the Visibility step ("Daily upload
+limit reached"): check the channel's video list before taking the link.
+
 ## Pitfalls seen
 
 - `~/Downloads` is behind macOS privacy: a sandboxed shell hangs listing it. Move a downloaded key
