@@ -1,0 +1,39 @@
+FitLoop turns the plan your AI agent writes into something you can follow, set by set and meal by meal. Pay once and everything below is yours: no subscription, no in-app purchases, no ads. FitLoop has no AI of its own and no AI bill: it works with the assistant you already use.
+
+BRING YOUR OWN COACH
+• Connect Claude or another AI assistant over MCP from Settings (one tap copies the address)
+• Your agent interviews you about your goals, injuries and limits, equipment, schedule and diet, then writes a plan: the workouts and meals for every day of the week
+• It writes new versions as you go; FitLoop keeps every version on the Plan tab
+
+TODAY
+• The day's workout and meals in one list, with calories and protein against your targets
+• Check off a meal, or mark it "ate less" or "ate more"
+• Reminders for workouts and meals, an evening nudge and a weekly review, each one a switch
+
+THE WORKOUT PLAYER
+• Step through every set: the exercise, the target reps and load, and a rest timer that starts itself
+• How-to cues and animated demonstrations for each exercise
+• Swap an exercise for the alternative your agent planned, or skip it, and it's recorded for your agent
+• Heart rate from your watch while you train, and the workout saved to Apple Health
+
+TELL YOUR AGENT, RIGHT THEN
+Too hard, knee hurt, still hungry: leave a note on any set, workout or meal. Your agent reads it next time, replies in the Feedback tab and adjusts the next plan. You change a day (skip, swap, a smaller portion); your agent writes the plan.
+
+PLAN AND PROGRESS
+• Plan: your goals, what the plan works around, daily targets and the whole week ahead
+• Progress: workouts and meals done over the last 4 weeks, your streak, and vitals such as weight, resting heart rate and sleep
+
+ON YOUR WRIST
+• A watch app with the current exercise, the set, the rest timer and your heart rate; mark a set done from your wrist
+• A watch face complication with today's progress
+
+IN VIEW ON EVEN G2 GLASSES
+Even Realities G2 glasses and the R1 ring show the exercise, the set and a rest timer that starts itself, with demonstrations and meals that check off with a tap. Glasses are optional.
+
+ALSO ON THE WEB
+The same account works in the FitLoop web app, for when you want a bigger screen.
+
+YOUR DATA, YOUR SWITCHES
+Live heart rate, a daily Apple Health summary, manual entries and progress photos are each a switch in Settings, and so is everything your agent may see. Health data is never used for advertising. No ads, no analytics, no tracking. Delete everything from Settings at any time.
+
+FitLoop shows the plan your own agent writes. It isn't medical advice: talk to a doctor before starting a new exercise or diet program.

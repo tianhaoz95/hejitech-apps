@@ -1,0 +1,18 @@
+{
+  "accent": "#FF7A3D",
+  "out": "screenshots/iphone-6.9-captioned",
+  "slides": [
+    { "kind": "phone", "images": ["screenshots/iphone-6.9/01-today.png"], "badge": "One price · No subscription",
+      "title": "Your agent's plan, <em>ready</em>", "sub": "Bring Claude or another assistant: it writes your workouts and meals, FitLoop runs them" },
+    { "kind": "phone", "images": ["screenshots/iphone-6.9/02-workout.png"],
+      "title": "Follow it <em>set by set</em>", "sub": "Targets, rest timers, how-to cues and demos for every exercise" },
+    { "kind": "phone", "images": ["screenshots/iphone-6.9/03-plan.png"],
+      "title": "Built around <em>you</em>", "sub": "Your goals, injuries, schedule and diet, with every version of the plan kept" },
+    { "kind": "phone", "images": ["screenshots/iphone-6.9/04-progress.png"],
+      "title": "See it <em>add up</em>", "sub": "Workouts, meals and vitals over four weeks, for you and your agent" },
+    { "kind": "watch", "images": ["screenshots/watch-ultra/01-workout.png"],
+      "title": "Heart rate on your <em>wrist</em>", "sub": "The set, the rest timer and your heart rate; mark sets done from your watch" },
+    { "kind": "glasses", "images": ["../../../docs/even-hub/screenshots/2-workout-timer.png", "../../../docs/even-hub/screenshots/4-how-to.png"],
+      "title": "In view on <em>Even G2</em>", "sub": "The exercise, the set and a rest timer on Even Realities G2 glasses (sold separately)" }
+  ]
+}

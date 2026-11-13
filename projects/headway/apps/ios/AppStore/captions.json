@@ -1,0 +1,18 @@
+{
+  "accent": "#3EE07A",
+  "out": "screenshots/iphone-6.9-captioned",
+  "slides": [
+    { "kind": "phone", "images": ["screenshots/iphone-6.9/01-trains.png"], "badge": "One price · No subscription",
+      "title": "Know when to <em>leave</em>", "sub": "Live Caltrain departures, delays and a leave-by countdown for every train" },
+    { "kind": "phone", "images": ["screenshots/iphone-6.9/02-commute.png"],
+      "title": "Set your commute <em>once</em>", "sub": "Morning and evening trips, and alerts only for the trains you take" },
+    { "kind": "phone", "images": ["screenshots/iphone-6.9/03-family.png"],
+      "title": "Follow your <em>family's</em> trains", "sub": "Their train on your Lock Screen, and only what each person chooses to share" },
+    { "kind": "watch", "images": ["screenshots/watch-ultra/01-board.png"],
+      "title": "On your <em>wrist</em>", "sub": "The board on your watch, and complications that count down to when you need to go" },
+    { "kind": "glasses", "images": ["../../../docs/even-hub/screenshots/1-board.png", "../../../docs/even-hub/screenshots/3-tracking.png"],
+      "title": "Heads-up on <em>Even G2</em>", "sub": "The next trains and your ride in view on Even Realities G2 glasses (sold separately)" },
+    { "kind": "phone", "images": ["screenshots/iphone-6.9/04-settings.png"],
+      "title": "Quiet and <em>private</em>", "sub": "Priority alerts only, no ads, no tracking. Location is optional and never stored" }
+  ]
+}
