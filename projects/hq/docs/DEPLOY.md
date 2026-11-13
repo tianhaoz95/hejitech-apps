@@ -77,6 +77,13 @@ other iOS projects.
 - **OAuth-capable MCP clients**: add `https://hq.hejitech.workers.dev/mcp`; on the consent page an
   admin or approver picks the workspace and allows it.
 - **Headless agents**: a workspace agent token as `Authorization: Bearer hq_agt_…` on `/mcp`.
+- **Sweeps without a runner**: in any connected session, say "do a sweep for HQ" (or use the
+  server's `sweep` prompt, `/hq:sweep` in Claude Code). The agent calls `start_sweep`, answers
+  waiting requests, runs the scouts that are due and the CEO's ranking, then `finish_sweep`. For a
+  routine, make a scheduled task in the Claude desktop app, in a session opened on this repo with
+  HQ's MCP server connected, with the prompt "Do a sweep for HQ" (daily, say). The schedules in
+  `.hq/HQ.md` still decide which scouts are due, so a sweep more often than that only does what's
+  due. Building approved cards still needs a runner.
 - **A different CEO**: set `agents.ceo` in the root `.hq/HQ.md` and give the runner a template,
   e.g. `HQ_AGENT_CODEX_CMD='codex exec --full-auto "$(cat {prompt_file})"'` (untested).
 

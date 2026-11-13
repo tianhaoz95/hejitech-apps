@@ -39,6 +39,8 @@ import {
   type RepoPolicy,
   type Role,
   type Status,
+  type SweepPlan,
+  type SweepRun,
 } from "@hq/core";
 
 export interface Env {
@@ -808,6 +810,114 @@ export async function getRun(x: Ctx, c: Caller, id: string) {
   return toRun(r);
 }
 
+// ── sweeps (an MCP agent does the due scout and CEO work in its own session) ─────────────────
+
+/** When a run of this kind (and scout, project) last started, cancelled ones aside. */
+async function lastRun(x: Ctx, ws: string, kind: string, scout: string | null, project: string | null) {
+  let q = x.db.from("runs").select("created_at").eq("workspace_id", ws).eq("kind", kind).neq("status", "cancelled");
+  q = scout === null ? q.is("scout", null) : q.eq("scout", scout);
+  q = project === null ? q.is("project", null) : q.eq("project", project);
+  const r = must(await q.order("created_at", { ascending: false }).limit(1).maybeSingle(), "last run") as { created_at: string } | null;
+  return r ? new Date(r.created_at) : null;
+}
+
+/** Every scout in the policy with the project it runs for (the root's are "repo-wide"). */
+const allScouts = (policy: RepoPolicy) => [
+  ...policy.scouts.map((s) => ({ ...s, project: "repo-wide", dir: null as string | null })),
+  ...Object.values(policy.projects).flatMap((p) => p.scouts.map((s) => ({ ...s, project: p.name, dir: p.dir as string | null }))),
+];
+
+const sweeper = (c: Caller) => `sweep:${c.name}`;
+
+/**
+ * start_sweep: the scout runs that are due (or the ones named, or all with force), plus the CEO when
+ * it's due, become runs this caller holds ("running", runner sweep:<name>), so the cron and runners
+ * leave them alone and the schedule and budget count them. A queued run (enqueued by the cron, no
+ * runner has it yet) is taken over; one a runner or another sweep already holds is skipped.
+ */
+export async function startSweep(x: Ctx, c: Caller, o: { project?: string | null; scouts?: string[]; force?: boolean; ceo?: boolean } = {}): Promise<SweepPlan & { context: Context }> {
+  need(c, "sweep");
+  const ws = c.workspaceId;
+  const w = await getWorkspace(x, ws);
+  const policy = await requirePolicy(x, ws);
+  if (w.paused) throw new HttpError(423, "HQ is paused in this workspace: nothing to sweep until an admin resumes it");
+  const spent = await spentThisWeek(x, ws);
+  if (overBudget(spent, policy)) throw new HttpError(402, `this week's budget is spent ($${spent} of $${policy.weekly_budget_usd}): scouts wait until the week resets (Monday, UTC)`);
+  const project = o.project && o.project !== "all" ? o.project : null;
+  if (project && project !== "repo-wide" && !policy.projects[project]) throw new HttpError(400, `unknown project ${project}`);
+  const named = new Set(o.scouts ?? []);
+  const inScope = allScouts(policy).filter((s) => !project || s.project === project);
+  const unknown = [...named].filter((n) => !inScope.some((s) => s.name === n));
+  if (unknown.length) throw new HttpError(400, `no scout ${unknown.join(", ")}${project ? ` in ${project}` : ""}; scouts: ${[...new Set(inScope.map((s) => s.name))].join(", ") || "none"}`);
+  const at = new Date();
+  const runs: SweepRun[] = [];
+  const skipped: SweepPlan["skipped"] = [];
+  const open = (must(await x.db.from("runs").select("*").eq("workspace_id", ws).in("kind", ["scout", "ceo"]).in("status", ["queued", "running"]), "open runs") as Record<string, unknown>[]).map(toRun);
+  const agent = `${c.name} (sweep)`;
+  // Take the queued run if there is one, else start one; null when someone else holds it.
+  const take = async (kind: "scout" | "ceo", scout: string | null, proj: string | null, cardLimit: number): Promise<string | null> => {
+    const existing = open.find((r) => r.kind === kind && (r.scout ?? "") === (scout ?? "") && (r.project ?? "") === (proj ?? ""));
+    if (existing?.status === "running") return null;
+    if (existing) {
+      const got = must(await x.db.from("runs").update({ status: "running", runner: sweeper(c), agent, started_at: now() }).eq("id", existing.id).eq("status", "queued").select("id"), "take run") as { id: string }[];
+      return got.length ? existing.id : null;
+    }
+    const id = newRunId();
+    must(
+      await x.db.from("runs").insert({ id, workspace_id: ws, kind, project: proj, scout, args: kind === "scout" ? { card_limit: cardLimit } : {}, runs_on: "any", agent, status: "running", runner: sweeper(c), started_at: now(), requested_by: c.name }),
+      "start run"
+    );
+    return id;
+  };
+  for (const s of inScope) {
+    if (named.size && !named.has(s.name)) continue;
+    // Queued by the cron and waiting for a runner: that's due work, whatever the last-run time says.
+    const queued = open.some((r) => r.kind === "scout" && r.status === "queued" && r.scout === s.name && r.project === s.project);
+    const due = o.force || queued || named.has(s.name) || isDue(s.schedule, await lastRun(x, ws, "scout", s.name, s.project), at);
+    if (!due) {
+      skipped.push({ scout: s.name, project: s.project, reason: s.schedule === "manual" ? "manual: name it or pass force" : `${s.schedule}, not due yet` });
+      continue;
+    }
+    const id = await take("scout", s.name, s.project, s.card_limit);
+    if (!id) skipped.push({ scout: s.name, project: s.project, reason: "a runner or another sweep is doing it now" });
+    else runs.push({ id, kind: "scout", scout: s.name, project: s.project, project_dir: s.dir, card_limit: s.card_limit });
+  }
+  // The CEO ranks the whole inbox: in a sweep of everything when it's due, or when asked (ceo: true).
+  const wantCeo = o.ceo === true || (o.ceo !== false && !named.size && !project && (o.force || open.some((r) => r.kind === "ceo" && r.status === "queued") || isDue(policy.ceo_schedule, await lastRun(x, ws, "ceo", null, null), at)));
+  if (wantCeo) {
+    const id = await take("ceo", null, null, 0);
+    if (id) runs.push({ id, kind: "ceo", scout: null, project: null, project_dir: null, card_limit: 0 });
+    else skipped.push({ scout: "ceo", project: "repo-wide", reason: "a runner or another sweep is doing it now" });
+  }
+  const requests = (await listRequests(x, c, { status: ["open", "claimed"], limit: 20 }))
+    .filter((r) => isClaimable(r, at))
+    .filter((r) => !project || !r.project || r.project === project)
+    .map((r) => ({ id: r.id, project: r.project, body: r.body }));
+  await audit(x, c, "sweep.start", null, { runs: runs.map((r) => r.id), skipped: skipped.length, requests: requests.length });
+  return { runs, skipped, requests, context: await getContext(x, c, null) };
+}
+
+/** finish_sweep: close the runs this caller took with start_sweep. */
+export async function finishSweep(x: Ctx, c: Caller, items: { id: string; status?: string; summary?: string; cost_usd?: number }[]) {
+  need(c, "sweep");
+  if (!Array.isArray(items) || !items.length) throw new HttpError(400, "runs: one entry per run from start_sweep");
+  const ws = c.workspaceId;
+  const asRunner: Caller = { role: "runner", name: sweeper(c), workspaceId: ws };
+  const finished: { id: string; status: string }[] = [];
+  for (const it of items) {
+    const row = must(await x.db.from("runs").select("*").eq("workspace_id", ws).eq("id", String(it?.id ?? "")).maybeSingle(), "run");
+    if (!row) throw new HttpError(404, `no run ${it?.id}`);
+    const run = toRun(row);
+    if (run.runner !== sweeper(c)) throw new HttpError(403, `run ${run.id} isn't this sweep's`);
+    if (run.status !== "running") throw new HttpError(409, `run ${run.id} is already ${run.status}`);
+    const status = it.status ?? "done";
+    if (status !== "done" && status !== "failed") throw new HttpError(400, "status: done or failed");
+    await finishRun(x, asRunner, run.id, { status, summary: String(it.summary ?? ""), cost_usd: Number(it.cost_usd ?? 0) || 0 });
+    finished.push({ id: run.id, status });
+  }
+  return { finished };
+}
+
 // ── scheduler (cron) ─────────────────────────────────────────────────────────────────────────
 
 /** Enqueues every due scout, the CEO and the health check in one workspace. */
@@ -818,16 +928,9 @@ export async function scheduleWorkspace(x: Ctx, ws: string, at = new Date()) {
   const policy = w.policy;
   const over = overBudget(await spentThisWeek(x, ws), policy);
   const enqueued: string[] = [];
-  const last = async (kind: string, scout: string | null, project: string | null) => {
-    let q = x.db.from("runs").select("created_at").eq("workspace_id", ws).eq("kind", kind).neq("status", "cancelled");
-    q = scout === null ? q.is("scout", null) : q.eq("scout", scout);
-    q = project === null ? q.is("project", null) : q.eq("project", project);
-    const r = must(await q.order("created_at", { ascending: false }).limit(1).maybeSingle(), "last run") as { created_at: string } | null;
-    return r ? new Date(r.created_at) : null;
-  };
+  const last = (kind: string, scout: string | null, project: string | null) => lastRun(x, ws, kind, scout, project);
   if (!over) {
-    const scouts = [...policy.scouts.map((s) => ({ ...s, project: "repo-wide" })), ...Object.values(policy.projects).flatMap((p) => p.scouts.map((s) => ({ ...s, project: p.name })))];
-    for (const s of scouts) {
+    for (const s of allScouts(policy)) {
       if (isDue(s.schedule, await last("scout", s.name, s.project), at)) {
         await enqueueRun(x, ws, { kind: "scout", scout: s.name, project: s.project, args: { card_limit: s.card_limit }, agent: policy.agents.scout, requested_by: "schedule" });
         enqueued.push(`scout ${s.name} (${s.project})`);

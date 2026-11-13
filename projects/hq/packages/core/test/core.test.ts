@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SKILL_DIRS, scoutTask, sweepMarkdown, type SweepPlan } from "../src/index.ts";
 import {
   buildContext,
   buildPolicy,
@@ -284,5 +285,44 @@ describe("requests", () => {
     expect(can("viewer", "request") || can("agent", "request") || can("runner", "request")).toBe(false);
     expect(can("agent", "answer_request") && can("runner", "answer_request")).toBe(true);
     expect(can("admin", "answer_request") || can("viewer", "answer_request")).toBe(false);
+  });
+});
+
+describe("sweeps", () => {
+  const plan = (over: Partial<SweepPlan> = {}): SweepPlan => ({ runs: [], skipped: [], requests: [], ...over });
+  it("a scout's task looks the skill up itself unless the runner already did", () => {
+    const lookup = scoutTask({ scout: "fix-ci", project: "repo-wide", projectDir: null, cardLimit: 2 });
+    for (const d of SKILL_DIRS) expect(lookup).toContain(`${d}/fix-ci/SKILL.md`);
+    expect(lookup).toContain("At most 2 cards");
+    expect(scoutTask({ scout: "fix-ci", project: "alpha", projectDir: "apps/alpha", cardLimit: 1, skillPath: ".claude/skills/fix-ci/SKILL.md" })).toContain("Follow the skill at .claude/skills/fix-ci/SKILL.md in HEADLESS MODE");
+    expect(scoutTask({ scout: "flaky", project: "alpha", projectDir: null, cardLimit: 1, skillPath: null })).toContain(`There's no skill named "flaky"`);
+  });
+  it("the sweep lists requests first, then scouts, then the CEO, and how to close every run", () => {
+    const md = sweepMarkdown(plan({
+      runs: [
+        { id: "run-a", kind: "scout", scout: "ci", project: "alpha", project_dir: "apps/alpha", card_limit: 3 },
+        { id: "run-c", kind: "ceo", scout: null, project: null, project_dir: null, card_limit: 0 },
+      ],
+      requests: [{ id: "req-20261113-abcd", project: null, body: "A new logo" }],
+      skipped: [{ scout: "deps", project: "repo-wide", reason: "weekly, not due yet" }],
+    }), "# HQ context: x");
+    const at = (t: string) => md.indexOf(t);
+    expect(at("req-20261113-abcd")).toBeGreaterThan(0);
+    expect(at("req-20261113-abcd")).toBeLessThan(at("Scout ci (alpha), run run-a"));
+    expect(at("Scout ci (alpha)")).toBeLessThan(at("CEO, run run-c"));
+    expect(md).toContain('get_context with project "alpha"');
+    expect(md).toContain("finish_sweep");
+    expect(md).toContain("run-a, run-c");
+    expect(md).toContain("deps (repo-wide): weekly, not due yet");
+    expect(md.endsWith("# HQ context: x")).toBe(true);
+  });
+  it("an empty sweep says there's nothing to do", () => {
+    const md = sweepMarkdown(plan(), "ctx");
+    expect(md).toContain("Nothing is due");
+    expect(md).not.toContain("finish_sweep");
+  });
+  it("agents, runners, admins and approvers sweep; viewers don't", () => {
+    for (const r of ["agent", "runner", "admin", "approver"] as const) expect(can(r, "sweep")).toBe(true);
+    expect(can("viewer", "sweep")).toBe(false);
   });
 });

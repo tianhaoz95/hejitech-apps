@@ -21,7 +21,8 @@ monorepo is its first customer.
 packages/core/      @hq/core: the contracts in code: card schema + lifecycle (card.ts), on-demand
                     requests (request.ts), the safe markdown renderer and figure frame (markdown.ts),
                     HQ.md policy merge, tiers, verb checks, budget, schedules (policy.ts),
-                    get_context (context.ts), who may do what (roles.ts). Shared by the Worker and the CLI.
+                    get_context (context.ts), who may do what (roles.ts), the scout and CEO tasks and
+                    the sweep's instructions (sweep.ts). Shared by the Worker and the CLI.
 services/web/       @hq/web: Cloudflare Worker (KV for OAuth, hourly cron) on the shared Supabase
                     project (schema `hq`, bucket `hq`; supabase/schemas/hq/schema.sql)
   src/worker/       store.ts (every rule, workspace scoping and role check), api.ts (people:
@@ -56,7 +57,7 @@ npm run -s hq -- verb tradeboard health  # run a verb as the runner would
 # Local: `supabase start` (repo root), then the Worker on 127.0.0.1:8799 with email sign-in
 echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > projects/hq/services/web/.dev.vars
 npm run dev:worker -w @hq/web
-node projects/hq/scripts/test-api.mjs     # 27 steps: two teams, roles, isolation, the whole loop
+node projects/hq/scripts/test-api.mjs     # 28 steps: two teams, roles, isolation, the whole loop
 
 # Sign in once per machine (asks for the address, then the browser or a pasted token), then sync
 npm run -s hq -- login && npm run -s hq -- sync
@@ -91,6 +92,17 @@ reach any screen without taps (`-production` for the hosted HQ, `-serverURL` for
   finished builds enqueue reviews; owner comments enqueue replies. Runners claim them
   (`/api/runs/claim`), respecting the kill switch, the weekly budget (scouts/CEO only), WIP per
   project and the open-PR limit.
+- **Sweeps** (`start_sweep` / `finish_sweep` on MCP, `sweep.ts` + `startSweep` in store.ts): any
+  connected agent does the routine work in its own session, no runner: "do a sweep for HQ", the
+  `sweep` MCP prompt, or a scheduled task in the Claude app. `start_sweep` turns the due scouts (a
+  scout the cron queued counts as due; `scouts` names some, `force` runs all) and the CEO, when due
+  and the sweep covers everything, into runs the caller holds (`running`, runner `sweep:<name>`), so
+  runners skip them and schedule and budget count them; it returns the steps (open requests first,
+  then each scout's task, the CEO, then `finish_sweep`) with the repo context. Only that caller can
+  close them; unclosed ones fail after 6 hours. Refused while paused or over budget. Scout and CEO
+  text lives in `@hq/core`, so the runner's launch prompts and a sweep say the same thing. A sweep
+  has no deny-list: it's told to stay read only, and the server's tier and approval checks still
+  hold.
 - **Workspaces**: every row has a `workspace_id`; people need a role in it (`memberRole`), tokens
   belong to one. RLS lets members read their workspaces' rows directly; every write goes through the
   Worker. A synced policy must name the workspace's repo. Invites are single-use, expiring codes.

@@ -1,5 +1,7 @@
 // Launch prompts for each role. HQ writes the first prompt of every scheduled run, with the context
-// included, so the agent never has to discover .hq/ on its own (PRD §7, way in #1).
+// included, so the agent never has to discover .hq/ on its own (PRD §7, way in #1). The scout and
+// CEO tasks come from @hq/core (sweep.ts): a sweep over MCP hands out the same text.
+import { CARD_FORMAT, CEO_TASK, scoutTask } from "@hq/core";
 
 export interface CardDetail {
   card: {
@@ -30,10 +32,6 @@ export interface RequestDetail {
   cards: { id: string; title: string; status: string; tier: string; project: string }[];
 }
 
-/** How a card is written, for every role that writes one. */
-const CARD_FORMAT = `- why, plan and verify are markdown: short paragraphs, lists, tables, code. Raw HTML in them is shown as text.
-- When words aren't enough (an architecture, a data flow, a screen layout, options to choose from), add figures to the card: static HTML/CSS/inline SVG with an id, a title and a height, placed in the text with ![title](figure:<id>) on its own line. No scripts, nothing from the network, no links. Use var(--fg), var(--muted), var(--panel), var(--soft), var(--line), var(--accent), var(--ok), var(--warn), var(--bad) for colours so it reads in light and dark, and draw for a phone's width (an SVG with a viewBox scales).`;
-
 const FOOTER = `
 When you finish, end your reply with one line starting "SUMMARY:" that says what you did in one sentence.`;
 
@@ -43,18 +41,7 @@ export function scoutPrompt(o: { scout: string; project: string; projectDir: str
 ${o.context}
 
 ## Your task
-Scout: ${o.scout}. Scope: ${o.project === "repo-wide" ? "the whole repository" : `project ${o.project} (${o.projectDir})`}.
-${o.skillPath ? `Follow the skill at ${o.skillPath} in HEADLESS MODE: do its investigation exactly as written, but instead of building a review site, asking questions or changing anything, turn each finding into a card with the hq MCP tool create_proposal.` : `There's no skill named "${o.scout}"; investigate that area (${o.scout}) with read-only commands and turn real findings into cards with create_proposal.`}
-
-Rules for this run:
-- Read only. Don't edit files, commit, push, release or deploy. Don't open review sites or ask the user anything.
-- At most ${o.cardLimit} cards. Fewer, stronger cards beat many weak ones. Zero cards is a fine result when nothing is wrong.
-- Every card needs evidence: links to CI runs, log excerpts, measured numbers with their source, file paths with line numbers.
-- Set dedupe_key to a stable id for the finding (e.g. "${o.scout}:<workflow>:<failure-signature>") so tomorrow's run doesn't duplicate it.
-- Check the open cards and recent decisions above first: comment on an existing card instead of duplicating it, and don't re-propose what the owner rejected unless something changed.
-- Pick the tier honestly: L0 only for trivial, reversible, tested changes; L1 for fixes you'd build then ask; L2 for features or anything needing a design choice; L3 for releases, secrets, data deletion.
-- source.scout must be "${o.scout}".
-${CARD_FORMAT}
+${scoutTask(o)}
 ${FOOTER}`;
 }
 
@@ -95,13 +82,7 @@ export function ceoPrompt(o: { context: string }) {
 ${o.context}
 
 ## Your task
-1. list_cards with status ["proposed", "discussing"]. For each, get_card if you need detail.
-2. Withdraw duplicates and cards that are no longer true (withdraw_card, say why). Check the repo when a card's claim is cheap to verify.
-3. rank_cards: give every remaining proposed card a priority (0–100). Rank by value to the repo's users and its reliability, then cost. Reliability problems on main and release paths come first.
-4. If the recent decisions show a pattern (the owner keeps rejecting a kind of card for the same reason), propose ONE "policy" card (tier L3, kind "policy", project "repo-wide") that adds that guidance to the right .hq/HQ.md, quoting the rejections as evidence.
-5. Write a short memo (at most 12 lines): what moved, what's stuck, what you'd do next. Put it after "MEMO:" in your reply.
-
-Don't edit files, commit or run verbs.
+${CEO_TASK}
 ${FOOTER}`;
 }
 

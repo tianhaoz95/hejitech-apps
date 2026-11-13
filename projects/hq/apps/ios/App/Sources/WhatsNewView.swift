@@ -3,8 +3,12 @@ import SwiftUI
 /// The in-app What's New. `scripts/cut_release.sh hq` refuses until `currentVersion` and the top
 /// release entry describe the version being released (projects/hq/release.env).
 enum WhatsNew {
-    static let currentVersion = "0.2.0"
+    static let currentVersion = "0.3.0"
     static let releases: [(version: String, notes: [String])] = [
+        (version: "0.3.0", notes: [
+            "Sweeps: say “Do a sweep for HQ” to any agent connected to HQ, or schedule it in the Claude app. It answers waiting requests, runs the scouts that are due and ranks your inbox, right in that session, with no runner to keep going.",
+            "Sweeps show up in Runs like any other run, with what each scout found, and count toward the schedule and the weekly budget.",
+        ]),
         (version: "0.2.0", notes: [
             "Ask HQ: tap the new bubble to ask for a proposal in your own words, like “Propose a redesign of the logo”. An agent looks into the repo and answers with a card, a question or a reason, and you follow up in the thread.",
             "Requests has its own tab, and cards you asked for are marked and never held back in the inbox.",

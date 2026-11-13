@@ -79,3 +79,14 @@ v0.1 (the owner said "use your best judgement"; each is easy to change).
   session) under the page's CSP, and the app in a web view with JavaScript off and navigation
   refused. Lists carry figures without their drawing. Mermaid was left out: it needs a script
   renderer on both surfaces, and sandboxed SVG covers the same need.
+- **Sweeps without a runner** (2026-11-13): "do a sweep for HQ" in any agent session connected to
+  the MCP server, or a scheduled task in the Claude app with that prompt, does the routine work:
+  open requests, the due scouts, the CEO's ranking. `start_sweep` hands out the same scout and CEO
+  instructions the runner's launch prompts use (moved to `@hq/core`) and marks those runs as held by
+  the caller, so the hourly cron and any runner leave them alone and the schedule and budget still
+  count them; `finish_sweep` closes them with a summary and, if known, a cost. The trade: the runner
+  starts agents with a deny-list (no push, release, deploy), a sweep runs with the session's own
+  permissions and is only told to stay read only. Tiers, approvals and verb checks are on the
+  server, so a sweeping agent still can't build or release anything; it can only file cards. HQ
+  still owns the schedule (what is due, the budget); the runner stays the way to sweep on a machine
+  nobody is watching, and the only way to build approved cards.

@@ -4,7 +4,7 @@
 // it drives the whole loop in one and proves the other can't see or touch it: sign-in → workspace →
 // invites and roles → tokens → sync → propose (and every refusal) → rank → figures → requests (ask,
 // claim, propose, answer, follow up) → approve → claim → build →
-// review → discuss → verbs (tier and role checks) → pause → schedule → isolation → audit.
+// review → discuss → verbs (tier and role checks) → pause → schedule → sweep → isolation → audit.
 //
 //   node projects/hq/scripts/test-api.mjs     (HQ_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY default to local)
 import assert from "node:assert/strict";
@@ -455,12 +455,64 @@ await step("only admins pause; pause stops scouts and builds; the scheduler enqu
   await call(ada.token, "POST", W("/settings"), { paused: false });
 });
 
+await step("sweeps: an agent takes the due scout and CEO runs over MCP, runners leave them alone, only it can close them", async () => {
+  const init = await call(agent, "POST", "/mcp", { jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
+  assert.match(init.data.result.instructions, /start_sweep/);
+  assert.ok(init.data.result.capabilities.prompts);
+  const prompts = (await call(agent, "POST", "/mcp", { jsonrpc: "2.0", id: 2, method: "prompts/list" })).data.result.prompts;
+  assert.deepEqual(prompts.map((p) => p.name), ["sweep"]);
+  const got = (await call(agent, "POST", "/mcp", { jsonrpc: "2.0", id: 3, method: "prompts/get", params: { name: "sweep", arguments: { project: "alpha" } } })).data.result;
+  assert.match(got.messages[0].content.text, /start_sweep with project "alpha"/);
+  // The scheduler queued ci-watch and the CEO in the step above; no runner has them yet.
+  const s = (await tool(agent, "start_sweep", { format: "json" })).value;
+  const scout = s.runs.find((r) => r.kind === "scout");
+  const ceo = s.runs.find((r) => r.kind === "ceo");
+  assert.equal(scout?.scout, "ci-watch", JSON.stringify(s));
+  assert.equal(scout.project, "repo-wide");
+  assert.ok(ceo, JSON.stringify(s));
+  assert.ok(s.context?.repo, "context comes along");
+  // Asked again: nothing due, nothing waiting for this sweep.
+  const again = (await tool(agent, "start_sweep", {})).value;
+  assert.equal(again.runs.length, 0, JSON.stringify(again));
+  assert.match(again.markdown, /ci-watch \(repo-wide\): daily, not due yet/);
+  // A runner gets the health run, never the sweep's.
+  const claimed = [];
+  for (;;) {
+    const c = (await call(runner, "POST", "/api/runs/claim", { runner: "ci", capabilities: ["any"] })).data;
+    if (!c.run) break;
+    claimed.push(c.run.id);
+    await call(runner, "POST", `/api/runs/${c.run.id}/finish`, { status: "done", summary: c.run.kind });
+  }
+  assert.ok(!claimed.includes(scout.id) && !claimed.includes(ceo.id), claimed.join());
+  // Only this sweep closes its runs: not another workspace's agent, not a runner, not twice.
+  assert.match((await tool(otherAgent, "finish_sweep", { runs: [{ id: scout.id }] })).error, /no run/);
+  assert.match((await tool(runner, "finish_sweep", { runs: [{ id: scout.id }] })).error ?? "", /isn't this sweep's/);
+  const f = await tool(agent, "finish_sweep", { runs: [{ id: scout.id, summary: "no failures on main", cost_usd: 0.11 }, { id: ceo.id, summary: "ranked 3 cards" }] });
+  assert.equal(f.error, null, f.error);
+  assert.deepEqual(f.value.finished.map((x) => x.status), ["done", "done"]);
+  assert.match((await tool(agent, "finish_sweep", { runs: [{ id: scout.id }] })).error, /already done/);
+  const runs = (await call(ada.token, "GET", W("/runs"))).data;
+  const row = runs.find((r) => r.id === scout.id);
+  assert.equal(row.status, "done");
+  assert.equal(row.summary, "no failures on main");
+  assert.equal(row.cost_usd, 0.11);
+  assert.match(row.runner, /^sweep:/);
+  // force runs it now; naming an unknown scout, or sweeping while paused, is refused.
+  const forced = (await tool(agent, "start_sweep", { force: true, ceo: false, format: "json" })).value;
+  assert.deepEqual(forced.runs.map((r) => r.scout), ["ci-watch"]);
+  await tool(agent, "finish_sweep", { runs: [{ id: forced.runs[0].id, status: "failed", summary: "gave up" }] });
+  assert.match((await tool(agent, "start_sweep", { scouts: ["nope"] })).error, /no scout nope; scouts: ci-watch/);
+  await call(ada.token, "POST", W("/settings"), { paused: true });
+  assert.match((await tool(agent, "start_sweep", {})).error, /paused/);
+  await call(ada.token, "POST", W("/settings"), { paused: false });
+});
+
 await step("health lands on the board; the audit log records who did what (admins only)", async () => {
   await call(runner, "PUT", "/api/health", { project: "alpha", data: { ok: false, ci: "failure" } });
   const h = (await call(cy.token, "GET", W("/health"))).data;
   assert.equal(h.projects.find((p) => p.project === "alpha").health.ok, false);
-  const log = (await call(ada.token, "GET", W("/audit"))).data;
-  for (const a of ["workspace.create", "member.join", "policy.sync", "card.create", "request.create", "request.claim", "request.answer", "request.close", "workspace.pause", "verb.refused", "run.finish"]) assert.ok(log.some((x) => x.action === a), a);
+  const log = (await call(ada.token, "GET", W("/audit?limit=500"))).data;
+  for (const a of ["workspace.create", "member.join", "policy.sync", "card.create", "request.create", "request.claim", "request.answer", "request.close", "workspace.pause", "verb.refused", "run.finish", "sweep.start"]) assert.ok(log.some((x) => x.action === a), a);
   assert.ok(log.some((x) => x.actor === bo.email && x.action === "card.status"), "decisions are attributed to the person");
   assert.equal((await call(bo.token, "GET", W("/audit"))).status, 403);
 });

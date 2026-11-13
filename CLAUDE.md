@@ -26,7 +26,8 @@ APIs, never the database. Rules, checks (`check_isolation.mjs`, `graduation_chec
 
 This repo is managed by HQ (`projects/hq`). For proposals, approvals, scouting or releases on HQ's
 behalf, read `.hq/HQ.md` (and the project's `.hq/HQ.md`) and use the HQ MCP tool `get_context`
-first. Never edit a `.hq/` folder without the owner's approval: it's HQ's policy.
+first. "Do a sweep for HQ" means the HQ MCP tool `start_sweep`: follow what it returns, then
+`finish_sweep`. Never edit a `.hq/` folder without the owner's approval: it's HQ's policy.
 
 ## Testing on devices
 

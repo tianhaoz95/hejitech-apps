@@ -8,7 +8,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
-import { contextMarkdown, type Context, type RepoPolicy } from "@hq/core";
+import { contextMarkdown, SKILL_DIRS, type Context, type RepoPolicy } from "@hq/core";
 import { runAgent, type Role } from "./adapters.ts";
 import type { HqClient } from "./client.ts";
 import { buildPrompt, ceoPrompt, replyPrompt, requestPrompt, reviewPrompt, scoutPrompt, type CardDetail, type RequestDetail } from "./prompts.ts";
@@ -39,7 +39,7 @@ interface Claimed {
 const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 
 function findSkill(root: string, name: string): string | null {
-  for (const d of [".claude/skills", ".agents/skills", "skills"]) {
+  for (const d of SKILL_DIRS) {
     const p = join(root, d, name, "SKILL.md");
     if (existsSync(p)) return join(d, name, "SKILL.md");
   }

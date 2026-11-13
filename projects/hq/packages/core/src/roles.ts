@@ -25,14 +25,15 @@ export type Action =
   | "connect_agent" // approve an OAuth MCP client
   | "audit"
   | "request" // ask HQ for something (an on-demand request), follow up on it, close it
-  | "answer_request"; // claim and answer a request (agents and runners)
+  | "answer_request" // claim and answer a request (agents and runners)
+  | "sweep"; // take due scout and CEO runs and do them in the caller's own session (start_sweep)
 
 const ALLOWED: Record<Role, readonly Action[]> = {
-  admin: ["read", "comment", "propose", "decide", "set_status", "run_verb", "run_l3_verb", "start_run", "attach", "sync", "pause", "tokens", "members", "connect_agent", "audit", "request"],
-  approver: ["read", "comment", "propose", "decide", "set_status", "run_verb", "run_l3_verb", "start_run", "attach", "connect_agent", "request"],
+  admin: ["read", "comment", "propose", "decide", "set_status", "run_verb", "run_l3_verb", "start_run", "attach", "sync", "pause", "tokens", "members", "connect_agent", "audit", "request", "sweep"],
+  approver: ["read", "comment", "propose", "decide", "set_status", "run_verb", "run_l3_verb", "start_run", "attach", "connect_agent", "request", "sweep"],
   viewer: ["read", "comment"],
-  runner: ["read", "comment", "propose", "attach", "claim", "sync", "run_verb", "answer_request"],
-  agent: ["read", "comment", "propose", "attach", "run_verb", "rank", "answer_request"],
+  runner: ["read", "comment", "propose", "attach", "claim", "sync", "run_verb", "answer_request", "sweep"],
+  agent: ["read", "comment", "propose", "attach", "run_verb", "rank", "answer_request", "sweep"],
 };
 
 export const can = (role: Role, action: Action): boolean => ALLOWED[role].includes(action);
