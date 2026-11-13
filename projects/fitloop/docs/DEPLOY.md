@@ -57,8 +57,13 @@ Then connect a real agent: in Claude, Settings → Connectors → Add custom con
 3. App Review notes: HealthKit is read for the user's own progress and shared only with the AI agent
    the user connects and allows; it's never used for ads. Privacy policy:
    `https://fitloop.hejitech.workers.dev/privacy/`, support `https://fitloop.hejitech.workers.dev/support/`.
-   Privacy answers: email and user id; health and fitness data (app functionality, linked to the
-   user, not used for tracking); photos (only if the user turns them on).
+   Privacy answers (published 2026-11-12): email, user id, health, fitness, photos (progress photos)
+   and other user content (check-ins, notes for the agent), all app functionality, linked to the
+   user, not used for tracking.
+4. Price (owner's call, 2026-11-13): paid upfront, $4.99 on the App Store and Google Play, no
+   in-app purchases or subscription; the web app stays free. Play can go paid → free but never back,
+   so keep the Play app paid until a decision to change it. Store text: `apps/ios/AppStore/description.txt`;
+   captioned slides: `node scripts/store_captions.mjs projects/fitloop/apps/ios/AppStore/captions.json`.
 
 ## 5. Even Hub plugin
 

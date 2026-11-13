@@ -82,6 +82,11 @@ functionality, linked to the user, not used for tracking; no location (used for 
 kept), no analytics. Content rights: uses third-party content (Caltrain, 511.org). Privacy policy:
 `https://headway.hejitech.workers.dev/privacy/`; support: `https://headway.hejitech.workers.dev/support/`.
 
+Price (owner's call, 2026-11-13): paid upfront, $2.99 on the App Store and Google Play, no in-app
+purchases or subscription; the web board stays free. Play can go paid → free but never back, so keep
+the Play app paid until a decision to change it. Store text: `apps/ios/AppStore/description.txt`;
+captioned slides: `node scripts/store_captions.mjs projects/headway/apps/ios/AppStore/captions.json`.
+
 ## 5. Even Hub plugin
 
 The release attaches `headway-glasses-<version>.ehpk` (`headway-glasses-release.yml`). Everything the
