@@ -19,7 +19,8 @@
 //
 // Exit codes: 0 ok, 1 API error, 2 usage, 3 the app record doesn't exist yet.
 import { createHash, createSign } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { basename } from "node:path";
 import { homedir } from "node:os";
 
@@ -71,8 +72,10 @@ const findBundle = async (bundleId) =>
     (b) => b.attributes.identifier === bundleId,
   );
 
-const [cmd, ...args] = process.argv.slice(2);
-try {
+// Importable (e.g. by heji-app-store-iap's iap.mjs): the command line runs only when this is the script.
+const isMain = (() => { try { return import.meta.url === pathToFileURL(realpathSync(process.argv[1] ?? "")).href; } catch { return false; } })();
+const [cmd, ...args] = isMain ? process.argv.slice(2) : [];
+if (isMain) try {
   if (["GET", "POST", "PATCH", "DELETE"].includes(cmd)) {
     const [path, file] = args;
     if (!path) die("usage: asc.mjs <METHOD> <path> [body.json|-]");
