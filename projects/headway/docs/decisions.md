@@ -268,7 +268,7 @@ unlock), to get experience with subscriptions. Gating the whole iPhone app (rath
 tier) keeps the paid model closest to the old one-time price and needs no per-feature gating.
 StoreKit 2 verifies purchases on the phone (`Transaction.currentEntitlements`), so there is no
 purchases table or App Store notification endpoint: only the iPhone app is gated. If the web app,
-glasses or Android ever need Pro, copy Waypack's server-side verification (`projects/waypack`
-DECISIONS #72) into this project. Nobody had bought the paid version (it was never live), so
+glasses or Android ever need Pro, add server-side verification (skill `heji-app-store-iap`, §2)
+into this project. Nobody had bought the paid version (it was never live), so
 there is no grandfathering.
 
