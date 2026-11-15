@@ -11,8 +11,9 @@ import { reviewSignIn } from "./auth/review.js";
 import { Db, eq } from "./lib/db.js";
 import { LIMITS, type Manifest } from "@waypack/bundle-schema";
 import { onlineTilesUrl } from "./lib/planet.js";
-import { planFor } from "./lib/entitlements.js";
-import { deviceMaps, deviceTiles, ensureTripExtracts, tripStatus, type ExtractRow, type TripRow } from "./lib/pipeline.js";
+import { planDetails, planFor } from "./lib/entitlements.js";
+import { handleNotification, purchaseActive, recordTransactions } from "./lib/appstore.js";
+import { deviceMaps, ensureExtractsForUser, deviceTiles, ensureTripExtracts, tripStatus, type ExtractRow, type TripRow } from "./lib/pipeline.js";
 import { serveStored, signedFileUrl } from "./lib/storage.js";
 import { recutExpired } from "./lib/tiles.js";
 import { deleteTripData } from "./mcp/tools.js";
@@ -33,6 +34,14 @@ export async function handleApp(req: Request, env: Env): Promise<Response> {
 
   if (path === "/healthz") return Response.json({ ok: true });
   if (path === "/stripe/webhook" && req.method === "POST") return handleStripeWebhook(env, req);
+  // App Store Server Notifications V2 (renewals, expiries, refunds), signed by Apple: lib/appstore.ts.
+  if (path === "/appstore/notifications" && req.method === "POST") {
+    const db = new Db(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const r = await handleNotification(db, await req.json().catch(() => null));
+    console.log("appstore notification", r.result);
+    if (r.becamePro && r.userId) await ensureExtractsForUser(env, db, r.userId);
+    return Response.json({ ok: r.status < 300, result: r.result }, { status: r.status });
+  }
   if (path === "/authorize") return handleAuthorize(req, env);
 
   // Sign in with Google / Apple (portal). The MCP authorize page starts the same flow via POST.
@@ -183,7 +192,8 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
   const m = (re: RegExp) => path.match(re);
 
   if (path === "/api/me" && req.method === "GET") {
-    const plan = await planFor(db, user.userId);
+    const details = await planDetails(db, user.userId);
+    const plan = details.plan;
     const ent = await db.one<{ tier: string; expires_at: string | null; stripe_subscription_id: string | null; stripe_customer_id: string | null }>(
       "entitlements",
       `select=tier,expires_at,stripe_subscription_id,stripe_customer_id&user_id=${eq(user.userId)}`,
@@ -192,11 +202,32 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
       user_id: user.userId,
       email: user.email ?? null,
       plan,
-      expires_at: ent?.expires_at ?? null,
+      expires_at: details.expires_at,
+      // stripe (web, managed in the Stripe portal), app_store (managed in the person's Apple ID
+      // subscriptions) or manual; null on the free plan. The iPhone app sells Pro only when it's null.
+      plan_source: details.source,
+      app_store_product: details.app_store_product ?? null,
       billing: { configured: !!env.STRIPE_SECRET_KEY, plans: availablePlans(env), has_customer: !!ent?.stripe_customer_id, has_subscription: !!ent?.stripe_subscription_id },
       mcp_url: `${env.PUBLIC_URL}/mcp`,
       account_url: `${env.PUBLIC_URL}/account`,
     });
+  }
+
+  // The iPhone app posts every StoreKit 2 transaction it sees (after a purchase, a restore, or at
+  // launch) as signed JWS; each is verified against Apple's root before it counts (lib/appstore.ts).
+  if (path === "/api/appstore/transactions" && req.method === "POST") {
+    const body = (await req.json().catch(() => ({}))) as { transactions?: unknown };
+    const before = (await planFor(db, user.userId)).tier;
+    const { saved, rejected } = await recordTransactions(db, user.userId, body.transactions);
+    const after = await planDetails(db, user.userId);
+    if (before === "free" && after.plan.tier !== "free") await ensureExtractsForUser(env, db, user.userId);
+    return Response.json({
+      plan: after.plan,
+      plan_source: after.source,
+      expires_at: after.expires_at,
+      saved: saved.map((r) => ({ product_id: r.product_id, active: purchaseActive(r), expires_at: r.expires_at })),
+      rejected,
+    }, { status: saved.length || !rejected.length ? 200 : 400 });
   }
 
   if (path === "/api/billing/checkout" && req.method === "POST") {
@@ -363,7 +394,7 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
 }
 
 /** Waypack's rows keyed by user_id besides `trips` (billing_events stays: the payment record). */
-const USER_TABLES = ["uploads", "trip_previews", "trip_templates", "trip_shares", "place_price_snapshots", "place_bookings", "trip_members", "api_tokens", "entitlements"] as const;
+const USER_TABLES = ["uploads", "trip_previews", "trip_templates", "trip_shares", "place_price_snapshots", "place_bookings", "trip_members", "api_tokens", "entitlements", "app_store_purchases"] as const;
 
 /**
  * App Review's demo account (#71): Pro, so offline maps download. Unlike other projects' demo

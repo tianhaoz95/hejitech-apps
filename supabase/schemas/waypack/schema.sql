@@ -48,6 +48,22 @@ CREATE TABLE waypack.api_tokens (
     revoked_at timestamp with time zone
 );
 
+CREATE TABLE waypack.app_store_purchases (
+    original_transaction_id text NOT NULL,
+    user_id uuid NOT NULL,
+    product_id text NOT NULL,
+    tier text NOT NULL,
+    environment text NOT NULL,
+    transaction_id text NOT NULL,
+    expires_at timestamp with time zone,
+    revoked_at timestamp with time zone,
+    signed_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT app_store_purchases_tier_check CHECK ((tier = ANY (ARRAY['annual'::text, 'lifetime'::text])))
+);
+
+COMMENT ON TABLE waypack.app_store_purchases IS 'Waypack Pro bought in the iPhone app (StoreKit 2), one row per original transaction; written only by the Worker after verifying Apple''s signature (DECISIONS #72)';
+
 CREATE TABLE waypack.billing_events (
     id text NOT NULL,
     user_id uuid,
@@ -265,6 +281,9 @@ ALTER TABLE ONLY waypack.api_tokens
 ALTER TABLE ONLY waypack.api_tokens
     ADD CONSTRAINT api_tokens_token_hash_key UNIQUE (token_hash);
 
+ALTER TABLE ONLY waypack.app_store_purchases
+    ADD CONSTRAINT app_store_purchases_pkey PRIMARY KEY (original_transaction_id);
+
 ALTER TABLE ONLY waypack.billing_events
     ADD CONSTRAINT billing_events_pkey PRIMARY KEY (id);
 
@@ -422,6 +441,10 @@ ALTER TABLE ONLY waypack.uploads
 
 ALTER TABLE waypack.api_tokens ENABLE ROW LEVEL SECURITY;
 
+CREATE INDEX app_store_purchases_user ON waypack.app_store_purchases USING btree (user_id);
+
+ALTER TABLE waypack.app_store_purchases ENABLE ROW LEVEL SECURITY;
+
 ALTER TABLE waypack.billing_events ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE waypack.entitlements ENABLE ROW LEVEL SECURITY;
@@ -486,6 +509,8 @@ GRANT ALL ON FUNCTION waypack.touch_updated_at() TO service_role;
 GRANT ALL ON TABLE waypack.api_tokens TO anon;
 GRANT ALL ON TABLE waypack.api_tokens TO authenticated;
 GRANT ALL ON TABLE waypack.api_tokens TO service_role;
+
+GRANT ALL ON TABLE waypack.app_store_purchases TO service_role;
 
 GRANT ALL ON TABLE waypack.billing_events TO anon;
 GRANT ALL ON TABLE waypack.billing_events TO authenticated;

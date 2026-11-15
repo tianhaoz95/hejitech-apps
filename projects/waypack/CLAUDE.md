@@ -8,7 +8,7 @@ Waypack turns an AI agent into a travel planner whose output works fully offline
 the Waypack skill and MCP server) publishes a **trip bundle** (a self-contained mobile web app plus
 `manifest.json`), the backend or the phone cuts an offline vector map of the trip area, and the
 Flutter app downloads both. `docs/design.md` is the design, `docs/DECISIONS.md` records every
-deviation and owner decision (#1–#71): read it before proposing architectural changes and don't
+deviation and owner decision (#1–#72): read it before proposing architectural changes and don't
 reopen decided options (see "Decided" below). `docs/DEPLOY.md` is setup, secrets and recovery.
 
 ## Commands
@@ -46,7 +46,8 @@ waypack` (`review.env`, skill heji-review-account). App flags: `--dart-define=RE
   MCP JSON-RPC server (26 tools, `src/mcp/tools.ts`), its own OAuth 2.1 server
   (`@cloudflare/workers-oauth-provider`; `wpk_…` personal tokens as fallback), uploads and downloads,
   live previews (served from a separate origin, `PREVIEW_URL`), shared trips and the gallery, Stripe
-  billing (`/stripe/webhook`), crons, and the static site/portal in `site/`.
+  billing (`/stripe/webhook`), crons, App Store purchases (`/api/appstore/transactions`, `/appstore/notifications`), and the
+  static site/portal in `site/`.
 - **Database:** the `waypack` schema of the shared Supabase project (`supabase/schemas/waypack/` is
   the source; it lived in `public` until 2026-10-16). The Worker talks to PostgREST through
   `src/lib/db.ts` with the service key and `Accept-Profile`/`Content-Profile: waypack`; the apps
@@ -59,7 +60,8 @@ waypack` (`review.env`, skill heji-review-account). App flags: `--dart-define=RE
 - **Bundles:** `packages/bundle-schema` (manifest v1 JSON Schema + validator, used by the CLI, the
   Worker and browsers), `packages/trip-sdk` (`window.Waypack`: MapLibre + PMTiles + offline glyphs +
   the native bridge), `packages/cli` (`@waypack/cli`), `skill/` (what agents follow to author trips).
-- **App** (`apps/mobile`, Flutter, iOS/Android/macOS): a free viewer. Resumable downloads with
+- **App** (`apps/mobile`, Flutter, iOS/Android/macOS): a viewer; the iPhone app also sells Pro
+  (Settings › Get Waypack Pro, `lib/services/pro_store.dart`, `lib/widgets/pro_sheet.dart`). Resumable downloads with
   SHA-256 checks, a 127.0.0.1 server (token gate, CSP, Range, DNS-rebinding guard) feeding a
   WebView, native Today and offline Map, companions, offline QR/LAN handoff, and an on-device trip
   assistant (`lib/assistant/`). See `apps/mobile/README.md`.
@@ -73,8 +75,11 @@ Generated, never edit by hand: `services/mcp/src/generated/guide.ts` (from `skil
 - Sign-in is **Google or Apple only**: no email/password or codes for people (#29); dev sign-in only on
   local servers (#30). The one exception is App Review's demo account (#71): "Sign in with email"
   works only for accounts Waypack hands out, and that account is Pro.
-- **Billing is on the web with Stripe; the apps are free viewers** with no purchase UI or calls to
-  action (App Store 3.1.3(f), #25). Offline maps are Pro-only, with no per-account exceptions besides the review account (#71).
+- **Waypack Pro is sold on the web with Stripe (#25) and in the iPhone app with StoreKit 2 (#72)**, same
+  products and prices; the Mac and Android apps sell nothing, and no app links to the web checkout. The
+  Worker verifies App Store transactions itself (`src/lib/appstore.ts`) into `app_store_purchases`;
+  `planDetails()` takes the best plan of both sources. Offline maps are Pro-only, with no per-account
+  exceptions besides the review account (#71).
 - **No paid Cloudflare Containers until there are paying users**: device maps in production (#54).
 - Files in Supabase Storage, not R2 (#56). Mac DMGs are GitHub release assets (#57) and the Mac app
   updates with Sparkle from `releases/latest` (#65), so **Waypack is the only project with

@@ -84,6 +84,10 @@ class Api {
 
   Future<Map<String, dynamic>> me() => _json('GET', '/api/me');
 
+  /// Signed StoreKit 2 transactions (JWS) for the Worker to verify and record.
+  Future<Map<String, dynamic>> appStoreTransactions(List<String> jws) =>
+      _json('POST', '/api/appstore/transactions', body: {'transactions': jws});
+
   /// The trip's companion invite link (created on first use).
   Future<String> inviteLink(String tripId) async =>
       (await _json('POST', '/api/trips/$tripId/invite'))['invite_url']

@@ -114,6 +114,25 @@ Original checklist:
 - Test (milestone M4): with test keys, subscribe from `/account` using card `4242 4242 4242 4242` → plan shows Pro and existing trips get offline maps; cancel in the portal → back to Free at period end; as a free user, upload a 2nd trip and confirm the agent shows the upgrade link.
 - Local: `stripe listen --forward-to 127.0.0.1:8787/stripe/webhook` and put its `whsec_…` in `services/mcp/.dev.vars`.
 
+## 4a. App Store in-app purchases (DECISIONS #72)
+**Live setup (2026-11-14)**, app 6819131220:
+- Subscription group "Waypack Pro" (22581081): `com.hejitech.waypack.pro.annual` (6835005042), 1 year,
+  $14.99 in the US and Apple's equalized price in all 175 territories, a 1-week free trial for new
+  subscribers (one introductory offer per territory). Non-consumable `com.hejitech.waypack.pro.lifetime`
+  (6835004963), $39.99 base (US), Apple equalizes the rest. Both have an en-US name, description, review
+  note and review screenshot (the Pro sheet).
+- App Store Server Notifications V2, production and sandbox: `https://waypack.hejitech.workers.dev/appstore/notifications`.
+- Nothing to put in the Worker: transactions are checked against Apple's root certificate, which is in
+  the code. (The App Store Server API, which needs an In-App Purchase key, isn't used.)
+- The first in-app purchases go to App Review **with an app version**: submit them from the version page
+  together with the build that has the Pro sheet. The App Store description needs links to the Terms of
+  Use (Apple's standard EULA) and the privacy policy.
+- Test: a TestFlight build buys in the sandbox with the tester's own Apple Account at no charge (the annual
+  plan renews every few minutes there). `integration_test/pro_test.dart` (`flutter drive`, see the file)
+  checks that both products load and saves a screenshot of the sheet. Locally the Worker accepts only
+  Apple-signed transactions, so StoreKit configuration files (Xcode-signed) don't unlock Pro.
+- Apple keeps 30% (15% after the App Store Small Business Program, which the team account hasn't joined).
+
 ## 4b. Releases (GitHub Actions)
 - **CI** (`.github/workflows/waypack-ci.yml`): pushes/PRs touching `projects/waypack/`, `supabase/` or the shared root files run Waypack's package builds, typechecks and tests (incl. the SDK's Playwright tests), plus `flutter analyze` and `flutter test`.
 - **Ship a version:** `scripts/cut_release.sh waypack` from the repo root (try `--dry-run` first; settings in `projects/waypack/release.env`). It checks main is clean, pushed and green in Waypack CI, bumps `pubspec.yaml`, and publishes GitHub Release `waypack-v<major>.<minor>.<patch>` marked as the repo's latest (releases up to v1.8.9 were tagged `v<version>`), which starts:

@@ -15,6 +15,7 @@ import '../services/downloader.dart';
 import '../services/feedback.dart';
 import '../services/local_server.dart';
 import '../services/notifications.dart';
+import '../services/pro_store.dart';
 import '../services/trip_store.dart';
 
 class TripEntry {
@@ -83,6 +84,20 @@ class AppState extends ChangeNotifier {
   String? listError;
   DateTime? lastSynced;
   Map<String, dynamic>? me;
+
+  /// Waypack Pro in the iPhone app (StoreKit); see ProStore.
+  late final ProStore pro = ProStore(
+    api: api,
+    onPlan: (r) {
+      me = {
+        ...?me,
+        'plan': r['plan'],
+        'plan_source': r['plan_source'],
+        'expires_at': r['expires_at'],
+      };
+      notifyListeners();
+    },
+  );
 
   Session? get session => Supabase.instance.client.auth.currentSession;
   User? get user => Supabase.instance.client.auth.currentUser;
@@ -164,6 +179,7 @@ class AppState extends ChangeNotifier {
 
   /// Loads what's on the device first (works offline), then refreshes from the server.
   Future<void> init() async {
+    pro.start();
     _trips.clear();
     final prefs = await SharedPreferences.getInstance();
     _bookmarked.clear();

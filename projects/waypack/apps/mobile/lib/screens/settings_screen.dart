@@ -14,6 +14,8 @@ import '../services/updater.dart';
 import '../state/app_state.dart';
 import '../util/format.dart';
 import '../widgets/scrapbook.dart';
+import '../widgets/pro_sheet.dart';
+import '../services/pro_store.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
@@ -197,11 +199,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Signed in with Apple on iPhone: a fresh authorization code lets the Worker revoke Waypack's
   /// Apple token. Null when cancelled or not an Apple sign-in; deletion goes ahead either way.
   Future<String?> _appleCode() async {
-    final meta = Supabase.instance.client.auth.currentUser?.appMetadata ?? const {};
-    final viaApple = meta['provider'] == 'apple' || ((meta['providers'] as List?)?.contains('apple') ?? false);
+    final meta =
+        Supabase.instance.client.auth.currentUser?.appMetadata ?? const {};
+    final viaApple =
+        meta['provider'] == 'apple' ||
+        ((meta['providers'] as List?)?.contains('apple') ?? false);
     if (!Platform.isIOS || !viaApple) return null;
     try {
-      return (await SignInWithApple.getAppleIDCredential(scopes: [])).authorizationCode;
+      return (await SignInWithApple.getAppleIDCredential(scopes: []))
+          .authorizationCode;
     } catch (_) {
       return null;
     }
@@ -212,7 +218,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final ok = await showPaperConfirm(
       context,
       title: 'Delete account?',
-      message: 'This permanently deletes your account, all trips and offline maps on our servers, and cancels any subscription.',
+      message: 'This permanently deletes your account, all trips and offline maps on our servers, and cancels a subscription bought on the web. A subscription bought in this app keeps renewing until you cancel it in your Apple Account settings.',
     );
     if (!ok) return;
     try {
@@ -235,6 +241,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final s = context.watch<AppState>();
     final p = Paper.of(context);
     final plan = (s.me?['plan'] as Map?)?['tier'] as String? ?? 'free';
+    final source = s.me?['plan_source'] as String?;
     final mcp = Config.mcpUrl;
     final cmd = 'claude mcp add --transport http waypack $mcp';
     final step = TextStyle(fontSize: 13.5, height: 1.5, color: p.ink);
@@ -270,12 +277,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: plan == 'free'
                     ? 'Free plan · 1 active trip · maps need a connection'
                     : '${plan == 'lifetime' ? 'Waypack Pro · Lifetime' : 'Waypack Pro · Annual'} · offline maps · up to 10 active trips',
-                // The app is a free viewer: plans live on the user's account (no purchasing in the app).
                 trailing: Stamp(
                   label: plan == 'free' ? 'Free' : 'Pro',
                   color: plan == 'free' ? p.muted : p.accent,
                 ),
               ),
+              // Pro is sold in the iPhone app (StoreKit, DECISIONS #72); a plan bought on the web is
+              // managed there, one bought here in the Apple Account's subscriptions.
+              if (ProStore.supported && plan == 'free')
+                PaperRow(
+                  key: const Key('get-pro-row'),
+                  icon: Icons.workspace_premium_outlined,
+                  chip: ChipColor.yellow,
+                  title: 'Get Waypack Pro',
+                  subtitle: 'Offline maps and up to 10 active trips',
+                  chevron: true,
+                  onTap: () => showProSheet(context),
+                ),
+              if (ProStore.supported &&
+                  source == 'app_store' &&
+                  plan == 'annual')
+                PaperRow(
+                  icon: Icons.autorenew,
+                  chip: ChipColor.mint,
+                  title: 'Manage subscription',
+                  subtitle: 'Change or cancel it in your Apple Account',
+                  chevron: true,
+                  onTap: () => Handoff.openExternal(appleSubscriptionsUrl),
+                ),
+              if (ProStore.supported && plan == 'free')
+                PaperRow(
+                  key: const Key('restore-row'),
+                  icon: Icons.restore,
+                  chip: ChipColor.blue,
+                  title: 'Restore Purchases',
+                  chevron: true,
+                  onTap: () {
+                    s.pro.restore();
+                    showProSheet(context);
+                  },
+                ),
             ],
           ),
           const SizedBox(height: 12),
