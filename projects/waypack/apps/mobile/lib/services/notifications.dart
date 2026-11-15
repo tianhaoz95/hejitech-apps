@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     hide Day;
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -106,7 +107,25 @@ class Reminders {
   /// the rest are scheduled as the app reschedules on later launches.
   static const maxBriefingsPerTrip = 10;
 
+  /// Best effort: with notifications not allowed (or any scheduling error) it schedules nothing and
+  /// never throws, so a refresh or a download doesn't fail because of reminders.
   static Future<void> scheduleDailyBriefings({
+    required String tripId,
+    required String tripTitle,
+    required List<Day> days,
+  }) async {
+    try {
+      await _scheduleDailyBriefings(
+        tripId: tripId,
+        tripTitle: tripTitle,
+        days: days,
+      );
+    } catch (e) {
+      debugPrint('[reminders] daily briefings for $tripId not scheduled: $e');
+    }
+  }
+
+  static Future<void> _scheduleDailyBriefings({
     required String tripId,
     required String tripTitle,
     required List<Day> days,
@@ -180,7 +199,26 @@ class Reminders {
   }
 
   /// Schedules (or cancels) the "download before you go" reminder for a trip.
+  /// Best effort, like [scheduleDailyBriefings]: never throws.
   static Future<void> sync({
+    required String tripId,
+    required String title,
+    required String? startDate,
+    required bool downloaded,
+  }) async {
+    try {
+      await _sync(
+        tripId: tripId,
+        title: title,
+        startDate: startDate,
+        downloaded: downloaded,
+      );
+    } catch (e) {
+      debugPrint('[reminders] download reminder for $tripId not scheduled: $e');
+    }
+  }
+
+  static Future<void> _sync({
     required String tripId,
     required String title,
     required String? startDate,

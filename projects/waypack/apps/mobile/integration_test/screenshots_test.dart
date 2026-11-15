@@ -50,6 +50,10 @@ void main() {
     await shot(t, '01-sign-in');
 
     await t.enterText(find.byKey(const Key('dev-email')), email);
+    // The keyboard covers the button on phones: close it and scroll the button into view.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await settle(t, 600);
+    await t.ensureVisible(find.text('Dev sign-in'));
     await t.tap(find.text('Dev sign-in'));
     await until(t, find.byTooltip('Not downloaded'));
     await shot(t, '03-trips-not-downloaded');
