@@ -29,7 +29,7 @@
 
     <main>
       <section id="summary" data-toc="Summary">
-        <p class="kicker">Release prep · 2026-11-15 · nothing submitted</p>
+        <p class="kicker">Release prep · 2026-11-15 · owner chose A (Wee Hours Pro) · nothing submitted</p>
         <h1>Wee Hours iOS release: choices for your review</h1>
         <p class="lede">Wee Hours' App Store listing is ready apart from <b>one decision: how it charges</b>. I built <b>Wee Hours Pro</b> (free download, 14-day household trial, then monthly, yearly or lifetime) on a local branch, following the billing design in <code>projects/weehours/docs/decisions.md</code>, because you moved Headway, FitLoop and G2 Digest to in-app Pro yesterday. Nothing is pushed or submitted: say which model you want and I finish the release; you press Submit.</p>
 
@@ -39,10 +39,10 @@
           <div><b>App Privacy</b><span class="ok">Published (8 data types)</span></div>
           <div><b>Medical device declaration</b><span class="ok">"Not a medical device"</span></div>
           <div><b>Price · availability · review contact</b><span class="ok">Free · 175 countries · set</span></div>
-          <div><b>Pricing model</b><span class="todo">Your call (§1)</span></div>
-          <div><b>Pro code (app, Worker, database)</b><span class="todo">Branch <code>weehours-pro</code>, not pushed</span></div>
-          <div><b>Database change in production</b><span class="todo">Needs your OK</span></div>
-          <div><b>Build for this version</b><span class="todo">After your call (1.1.0)</span></div>
+          <div><b>Pricing model</b><span class="ok">A: Wee Hours Pro (owner, 2026-11-15)</span></div>
+          <div><b>Pro code (app, Worker, database)</b><span class="ok">On main, deployed</span></div>
+          <div><b>Database change in production</b><span class="ok">Applied; clients refused by record_purchase</span></div>
+          <div><b>Build for this version</b><span class="ok">1.1.0 (202611151519) attached; version in a review draft</span></div>
           <div><b>Sign in with Apple key (token revocation)</b><span class="bad">Missing, your step</span></div>
         </div>
 
@@ -131,9 +131,10 @@
         <p><b>If you choose B (paid upfront):</b> tell me the price; I revert the description and notes, delete the unused products, keep everything else, and attach build 1.0.0.</p>
         <p><b>Either way, your steps:</b></p>
         <ul class="checks">
-          <li id="c-model">Pick A or B, and the prices</li>
+          <li id="c-model">Pick A or B, and the prices (A chosen; placeholder prices kept)</li>
           <li id="c-siwa">Create a Sign in with Apple key for <code>com.hejitech.weehours</code> (developer portal → Keys) and give it to me for the Worker secrets; without it, account deletion can't revoke Apple's token (guideline 5.1.1(v))</li>
-          <li id="c-db">OK the production database change (A only)</li>
+          <li id="c-db">OK the production database change (A only; applied 2026-11-15)</li>
+          <li id="c-signin">Sign in to App Store Connect in Chrome again (the session expired), so the products can be added to the review draft</li>
           <li id="c-submit">Press Submit for Review</li>
         </ul>
       </section>
