@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wee Hours iOS release: choices for your review</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8603A'/%3E%3Crect x='9' y='9' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='15' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='21' width='9' height='2.5' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>Wee Hours iOS release: choices for your review</b><small>Prepared overnight, not submitted: pick the pricing model, then I finish and you submit</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <!-- Filled from the sections' <h2>s by report.js; data-toc="Short label" on a section overrides. -->
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <p class="kicker">Release prep · 2026-11-15 · nothing submitted</p>
+        <h1>Wee Hours iOS release: choices for your review</h1>
+        <p class="lede">Wee Hours' App Store listing is ready apart from <b>one decision: how it charges</b>. I built <b>Wee Hours Pro</b> (free download, 14-day household trial, then monthly, yearly or lifetime) on a local branch, following the billing design in <code>projects/weehours/docs/decisions.md</code>, because you moved Headway, FitLoop and G2 Digest to in-app Pro yesterday. Nothing is pushed or submitted: say which model you want and I finish the release; you press Submit.</p>
+
+        <div class="status">
+          <div><b>Listing text, URLs, category, age rating</b><span class="ok">Done (Pro wording)</span></div>
+          <div><b>Screenshots (iPhone 6.9", Watch Ultra)</b><span class="ok">Uploaded</span></div>
+          <div><b>App Privacy</b><span class="ok">Published (8 data types)</span></div>
+          <div><b>Medical device declaration</b><span class="ok">"Not a medical device"</span></div>
+          <div><b>Price · availability · review contact</b><span class="ok">Free · 175 countries · set</span></div>
+          <div><b>Pricing model</b><span class="todo">Your call (§1)</span></div>
+          <div><b>Pro code (app, Worker, database)</b><span class="todo">Branch <code>weehours-pro</code>, not pushed</span></div>
+          <div><b>Database change in production</b><span class="todo">Needs your OK</span></div>
+          <div><b>Build for this version</b><span class="todo">After your call (1.1.0)</span></div>
+          <div><b>Sign in with Apple key (token revocation)</b><span class="bad">Missing, your step</span></div>
+        </div>
+
+        <div class="cards">
+          <div class="card good">
+            <h3>Verified</h3>
+            <ul>
+              <li><b>Worker purchase checks:</b> 5 new tests in <code>projects/weehours/services/web/test/appstore.test.ts</code> (Apple chain, one parent's purchase covers the household, lifetime beats yearly, refund, restore into another household); all Wee Hours suites pass (TypeScript 26 + 19 + 22, LogCore 97).</li>
+              <li><b>The iPhone app builds</b> (simulator, Debug) with Pro, and the Pro screen opens with the trial status (screenshot in §1).</li>
+              <li><b>The database change</b> applies locally; the isolation and graduation checks pass.</li>
+              <li><b>App Store Connect</b>: every field above read back by API or on the page after saving; the three products are <b>Ready to Submit</b>, with the Pro screen as their review screenshot.</li>
+            </ul>
+          </div>
+          <div class="card warn">
+            <h3>Not verified</h3>
+            <ul>
+              <li><b>A real purchase.</b> The products load from Apple's sandbox with their prices, but nobody bought one: a purchase needs a person at Apple's sheet (a TestFlight build buys free with your own Apple Account).</li>
+              <li><b>The locks after a trial ends.</b> The rules are LogCore's tested <code>Entitlement.allows</code>; the app's use of them was checked by reading the code, not by running an expired trial.</li>
+              <li><b>Watch screenshot data</b> is a demo status line (watch simulators can't sync with an unsigned phone build).</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>Recommendation:</b> go with Wee Hours Pro, at prices you set. It's the billing your own decision log describes, it keeps logging free for tired parents, and it matches the other apps.</div>
+      </section>
+
+      <section id="model">
+        <h2>The pricing model I prepared, and the alternative</h2>
+        <p>The 10-28 prep assumed a paid-upfront app with Family Sharing, but the price was never set and that wasn't your decision. The decision log's Billing row is your original request: <i>subscription and a lifetime purchase, per household, 14-day trial</i>, with tap logging free after the trial. The code already had that model (<code>Entitlement</code> in LogCore) and the server already kept one entitlement per household.</p>
+        <table class="grid">
+          <thead><tr><th></th><th>A. Wee Hours Pro (prepared, recommended)</th><th>B. Paid upfront (the old plan)</th></tr></thead>
+          <tbody>
+            <tr><td>Download</td><td>Free</td><td>Paid, price not set yet</td></tr>
+            <tr><td>Trial</td><td>14 days of everything per household, no card</td><td>None (buy first)</td></tr>
+            <tr><td>Free forever</td><td>Tap logging, the Watch, paired glasses, reading and editing the log</td><td>Everything, once bought</td></tr>
+            <tr><td>Paid</td><td>Voice, reminders, pairing new glasses, AI agent tokens, CSV export, photos</td><td>The app</td></tr>
+            <tr><td>Partner</td><td>Covered: the purchase belongs to the household</td><td>Covered only within Family Sharing</td></tr>
+            <tr><td>Prices (placeholders)</td><td>$2.99 / month · $19.99 / year · $39.99 lifetime</td><td>You pick one price</td></tr>
+            <tr><td>Work left</td><td>Push branch, database change, release 1.1.0, review screenshots of the Pro screen, submit with the products</td><td>Revert the store description and review notes to "no in-app purchases", set the price, attach build 1.0.0 (202611112316), submit</td></tr>
+          </tbody>
+        </table>
+        <div class="shots">
+          <figure><img src="media/pro-screen.png" alt="Wee Hours Pro screen on the simulator with the products loaded from Apple's sandbox: trial with 14 days left, what Pro adds, logging stays free, $19.99 per year (best value), $2.99 per month, Lifetime $39.99 once, and the subscription terms"><figcaption>The Pro screen (Settings → Wee Hours Pro, and whenever a Pro feature is tapped after the trial)</figcaption></figure>
+          <figure><img src="media/iphone-now.png" alt="Wee Hours Now screen with today versus yesterday, the status line and the logging tiles, uploaded as the first App Store screenshot"><figcaption>First App Store screenshot (iPhone 6.9")</figcaption></figure>
+          <figure><img src="media/watch.png" alt="Wee Hours on Apple Watch Ultra: status line Fed 2h 40m ago, left next, with Speak, Start feed and Diaper buttons"><figcaption>Watch screenshot (Ultra)</figcaption></figure>
+        </div>
+        <p class="note">Prices are your call. Mine: the newborn months are the busy ones (monthly), a year covers the first year (about 7 months of monthly), lifetime about two years. Change them in App Store Connect (In-App Purchases / Subscriptions) before submitting, or tell me the numbers.</p>
+      </section>
+
+      <section id="how">
+        <h2>How Pro works under the hood</h2>
+        <div data-block="flow"></div>
+        <ul>
+          <li><b>App</b> (<code>apps/ios/App/Sources/Pro.swift</code>): StoreKit 2 with the user id as <code>appAccountToken</code>; every Pro entry point calls <code>AppModel.requirePro</code>, which opens the Pro screen. A purchase on the phone counts at once, even before the server has it.</li>
+          <li><b>Worker</b> (<code>services/web/src/worker/appstore.ts</code>, <code>purchases.ts</code>): checks Apple's signature itself (same approach as Waypack, own copy), stores the purchase for the buyer's household, and keeps <code>weehours.entitlements</code> at the household's best active purchase. Apple's renewal, expiry and refund notifications arrive at <code>/appstore/notifications</code>.</li>
+          <li><b>Database</b> (<code>supabase/migrations/20261115073209_weehours_app_store_purchases.sql</code>): two new tables, and clients can no longer call the old development purchase function.</li>
+          <li><b>Local-only households</b> start their trial on the phone and keep a purchase on the phone.</li>
+        </ul>
+      </section>
+
+      <section id="asc">
+        <h2>What I changed in App Store Connect</h2>
+        <table class="kv">
+          <tr><td>Products</td><td>Group "Wee Hours Pro": monthly (6835032644), yearly (6835032528); lifetime (6835033524). Ready to Submit, with review screenshots; not live until approved.</td></tr>
+          <tr><td>Notifications URL</td><td><code>https://weehours.hejitech.workers.dev/appstore/notifications</code> (production and sandbox)</td></tr>
+          <tr><td>Description</td><td>Added "Free to log, Pro when you want more" with the subscription terms, Terms of Use and Privacy links (copy in <code>apps/ios/AppStore/description.txt</code>)</td></tr>
+          <tr><td>Review notes</td><td>Pro explained (the trial covers review); deletion wording corrected (the shared sign-in stays)</td></tr>
+          <tr><td>Price / availability</td><td>Free, 175 countries</td></tr>
+          <tr><td>Review contact</td><td>Same as the other HEJI apps</td></tr>
+          <tr><td>App Privacy</td><td>Name, Email, Health, Photos, Audio (glasses recordings until transcribed), Other User Content, User ID, Purchases: app functionality, linked, no tracking. Published.</td></tr>
+          <tr><td>Medical device</td><td>Declared not a regulated medical device</td></tr>
+          <tr><td>Screenshots</td><td>iPhone 6.9": Now, Timeline. Watch Ultra: home.</td></tr>
+        </table>
+        <p class="note">The site text (landing, Terms, Support, Privacy) is rewritten for Pro on the branch only: it goes live when the branch is pushed.</p>
+      </section>
+
+      <section id="todo">
+        <h2>What happens next</h2>
+        <p><b>If you choose A (Pro):</b> tell me "ship Wee Hours Pro" (with prices if you want others). I then:</p>
+        <ol class="do">
+          <li>Merge <code>weehours-pro</code> and push (the Worker and site deploy).</li>
+          <li>Apply the database change to production (your OK is needed for this one).</li>
+          <li>Cut Wee Hours 1.1.0 (TestFlight + glasses package), attach the build.</li>
+          <li>Add the group, the two subscriptions and the lifetime product to a review draft (their review screenshots are already up).</li>
+          <li>Leave the submission as a draft for you, or submit if you say so.</li>
+        </ol>
+        <p><b>If you choose B (paid upfront):</b> tell me the price; I revert the description and notes, delete the unused products, keep everything else, and attach build 1.0.0.</p>
+        <p><b>Either way, your steps:</b></p>
+        <ul class="checks">
+          <li id="c-model">Pick A or B, and the prices</li>
+          <li id="c-siwa">Create a Sign in with Apple key for <code>com.hejitech.weehours</code> (developer portal → Keys) and give it to me for the Worker secrets; without it, account deletion can't revoke Apple's token (guideline 5.1.1(v))</li>
+          <li id="c-db">OK the production database change (A only)</li>
+          <li id="c-submit">Press Submit for Review</li>
+        </ul>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-11-14-weehours-ios-release</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- Order: design blocks → this report's config → the engine. -->
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>
