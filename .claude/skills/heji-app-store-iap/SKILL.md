@@ -145,4 +145,5 @@ with "no invite for <email>" without one.
 - **Screenshots**: an iPad-capable app (`TARGETED_DEVICE_FAMILY` 1,2) also needs 13" iPad shots
   (2064x2752). Leave out screens that show local addresses or tokens. A walkthrough run with
   notifications off found a real bug (an error banner on every refresh): look at every shot.
-
+- A never-submitted version also needs `copyright` ("2026 HEJI TECHNOLOGY LLC"); the error shows only when
+  the version joins a review submission (`ENTITY_ERROR.ATTRIBUTE.REQUIRED`).
