@@ -102,3 +102,11 @@ the Worker's `APNS_TEAM_ID`, `APNS_KEY_ID` and `APNS_PRIVATE_KEY` (the team's AP
 bundle ID has the Push Notifications capability. Until then the app's switch registers nothing and
 publishes notify no one.
 
+Done 2026-11-14: the migration was already applied; the three APNS_* secrets are set on the production Worker.
+
+## Price
+
+Owner's call (2026-11-14): paid upfront, $9.99 on the App Store, one-time, no in-app purchases or
+subscription; the web app stays free. A one-time price doesn't grow with each reader's stored editions
+and audio: if storage costs climb, add a retention limit rather than a subscription.
+
