@@ -57,8 +57,11 @@ final class ProStore {
             UserDefaults.standard.set(grantUntil?.timeIntervalSince1970 ?? 0, forKey: Self.grantKey)
             grantNote = answer.pro ? nil : "There's no Headway Pro invite for \(answer.email ?? "this account") yet."
             if answer.pro { inviteSignIn = false }
+        } catch is CancellationError {
+            // Signed out: nothing to check.
         } catch {
-            // Offline or signed out: keep the last answer.
+            // Offline: keep the last answer, and say why the paywall is still up (the app checks again when it comes back).
+            if !isPro { grantNote = "Couldn't check for a Headway Pro invite: \(error.localizedDescription)" }
         }
     }
 

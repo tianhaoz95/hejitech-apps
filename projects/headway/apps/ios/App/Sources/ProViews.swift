@@ -5,6 +5,7 @@ import SwiftUI
 /// until then. `invite` is the sign-in for "Have a Pro invite? Sign in".
 struct ProGate<Content: View, Invite: View>: View {
     @State private var pro = ProStore.shared
+    @Environment(\.scenePhase) private var scenePhase
     var signedIn: Bool
     @ViewBuilder var invite: () -> Invite
     @ViewBuilder var content: () -> Content
@@ -31,6 +32,10 @@ struct ProGate<Content: View, Invite: View>: View {
         }
         .onChange(of: signedIn) { _, now in
             if now { Task { await pro.checkGrant() } } else { pro.forgetGrant() }
+        }
+        // A grant made while the app was open (or in the background) shows up when it comes back.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active, signedIn, !pro.isPro { Task { await pro.checkGrant() } }
         }
     }
 }
