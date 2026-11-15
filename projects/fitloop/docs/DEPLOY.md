@@ -60,7 +60,7 @@ Then connect a real agent: in Claude, Settings → Connectors → Add custom con
    Privacy answers (published 2026-11-12): email, user id, health, fitness, photos (progress photos)
    and other user content (check-ins, notes for the agent), all app functionality, linked to the
    user, not used for tracking.
-4. Price (owner's call, 2026-11-13): paid upfront, $4.99 on the App Store and Google Play, no
+4. Price (owner's call, 2026-11-13; raised to $9.99 on 2026-11-14 as a one-time, lifetime price): paid upfront, $9.99 on the App Store and Google Play, no
    in-app purchases or subscription; the web app stays free. Play can go paid → free but never back,
    so keep the Play app paid until a decision to change it. Store text: `apps/ios/AppStore/description.txt`;
    captioned slides: `node scripts/store_captions.mjs projects/fitloop/apps/ios/AppStore/captions.json`.
