@@ -156,6 +156,23 @@ only if Apple wants a sign-in or 2FA code, or if the session has no computer-use
 which name you used. Every new app also gets `tianhaozhou95@icloud.com` as a TestFlight tester,
 with the invite sent (by API: add the tester to a beta group, then send the invitation).
 
+## In-app purchases
+
+Set up 2026-11-14 for Waypack, Headway, FitLoop and G2 Digest; the steps, `iap.mjs` and the lessons
+are the `heji-app-store-iap` skill. What worked:
+- Products by API with `iap.mjs` (idempotent, retries Apple's 429s): a yearly subscription with a
+  1-week free trial (one introductory offer per territory) and a lifetime non-consumable, prices
+  equalized in all 175 territories, the app itself set to Free. Products stay "Missing Metadata"
+  until a review screenshot of the purchase screen is uploaded.
+- An app that is only gated on iPhone checks Pro on the phone with StoreKit 2
+  (`Transaction.currentEntitlements`): `ProStore.swift` + `ProViews.swift` in each app (gate,
+  purchase screen with the 3.1.2 terms, Settings section), `-proUnlocked` for Debug screenshots.
+  When Pro must also unlock a server (web, Mac, Android), the Worker verifies Apple's signed
+  transactions itself like Waypack (DECISIONS #72), not with an SDK.
+- New products take a while (minutes to hours) to load in the sandbox; show a Try Again state.
+- The first in-app purchases are reviewed together with an app version.
+- Owner's prices and model: memory, and each project's `docs/DEPLOY.md` price note.
+
 ## Common pitfalls
 
 - **A green TestFlight upload isn't a build in TestFlight.** App Store Connect can accept an upload

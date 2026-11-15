@@ -1,0 +1,25 @@
+G2 Digest turns the brief you write into an edition that's ready before you leave: glanceable cards for your Even Realities G2 glasses and audio for your headphones. Nothing loads or generates while you ride.
+
+COMPILED, NOT LIVE
+You write the brief on the G2 Digest website: the sections you want, their sources and what counts. Your own AI agent, any agent that speaks MCP and can make audio, researches and writes each edition, and a validator checks every card before it's published.
+
+READ IT ON YOUR IPHONE
+• Your latest edition, card by card, kept on the phone for the underground
+• A preview of the glasses' green monochrome display, with simulated ring swipes and taps
+• Your past editions
+• A built-in tour, so you can see how it works before you set anything up
+
+LISTEN TO IT
+Hear each card's script or the three-to-five-minute deep dive in your headphones, with background audio, lock screen controls and playback speed.
+
+PAIR ONCE
+Get a 6-digit code on the website and type it into the app to pair it with your account.
+
+On the glasses, the G2 Digest plugin from Even Hub shows the same edition: swipe the R1 ring to skip, hold it for the deep dive. Glasses are optional.
+
+The content of each edition comes from the sources in your brief, compiled by the agent you choose.
+
+G2 DIGEST PRO
+G2 Digest is free to download, and using it on iPhone needs G2 Digest Pro: start with a free week on the yearly plan, or unlock it once for life. Payment is charged to your Apple Account. The yearly plan renews automatically unless you cancel at least 24 hours before the end of the current period; manage or cancel it in your Apple Account settings.
+Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://g2digest.hejitech.workers.dev/privacy/
