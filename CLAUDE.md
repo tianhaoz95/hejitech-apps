@@ -170,7 +170,9 @@ are the `heji-app-store-iap` skill. What worked:
   When Pro must also unlock a server (web, Mac, Android), the Worker verifies Apple's signed
   transactions itself like Waypack (DECISIONS #72), not with an SDK.
 - New products take a while (minutes to hours) to load in the sandbox; show a Try Again state.
-- The first in-app purchases are reviewed together with an app version.
+- The first in-app purchases are reviewed together with an app version: add them on their pages
+  in the App Store Connect website (Add for Review), then the version and submit by API (skill §1).
+  All four apps' first submissions with Pro went in this way on 2026-11-14.
 - Owner's prices and model: memory, and each project's `docs/DEPLOY.md` price note.
 
 ## Common pitfalls

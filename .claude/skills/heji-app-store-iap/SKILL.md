@@ -42,9 +42,23 @@ What the API does and doesn't do (learned on Waypack):
   `manualPrices` (iap.mjs does). Waypack's lifetime first went without a price because of this.
 - A free trial needs one introductory offer **per territory**: the API refuses one without a territory.
 - Products stay `MISSING_METADATA` until a review screenshot is uploaded; then `READY_TO_SUBMIT`.
-- The **first** in-app purchases are reviewed **with an app version**: on that version's page, add them
-  to the submission (the API can't attach them before the version is submitted with them; check the
-  web page). The listing description needs Terms of Use (EULA) and privacy links for subscriptions.
+- The **first** in-app purchases are reviewed **with an app version**, and the API refuses to submit
+  them (`FIRST_SUBSCRIPTION_MUST_BE_SUBMITTED_ON_VERSION`, `…NON_CONSUMABLE…`,
+  `SUBSCRIPTION_SUBMISSION_REQUIRES_GROUP_VERSION`). What worked (2026-11-14, three apps), in the
+  App Store Connect website through Claude in Chrome (signed in there; the version page itself has
+  no in-app purchase section any more):
+  1. `…/apps/<app>/distribution/subscriptions/<subscription id>` › **Add for Review** (first item
+     creates the draft submission; if a draft exists, a menu asks: pick "Draft … Submission").
+  2. `…/distribution/iaps/<iap id>` › Add for Review › the same draft.
+  3. `…/distribution/subscription-groups/<group id>` › Add for Review › the same draft (sometimes the
+     subscription already brought the group in: the page then says "added for review").
+  4. Then by API: add the app version to that draft (`reviewSubmissionItems`) and PATCH the
+     submission `submitted: true` → WAITING_FOR_REVIEW with 4 items.
+  The listing description needs Terms of Use (EULA) and privacy links for subscriptions, and the
+  review notes should say how to get past the purchase screen (start the free week in the sandbox).
+- Moving a submitted paid app to IAP: cancel its review submission (PATCH `canceled: true`, version
+  becomes DEVELOPER_REJECTED), set the app price to Free (`appPriceSchedules` with the 0.0 point),
+  rename that version's `versionString` to the new release and attach the new build.
 - The Paid Apps Agreement must be active (it is for the HEJI team).
 
 ## 2. The Worker
@@ -68,6 +82,14 @@ test file's fixture note):
 
 ## 3. The app
 
+Only the iPhone app gated? Skip the Worker: check Pro on the phone with StoreKit 2
+(`Transaction.currentEntitlements`). Headway, FitLoop and G2 Digest each have `ProStore.swift`
+(products, purchase, restore, `Transaction.updates`) and `ProViews.swift` (`ProGate` around the root
+view, `PaywallView`, `ProSettingsSection`), with a Debug-only `-proUnlocked` launch argument that
+`scripts/store_screenshots.sh` passes. Show What's New only once Pro is active (it otherwise opens
+over the purchase screen).
+
+
 - Flutter: `in_app_purchase` (StoreKit 2 is its default) + `in_app_purchase_storekit` for
   `SK2Product.isIntroductoryOfferEligible`. Pass the user id (a UUID) as `applicationUserName`: it
   becomes `appAccountToken`. `serverVerificationData` is the JWS. Finish (`completePurchase`) only after
@@ -80,8 +102,8 @@ test file's fixture note):
 
 ## 4. Test
 
-- Products load in a Debug build on the simulator or a device from the sandbox once they have a
-  name and a price, before review; a product priced minutes ago may not show for a while.
+- Products load in a Debug build on the simulator from the sandbox once they have a name and a
+  price, before review; new products took ~30–60 minutes to appear (show a Try Again state).
 - `flutter drive` with a driver that saves `binding.takeScreenshot` to the host gives the review
   screenshot (Waypack: `integration_test/pro_test.dart`, `test_driver/integration_test.dart`).
 - A physical iPhone reaching the Mac's local stack over Wi-Fi shows iOS's local-network prompt the
