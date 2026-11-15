@@ -6,7 +6,7 @@
 **Bundle / package id:** `com.hejitech.waypack`
 **Category:** Travel (secondary: Navigation)
 **Age rating:** 4+ / Everyone
-**Price:** Free. No in-app purchases (Waypack Pro is sold on waypack.hejitech.workers.dev; the app is a companion viewer).
+**Price:** Free download. Waypack Pro (offline maps, up to 10 active trips) is sold in the iPhone app ($14.99/yr with a 1-week free trial, or $39.99 lifetime; DECISIONS #72) and on the web with Stripe. No link from the app to the web checkout.
 
 ## Description
 Your AI agent plans the trip. Waypack keeps it working when the signal drops.
@@ -23,7 +23,10 @@ Ask Claude, Cursor or any AI agent that supports MCP to plan a trip “with Wayp
 
 Waypack is a viewer for your own plans: planning and edits happen in your AI agent, and updates arrive in the app with one tap.
 
-The app is free. A Waypack account is required.
+The app is free with one active trip. Waypack Pro adds offline maps and up to 10 active trips: start with a free week on the yearly plan, or unlock it once for life. Payment is charged to your Apple Account. The yearly plan renews automatically unless you cancel at least 24 hours before the end of the current period; manage or cancel it in your Apple Account settings. A Waypack account is required.
+
+Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://waypack.hejitech.workers.dev/privacy
 
 Map data © OpenStreetMap contributors (ODbL). Basemap by Protomaps.
 
@@ -36,8 +39,8 @@ First release: download trips from your AI agent, offline maps with GPS, native 
 ## Review notes (App Store)
 - Waypack displays trip guides the user created with their own AI agent (via our MCP server). Bundles are documents (HTML/CSS/JS + JSON) rendered in a sandboxed WebView from a local loopback server; they cannot change native functionality, access the network (CSP `connect-src 'self'`), or reach other trips.
 - Native features: offline download manager with integrity checks, native Today view, GPS map, trip reminders, share sheet.
-- **Guideline 3.1.3(f):** Waypack is a free stand-alone companion to a paid web service (cloud storage of trip plans + offline map generation, sold at waypack.hejitech.workers.dev). The app contains no purchasing and no calls to action for purchasing outside the app; it only displays the account's current plan.
-- Sign-in: Sign in with Apple or Google (no passwords). Reviewers can use their own Apple ID. **To do before submission:** create a dedicated demo Google account, publish the sample Sequoia trip to it, and put its credentials in the App Review notes.
+- Waypack Pro (in-app purchases submitted with this version): Settings > Get Waypack Pro opens the purchase sheet (yearly with a free week, or lifetime; Restore Purchases, Terms and Privacy are on it). The demo account is already Pro (offline maps download); to try buying, sign in with Apple instead.
+- Sign-in: Sign in with Apple or Google; App Review uses "Sign in with email" with the demo account in the review details (DECISIONS #71).
 - Location is used only to show the user's position on the offline map (When In Use).
 
 ## Privacy nutrition label / Data safety
