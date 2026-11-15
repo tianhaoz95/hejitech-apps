@@ -27,7 +27,10 @@ Read the current lists first, then extend them:
 Cloudflare Workers Builds (dashboard): new project from this repo, root directory = repo root,
 build `npm ci`, deploy `npm run deploy -w @tether/web`, non-production
 `npm run upload-version -w @tether/web`, watch path `projects/tether/*`. The first deploy
-provisions `OAUTH_KV`. One secret:
+provisions `OAUTH_KV`. A placeholder `tether` production Worker already exists (created 2026-11-15 when
+the Sign in with Apple secrets were set before any deploy; it serves nothing until the first deploy
+replaces it): `APPLE_SIWA_KEY_ID` and `APPLE_SIWA_PRIVATE_KEY` are set (the team's HEJI key, which also
+does Sign in with Apple). One more secret:
 
 ```sh
 cd projects/tether/services/web
