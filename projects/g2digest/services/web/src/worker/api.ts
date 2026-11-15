@@ -9,6 +9,7 @@ import { checkBrief, type Brief } from "@g2digest/core";
 import {
   admin, Conflict, getEdition, json, listEditions, loadBrief, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken,
   resolveDevice, saveBrief, sha256, signedAudio, supabaseUser, type Db, type Env,
+  proGrant,
 } from "./store.ts";
 import { podcastFeed } from "./feed.ts";
 
@@ -83,6 +84,11 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
 
   if (who.via !== "session") return reply({ error: "this needs the web app (a device token only reads editions)" }, 403);
   const userId = who.userId;
+  // Pro given by email (scripts/grant_pro.sh); purchases are checked on the phone by StoreKit.
+  if (path === "/api/pro" && req.method === "GET") {
+    const grant = who.via === "session" ? await proGrant(db, who.email) : null;
+    return reply({ pro: Boolean(grant), source: grant ? "grant" : null, until: grant?.until ?? null, email: who.email ?? null });
+  }
 
   // ------------------------------------------------------------ brief (session only, never the agent)
   if (path === "/api/brief" && req.method === "GET") return reply(await loadBrief(db, userId));

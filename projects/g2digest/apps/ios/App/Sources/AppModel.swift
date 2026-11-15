@@ -101,6 +101,12 @@ public final class AppModel: ObservableObject {
         }
         // The built-in tour until the first refresh brings an edition.
         self.currentBundle = TourBuilder.makeTour(reason: hasAccess ? .waiting : .pair)
+        // Pro given by email (scripts/grant_pro.sh), checked by the purchase gate after sign-in.
+        ProStore.shared.grantChecker = { [weak self] in
+            guard let self, self.isSignedIn else { throw CancellationError() }
+            let a = try JSONDecoder().decode(ProGrantAnswer.self, from: try await self.api.fetchProGrant())
+            return (a.pro, a.untilDate, a.email)
+        }
     }
 
     /// Persists session changes (sign-in, refresh, a refused refresh) and gives the API the token.

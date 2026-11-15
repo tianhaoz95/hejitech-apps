@@ -17,7 +17,7 @@ export const upgradeHint = (publicUrl: string) =>
 interface EntRow { tier: Tier; active: boolean; expires_at: string | null; source: string | null }
 interface AppStoreRow { tier: Tier; expires_at: string | null; revoked_at: string | null; product_id: string; environment: string }
 
-export type PlanSource = "stripe" | "app_store" | "manual";
+export type PlanSource = "stripe" | "app_store" | "manual" | "grant";
 
 export interface PlanDetails {
   plan: Plan;
@@ -35,7 +35,7 @@ const RANK: Record<Tier, number> = { free: 0, annual: 1, lifetime: 2 };
  * purchase (`app_store_purchases`, DECISIONS #72). Lifetime beats annual; between two annual plans
  * the later expiry wins.
  */
-export async function planDetails(db: Db, userId: string, now = new Date()): Promise<PlanDetails> {
+export async function planDetails(db: Db, userId: string, now = new Date(), opts: { email?: string } = {}): Promise<PlanDetails> {
   const [row, apple] = await Promise.all([
     db.one<EntRow>("entitlements", `select=tier,active,expires_at,source&user_id=${eq(userId)}`),
     // Until the app_store_purchases migration is in a database, treat it as having no App Store purchases.
@@ -48,6 +48,14 @@ export async function planDetails(db: Db, userId: string, now = new Date()): Pro
   for (const a of apple) {
     const live = a.tier === "lifetime" || (!!a.expires_at && new Date(a.expires_at) > now);
     if (live && PLANS[a.tier]) candidates.push({ plan: PLANS[a.tier], source: "app_store", expires_at: a.tier === "lifetime" ? null : a.expires_at, app_store_product: a.product_id });
+  }
+  // Pro given by email (scripts/grant_pro.sh): only looks up the user's email when grants exist.
+  const grants = await db.select<{ email: string; until: string | null }>("pro_grants", "select=email,until").catch(() => [] as { email: string; until: string | null }[]);
+  const live = grants.filter((g) => !g.until || new Date(g.until) > now);
+  if (live.length) {
+    const email = (opts.email ?? (await db.authEmail?.(userId)))?.trim().toLowerCase();
+    const g = email ? live.find((x) => x.email === email) : undefined;
+    if (g) candidates.push({ plan: g.until ? PLANS.annual : PLANS.lifetime, source: "grant", expires_at: g.until });
   }
   const best = candidates.sort((x, y) => RANK[y.plan.tier] - RANK[x.plan.tier] || Date.parse(y.expires_at ?? "") - Date.parse(x.expires_at ?? ""))[0];
   return best ?? { plan: PLANS.free, source: null, expires_at: null };

@@ -111,3 +111,21 @@ over the purchase screen).
 - Buying needs a person at Apple's sheet: a TestFlight build buys with the tester's own Apple Account
   for free (subscriptions renew every few minutes), and the real JWS then exercises the Worker. Xcode
   StoreKit configuration files sign with Xcode's own certificate, which the Worker rightly rejects.
+
+## 5. Free Pro by email (testers, early adopters, the owner)
+
+`scripts/grant_pro.sh <project> <email> [--until YYYY-MM-DD] [--note TEXT] [--revoke]`,
+`scripts/grant_pro.sh <project> --list` (`--local` for the local stack). It writes the project's own
+`<schema>.pro_grants` (lower-case email primary key, `until` null = for good, service role only), so a
+grant works before the person's first sign-in and on all their devices. A new project needs:
+- the table in `supabase/schemas/<project>/` (copy Headway's block) and `scripts/db_migration.sh`;
+- its Worker: `proGrant(db, email)` in `store.ts` and `GET /api/pro` (signed-in only) in `api.ts`;
+- the app: `ProStore.grantChecker` (calls `/api/pro`) set in the app model's init, `ProGate(signedIn:invite:)`
+  with the app's sign-in as `invite`; the purchase screen's "Have a Pro invite? Sign in" opens it, and an
+  answer is cached so a granted person isn't locked out offline (cleared on sign-out). Debug
+  `-autoSignIn` / `-reviewSignIn` start on that sign-in path.
+- Waypack instead counts a grant in `planDetails()` (it looks up the user's email only when grants
+  exist), so it unlocks the web, Mac and MCP too.
+Proven 2026-11-14 on the local stack: grant / until / revoke / expired / upper-case email through
+Headway's `/api/pro`, and the iPhone app opening straight to the board with a grant, the purchase screen
+with "no invite for <email>" without one.

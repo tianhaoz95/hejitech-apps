@@ -42,7 +42,7 @@ struct RootView: View {
     @State private var showWhatsNew = false
 
     var body: some View {
-        ProGate {
+        ProGate(signedIn: model.phase == .ready, invite: { SignInView() }) {
         Group {
             switch model.phase {
             case .launching: ProgressView().controlSize(.large)

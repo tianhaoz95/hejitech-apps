@@ -246,3 +246,16 @@ language sql stable security definer set search_path = headway, extensions as $$
 $$;
 revoke all on function headway.push_users_by_email(text) from public, anon, authenticated;
 grant execute on function headway.push_users_by_email(text) to service_role;
+
+-- Pro given by email (scripts/grant_pro.sh: testers, early adopters, the owner). Keyed by the
+-- lower-case email so a grant works before the person first signs in; `until` null = for good.
+-- Only the Worker reads it (service key); clients ask the Worker, so there are no policies.
+create table headway.pro_grants (
+  email text primary key check (email = lower(email)),
+  until timestamptz,
+  note text,
+  granted_at timestamptz not null default now()
+);
+alter table headway.pro_grants enable row level security;
+grant select, insert, update, delete on table headway.pro_grants to service_role;
+

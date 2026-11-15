@@ -13,6 +13,7 @@ import { handleFamily, leaveFamily } from "./family.ts";
 import {
   admin, bearer, createEtaShare, json, loadCommuteDone, loadEtaShare, loadLastRide, loadOnTrain, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
   revokeEtaShares, saveCommuteDone, saveLastRide, saveOnTrain, type OnTrainSession, saveSettings, saveTracked, sha256, supabaseUser, updateEtaShareExpiry, type Db, type Env,
+  proGrant,
 } from "./store.ts";
 
 /** Every table holding a user's Headway rows (DELETE /api/account, the review account's reset). */
@@ -184,6 +185,11 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   const who = await caller(env, db, req);
   if (!who) return reply({ error: "sign in, or pair these glasses again" }, 401);
   const userId = who.userId;
+  // Pro given by email (scripts/grant_pro.sh); purchases are checked on the phone by StoreKit.
+  if (path === "/api/pro" && req.method === "GET") {
+    const grant = who.via === "session" ? await proGrant(db, who.email) : null;
+    return reply({ pro: Boolean(grant), source: grant ? "grant" : null, until: grant?.until ?? null, email: who.email ?? null });
+  }
 
   // ------------------------------------------------------------ session or glasses
   if (path === "/api/device" && req.method === "GET") return reply({ paired: true, via: who.via });

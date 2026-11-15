@@ -139,6 +139,11 @@ public actor G2DigestAPI {
         return result
     }
 
+    /// `GET /api/pro`: Pro given by email to the signed-in account (scripts/grant_pro.sh), as JSON.
+    public func fetchProGrant() async throws -> Data {
+        try await send("/api/pro")
+    }
+
     public func fetchDeviceStatus() async throws -> DeviceStatus {
         try decode(DeviceStatus.self, try await send("/api/device"))
     }

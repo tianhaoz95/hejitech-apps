@@ -571,3 +571,16 @@ GRANT ALL ON TABLE waypack.trip_templates TO service_role;
 GRANT ALL ON TABLE waypack.uploads TO anon;
 GRANT ALL ON TABLE waypack.uploads TO authenticated;
 GRANT ALL ON TABLE waypack.uploads TO service_role;
+
+-- Pro given by email (scripts/grant_pro.sh: testers, early adopters, the owner). Keyed by the
+-- lower-case email so a grant works before the person first signs in; `until` null = for good.
+-- Only the Worker reads it (service key); clients ask the Worker, so there are no policies.
+create table waypack.pro_grants (
+  email text primary key check (email = lower(email)),
+  until timestamptz,
+  note text,
+  granted_at timestamptz not null default now()
+);
+alter table waypack.pro_grants enable row level security;
+grant select, insert, update, delete on table waypack.pro_grants to service_role;
+

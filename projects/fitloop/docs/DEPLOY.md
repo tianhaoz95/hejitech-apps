@@ -66,7 +66,9 @@ yearly subscription `com.hejitech.fitloop.pro.annual` ($19.99/yr, the trial is i
 offer) or the lifetime unlock `com.hejitech.fitloop.pro.lifetime` ($39.99 once). The App Store price of
 the app itself is Free. StoreKit 2 checks the purchase on the phone (`ProStore.swift`, `ProViews.swift`:
 the gate, the purchase screen, Settings › FitLoop Pro); no server is involved, so the web app, glasses
-and Android aren't gated. Debug builds skip the gate with `-proUnlocked`. Products, review
+and Android aren't gated. Debug builds skip the gate with `-proUnlocked`. Pro for free by email (testers, early adopters, the
+owner): `scripts/grant_pro.sh fitloop <email> [--until YYYY-MM-DD] [--revoke] | --list`; the person taps "Have a
+Pro invite? Sign in" on the purchase screen. Products, review
 screenshots and notes: skill `heji-app-store-iap` (`iap.mjs status com.hejitech.fitloop`).
    Google Play keeps its one-time $9.99 until Play Billing is added (Play can go paid → free but never back). Store text: `apps/ios/AppStore/description.txt`;
    captioned slides: `node scripts/store_captions.mjs projects/fitloop/apps/ios/AppStore/captions.json`.

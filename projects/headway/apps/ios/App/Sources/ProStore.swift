@@ -24,7 +24,50 @@ final class ProStore {
     var busy: String?
     var error: String?
 
-    var isPro: Bool { plan != nil || unlockedForScreenshots }
+    var isPro: Bool { plan != nil || grantActive || unlockedForScreenshots }
+
+    // MARK: Pro given by email (scripts/grant_pro.sh)
+
+    /// Asks the app's Worker `GET /api/pro` for the signed-in account; set by the app at launch.
+    var grantChecker: (() async throws -> (pro: Bool, until: Date?, email: String?))?
+    /// The person tapped "Have a Pro invite? Sign in": the gate shows the sign-in instead of the paywall.
+    var inviteSignIn = false
+    private(set) var checkingGrant = false
+    /// Shown on the paywall after an invite sign-in without a grant.
+    private(set) var grantNote: String?
+    /// The last grant the Worker confirmed, kept so a granted person isn't locked out offline.
+    private var grantUntil: Date? = ProStore.storedGrant()
+    private var grantActive: Bool { grantUntil.map { $0 > .now } ?? false }
+    private static let grantKey = "pro_grant_until"
+
+    private static func storedGrant() -> Date? {
+        let t = UserDefaults.standard.double(forKey: grantKey)
+        return t > 0 ? Date(timeIntervalSince1970: t) : nil
+    }
+
+    /// After a sign-in, at launch when signed in, and when the app comes back.
+    func checkGrant() async {
+        guard let check = grantChecker, !checkingGrant else { return }
+        checkingGrant = true
+        defer { checkingGrant = false }
+        do {
+            let answer = try await check()
+            // No end date = for good: store a far-future date.
+            grantUntil = answer.pro ? (answer.until ?? .distantFuture) : nil
+            UserDefaults.standard.set(grantUntil?.timeIntervalSince1970 ?? 0, forKey: Self.grantKey)
+            grantNote = answer.pro ? nil : "There's no Headway Pro invite for \(answer.email ?? "this account") yet."
+            if answer.pro { inviteSignIn = false }
+        } catch {
+            // Offline or signed out: keep the last answer.
+        }
+    }
+
+    /// Signing out forgets the grant (it belongs to the account, not the phone).
+    func forgetGrant() {
+        grantUntil = nil
+        grantNote = nil
+        UserDefaults.standard.removeObject(forKey: Self.grantKey)
+    }
     private let unlockedForScreenshots: Bool
     private var updates: Task<Void, Never>?
 
@@ -32,6 +75,9 @@ final class ProStore {
         #if DEBUG
         // Store screenshots and UI checks (`scripts/store_screenshots.sh` passes it).
         unlockedForScreenshots = ProcessInfo.processInfo.arguments.contains("-proUnlocked")
+        // The Debug sign-in shortcuts start on the sign-in screen, as "Have a Pro invite? Sign in" does.
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-autoSignIn") || args.contains("-reviewSignIn") { inviteSignIn = true }
         #else
         unlockedForScreenshots = false
         #endif
@@ -120,5 +166,21 @@ final class ProStore {
         }
         await refresh()
         if plan == nil { error = "No Headway Pro purchase was found for this Apple Account." }
+    }
+}
+
+/// `GET /api/pro`: whether the signed-in account has Pro given by email (scripts/grant_pro.sh).
+struct ProGrantAnswer: Decodable {
+    let pro: Bool
+    let until: String?
+    let email: String?
+
+    var untilDate: Date? {
+        guard let until else { return nil }
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = f.date(from: until) { return d }
+        f.formatOptions = [.withInternetDateTime]
+        return f.date(from: until)
     }
 }

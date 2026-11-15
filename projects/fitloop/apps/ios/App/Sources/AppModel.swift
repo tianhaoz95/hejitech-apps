@@ -47,6 +47,11 @@ final class AppModel {
         let session = Keychain.get("session").flatMap { try? JSONDecoder().decode(AuthSession.self, from: $0) }
         backend = Backend(config: Self.config, session: session)
         backend.onSessionChange = { s in Keychain.set(s.flatMap { try? JSONEncoder().encode($0) }, for: "session") }
+        ProStore.shared.grantChecker = { [weak self] in
+            guard let self, self.backend.session != nil else { throw CancellationError() }
+            let a = try await self.backend.call("GET", "/api/pro", as: ProGrantAnswer.self)
+            return (a.pro, a.untilDate, a.email)
+        }
         #if DEBUG
         // `-date YYYY-MM-DD` opens another day (screenshots of a workout day without taps).
         let args = ProcessInfo.processInfo.arguments

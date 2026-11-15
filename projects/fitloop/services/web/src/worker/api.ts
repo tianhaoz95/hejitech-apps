@@ -12,6 +12,7 @@ import {
 import {
   admin, bearer, BUCKET, checkinsBetween, feedbackList, json, LIVE_MAX_AGE_MS, loadSettings, pairingCode, PAIRING_CODE_TTL_MS, PHOTO_URL_TTL_SEC, planOn, planSpans,
   planVersions, PREFIX, published, randomToken, resolveDevice, saveSettings, sha256, supabaseUser, today, type Db, type Env,
+  proGrant,
 } from "./store.ts";
 import { reviewSignIn } from "./review.ts";
 import { getOrResolveExerciseGif, normalizeExerciseSlug, uploadExerciseGif, type UploadGifOptions } from "./exercise_media.ts";
@@ -150,6 +151,11 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   const who = await caller(env, db, req);
   if (!who) return reply({ error: "sign in, or pair these glasses again" }, 401);
   const userId = who.userId;
+  // Pro given by email (scripts/grant_pro.sh); purchases are checked on the phone by StoreKit.
+  if (path === "/api/pro" && req.method === "GET") {
+    const grant = who.via === "session" ? await proGrant(db, who.email) : null;
+    return reply({ pro: Boolean(grant), source: grant ? "grant" : null, until: grant?.until ?? null, email: who.email ?? null });
+  }
   const source = who.via === "device" ? "glasses" : (req.headers.get("X-FitLoop-Client") ?? "web").slice(0, 10);
 
   // ------------------------------------------------------------ session or glasses

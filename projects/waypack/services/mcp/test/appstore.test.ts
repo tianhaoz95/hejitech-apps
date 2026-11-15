@@ -175,3 +175,19 @@ describe("App Store Server Notifications", () => {
     expect(await handleNotification(dbx, await note("SUBSCRIBED", annual({ appAccountToken: undefined })), { root: ROOT }, NOW)).toMatchObject({ status: 200, result: "no Waypack user for this purchase yet" });
   });
 });
+
+describe("Pro given by email (pro_grants)", () => {
+  it("a grant without an end date is lifetime; with one, Pro until then; matched case-insensitively", async () => {
+    const db = new FakeDb() as FakeDb & { authEmail: (id: string) => Promise<string> };
+    db.authEmail = async () => "Tester@Example.com";
+    const dbx = db as unknown as Db;
+    expect((await planDetails(dbx, USER, new Date(NOW))).plan.tier).toBe("free");
+    db.tables.pro_grants = [{ email: "tester@example.com", until: null }];
+    expect(await planDetails(dbx, USER, new Date(NOW))).toMatchObject({ plan: { tier: "lifetime" }, source: "grant", expires_at: null });
+    db.tables.pro_grants = [{ email: "tester@example.com", until: new Date(NOW + 30 * DAY).toISOString() }];
+    expect(await planDetails(dbx, USER, new Date(NOW))).toMatchObject({ plan: { tier: "annual", offlineMaps: true }, source: "grant" });
+    expect((await planDetails(dbx, USER, new Date(NOW + 31 * DAY))).plan.tier).toBe("free");
+    // the caller's email, when known, saves the lookup
+    expect((await planDetails(dbx, OTHER, new Date(NOW), { email: "nobody@example.com" })).plan.tier).toBe("free");
+  });
+});

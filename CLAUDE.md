@@ -173,6 +173,8 @@ are the `heji-app-store-iap` skill. What worked:
 - The first in-app purchases are reviewed together with an app version: add them on their pages
   in the App Store Connect website (Add for Review), then the version and submit by API (skill §1).
   Headway, FitLoop and G2 Digest went in this way on 2026-11-14 (Waypack isn't submitted yet).
+- Free Pro for an email address (testers, early adopters, the owner): `scripts/grant_pro.sh <project>
+  <email> [--until YYYY-MM-DD] [--revoke] | --list` (skill §5). Waypack, Headway, FitLoop, G2 Digest.
 - Owner's prices and model: memory, and each project's `docs/DEPLOY.md` price note.
 
 ## Common pitfalls

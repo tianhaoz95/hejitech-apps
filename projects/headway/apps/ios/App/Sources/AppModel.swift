@@ -84,6 +84,11 @@ final class AppModel {
             Keychain.set(s.flatMap { try? JSONEncoder().encode($0) }, for: "session")
             Task { @MainActor in self?.syncWatch() }
         }
+        ProStore.shared.grantChecker = { [weak self] in
+            guard let self, self.backend.session != nil else { throw CancellationError() }
+            let a = try await self.backend.call("GET", "/api/pro", as: ProGrantAnswer.self)
+            return (a.pro, a.untilDate, a.email)
+        }
         if let cached = UserDefaults.standard.data(forKey: "stations"), let s = try? JSONDecoder().decode([Station].self, from: cached) { stations = s }
 
         watch.onTrack = { [weak self] tripId, serviceDate, from, to in

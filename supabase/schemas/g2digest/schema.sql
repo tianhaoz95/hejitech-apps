@@ -186,3 +186,16 @@ revoke all on function g2digest.resolve_access_token(text) from public, anon, au
 grant execute on function g2digest.redeem_pairing_code(text, text, text) to service_role;
 grant execute on function g2digest.resolve_device_token(text) to service_role;
 grant execute on function g2digest.resolve_access_token(text) to service_role;
+
+-- Pro given by email (scripts/grant_pro.sh: testers, early adopters, the owner). Keyed by the
+-- lower-case email so a grant works before the person first signs in; `until` null = for good.
+-- Only the Worker reads it (service key); clients ask the Worker, so there are no policies.
+create table g2digest.pro_grants (
+  email text primary key check (email = lower(email)),
+  until timestamptz,
+  note text,
+  granted_at timestamptz not null default now()
+);
+alter table g2digest.pro_grants enable row level security;
+grant select, insert, update, delete on table g2digest.pro_grants to service_role;
+

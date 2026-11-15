@@ -112,6 +112,8 @@ yearly subscription `com.hejitech.g2digest.pro.annual` ($14.99/yr, the trial is 
 offer) or the lifetime unlock `com.hejitech.g2digest.pro.lifetime` ($29.99 once). The App Store price of
 the app itself is Free. StoreKit 2 checks the purchase on the phone (`ProStore.swift`, `ProViews.swift`:
 the gate, the purchase screen, Settings › G2 Digest Pro); no server is involved, so the web app, glasses
-and Android aren't gated. Debug builds skip the gate with `-proUnlocked`. Products, review
+and Android aren't gated. Debug builds skip the gate with `-proUnlocked`. Pro for free by email (testers, early adopters, the
+owner): `scripts/grant_pro.sh g2digest <email> [--until YYYY-MM-DD] [--revoke] | --list`; the person taps "Have a
+Pro invite? Sign in" on the purchase screen. Products, review
 screenshots and notes: skill `heji-app-store-iap` (`iap.mjs status com.hejitech.g2digest`).
 Storage grows with each reader's editions and audio: if that cost climbs, add a retention limit.

@@ -287,3 +287,15 @@ export async function saveLastRide(env: Env, userId: string, r: LastRide | null)
   if (!r) return env.OAUTH_KV.delete(lastRideKey(userId));
   await env.OAUTH_KV.put(lastRideKey(userId), JSON.stringify(r), { expirationTtl: 30 * 60 });
 }
+
+/**
+ * Pro given by email with `scripts/grant_pro.sh` (testers, early adopters, the owner): a row in
+ * `pro_grants` (lower-case email; `until` null = for good). The iPhone app asks `GET /api/pro` after
+ * an invite sign-in and treats an active grant like a purchase.
+ */
+export async function proGrant(db: Db, email: string | undefined, now = Date.now()): Promise<{ until: string | null } | null> {
+  if (!email) return null;
+  const { data } = await db.from("pro_grants").select("until").eq("email", email.trim().toLowerCase()).maybeSingle();
+  if (!data || (data.until && Date.parse(data.until) <= now)) return null;
+  return { until: data.until ?? null };
+}

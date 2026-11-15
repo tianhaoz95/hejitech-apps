@@ -132,6 +132,8 @@ Original checklist:
   checks that both products load and saves a screenshot of the sheet. Locally the Worker accepts only
   Apple-signed transactions, so StoreKit configuration files (Xcode-signed) don't unlock Pro.
 - Apple keeps 30% (15% after the App Store Small Business Program, which the team account hasn't joined).
+- Pro for free by email (testers, early adopters, the owner): `scripts/grant_pro.sh waypack <email>
+  [--until YYYY-MM-DD] [--revoke] | --list`; `planDetails()` counts it everywhere (plan_source `grant`).
 
 ## 4b. Releases (GitHub Actions)
 - **CI** (`.github/workflows/waypack-ci.yml`): pushes/PRs touching `projects/waypack/`, `supabase/` or the shared root files run Waypack's package builds, typechecks and tests (incl. the SDK's Playwright tests), plus `flutter analyze` and `flutter test`.

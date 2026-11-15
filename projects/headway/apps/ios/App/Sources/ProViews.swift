@@ -1,22 +1,37 @@
 import StoreKit
 import SwiftUI
 
-/// Shows the app once Headway Pro is active, and the purchase screen until then.
-struct ProGate<Content: View>: View {
+/// Shows the app once Headway Pro is active (bought, or given by email), and the purchase screen
+/// until then. `invite` is the sign-in for "Have a Pro invite? Sign in".
+struct ProGate<Content: View, Invite: View>: View {
     @State private var pro = ProStore.shared
+    var signedIn: Bool
+    @ViewBuilder var invite: () -> Invite
     @ViewBuilder var content: () -> Content
 
     var body: some View {
         Group {
             if pro.isPro {
                 content()
-            } else if pro.checked {
-                ScrollView { PaywallView() }
+            } else if pro.inviteSignIn && !signedIn {
+                invite()
+                    .safeAreaInset(edge: .bottom) {
+                        Button("Back to Headway Pro") { pro.inviteSignIn = false }
+                            .font(.footnote).padding(.bottom, 8)
+                    }
+            } else if pro.checked && !pro.checkingGrant {
+                ScrollView { PaywallView(signedIn: signedIn) }
             } else {
                 ProgressView().controlSize(.large)
             }
         }
-        .task { await pro.start() }
+        .task {
+            await pro.start()
+            if signedIn { await pro.checkGrant() }
+        }
+        .onChange(of: signedIn) { _, now in
+            if now { Task { await pro.checkGrant() } } else { pro.forgetGrant() }
+        }
     }
 }
 
@@ -24,6 +39,7 @@ struct ProGate<Content: View>: View {
 /// free week only when the person can still get it, renewal terms, Restore, Terms and Privacy.
 struct PaywallView: View {
     @State private var pro = ProStore.shared
+    var signedIn = false
     static let eula = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
     static let privacy = URL(string: "https://headway.hejitech.workers.dev/privacy/")!
     static let perks: [(String, String)] = [
@@ -77,6 +93,14 @@ struct PaywallView: View {
                 Button("Try Again") { Task { await pro.loadProducts() } }
                     .buttonStyle(.bordered).frame(maxWidth: .infinity)
             }
+            if let note = pro.grantNote {
+                Text(note).font(.footnote).foregroundStyle(.secondary).frame(maxWidth: .infinity)
+            }
+            if !signedIn {
+                Button("Have a Pro invite? Sign in") { pro.inviteSignIn = true }
+                    .font(.footnote).frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("invite-sign-in")
+            }
             HStack {
                 Button(pro.busy == "restore" ? "Restoring…" : "Restore Purchases") { Task { await pro.restore() } }
                     .accessibilityIdentifier("restore-purchases")
@@ -106,6 +130,8 @@ struct ProSettingsSection: View {
             case .annual(let expires):
                 Label(expires.map { "Annual · renews or ends \($0.formatted(date: .abbreviated, time: .omitted))" } ?? "Annual", systemImage: "checkmark.seal.fill")
                 Button("Manage Subscription") { manage = true }
+            case nil where pro.isPro:
+                Label("Given to your account", systemImage: "gift.fill")
             case nil:
                 Label("Not active", systemImage: "xmark.seal")
             }

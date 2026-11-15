@@ -2,10 +2,10 @@ import SwiftUI
 import G2DigestKit
 
 public struct MainView: View {
-    @StateObject private var appModel = AppModel()
+    @ObservedObject var appModel: AppModel
     @Environment(\.scenePhase) private var scenePhase
 
-    public init() {}
+    public init(appModel: AppModel) { self.appModel = appModel }
 
     public var body: some View {
         NavigationStack {

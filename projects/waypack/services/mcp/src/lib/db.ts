@@ -30,6 +30,16 @@ export class Db {
     return (text ? JSON.parse(text) : null) as T;
   }
 
+  /** A user's sign-in email (Supabase Auth admin API, service key): for email-keyed rows like pro_grants. */
+  async authEmail(userId: string): Promise<string | undefined> {
+    const res = await this.fetcher(`${this.url}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+      headers: { apikey: this.key, Authorization: `Bearer ${this.key}` },
+    });
+    if (!res.ok) return undefined;
+    const u = (await res.json()) as { email?: string };
+    return u.email ?? undefined;
+  }
+
   select<T = Record<string, unknown>>(table: string, query = ""): Promise<T[]> {
     return this.req<T[]>("GET", `${table}${query ? `?${query}` : ""}`);
   }

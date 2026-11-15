@@ -88,7 +88,9 @@ yearly subscription `com.hejitech.headway.pro.annual` ($4.99/yr, the trial is it
 offer) or the lifetime unlock `com.hejitech.headway.pro.lifetime` ($9.99 once). The App Store price of
 the app itself is Free. StoreKit 2 checks the purchase on the phone (`ProStore.swift`, `ProViews.swift`:
 the gate, the purchase screen, Settings › Headway Pro); no server is involved, so the web app, glasses
-and Android aren't gated. Debug builds skip the gate with `-proUnlocked`. Products, review
+and Android aren't gated. Debug builds skip the gate with `-proUnlocked`. Pro for free by email (testers, early adopters, the
+owner): `scripts/grant_pro.sh headway <email> [--until YYYY-MM-DD] [--revoke] | --list`; the person taps "Have a
+Pro invite? Sign in" on the purchase screen. Products, review
 screenshots and notes: skill `heji-app-store-iap` (`iap.mjs status com.hejitech.headway`).
 Google Play keeps its one-time $6.99 until Play Billing is added (Play can go paid → free but never back). Store text: `apps/ios/AppStore/description.txt`;
 captioned slides: `node scripts/store_captions.mjs projects/headway/apps/ios/AppStore/captions.json`.

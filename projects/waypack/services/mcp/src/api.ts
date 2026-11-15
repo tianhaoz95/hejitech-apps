@@ -192,7 +192,7 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
   const m = (re: RegExp) => path.match(re);
 
   if (path === "/api/me" && req.method === "GET") {
-    const details = await planDetails(db, user.userId);
+    const details = await planDetails(db, user.userId, new Date(), { email: user.email });
     const plan = details.plan;
     const ent = await db.one<{ tier: string; expires_at: string | null; stripe_subscription_id: string | null; stripe_customer_id: string | null }>(
       "entitlements",
