@@ -29,7 +29,7 @@
 
     <main>
       <section id="summary" data-toc="Summary">
-        <p class="kicker">Release prep · 2026-11-15 · owner chose A (Wee Hours Pro) · nothing submitted</p>
+        <p class="kicker">Release prep · 2026-11-15 · owner chose A (Wee Hours Pro) · submitted 2026-11-15</p>
         <h1>Wee Hours iOS release: choices for your review</h1>
         <p class="lede">Wee Hours' App Store listing is ready apart from <b>one decision: how it charges</b>. I built <b>Wee Hours Pro</b> (free download, 14-day household trial, then monthly, yearly or lifetime) on a local branch, following the billing design in <code>projects/weehours/docs/decisions.md</code>, because you moved Headway, FitLoop and G2 Digest to in-app Pro yesterday. Nothing is pushed or submitted: say which model you want and I finish the release; you press Submit.</p>
 
@@ -43,7 +43,7 @@
           <div><b>Pro code (app, Worker, database)</b><span class="ok">On main, deployed</span></div>
           <div><b>Database change in production</b><span class="ok">Applied; clients refused by record_purchase</span></div>
           <div><b>Build for this version</b><span class="ok">1.1.0 (202611151519) attached; version in a review draft</span></div>
-          <div><b>Sign in with Apple key (token revocation)</b><span class="bad">Missing, your step</span></div>
+          <div><b>Sign in with Apple key (token revocation)</b><span class="ok">Set (the team's HEJI key also does Sign in with Apple)</span></div>
         </div>
 
         <div class="cards">
@@ -135,7 +135,7 @@
           <li id="c-siwa">Create a Sign in with Apple key for <code>com.hejitech.weehours</code> (developer portal → Keys) and give it to me for the Worker secrets; without it, account deletion can't revoke Apple's token (guideline 5.1.1(v))</li>
           <li id="c-db">OK the production database change (A only; applied 2026-11-15)</li>
           <li id="c-signin">Sign in to App Store Connect in Chrome again (done 2026-11-15: the group, both subscriptions and lifetime are in the draft with version 1.1.0)</li>
-          <li id="c-submit">Press Submit for Review</li>
+          <li id="c-submit">Press Submit for Review (submitted 2026-11-15: Waiting for Review)</li>
         </ul>
       </section>
 
