@@ -129,3 +129,20 @@ grant works before the person's first sign-in and on all their devices. A new pr
 Proven 2026-11-14 on the local stack: grant / until / revoke / expired / upper-case email through
 Headway's `/api/pro`, and the iPhone app opening straight to the board with a grant, the purchase screen
 with "no invite for <email>" without one.
+
+## 6. A first App Store submission (learned shipping Waypack, 2026-11-14)
+
+- **User-generated content** (anything one person publishes that others see, like Waypack's trip
+  gallery) needs, before review (guideline 1.2): a Report action, a way to hide/block an author, a
+  moderation path, and terms with a no-tolerance clause. Waypack's DECISIONS #73 is the pattern
+  (`lib/reports.ts`, `scripts/moderation.mjs`). Declare `userGeneratedContent: true` in the age rating.
+- **App Privacy** is website-only. In the signed-in Chrome tab: Get Started › Yes, we collect › tick the
+  data types › Save, then for each "Set Up <type>" the same four answers. This in-page helper did all of
+  them (purpose App Functionality, linked, not tracking) after the checkboxes were saved:
+  `__setup(label)`: click the "Set Up <label>" leaf, tick the input whose label starts "App
+  Functionality", Next, pick the radio starting "Yes,", Next, press Next until a radio starting "No,"
+  appears, pick it, Save. Then check the summary and Publish (confirm in the dialog).
+- **Screenshots**: an iPad-capable app (`TARGETED_DEVICE_FAMILY` 1,2) also needs 13" iPad shots
+  (2064x2752). Leave out screens that show local addresses or tokens. A walkthrough run with
+  notifications off found a real bug (an error banner on every refresh): look at every shot.
+
