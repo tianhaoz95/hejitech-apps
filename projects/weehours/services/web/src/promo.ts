@@ -4,7 +4,7 @@ const promo = document.querySelector<HTMLButtonElement>("[data-promo] .promo");
 promo?.addEventListener("click", () => {
   const frame = document.createElement("iframe");
   frame.className = "promo";
-  frame.src = "https://www.youtube-nocookie.com/embed/To1mquGs_JQ?autoplay=1&rel=0";
+  frame.src = "https://www.youtube-nocookie.com/embed/D-SxyQ9WQM8?autoplay=1&rel=0";
   frame.title = "Wee Hours: whisper the 3am feed to your watch, and both parents know (30 s)";
   frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
   frame.allowFullscreen = true;

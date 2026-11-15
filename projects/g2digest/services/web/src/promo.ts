@@ -4,7 +4,7 @@ const promo = document.querySelector<HTMLButtonElement>("[data-promo] .promo");
 promo?.addEventListener("click", () => {
   const frame = document.createElement("iframe");
   frame.className = "promo";
-  frame.src = "https://www.youtube-nocookie.com/embed/gcS32dRwPMo?autoplay=1&rel=0";
+  frame.src = "https://www.youtube-nocookie.com/embed/Hy8lWO5Gm6k?autoplay=1&rel=0";
   frame.title = "G2 Digest: your brief, ready before the train, on Even G2 glasses (30 s)";
   frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
   frame.allowFullscreen = true;

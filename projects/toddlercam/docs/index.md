@@ -26,12 +26,12 @@ features:
 ## See it in 30 seconds
 
 <div class="promo-video">
-  <iframe src="https://www.youtube-nocookie.com/embed/kvPABm2YNLU?rel=0" title="ToddlerCam: a camera for little hands, and a remote on your watch (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <iframe src="https://www.youtube-nocookie.com/embed/KmW3EsK75So?rel=0" title="ToddlerCam: a camera for little hands, and a remote on your watch (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
 </div>
 
 Four hundred photos of the back of his head, so Milo got his own camera: both cameras at once, and
 the watch is the remote. His taps only make bubbles, and every photo stays on the phone. People and
-scenes are AI-generated; in-app footage is demo footage. [Watch on YouTube](https://youtu.be/kvPABm2YNLU).
+scenes are AI-generated; in-app footage is demo footage. [Watch on YouTube](https://youtu.be/KmW3EsK75So).
 
 ## Working on it
 

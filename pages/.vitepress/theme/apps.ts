@@ -24,7 +24,7 @@ export interface App {
 }
 
 export const REPO = "https://github.com/tianhaoz95/hejitech-apps";
-export const YOUTUBE = "https://www.youtube.com/channel/UCCx17EMpUwCYWkJYqXMQVRQ";
+export const YOUTUBE = "https://www.youtube.com/channel/UCaTlcJuZlIzoXE0CcRCaigg";
 
 export const APPS: App[] = [
   {
@@ -35,7 +35,7 @@ export const APPS: App[] = [
     icon: "/waypack/favicon.svg",
     platforms: ["iPhone", "Android", "Mac", "MCP"],
     appUrl: "https://waypack.hejitech.workers.dev",
-    video: "U1Hhwjfqh7c",
+    video: "ZRV7O02_jS4",
     docs: "/waypack/",
     backend: "Shared Supabase, waypack schema",
     ai: "Your assistant plans over MCP",
@@ -49,7 +49,7 @@ export const APPS: App[] = [
     icon: "/weehours/icon.png",
     platforms: ["iPhone", "Apple Watch", "Even G2 glasses", "MCP"],
     appUrl: "https://weehours.hejitech.workers.dev",
-    video: "To1mquGs_JQ",
+    video: "D-SxyQ9WQM8",
     docs: "/weehours/",
     backend: "Shared Supabase, weehours schema",
     ai: "Voice model on the phone",
@@ -63,7 +63,7 @@ export const APPS: App[] = [
     icon: "/g2digest/icon.png",
     platforms: ["Even G2 glasses", "Web", "MCP"],
     appUrl: "https://g2digest.hejitech.workers.dev",
-    video: "gcS32dRwPMo",
+    video: "Hy8lWO5Gm6k",
     docs: "/g2digest/",
     backend: "Shared Supabase, g2digest schema",
     ai: "Your own agent builds each edition",
@@ -77,7 +77,7 @@ export const APPS: App[] = [
     icon: "/headway/icon.png",
     platforms: ["Even G2 glasses", "iPhone", "Web", "MCP"],
     appUrl: "https://headway.hejitech.workers.dev",
-    video: "dAxVDil4ARA",
+    video: "86bB9Q3GgK4",
     docs: "/headway/",
     backend: "Shared Supabase, headway schema",
     ai: "Your assistant asks for your next train over MCP",
@@ -91,7 +91,7 @@ export const APPS: App[] = [
     icon: "/fitloop/icon.png",
     platforms: ["iPhone", "Apple Watch", "Even G2 glasses", "Web", "MCP"],
     appUrl: "https://fitloop.hejitech.workers.dev",
-    video: "yNye1ZyYcoQ",
+    video: "5woJ_bmTqlk",
     docs: "/fitloop/",
     backend: "Shared Supabase, fitloop schema",
     ai: "Your own agent writes and improves the plan",
@@ -105,7 +105,7 @@ export const APPS: App[] = [
     icon: "/tradeboard/icon.png",
     platforms: ["Web", "MCP", "Local executor"],
     appUrl: "https://tradeboard.hejitech.workers.dev",
-    video: "oVojWDFUrkc",
+    video: "A96hnNpEoBA",
     docs: "/tradeboard/",
     backend: "Shared Supabase, tradeboard schema",
     ai: "Your agents debate; a local model sanity-checks every order",
@@ -171,7 +171,7 @@ export const APPS: App[] = [
     icon: "/toddlercam/icon.png",
     platforms: ["iPhone · iPad", "Apple Watch", "Kids Category"],
     appUrl: "https://tianhaoz95.github.io/hejitech-apps/toddlercam/site/",
-    video: "kvPABm2YNLU",
+    video: "KmW3EsK75So",
     docs: "/toddlercam/",
     backend: "None: nothing leaves the device",
     ai: "Face tracking on the device",
@@ -185,7 +185,7 @@ export const APPS: App[] = [
     icon: "/tinytouch/icon.png",
     platforms: ["Apple Watch", "iPhone", "Kids Category"],
     appUrl: "https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/",
-    video: "Q1qmSJNQtOw",
+    video: "EE4eTl7q3eM",
     docs: "/tinytouch/",
     backend: "None",
     ai: "None: pure play",

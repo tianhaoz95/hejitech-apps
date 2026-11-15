@@ -73,7 +73,7 @@ export default withMermaid(
       sidebar: Object.fromEntries(projects.map((p) => [`/${p}/`, sidebarFor(p)])),
       socialLinks: [
         { icon: "github", link: "https://github.com/tianhaoz95/hejitech-apps" },
-        { icon: "youtube", link: "https://www.youtube.com/channel/UCCx17EMpUwCYWkJYqXMQVRQ", ariaLabel: "HEJI TECH on YouTube" },
+        { icon: "youtube", link: "https://www.youtube.com/channel/UCaTlcJuZlIzoXE0CcRCaigg", ariaLabel: "HEJI TECH on YouTube" },
       ],
       search: {
         provider: "local",

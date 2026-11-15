@@ -10,7 +10,7 @@ A newborn log built for 3am. You log a feed, diaper or nap in under three second
 Fed 2h40m ago · left next · diaper 1h10m ago
 ```
 
-▶ **[Watch it in 30 seconds](https://youtu.be/To1mquGs_JQ)** · [the Short](https://youtube.com/shorts/KlSPWSPLU8Y)
+▶ **[Watch it in 30 seconds](https://youtu.be/D-SxyQ9WQM8)** · [the Short](https://youtube.com/shorts/s1HGU1iPv5I)
 
 Voice is understood **on the iPhone** by [Laya](https://huggingface.co/ggml-org/Laya-GGUF), a 0.4B decision model fine-tuned for baby logging ([wee-hours-baby-activity](https://huggingface.co/tianhaoz95/wee-hours-baby-activity), `ml/`), running through llama.cpp. It scores predefined options, never generates text, and when it isn't sure it asks you to choose with one tap.
 

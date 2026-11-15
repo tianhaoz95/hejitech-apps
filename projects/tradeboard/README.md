@@ -6,7 +6,7 @@ the PRD (v1.0, 2026-10-29), made multi-user at the owner's request. Long equity
 buys in a dedicated Robinhood MCP account; dry-run by default. **You remain responsible for every
 trade this system places. Nothing here is financial advice.**
 
-▶ **[Watch it in 30 seconds](https://youtu.be/oVojWDFUrkc)** · [the Short](https://youtube.com/shorts/kRgtz4iZ4Dc)
+▶ **[Watch it in 30 seconds](https://youtu.be/A96hnNpEoBA)** · [the Short](https://youtube.com/shorts/j7eXwK4BvSg)
 
 ```
 Discussion agents (hosted)          You (browser / phone)

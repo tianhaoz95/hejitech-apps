@@ -32,11 +32,11 @@ features:
 ## See it in 30 seconds
 
 <div class="promo-video">
-  <iframe src="https://www.youtube-nocookie.com/embed/oVojWDFUrkc?rel=0" title="How Trading Plan Board works (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <iframe src="https://www.youtube-nocookie.com/embed/A96hnNpEoBA?rel=0" title="How Trading Plan Board works (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
 </div>
 
 Agents draft and debate a plan, you approve it from your phone, and your machine checks it before
-any order. Prices in the video are demo data. [Watch on YouTube](https://youtu.be/oVojWDFUrkc).
+any order. Prices in the video are demo data. [Watch on YouTube](https://youtu.be/A96hnNpEoBA).
 
 ## How it fits together
 

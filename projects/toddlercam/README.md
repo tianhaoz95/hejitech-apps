@@ -6,7 +6,7 @@
 
 > **ToddlerCam** (`com.hejitech.kidscam` on Apple App Store, `com.hejitech.toddlercam` on Android) is a child-friendly, privacy-focused iOS/watchOS and Android/Wear OS dual-camera app tailored for toddlers and parents. It captures both the front and rear cameras simultaneously, features a parent wrist remote control (Apple Watch & Wear OS) with attention-grabber animal sounds, includes a toddler safe lock setup, and saves keepsake dual-camera photos directly to the photo library.
 
-▶ **[Watch it in 30 seconds](https://youtu.be/kvPABm2YNLU)** · [the Short](https://youtube.com/shorts/y3sMewPdtH4)
+▶ **[Watch it in 30 seconds](https://youtu.be/KmW3EsK75So)** · [the Short](https://youtube.com/shorts/ik0Pbw9Fq9s)
 
 ---
 

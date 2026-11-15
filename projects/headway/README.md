@@ -4,7 +4,7 @@ Caltrain status on Even G2 glasses, steered with the R1 ring, with iPhone and An
 cancellations, leaving on time and arriving at your stop. Docs:
 <https://tianhaoz95.github.io/hejitech-apps/headway/>. Working on it: [`CLAUDE.md`](CLAUDE.md).
 
-▶ **[Watch it in 30 seconds](https://youtu.be/dAxVDil4ARA)** · [the Short](https://youtube.com/shorts/g0088LeISt8)
+▶ **[Watch it in 30 seconds](https://youtu.be/86bB9Q3GgK4)** · [the Short](https://youtube.com/shorts/ZRctVjL_3ck)
 
 ```
 projects/headway/

@@ -30,12 +30,12 @@ features:
 ## See it in 30 seconds
 
 <div class="promo-video">
-  <iframe src="https://www.youtube-nocookie.com/embed/yNye1ZyYcoQ?rel=0" title="FitLoop: your AI agent coaches, FitLoop keeps you on the plan (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <iframe src="https://www.youtube-nocookie.com/embed/5woJ_bmTqlk?rel=0" title="FitLoop: your AI agent coaches, FitLoop keeps you on the plan (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
 </div>
 
 Everyone at the gym is guessing; Maya's agent wrote her plan. FitLoop puts it in her glasses, a tap
 marks a set done and starts the rest timer, and when something hurts mid-set her agent reads it back
-and adjusts tomorrow's plan. Workouts are demo data; people and scenes are AI-generated. [Watch on YouTube](https://youtu.be/yNye1ZyYcoQ).
+and adjusts tomorrow's plan. Workouts are demo data; people and scenes are AI-generated. [Watch on YouTube](https://youtu.be/5woJ_bmTqlk).
 
 ## How it fits together
 

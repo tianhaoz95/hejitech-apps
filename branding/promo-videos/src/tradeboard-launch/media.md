@@ -63,8 +63,8 @@ Its captions file comes from the voiceover timings:
 
 ## On YouTube (HEJI TECH channel, Public, verified 2026-11-02)
 
-- 30 s 16:9: https://youtu.be/oVojWDFUrkc (id `oVojWDFUrkc`)
-- 15 s 9:16 Short: https://youtube.com/shorts/kRgtz4iZ4Dc (id `kRgtz4iZ4Dc`)
+- 30 s 16:9: https://youtu.be/A96hnNpEoBA (id `A96hnNpEoBA`)
+- 15 s 9:16 Short: https://youtube.com/shorts/j7eXwK4BvSg (id `j7eXwK4BvSg`)
 
 The 30 s cut is the embed: the project's landing page (click-to-play poster from its opening frame),
 its docs page ("See it in 30 seconds"), its README, the HEJI home card and `pages/videos.md`.

@@ -30,12 +30,12 @@ features:
 ## See it in 30 seconds
 
 <div class="promo-video">
-  <iframe src="https://www.youtube-nocookie.com/embed/gcS32dRwPMo?rel=0" title="G2 Digest: your brief, ready before the train, on Even G2 glasses (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <iframe src="https://www.youtube-nocookie.com/embed/Hy8lWO5Gm6k?rel=0" title="G2 Digest: your brief, ready before the train, on Even G2 glasses (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
 </div>
 
 Underground, nothing loads. His brief was ready last night: his own AI agent turned it into cards
 for his Even G2 glasses, he swipes the R1 ring to skim and holds it for the deep dive in his
-headphones. Briefs in the video are demo data; people and scenes are AI-generated. [Watch on YouTube](https://youtu.be/gcS32dRwPMo).
+headphones. Briefs in the video are demo data; people and scenes are AI-generated. [Watch on YouTube](https://youtu.be/Hy8lWO5Gm6k).
 
 ## How it fits together
 

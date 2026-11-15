@@ -40,8 +40,8 @@ with the thumbnails: end-card frames at 29.0 s and 14.6 s). Re-run and recopy af
 
 ## On YouTube (HEJI TECH channel, Public, verified 2026-11-02)
 
-- 30 s 16:9: https://youtu.be/dAxVDil4ARA (id `dAxVDil4ARA`)
-- 15 s 9:16 Short: https://youtube.com/shorts/g0088LeISt8 (id `g0088LeISt8`)
+- 30 s 16:9: https://youtu.be/86bB9Q3GgK4 (id `86bB9Q3GgK4`)
+- 15 s 9:16 Short: https://youtube.com/shorts/ZRctVjL_3ck (id `ZRctVjL_3ck`)
 
 The 30 s cut is the embed: the project's landing page (click-to-play poster from its opening frame),
 its docs page ("See it in 30 seconds"), its README, the HEJI home card and `pages/videos.md`.

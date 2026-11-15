@@ -25,8 +25,8 @@ See "On YouTube" below.
 
 ## On YouTube (HEJI TECH channel, Public, verified 2026-11-02)
 
-- 30 s 16:9: https://youtu.be/To1mquGs_JQ (id `To1mquGs_JQ`)
-- 15 s 9:16 Short: https://youtube.com/shorts/KlSPWSPLU8Y (id `KlSPWSPLU8Y`)
+- 30 s 16:9: https://youtu.be/D-SxyQ9WQM8 (id `D-SxyQ9WQM8`)
+- 15 s 9:16 Short: https://youtube.com/shorts/s1HGU1iPv5I (id `s1HGU1iPv5I`)
 
 The 30 s cut is the embed: the project's landing page (click-to-play poster from its opening frame),
 its docs page ("See it in 30 seconds"), its README, the HEJI home card and `pages/videos.md`.

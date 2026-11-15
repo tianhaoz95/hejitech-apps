@@ -30,12 +30,12 @@ features:
 ## See it in 30 seconds
 
 <div class="promo-video">
-  <iframe src="https://www.youtube-nocookie.com/embed/To1mquGs_JQ?rel=0" title="Wee Hours: whisper the 3am feed to your watch, and both parents know (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <iframe src="https://www.youtube-nocookie.com/embed/D-SxyQ9WQM8?rel=0" title="Wee Hours: whisper the 3am feed to your watch, and both parents know (30 s)" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
 </div>
 
 At three a.m. nobody remembers who fed the baby. Now he whispers it to his watch, the phone
 understands it on the device, and his wife sees it on hers and goes back to sleep. A log, not medical
-advice; times shown are demo data; people and scenes are AI-generated. [Watch on YouTube](https://youtu.be/To1mquGs_JQ).
+advice; times shown are demo data; people and scenes are AI-generated. [Watch on YouTube](https://youtu.be/D-SxyQ9WQM8).
 
 ## What's next, in one line
 

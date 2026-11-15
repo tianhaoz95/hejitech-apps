@@ -60,8 +60,8 @@ Backup: _(not set up yet)_
 
 ## On YouTube (HEJI TECH channel, Public, verified 2026-11-02)
 
-- 30 s 16:9: https://youtu.be/yNye1ZyYcoQ (id `yNye1ZyYcoQ`)
-- 15 s 9:16 Short: https://youtube.com/shorts/YGC6bK1CoMk (id `YGC6bK1CoMk`)
+- 30 s 16:9: https://youtu.be/5woJ_bmTqlk (id `5woJ_bmTqlk`)
+- 15 s 9:16 Short: https://youtube.com/shorts/3JOz0UGkf7s (id `3JOz0UGkf7s`)
 
 The 30 s cut is the embed: the project's landing page (click-to-play poster from its opening frame),
 its docs page ("See it in 30 seconds"), its README, the HEJI home card and `pages/videos.md`.

@@ -5,7 +5,7 @@ on iPhone, Apple Watch, the web and Even G2 glasses, with check-ins and in-the-m
 back to the agent over MCP. Docs: <https://tianhaoz95.github.io/hejitech-apps/fitloop/>. Working on
 it: [`CLAUDE.md`](CLAUDE.md).
 
-▶ **[Watch it in 30 seconds](https://youtu.be/yNye1ZyYcoQ)** · [the Short](https://youtube.com/shorts/YGC6bK1CoMk)
+▶ **[Watch it in 30 seconds](https://youtu.be/5woJ_bmTqlk)** · [the Short](https://youtube.com/shorts/3JOz0UGkf7s)
 
 ```
 projects/fitloop/
