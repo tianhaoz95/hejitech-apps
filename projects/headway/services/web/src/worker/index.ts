@@ -21,6 +21,7 @@ import { now as clockNow } from "./clock.ts";
 import { runCron } from "./cron.ts";
 import { renderEtaHtml } from "./eta.ts";
 import { handleMcp, type Caller } from "./mcp.ts";
+import { loadWeather } from "./weather.ts";
 import { admin, json, loadEtaShare, loadSnapshot, PREFIX, resolveAgent, supabaseUser, updateEtaShareExpiry, type Env as BaseEnv } from "./store.ts";
 
 export interface Env extends BaseEnv {
@@ -37,7 +38,7 @@ const mcpHandler = {
     const props = ctx.props;
     if (!props?.userId) return new Response("unauthorized", { status: 401 });
     const caller: Caller = { userId: props.userId, via: props.via };
-    return handleMcp(req, caller, admin(env), clockNow(env));
+    return handleMcp(req, caller, admin(env), clockNow(env), () => loadWeather(env));
   },
 };
 

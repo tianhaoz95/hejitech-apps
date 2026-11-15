@@ -6,10 +6,11 @@
 //   Supabase session (web, iPhone) settings, pairing codes, devices, push registration, agent tokens, family group, delete data
 import { devClock, now as clockNow } from "./clock.ts";
 import { appleKey, revokeIfPossible } from "./apple.ts";
-import { board, checkSettings, isTravelMode, clock, commuteArrival, commuteBoard, commuteDoneCard, detectOnTrain, newLeg, onTrainCard, stillOnTrain, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type CommuteDone, type ExpressPreference, type OnTrainSample, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
+import { board, boardWeather, checkSettings, weatherReport, WEATHER_CELLS, isTravelMode, clock, commuteArrival, commuteBoard, commuteDoneCard, detectOnTrain, newLeg, onTrainCard, stillOnTrain, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type CommuteDone, type ExpressPreference, type OnTrainSample, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
 import { apnsConfigured, fcmConfigured, NOT_BOARD_ACTIVITY, PUSH_DEVICE_COLUMNS, pushConfigured, sendPush } from "./push.ts";
 import { reviewSignIn } from "./review.ts";
 import { handleFamily, leaveFamily } from "./family.ts";
+import { loadWeather } from "./weather.ts";
 import {
   admin, bearer, createEtaShare, json, loadCommuteDone, loadEtaShare, loadLastRide, loadOnTrain, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
   revokeEtaShares, saveCommuteDone, saveLastRide, saveOnTrain, type OnTrainSession, saveSettings, saveTracked, sha256, supabaseUser, updateEtaShareExpiry, type Db, type Env,
@@ -103,6 +104,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     const p = pairOf(url);
     if (!p) return reply({ error: "send ?from=<station>&to=<station> (ids from /api/stations)" }, 400);
     const b = board(p.from, p.to, now, await loadSnapshot(db), "custom", TIMETABLE, { ...(validExpress ? { expressPreference: validExpress } : {}), ...travelOpts });
+    if (b) b.weather = boardWeather(await loadWeather(env), b, now);
     return b ? reply(b, 200, { "Cache-Control": origin ? "private, no-store" : "public, max-age=20" }) : reply({ error: "unknown stations, or the same station twice" }, 400);
   }
   if (path === "/api/train" && req.method === "GET") {
@@ -111,12 +113,24 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     const p = progress(t, now, await loadSnapshot(db));
     return p ? reply(p, 200, { "Cache-Control": "public, max-age=20" }) : reply({ error: "that train doesn't stop there" }, 404);
   }
+  if (path === "/api/weather" && req.method === "GET") {
+    // Every station's weather from the National Weather Service, refreshed by the cron every two hours.
+    const r = weatherReport(await loadWeather(env), now);
+    const only = url.searchParams.get("station");
+    if (only) {
+      const s = r.stations.find((x) => x.id === only);
+      if (!s) return reply({ error: "unknown station (ids from /api/stations)" }, 400);
+      return reply({ ...r, stations: [s], alerts: r.alerts.filter((a) => a.stations.includes(s.id)) }, 200, { "Cache-Control": "public, max-age=300" });
+    }
+    return reply(r, 200, { "Cache-Control": "public, max-age=300" });
+  }
   if (path === "/api/status" && req.method === "GET") {
     const s = await loadSnapshot(db);
     return reply({
       realtime: { configured: Boolean(env.TRANSIT_511_API_KEY), fetched_at: s?.fetched_at ?? null, feed_ts: s?.feed_ts ?? null, live: Boolean(s && now - s.fetched_at < 10 * 60_000), trips: s ? Object.keys(s.trips).length : 0, alerts: s?.alerts.length ?? 0 },
       timetable: { version: TIMETABLE.feed_version, valid_until: TIMETABLE.feed_end, days_left: timetableDaysLeft(now) },
       push: { configured: pushConfigured(env) },
+      weather: await loadWeather(env).then((w) => ({ cells: Object.keys(w?.cells ?? {}).length, of: WEATHER_CELLS.length, updated_at: weatherReport(w, now).updated_at, alerts: w?.alerts.length ?? 0 })),
     });
   }
   if (path === "/api/review-sign-in" && req.method === "POST") {
@@ -202,6 +216,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
       ...(validExpress ? { expressPreference: validExpress } : {}),
       ...(origin ? { origin, travelMode: travelMode ?? legMode } : {}),
     });
+    if (b) b.weather = boardWeather(await loadWeather(env), b, now);
     const p = tracked ? progress(tracked, now, snapshot) : null;
     const ride = settings.on_train === "off" ? null : await loadOnTrain(env, userId);
     const on_train = ride && !(ride.dismissed_until && ride.dismissed_until > now) ? onTrainCard(ride, settings, tracked, now, snapshot) : null;

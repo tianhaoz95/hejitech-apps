@@ -30,6 +30,17 @@ object Clock {
         }
     }
 
+    private val hourFormat = SimpleDateFormat("h a", Locale.US).apply {
+        timeZone = PACIFIC
+    }
+
+    /** "2 PM": the hour of an epoch-ms time, Pacific. */
+    fun hour(epochMs: Double): String {
+        return synchronized(hourFormat) {
+            hourFormat.format(Date(epochMs.toLong()))
+        }
+    }
+
     fun timeWithAmPm(epochMs: Double): String {
         return synchronized(timeWithAmPmFormat) {
             timeWithAmPmFormat.format(Date(epochMs.toLong()))

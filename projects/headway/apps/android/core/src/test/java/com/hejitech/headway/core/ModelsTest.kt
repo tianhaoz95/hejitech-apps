@@ -24,6 +24,22 @@ class ModelsTest {
     }
 
     @Test
+    fun testWeatherDecoding() {
+        val hour = """{"t":1794758400000,"temp_f":54,"pop":70,"wind_mph":9,"cond":"rain","text":"Rain","day":true}"""
+        val report = json.decodeFromString<WeatherReport>(
+            """{"source":"National Weather Service","updated_at":1794760772608,"stations":[{"id":"san_francisco","name":"San Francisco","short":"SF","now":$hour,"hours":[$hour],"high_f":62,"low_f":54,"rain_at":null,"alert_ids":["a"],"fetched_at":1794760772608}],"alerts":[{"id":"a","event":"Wind Advisory","headline":"Wind Advisory until 6 PM","severity":"Minor","starts":null,"ends":1794790000000,"zones":["CAZ006"],"stations":["san_francisco"]}]}"""
+        )
+        val sf = report.stations.single()
+        assertEquals("54° Rain 70%", sf.now?.line)
+        assertEquals(listOf("san_francisco"), report.alerts.single().stations)
+        // A condition from a newer Worker still decodes.
+        val ash = json.decodeFromString<WeatherHour>("""{"t":0,"temp_f":50,"cond":"volcanic_ash","day":true}""")
+        assertEquals(WeatherCondition.CLOUDY, ash.cond)
+        val board = json.decodeFromString<Board>("""{"from":{"id":"a","name":"A","short":"A"},"to":{"id":"b","name":"B","short":"B"},"weather":{"from":$hour,"to":null,"to_at":null,"alerts":[]}}""")
+        assertEquals(54, board.weather?.from?.tempF)
+    }
+
+    @Test
     fun testBoardSerialization() {
         val board = Board(
             from = StationRef("mountain_view", "Mountain View", "MTN VIEW"),

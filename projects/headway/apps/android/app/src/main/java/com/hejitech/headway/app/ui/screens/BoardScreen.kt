@@ -47,7 +47,7 @@ private val StatusBlue = Color(0xFF64B5F6)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BoardScreen(viewModel: HeadwayViewModel) {
+fun BoardScreen(viewModel: HeadwayViewModel, onShowWeather: () -> Unit = {}) {
     val board by viewModel.board.collectAsState()
     val tracked by viewModel.tracked.collectAsState()
     val onTrain by viewModel.onTrain.collectAsState()
@@ -161,6 +161,7 @@ fun BoardScreen(viewModel: HeadwayViewModel) {
                         b.tip?.let { tip -> item(key = "tip") { InsightBanner(tip) } }
                         b.walkMinutes?.let { walk -> if (catchTarget(b) != null) item(key = "catch") { CatchCard(b, walk, now) } }
                     }
+                    b.weather?.let { w -> item(key = "weather") { BoardWeatherStrip(b, w, onClick = onShowWeather) } }
 
                     item(key = "header") {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

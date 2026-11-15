@@ -4,6 +4,7 @@ import { board, boardActivityState, dueNotifications, normalizeSettings, progres
 import { BOARD_ACTIVITY_PREFIX, NOT_BOARD_ACTIVITY, PUSH_DEVICE_COLUMNS, sendPush, sendLiveActivityPush, pushConfigured, type LiveActivityContentState } from "./push.ts";
 import { runFamilyCron } from "./family.ts";
 import { refreshRealtime } from "./realtime.ts";
+import { refreshWeather } from "./weather.ts";
 import { admin, loadCommuteDone, saveLastRide, saveTracked, type Env } from "./store.ts";
 
 /** Sent-notification keys are kept this long (service alert ids repeat while an alert lasts). */
@@ -16,12 +17,16 @@ export interface CronReport {
   users: number;
   sent: number;
   failed: number;
+  weather?: { cells: number; failed: number; alerts: boolean };
 }
 
 export async function runCron(env: Env, now = new Date()): Promise<CronReport> {
   const db = admin(env);
   const snapshot = await refreshRealtime(env, db, now).catch((e: Error) => (console.error("realtime refresh failed:", e.message), null));
   const report: CronReport = { live: Boolean(snapshot && now.getTime() - snapshot.fetched_at < 10 * 60_000), users: 0, sent: 0, failed: 0 };
+  // Station weather: a batch of forecast cells when they're due (every two hours), never per request.
+  const weather = await refreshWeather(env, now.getTime()).catch((e: Error) => (console.error("weather refresh failed:", e.message), null));
+  if (weather) report.weather = weather;
   if (!pushConfigured(env)) return report;
   await pushBoardActivities(env, db, snapshot, now, report);
   // Before the per-user alerts: a train that just arrived is still someone's tracked train here.

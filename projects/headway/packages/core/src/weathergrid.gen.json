@@ -1,0 +1,222 @@
+{
+ "source": "api.weather.gov /points",
+ "stations": {
+  "san_francisco": {
+   "cell": "MTR/86,105",
+   "zones": [
+    "CAZ006",
+    "CAC075"
+   ]
+  },
+  "22nd_street": {
+   "cell": "MTR/85,104",
+   "zones": [
+    "CAZ006",
+    "CAC075"
+   ]
+  },
+  "bayshore": {
+   "cell": "MTR/85,102",
+   "zones": [
+    "CAZ508",
+    "CAC081"
+   ]
+  },
+  "south_sf": {
+   "cell": "MTR/84,100",
+   "zones": [
+    "CAZ508",
+    "CAC081"
+   ]
+  },
+  "san_bruno": {
+   "cell": "MTR/84,99",
+   "zones": [
+    "CAZ508",
+    "CAC081"
+   ]
+  },
+  "millbrae": {
+   "cell": "MTR/84,97",
+   "zones": [
+    "CAZ508",
+    "CAC081"
+   ]
+  },
+  "broadway": {
+   "cell": "MTR/85,97",
+   "zones": [
+    "CAZ508",
+    "CAC081"
+   ]
+  },
+  "burlingame": {
+   "cell": "MTR/86,96",
+   "zones": [
+    "CAZ508",
+    "CAC081"
+   ]
+  },
+  "san_mateo": {
+   "cell": "MTR/86,95",
+   "zones": [
+    "CAZ508",
+    "CAC081"
+   ]
+  },
+  "hayward_park": {
+   "cell": "MTR/87,95",
+   "zones": [
+    "CAZ508",
+    "CAC081"
+   ]
+  },
+  "hillsdale": {
+   "cell": "MTR/87,94",
+   "zones": [
+    "CAZ508",
+    "CAC081"
+   ]
+  },
+  "belmont": {
+   "cell": "MTR/87,93",
+   "zones": [
+    "CAZ508",
+    "CAC081"
+   ]
+  },
+  "san_carlos": {
+   "cell": "MTR/88,92",
+   "zones": [
+    "CAZ508",
+    "CAC081"
+   ]
+  },
+  "redwood_city": {
+   "cell": "MTR/89,91",
+   "zones": [
+    "CAZ508",
+    "CAC081"
+   ]
+  },
+  "menlo_park": {
+   "cell": "MTR/90,89",
+   "zones": [
+    "CAZ508",
+    "CAC081"
+   ]
+  },
+  "palo_alto": {
+   "cell": "MTR/91,89",
+   "zones": [
+    "CAZ508",
+    "CAC085"
+   ]
+  },
+  "stanford": {
+   "cell": "MTR/91,89",
+   "zones": [
+    "CAZ508",
+    "CAC085"
+   ]
+  },
+  "california_ave": {
+   "cell": "MTR/91,88",
+   "zones": [
+    "CAZ508",
+    "CAC085"
+   ]
+  },
+  "san_antonio": {
+   "cell": "MTR/92,87",
+   "zones": [
+    "CAZ508",
+    "CAC085"
+   ]
+  },
+  "mountain_view": {
+   "cell": "MTR/93,86",
+   "zones": [
+    "CAZ508",
+    "CAC085"
+   ]
+  },
+  "sunnyvale": {
+   "cell": "MTR/95,85",
+   "zones": [
+    "CAZ513",
+    "CAC085"
+   ]
+  },
+  "lawrence": {
+   "cell": "MTR/96,84",
+   "zones": [
+    "CAZ513",
+    "CAC085"
+   ]
+  },
+  "santa_clara": {
+   "cell": "MTR/98,83",
+   "zones": [
+    "CAZ513",
+    "CAC085"
+   ]
+  },
+  "college_park": {
+   "cell": "MTR/98,83",
+   "zones": [
+    "CAZ513",
+    "CAC085"
+   ]
+  },
+  "sj_diridon": {
+   "cell": "MTR/99,82",
+   "zones": [
+    "CAZ513",
+    "CAC085"
+   ]
+  },
+  "tamien": {
+   "cell": "MTR/99,81",
+   "zones": [
+    "CAZ513",
+    "CAC085"
+   ]
+  },
+  "capitol": {
+   "cell": "MTR/100,79",
+   "zones": [
+    "CAZ513",
+    "CAC085"
+   ]
+  },
+  "blossom_hill": {
+   "cell": "MTR/102,78",
+   "zones": [
+    "CAZ513",
+    "CAC085"
+   ]
+  },
+  "morgan_hill": {
+   "cell": "MTR/106,71",
+   "zones": [
+    "CAZ513",
+    "CAC085"
+   ]
+  },
+  "san_martin": {
+   "cell": "MTR/107,69",
+   "zones": [
+    "CAZ513",
+    "CAC085"
+   ]
+  },
+  "gilroy": {
+   "cell": "MTR/108,65",
+   "zones": [
+    "CAZ513",
+    "CAC085"
+   ]
+  }
+ }
+}

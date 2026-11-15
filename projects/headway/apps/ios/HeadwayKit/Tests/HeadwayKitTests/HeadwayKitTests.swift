@@ -6,6 +6,32 @@ final class HeadwayKitTests: XCTestCase {
         try Data(contentsOf: Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures")!)
     }
 
+    /// /api/weather (captured from the local stack after the cron fetched every NWS cell).
+    func testDecodesWeatherReport() throws {
+        let w = try Backend.decoder.decode(WeatherReport.self, from: fixture("weather"))
+        XCTAssertEqual(w.source, "National Weather Service")
+        XCTAssertEqual(w.stations.first?.id, "san_francisco")
+        XCTAssertEqual(w.stations.count, 31)
+        let sf = try XCTUnwrap(w.stations.first?.now)
+        XCTAssertFalse(sf.symbol.isEmpty)
+        XCTAssertTrue(sf.line.hasPrefix("\(sf.tempF)° "))
+        XCTAssertEqual(w.stations.first?.hours.count, 12)
+    }
+
+    /// A board carries the weather at both ends (/api/board, local stack).
+    func testDecodesBoardWeather() throws {
+        let b = try Backend.decoder.decode(Board.self, from: fixture("board-weather"))
+        let w = try XCTUnwrap(b.weather)
+        XCTAssertNotNil(w.from)
+        XCTAssertNotNil(w.toAt)
+    }
+
+    func testUnknownWeatherConditionDecodesAsCloudy() throws {
+        let h = try Backend.decoder.decode(WeatherHour.self, from: Data(#"{"t":0,"temp_f":50,"pop":0,"wind_mph":3,"cond":"volcanic_ash","text":"Ash","day":true}"#.utf8))
+        XCTAssertEqual(h.cond, .cloudy)
+        XCTAssertEqual(WeatherHour(t: 0, tempF: 54, pop: 70, windMph: 5, cond: .rain, text: "Rain", day: true).line, "54° Rain 70%")
+    }
+
     /// The Worker's /api/me/board (captured from the local stack with the seed glasses token).
     func testDecodesMyBoard() throws {
         let b = try Backend.decoder.decode(MyBoard.self, from: fixture("me-board"))

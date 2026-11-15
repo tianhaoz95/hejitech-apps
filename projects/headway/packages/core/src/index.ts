@@ -8,3 +8,4 @@ export * from "./family.ts";
 export * from "./glasses.ts";
 export { decodeFeed, snapshotFrom, encode, type DecodedFeed, type Msg } from "./gtfsrt.ts";
 export * from "./font.ts";
+export * from "./weather.ts";

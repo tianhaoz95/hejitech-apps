@@ -12,6 +12,7 @@ struct BoardView: View {
     }
 
     @State private var picking = false
+    @State private var showingWeather = false
     @State private var now = Clock.now()
     @State private var sort: BoardSort = .leaving
     private let tick = Timer.publish(every: 20, on: .main, in: .common).autoconnect()
@@ -64,6 +65,14 @@ struct BoardView: View {
                     if !riding, let walk = b.walkMinutes {
                         Section {
                             CatchCard(board: b, walkMinutes: walk, now: now)
+                        }
+                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                        .listRowBackground(Color.clear)
+                    }
+
+                    if let w = b.weather {
+                        Section {
+                            BoardWeatherStrip(board: b, weather: w) { showingWeather = true }
                         }
                         .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                         .listRowBackground(Color.clear)
@@ -162,6 +171,7 @@ struct BoardView: View {
                 }
             }
             .sheet(isPresented: $picking) { PairPicker() }
+            .sheet(isPresented: $showingWeather) { WeatherView(asSheet: true) }
             .onReceive(tick) { _ in now = Clock.now(); Task { await model.refresh() } }
         }
     }

@@ -35,6 +35,8 @@ export interface Env {
   APPLE_SIWA_KEY_ID?: string;
   /** Secret: that key's .p8 contents. */
   APPLE_SIWA_PRIVATE_KEY?: string;
+  /** "1" stops the cron fetching weather from api.weather.gov (weather.ts). */
+  WEATHER_DISABLED?: string;
 }
 
 export const SCHEMA = "headway";

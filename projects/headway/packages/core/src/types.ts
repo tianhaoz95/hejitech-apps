@@ -2,6 +2,7 @@
 // settings, and the boards every surface (glasses, iPhone, web, MCP, alert engine) shows.
 
 import type { EtaStopInfo } from "./schedule.ts";
+import type { BoardWeather } from "./weather.ts";
 
 export type ServiceKind = "LOC" | "LTD" | "EXP" | "SCC";
 export type ExpressPreference = "all" | "prefer_express" | "express_only";
@@ -262,6 +263,8 @@ export interface Board {
   tip?: BoardTip | null;
   /** Set when the board was asked from the rider's location: walk_minutes is then this estimate. */
   travel?: TravelEstimate | null;
+  /** Weather at both ends (the Worker adds it; null without a fresh NWS forecast). */
+  weather?: BoardWeather | null;
 }
 
 /** A train someone follows on board, from the glasses or the iPhone: arrival alerts and the track view. */

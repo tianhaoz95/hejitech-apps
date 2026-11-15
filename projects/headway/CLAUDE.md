@@ -12,13 +12,14 @@ behaviour). Going live: `docs/DEPLOY.md`. Read the root `CLAUDE.md` too.
 npm run test:headway && npm run typecheck:headway      # core (timetable, live merge, alerts, glasses, GTFS-RT) + plugin
 npm run build:headway                                  # web (WEB_ALLOW_LOCAL=1 without production env) + glasses
 node projects/headway/scripts/build-timetable.mjs      # new Caltrain timetable → packages/core/src/timetable.gen.json
+node projects/headway/scripts/build-weather-grid.mjs   # stations → NWS forecast cells + alert zones → packages/core/src/weathergrid.gen.json
 
 # local stack: `supabase start` from the repo root (seed: rider@example.com / headway-dev)
 echo "SUPABASE_SERVICE_ROLE_KEY=<local service key>" > projects/headway/services/web/.dev.vars
 npm run dev:worker -w @headway/web                     # 127.0.0.1:8792 (+ TRANSIT_511_API_KEY in .dev.vars for live data)
 curl "http://127.0.0.1:8792/cdn-cgi/handler/scheduled?cron=*+*+*+*+*"   # run the cron once
 curl -X PUT 127.0.0.1:8792/api/dev/clock -d '{"at":"2026-11-09T07:40:00-08:00"}'   # local only: pretend it's then ({"at":null} resets)
-node projects/headway/scripts/test-api.mjs             # integration (25 checks: boards, on-train, commute done, pairing, push, family, MCP/OAuth, RLS)
+node projects/headway/scripts/test-api.mjs             # integration (27 checks: boards, weather, on-train, commute done, pairing, push, family, MCP/OAuth, RLS)
 projects/headway/scripts/glasses-sim.sh [--e2e]        # the plugin in the Even Hub simulator, paired to the seed rider
 npm run package -w @headway/glasses                    # apps/glasses/build/headway.ehpk (version = MARKETING_VERSION)
 
@@ -45,27 +46,29 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|f
   notifications are due and which are priority, pure), `ontrain.ts` (which train a phone's fixes are riding,
   the in-train card), `family.ts` (family groups: who sees what, follows, which family notifications are due), `glasses.ts` (screens laid out in pixels by `font.ts`'s measured
   glyph widths, 9 lines in a bordered frame, and the R1 `Navigator`), `gtfsrt.ts` (protobuf
-  reader), `settings.ts` (defaults + `checkSettings`). Change behaviour there, with a test; never
+  reader), `settings.ts` (defaults + `checkSettings`), `weather.ts` (station weather from the National Weather
+  Service: what to fetch when, NWS JSON → hours and alerts, every station's report, a board's weather at both ends). Change behaviour there, with a test; never
   format glasses text elsewhere.
 - **Worker** (`services/web/src/worker`): `api.ts` (public boards, session / glasses token, pairing,
   push registration), `review.ts` (App Review's demo account: `/api/review-sign-in` checks the
   Worker's REVIEW_* secrets, resets the account to a demo commute and mints a Supabase session; no
   email sign-in for people), `cron.ts` + `realtime.ts` (511 → `headway.realtime` snapshot, alert engine →
   `push.ts`: APNs for iPhones, FCM's HTTP v1 API for Android phones; a `push_devices` row has one token or the other), `family.ts` (`/api/family/*` and the cron's family pass: notifications and
-  followed-train Live Activities, update tokens `follow:<sharer>:<trip>`), `mcp.ts` (seven tools), `store.ts`. Service key only here; clients read their own
+  followed-train Live Activities, update tokens `follow:<sharer>:<trip>`), `weather.ts` (the cron fetches NWS forecasts, a batch of
+  cells a minute, each every two hours, alerts every 30 minutes, into one KV value; `/api/weather` and every board read it), `mcp.ts` (nine tools), `store.ts`. Service key only here; clients read their own
   rows through RLS and every write goes through the Worker.
 - **Plugin** (`apps/glasses/src`): `app.ts` (HeadwayApp: board sources, offline timetable, tracking,
   pairing; tested with fakes) and `main.ts` (bridge, one full-screen text container, R1 events, the
   phone page). Production API only (`https://headway.hejitech.workers.dev`, its one whitelist entry).
 - **iPhone app** (`apps/ios`): `HeadwayKit` (Codable mirrors of core's JSON, the Worker client,
   Supabase sign-in without an SDK) and `App/Sources` (`AppModel` drives `phase`; `route()` ends every
-  sign-in path). Release builds use production, Debug the local stack. Tabs: Trains (board, flip,
-  pick, swipe to track), Commute (legs, alerts), Family (group, shares, follows, status, invites), Settings (alerts, on-train mode, location estimate, Even G2 glasses pairing, account, What's New, delete data). Keeps the Watch in step via `WatchLink`.
+  sign-in path). Release builds use production, Debug the local stack. Tabs: Trains (board with the weather strip, flip,
+  pick, swipe to track), Weather (every station, yours first; a station's next hours), Commute (legs, alerts), Family (group, shares, follows, status, invites), Settings (alerts, on-train mode, location estimate, Even G2 glasses pairing, account, What's New, delete data). Keeps the Watch in step via `WatchLink`.
   `Widgets/`: the Home/Lock Screen "Next trains" widget (stations picked in its App Intent, public board, no
   App Group), the tracked-train Live Activity and the "next trains" board Live Activity (pinned from the Trains
   tab; the cron pushes it via update tokens whose `trip_id` is `board:<from>><to>`).
 - **Apple Watch app** (`apps/ios/Watch`): Companion watchOS app with glanceable departure board, live delays, countdowns, direction flip, express filtering, and train progress tracking synced with the iPhone app via WatchConnectivity and able to refresh directly.
-- **Android app** (`apps/android/app`): Native Jetpack Compose Material 3 phone app, kept at parity with the iPhone app (what has no counterpart: Live Activities and pinning to the Lock Screen, the Home Screen widget, Sign in with Apple). `HeadwayViewModel` mirrors `AppModel` (`Phase`; `route()` ends every sign-in path); `SessionStore` keeps the session encrypted (Keystore) and `AppBackend.client()` gives services a signed-in client. Sign-in: Google in a browser tab with PKCE back to `headway://login-callback`, or email for issued accounts (`/api/review-sign-in`). Tabs: Trains (leave-by card, tip, badges, sort, flip, pick stations, track, share live ETA, on-train and commute-done cards), Commute (both legs in full, alert days, every alert), Family (group, shares, follows, status, invites), Settings (alerts, on-train mode, location estimate, Even G2 glasses pairing, account, What's New, delete data). Skill: `heji-android-app`. Keeps paired Wear OS watches in step via Google Play Services Wearable Data Layer (`/headway/sync_state`). Alerts arrive through FCM (`PushService`; token registered at sign-in with `POST /api/push {platform: "android"}`; Firebase is configured by `res/values/firebase.xml`, no google-services plugin). Debug builds default to production and can switch to the local stack (Settings › Developer, or the sign-in screen); `adb shell am start -n com.hejitech.headway/.app.MainActivity --ez autoSignIn true` switches and signs the seed rider in, `--es screen commute` opens a tab (a phone on USB needs `adb reverse tcp:8792 tcp:8792; adb reverse tcp:55421 tcp:55421`). On the local stack the app follows the Worker's demo clock (`Clock.offsetMs`).
+- **Android app** (`apps/android/app`): Native Jetpack Compose Material 3 phone app, kept at parity with the iPhone app (what has no counterpart: Live Activities and pinning to the Lock Screen, the Home Screen widget, Sign in with Apple). `HeadwayViewModel` mirrors `AppModel` (`Phase`; `route()` ends every sign-in path); `SessionStore` keeps the session encrypted (Keystore) and `AppBackend.client()` gives services a signed-in client. Sign-in: Google in a browser tab with PKCE back to `headway://login-callback`, or email for issued accounts (`/api/review-sign-in`). Tabs: Trains (leave-by card, tip, badges, sort, flip, pick stations, track, share live ETA, on-train and commute-done cards, weather strip), Weather (every station, yours first; a station's next hours), Commute (both legs in full, alert days, every alert), Family (group, shares, follows, status, invites), Settings (alerts, on-train mode, location estimate, Even G2 glasses pairing, account, What's New, delete data). Skill: `heji-android-app`. Keeps paired Wear OS watches in step via Google Play Services Wearable Data Layer (`/headway/sync_state`). Alerts arrive through FCM (`PushService`; token registered at sign-in with `POST /api/push {platform: "android"}`; Firebase is configured by `res/values/firebase.xml`, no google-services plugin). Debug builds default to production and can switch to the local stack (Settings › Developer, or the sign-in screen); `adb shell am start -n com.hejitech.headway/.app.MainActivity --ez autoSignIn true` switches and signs the seed rider in, `--es screen commute` opens a tab (a phone on USB needs `adb reverse tcp:8792 tcp:8792; adb reverse tcp:55421 tcp:55421`). On the local stack the app follows the Worker's demo clock (`Clock.offsetMs`).
 - **Wear OS app** (`apps/android/wear`): Companion smartwatch app built with Wear Compose. Features live wrist departure board, one-tap trip tracking, a glanceable Wear OS Tile (`HeadwayBoardTileService`) on the watch carousel, and a watch face complication (`NextTrainComplicationService`) for departure countdowns.
 - **Android Core library** (`apps/android/core`): Shared Kotlin data models, Caltrain station index, Pacific time conversions (`Clock`), coroutine HTTP API client (`HeadwayApiClient`), and Wearable Data Layer message serialization (`WatchSyncState`).
 
@@ -86,7 +89,10 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|f
   `build-timetable.mjs` when Caltrain publishes a new one, and check new stations get a short name.
 - PostgREST only sees `headway` after `supabase start` with it in `config.toml` (restart the stack
   after adding a schema). Worker isolates cache the snapshot for 20 s.
-- Locally `wrangler dev` runs cron at `/cdn-cgi/handler/scheduled`, not `/__scheduled`.
+- Locally `wrangler dev` runs cron at `/cdn-cgi/handler/scheduled`, not `/__scheduled`. Each run also fetches up to
+  10 NWS forecast cells (29 in all) until they're fresh, so three runs fill the weather; `WEATHER_DISABLED=1` stops it.
+- api.weather.gov wants a User-Agent naming the app (never a personal email) and points with at most four decimals
+  (more answers 301). A forecast URL answering 404 means NWS re-gridded: rerun `build-weather-grid.mjs`.
 - An unsigned simulator build can't use the Keychain (the session doesn't survive a relaunch): build
   with `CODE_SIGN_IDENTITY=-`.
 - The family cron pass only runs with APNs or FCM configured, so locally it's skipped: to exercise it, put a throwaway

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.DirectionsTransit
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.WbCloudy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -32,6 +33,7 @@ import com.hejitech.headway.app.ui.screens.CommuteScreen
 import com.hejitech.headway.app.ui.screens.FamilyScreen
 import com.hejitech.headway.app.ui.screens.SettingsScreen
 import com.hejitech.headway.app.ui.screens.SignInScreen
+import com.hejitech.headway.app.ui.screens.WeatherScreen
 import com.hejitech.headway.app.ui.screens.WhatsNew
 import com.hejitech.headway.app.ui.screens.WhatsNewDialog
 import com.hejitech.headway.app.ui.theme.HeadwayTheme
@@ -39,6 +41,7 @@ import com.hejitech.headway.core.model.OnTrainMode
 
 enum class MainTab(val title: String) {
     TRAINS("Trains"),
+    WEATHER("Weather"),
     COMMUTE("Commute"),
     FAMILY("Family"),
     SETTINGS("Settings")
@@ -192,6 +195,7 @@ class MainActivity : ComponentActivity() {
                             icon = {
                                 val icon = when (tab) {
                                     MainTab.TRAINS -> Icons.Default.DirectionsTransit
+                                    MainTab.WEATHER -> Icons.Default.WbCloudy
                                     MainTab.COMMUTE -> Icons.Default.Schedule
                                     MainTab.FAMILY -> Icons.Default.People
                                     MainTab.SETTINGS -> Icons.Default.Settings
@@ -210,7 +214,8 @@ class MainActivity : ComponentActivity() {
             // The tabs have their own top bars: they must not add the status bar's height again.
             Surface(modifier = Modifier.fillMaxSize().padding(innerPadding).consumeWindowInsets(innerPadding), color = MaterialTheme.colorScheme.background) {
                 when (currentTab) {
-                    MainTab.TRAINS -> BoardScreen(viewModel = viewModel)
+                    MainTab.TRAINS -> BoardScreen(viewModel = viewModel, onShowWeather = { currentTab = MainTab.WEATHER })
+                    MainTab.WEATHER -> WeatherScreen(viewModel = viewModel)
                     MainTab.COMMUTE -> CommuteScreen(viewModel = viewModel, onAskNotifications = ::requestNotifications)
                     MainTab.FAMILY -> FamilyScreen(viewModel = viewModel)
                     MainTab.SETTINGS -> SettingsScreen(

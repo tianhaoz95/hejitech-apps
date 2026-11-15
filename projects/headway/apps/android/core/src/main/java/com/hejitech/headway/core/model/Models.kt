@@ -114,7 +114,9 @@ data class Board(
     /** A later express that gets you there sooner than a delayed train. */
     val tip: BoardTip? = null,
     /** The trip to the station estimated from where the phone is (Settings › Location). */
-    val travel: TravelEstimate? = null
+    val travel: TravelEstimate? = null,
+    /** Weather where you leave now and where you get off when the next train arrives. */
+    val weather: BoardWeather? = null
 )
 
 @Serializable
@@ -401,4 +403,107 @@ data class AuthSession(
     @SerialName("user_id") val userId: String,
     val email: String? = null,
     @SerialName("expires_at_ms") val expiresAtMs: Long
+)
+
+// Weather (core's weather.ts, from the National Weather Service).
+
+/** Mirrors core's `WeatherCondition`; an unknown value (from a newer Worker) decodes as CLOUDY. */
+@Serializable
+enum class WeatherCondition {
+    @SerialName("clear") CLEAR,
+    @SerialName("mostly_clear") MOSTLY_CLEAR,
+    @SerialName("partly_cloudy") PARTLY_CLOUDY,
+    @SerialName("cloudy") CLOUDY,
+    @SerialName("fog") FOG,
+    @SerialName("haze") HAZE,
+    @SerialName("smoke") SMOKE,
+    @SerialName("drizzle") DRIZZLE,
+    @SerialName("rain") RAIN,
+    @SerialName("showers") SHOWERS,
+    @SerialName("thunder") THUNDER,
+    @SerialName("snow") SNOW,
+    @SerialName("wind") WIND;
+
+    val isWet: Boolean get() = this in setOf(DRIZZLE, RAIN, SHOWERS, THUNDER, SNOW)
+
+    fun words(day: Boolean): String = when (this) {
+        CLEAR -> if (day) "Sunny" else "Clear"
+        MOSTLY_CLEAR -> if (day) "Mostly sunny" else "Mostly clear"
+        PARTLY_CLOUDY -> "Partly cloudy"
+        CLOUDY -> "Cloudy"
+        FOG -> "Fog"
+        HAZE -> "Haze"
+        SMOKE -> "Smoke"
+        DRIZZLE -> "Drizzle"
+        RAIN -> "Rain"
+        SHOWERS -> "Showers"
+        THUNDER -> "Thunderstorms"
+        SNOW -> "Snow"
+        WIND -> "Windy"
+    }
+}
+
+@Serializable
+data class WeatherHour(
+    /** Start of the hour, epoch ms. */
+    val t: Double,
+    @SerialName("temp_f") val tempF: Int,
+    /** Chance of precipitation, 0–100. */
+    val pop: Int = 0,
+    @SerialName("wind_mph") val windMph: Int = 0,
+    val cond: WeatherCondition = WeatherCondition.CLOUDY,
+    /** NWS's own words, e.g. "Patchy Fog". */
+    val text: String = "",
+    val day: Boolean = true
+) {
+    val words: String get() = cond.words(day)
+    /** "58° Fog" or "54° Rain 70%". */
+    val line: String get() = "$tempF° $words" + if (cond.isWet && pop > 0) " $pop%" else ""
+}
+
+@Serializable
+data class BoardWeatherAlert(val event: String, val headline: String, val severity: String = "Unknown")
+
+@Serializable
+data class BoardWeather(
+    val from: WeatherHour? = null,
+    val to: WeatherHour? = null,
+    /** When `to` applies: the next train's predicted arrival, epoch ms. */
+    @SerialName("to_at") val toAt: Double? = null,
+    val alerts: List<BoardWeatherAlert> = emptyList()
+)
+
+@Serializable
+data class StationWeather(
+    val id: String,
+    val name: String,
+    val short: String = "",
+    val now: WeatherHour? = null,
+    val hours: List<WeatherHour> = emptyList(),
+    @SerialName("high_f") val highF: Int? = null,
+    @SerialName("low_f") val lowF: Int? = null,
+    /** First hour in the next 12 with a good chance of rain, when it's dry now. */
+    @SerialName("rain_at") val rainAt: Double? = null,
+    @SerialName("alert_ids") val alertIds: List<String> = emptyList(),
+    @SerialName("fetched_at") val fetchedAt: Double? = null
+)
+
+@Serializable
+data class WeatherAlert(
+    val id: String,
+    val event: String,
+    val headline: String,
+    val severity: String = "Unknown",
+    val starts: Double? = null,
+    val ends: Double? = null,
+    val stations: List<String> = emptyList()
+)
+
+@Serializable
+data class WeatherReport(
+    val source: String = "National Weather Service",
+    @SerialName("updated_at") val updatedAt: Double? = null,
+    /** North to south, as the line runs. */
+    val stations: List<StationWeather> = emptyList(),
+    val alerts: List<WeatherAlert> = emptyList()
 )

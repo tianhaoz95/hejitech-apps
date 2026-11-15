@@ -20,10 +20,14 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.6.0"
+    static let currentVersion = "1.7.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.7.0", date: "November 2026", items: [
+            WhatsNewItem(icon: "cloud.sun.fill", title: "Weather at your stations", description: "The Trains tab shows the weather where you leave now and where you get off when your train gets there, and tells you when to bring an umbrella or a layer. The new Weather tab has every Caltrain station, your stations first, with the next hours and any weather alerts."),
+            WhatsNewItem(icon: "building.columns", title: "From the National Weather Service", description: "Forecasts come from the National Weather Service and are refreshed every two hours."),
+        ]),
         ReleaseNotes(version: "1.6.0", date: "November 2026", items: [
             WhatsNewItem(icon: "checkmark.seal", title: "Headway Pro", description: "Headway is now free to download: try everything for a week, then keep it with Headway Pro, yearly or once for life. Manage it, or restore a purchase, in Settings."),
         ]),

@@ -225,6 +225,8 @@ public final class Backend: @unchecked Sendable {
     public struct OK: Decodable, Sendable {}
 
     public func stations() async throws -> [Station] { try await call("GET", "/api/stations", auth: false) }
+    /// Every station's weather (National Weather Service, refreshed by the Worker every two hours).
+    public func weather() async throws -> WeatherReport { try await call("GET", "/api/weather", auth: false) }
     /// `origin`: the rider's location for a rough trip estimate to the departure station (not stored).
     public func myBoard(from: String? = nil, to: String? = nil, express: ExpressPreference? = nil, origin: (lat: Double, lon: Double)? = nil) async throws -> MyBoard {
         var items: [String] = []

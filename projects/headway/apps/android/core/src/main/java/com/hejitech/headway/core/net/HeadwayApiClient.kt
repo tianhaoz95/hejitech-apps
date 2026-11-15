@@ -154,6 +154,11 @@ class HeadwayApiClient(
         executeAndDecode(request)
     }
 
+    /** Every station's weather (National Weather Service, refreshed by the Worker every two hours). */
+    suspend fun getWeather(): WeatherReport = withContext(Dispatchers.IO) {
+        executeAndDecode(Request.Builder().url("${config.site}/api/weather").get().build())
+    }
+
     suspend fun getBoard(
         from: String,
         to: String,

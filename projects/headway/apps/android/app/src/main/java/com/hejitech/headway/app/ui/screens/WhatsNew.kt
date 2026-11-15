@@ -20,10 +20,14 @@ data class ReleaseNotes(val version: String, val date: String, val items: List<W
  * app's `WhatsNewView.swift` (release.env's release_check refuses a version either doesn't describe).
  */
 object WhatsNew {
-    const val CURRENT_VERSION = "1.6.0"
+    const val CURRENT_VERSION = "1.7.0"
     private const val KEY_SEEN = "last_seen_whats_new_version"
 
     val releases = listOf(
+        ReleaseNotes(version = "1.7.0", date = "November 2026", items = listOf(
+            WhatsNewItem("Weather at your stations", "The Trains tab shows the weather where you leave now and where you get off when your train gets there, and tells you when to bring an umbrella or a layer. The new Weather tab has every Caltrain station, your stations first, with the next hours and any weather alerts."),
+            WhatsNewItem("From the National Weather Service", "Forecasts come from the National Weather Service and are refreshed every two hours."),
+        )),
         ReleaseNotes(version = "1.6.0", date = "November 2026", items = listOf(
             WhatsNewItem("A fresh build", "Nothing new to try on Android in this one: it's a new build, in step with the iPhone app."),
         )),

@@ -170,9 +170,11 @@ public struct Board: Codable, Hashable, Sendable {
     public var tip: BoardTip?
     /// Set when the board was asked from the rider's location: walkMinutes is then this estimate.
     public var travel: TravelEstimate?
+    /// Weather where you leave from now and where you get off when the next train arrives.
+    public var weather: BoardWeather?
 
     enum CodingKeys: String, CodingKey {
-        case from, to, leg, live, trains, alerts, tip, travel
+        case from, to, leg, live, trains, alerts, tip, travel, weather
         case generatedAt = "generated_at"
         case expressPreference = "express_preference"
         case walkMinutes = "walk_minutes"
@@ -621,6 +623,15 @@ public enum Clock {
     public static func now() -> Date { Date().addingTimeInterval(offset) }
 
     /// "8:14" in Pacific time.
+    /// "2 PM": the hour of an epoch-ms time, Pacific.
+    public static func hour(_ epochMs: Double) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = pacific
+        f.dateFormat = "h a"
+        return f.string(from: Date(timeIntervalSince1970: epochMs / 1000))
+    }
+
     public static func time(_ epochMs: Double) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -651,4 +662,144 @@ public enum Clock {
 public struct DevClock: Decodable, Sendable {
     public let offsetMs: Double
     enum CodingKeys: String, CodingKey { case offsetMs = "offset_ms" }
+}
+
+// MARK: - Weather (core's weather.ts, from the National Weather Service)
+
+/// Mirrors core's `WeatherCondition`; an unknown value (from a newer Worker) decodes as `.cloudy`.
+public enum WeatherCondition: String, Codable, CaseIterable, Sendable {
+    case clear, mostlyClear = "mostly_clear", partlyCloudy = "partly_cloudy", cloudy, fog, haze, smoke
+    case drizzle, rain, showers, thunder, snow, wind
+
+    public init(from decoder: Decoder) throws {
+        self = WeatherCondition(rawValue: try decoder.singleValueContainer().decode(String.self)) ?? .cloudy
+    }
+
+    public var isWet: Bool { [.drizzle, .rain, .showers, .thunder, .snow].contains(self) }
+
+    /// An SF Symbol (multicolor-friendly).
+    public func symbol(day: Bool) -> String {
+        switch self {
+        case .clear: day ? "sun.max.fill" : "moon.stars.fill"
+        case .mostlyClear: day ? "sun.min.fill" : "moon.fill"
+        case .partlyCloudy: day ? "cloud.sun.fill" : "cloud.moon.fill"
+        case .cloudy: "cloud.fill"
+        case .fog: "cloud.fog.fill"
+        case .haze: day ? "sun.haze.fill" : "moon.haze.fill"
+        case .smoke: "smoke.fill"
+        case .drizzle: "cloud.drizzle.fill"
+        case .rain: "cloud.rain.fill"
+        case .showers: "cloud.heavyrain.fill"
+        case .thunder: "cloud.bolt.rain.fill"
+        case .snow: "cloud.snow.fill"
+        case .wind: "wind"
+        }
+    }
+
+    public func words(day: Bool) -> String {
+        switch self {
+        case .clear: day ? "Sunny" : "Clear"
+        case .mostlyClear: day ? "Mostly sunny" : "Mostly clear"
+        case .partlyCloudy: "Partly cloudy"
+        case .cloudy: "Cloudy"
+        case .fog: "Fog"
+        case .haze: "Haze"
+        case .smoke: "Smoke"
+        case .drizzle: "Drizzle"
+        case .rain: "Rain"
+        case .showers: "Showers"
+        case .thunder: "Thunderstorms"
+        case .snow: "Snow"
+        case .wind: "Windy"
+        }
+    }
+}
+
+public struct WeatherHour: Codable, Hashable, Sendable {
+    /// Start of the hour, epoch ms.
+    public var t: Double
+    public var tempF: Int
+    /// Chance of precipitation, 0–100.
+    public var pop: Int
+    public var windMph: Int
+    public var cond: WeatherCondition
+    /// NWS's own words, e.g. "Patchy Fog".
+    public var text: String
+    public var day: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case t, pop, cond, text, day
+        case tempF = "temp_f"
+        case windMph = "wind_mph"
+    }
+
+    public var symbol: String { cond.symbol(day: day) }
+    public var words: String { cond.words(day: day) }
+    /// "58° Fog" or "54° Rain 70%".
+    public var line: String { "\(tempF)° \(words)" + (cond.isWet && pop > 0 ? " \(pop)%" : "") }
+}
+
+public struct BoardWeatherAlert: Codable, Hashable, Sendable {
+    public var event: String
+    public var headline: String
+    public var severity: String
+}
+
+public struct BoardWeather: Codable, Hashable, Sendable {
+    public var from: WeatherHour?
+    public var to: WeatherHour?
+    /// When `to` applies: the next train's predicted arrival, epoch ms.
+    public var toAt: Double?
+    public var alerts: [BoardWeatherAlert]
+
+    enum CodingKeys: String, CodingKey {
+        case from, to, alerts
+        case toAt = "to_at"
+    }
+}
+
+public struct StationWeather: Codable, Hashable, Identifiable, Sendable {
+    public var id: String
+    public var name: String
+    public var short: String
+    public var now: WeatherHour?
+    public var hours: [WeatherHour]
+    public var highF: Int?
+    public var lowF: Int?
+    /// First hour in the next 12 with a good chance of rain, when it's dry now.
+    public var rainAt: Double?
+    public var alertIds: [String]
+    public var fetchedAt: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, short, now, hours
+        case highF = "high_f"
+        case lowF = "low_f"
+        case rainAt = "rain_at"
+        case alertIds = "alert_ids"
+        case fetchedAt = "fetched_at"
+    }
+}
+
+public struct WeatherAlert: Codable, Hashable, Identifiable, Sendable {
+    public var id: String
+    public var event: String
+    public var headline: String
+    public var severity: String
+    public var starts: Double?
+    public var ends: Double?
+    public var stations: [String]
+}
+
+public struct WeatherReport: Codable, Hashable, Sendable {
+    public var source: String
+    public var updatedAt: Double?
+    /// North to south, as the line runs.
+    public var stations: [StationWeather]
+    public var alerts: [WeatherAlert]
+
+    enum CodingKeys: String, CodingKey {
+        case source, stations, alerts
+        case updatedAt = "updated_at"
+    }
 }

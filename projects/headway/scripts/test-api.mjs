@@ -182,6 +182,23 @@ await step("wrong codes are throttled", async () => {
   assert.equal(last.status, 429);
 });
 
+// ---------------------------------------------------------------- weather
+await step("weather: every station north to south, one station, on boards", async () => {
+  const r = await call("/api/weather");
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.body.source, "National Weather Service");
+  assert.equal(r.body.stations.length, (await call("/api/stations")).body.length);
+  assert.equal(r.body.stations[0].id, "san_francisco");
+  assert.ok(Array.isArray(r.body.alerts));
+  const one = await call("/api/weather?station=mountain_view");
+  assert.deepEqual(one.body.stations.map((s) => s.id), ["mountain_view"]);
+  assert.equal((await call("/api/weather?station=atlantis")).status, 400);
+  // Forecasts come from the cron (api.weather.gov); with none yet a board just has no weather.
+  const b = (await call("/api/board?from=mountain_view&to=san_francisco")).body;
+  if (r.body.updated_at) assert.ok(b.weather?.from || b.weather?.to, "a board carries the weather");
+  else assert.ok(b.weather == null);
+});
+
 // ---------------------------------------------------------------- on a train
 await step("on a train: off asks nothing, a ride shows a card everywhere, auto tracks once, not-on-it holds", async () => {
   const { departures, distanceM, station, tripProgressStops } = await import("../packages/core/src/index.ts");
@@ -341,7 +358,7 @@ await step("MCP: 401 with the OAuth hint, initialize, tools", async () => {
   assert.match(r.headers.get("WWW-Authenticate") ?? "", /resource_metadata=/);
   assert.equal((await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } })).body.result.serverInfo.name, "headway");
   const names = (await rpc("tools/list")).body.result.tools.map((t) => t.name).sort();
-  assert.deepEqual(names, ["list_stations", "my_commute", "next_trains", "service_alerts", "share_eta", "stop_tracking", "track_train", "tracked_train"]);
+  assert.deepEqual(names, ["list_stations", "my_commute", "next_trains", "service_alerts", "share_eta", "station_weather", "stop_tracking", "track_train", "tracked_train"]);
 });
 await step("MCP: commute, next trains by name, alerts, tracking", async () => {
   const c = await tool("my_commute");

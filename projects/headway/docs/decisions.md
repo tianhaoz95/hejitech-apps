@@ -272,3 +272,25 @@ glasses or Android ever need Pro, add server-side verification (skill `heji-app-
 into this project. Nobody had bought the paid version (it was never live), so
 there is no grandfathering.
 
+
+## Station weather from the National Weather Service (2026-11-15)
+
+Commuters asked to see the weather where they get on and off. All of Caltrain is in the US, so the
+weather comes from the National Weather Service (api.weather.gov): free, no key, public domain (fine
+in a paid app), with official alerts. The 31 stations fall in 29 NWS forecast cells and 3 forecast
+zones, mapped once into `weathergrid.gen.json` by `scripts/build-weather-grid.mjs` (stations don't move).
+
+- **The Worker fetches, apps never call NWS.** The every-minute cron fetches each cell's hourly
+  forecast every two hours (the owner's choice), at most 10 cells a minute so an invocation stays far
+  under the subrequest limit, and the alerts for all zones in one request every 30 minutes. A failed
+  cell keeps its last forecast and waits 10 minutes. It's ~350 forecast and ~50 alert requests a day
+  however many riders there are.
+- **One KV value** (`headway:weather:v1` in OAUTH_KV) holds it: forecasts aren't personal, need no
+  table or migration, and KV already holds the other short-lived state.
+- **Boards carry the weather** (`board.weather`): where you leave now and where you get off when the
+  next train arrives, plus alerts at either end, so every surface gets it with no extra request.
+  `/api/weather` has every station for the Weather tab, and MCP has `station_weather`.
+- **Dry unless it's likely**: NWS says "Slight Chance Light Rain" at 8%; below 20% that hour shows as
+  cloudy, and the umbrella nudge waits for 40%. Ocean alerts (surf, rip currents, small craft) are
+  dropped. Nothing older than 12 hours is shown.
+- Not on the watch, widget or glasses yet: the board data is there when they want it.

@@ -28,6 +28,10 @@ final class AppModel {
     var settings = Settings.defaults
     var settingsSaved = false
     var stations: [Station] = []
+    /// Every station's weather (GET /api/weather), reloaded at most every ten minutes.
+    var weather: WeatherReport?
+    var weatherError: String?
+    private var weatherLoadedAt: Date?
     /// A pair picked on the Trains tab instead of the commute (nil: the commute for the time of day).
     var customPair: (from: String, to: String)? {
         didSet { customPairAt = customPair == nil ? nil : Date() }
@@ -90,6 +94,9 @@ final class AppModel {
             return (a.pro, a.untilDate, a.email)
         }
         if let cached = UserDefaults.standard.data(forKey: "stations"), let s = try? JSONDecoder().decode([Station].self, from: cached) { stations = s }
+        // Last weather seen, unless it's from a forecast older than half a day.
+        if let cached = UserDefaults.standard.data(forKey: "weather"), let w = try? JSONDecoder().decode(WeatherReport.self, from: cached),
+           let at = w.updatedAt, Date().timeIntervalSince1970 * 1000 - at < 12 * 3600_000 { weather = w }
 
         watch.onTrack = { [weak self] tripId, serviceDate, from, to in
             Task { @MainActor in
@@ -175,6 +182,20 @@ final class AppModel {
         if let s = try? await backend.stations(), !s.isEmpty {
             stations = s
             UserDefaults.standard.set(try? JSONEncoder().encode(s), forKey: "stations")
+        }
+    }
+
+    /// The forecast only changes every two hours on the server: ask again after ten minutes, or when pulled.
+    func loadWeather(force: Bool = false) async {
+        if !force, let at = weatherLoadedAt, Date().timeIntervalSince(at) < 600 { return }
+        do {
+            let w = try await backend.weather()
+            weather = w
+            weatherError = nil
+            weatherLoadedAt = Date()
+            UserDefaults.standard.set(try? JSONEncoder().encode(w), forKey: "weather")
+        } catch {
+            weatherError = error.localizedDescription
         }
     }
 

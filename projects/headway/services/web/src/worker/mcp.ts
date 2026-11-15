@@ -1,7 +1,7 @@
 // MCP server (Streamable HTTP, JSON responses) at /mcp: an assistant asks "when's my next train?"
 // for the signed-in user. Authentication happens before this runs (index.ts): OAuth grants issued
 // by this Worker, or personal access tokens `hwa_…` made in the Headway app or on the web.
-import { atLocal, board, commuteBoard, departures, findStation, progress, STATIONS, station, TIMETABLE, zoned, type Board, type BoardTrain, type ExpressPreference } from "@headway/core";
+import { atLocal, board, boardWeather, commuteBoard, departures, findStation, progress, STATIONS, station, TIMETABLE, weatherLine, weatherReport, zoned, type Board, type BoardTrain, type ExpressPreference, type WeatherHour, type WeatherStore } from "@headway/core";
 import { createEtaShare, loadSettings, loadSnapshot, loadTracked, saveTracked, type Db } from "./store.ts";
 
 const PROTOCOL_VERSION = "2025-06-18";
@@ -72,6 +72,13 @@ export const TOOLS = [
     annotations: { title: "Stop tracking", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
+    name: "station_weather",
+    title: "Weather at Caltrain stations",
+    description: "The weather at Caltrain stations from the National Weather Service: now, the next 12 hours, today's high and low, when rain starts, and weather alerts (heat, wind, flood…). One station, or every station north to south. Refreshed every two hours; Fahrenheit.",
+    inputSchema: { type: "object", properties: { station: STATION_ARG } },
+    annotations: { title: "Station weather", readOnlyHint: true, openWorldHint: false },
+  },
+  {
     name: "share_eta",
     title: "Share live train ETA",
     description: "Generates a shareable live web link (valid until 30 min after arrival) for the train the user is currently tracking.",
@@ -96,8 +103,14 @@ const boardFacts = (b: Board) => ({
   walk_minutes: b.walk_minutes ?? undefined,
   tip: b.tip ? { wait_for: b.tip.wait_for, instead_of: b.tip.instead_of, saves_min: b.tip.saves_min } : undefined,
   trains: b.trains.map(trainFacts), alerts: b.alerts.map((a) => ({ header: a.header, description: a.description, url: a.url })),
+  weather: b.weather ? {
+    [b.from.name]: b.weather.from ? weatherLine(b.weather.from) : undefined,
+    [`${b.to.name} on arrival${b.weather.to_at ? ` (${local(b.weather.to_at)})` : ""}`]: b.weather.to ? weatherLine(b.weather.to) : undefined,
+    alerts: b.weather.alerts.length ? b.weather.alerts.map((a) => a.headline) : undefined,
+  } : undefined,
   note: b.live ? undefined : "No fresh live data: times are the timetable's.",
 });
+const hourFacts = (h: WeatherHour) => ({ at: local(h.t), summary: weatherLine(h), temp_f: h.temp_f, chance_of_rain: h.pop, wind_mph: h.wind_mph, forecast: h.text });
 
 function stationArg(v: unknown, name: string) {
   const s = typeof v === "string" ? station(v) ?? findStation(v) : undefined;
@@ -105,7 +118,8 @@ function stationArg(v: unknown, name: string) {
   return s;
 }
 
-async function callTool(name: string, args: Record<string, unknown>, caller: Caller, db: Db, now: number): Promise<unknown> {
+async function callTool(name: string, args: Record<string, unknown>, caller: Caller, db: Db, now: number, weather: () => Promise<WeatherStore | null>): Promise<unknown> {
+  const withWeather = async (b: Board) => ((b.weather = boardWeather(await weather().catch(() => null), b, now)), b);
   switch (name) {
     case "my_commute": {
       const { settings } = await loadSettings(db, caller.userId);
@@ -115,7 +129,7 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
         ? board(leg.from, leg.to, now, await loadSnapshot(db), args.leg as "morning" | "evening", TIMETABLE, expPref ? { expressPreference: expPref } : {})
         : commuteBoard(settings, now, await loadSnapshot(db), undefined, expPref ? { expressPreference: expPref } : {});
       if (!b) return { commute: null, note: "No commute saved yet. The user sets morning and evening stations in the Headway app or at /settings/." };
-      return boardFacts(b);
+      return boardFacts(await withWeather(b));
     }
     case "next_trains": {
       const from = stationArg(args.from, "from"), to = stationArg(args.to, "to");
@@ -132,13 +146,28 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
         const t0 = atLocal(zoned(now).date, after);
         b.trains = departures(from.id, to.id, Math.max(now, t0), snapshot, { after: t0, limit: Number(args.limit ?? 8), expressPreference: expPref, walkMinutes: walk });
       } else if (args.limit) b.trains = b.trains.slice(0, Number(args.limit));
-      return boardFacts(b);
+      return boardFacts(await withWeather(b));
     }
     case "service_alerts": {
       const snapshot = await loadSnapshot(db);
       const st = args.station ? stationArg(args.station, "station") : null;
       const alerts = (snapshot?.alerts ?? []).filter((a) => !st || a.stations.length === 0 || a.stations.includes(st.id));
       return { as_of: snapshot ? local(snapshot.fetched_at) : null, alerts: alerts.map((a) => ({ header: a.header, description: a.description, stations: a.stations.map((s) => station(s)?.name ?? s), url: a.url })) };
+    }
+    case "station_weather": {
+      const st = args.station ? stationArg(args.station, "station") : null;
+      const r = weatherReport(await weather(), now);
+      const list = r.stations.filter((s) => !st || s.id === st.id);
+      if (!r.updated_at) return { source: r.source, stations: [], note: "No forecast yet: the server fetches one within a few minutes." };
+      return {
+        source: r.source, as_of: local(r.updated_at),
+        stations: list.map((s) => ({
+          station: s.name, now: s.now ? hourFacts(s.now) : null, high_f: s.high_f, low_f: s.low_f,
+          rain_starts: s.rain_at ? local(s.rain_at) : null,
+          next_hours: st ? s.hours.map(hourFacts) : undefined,
+          alerts: s.alert_ids.length ? r.alerts.filter((a) => s.alert_ids.includes(a.id)).map((a) => a.headline) : undefined,
+        })),
+      };
     }
     case "list_stations":
       return { stations: STATIONS.map((s) => ({ id: s.id, name: s.name, short: s.short })) };
@@ -172,7 +201,7 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
   throw new Error(`unknown tool ${name}`);
 }
 
-export async function handleMcp(req: Request, caller: Caller, db: Db, now = Date.now()): Promise<Response> {
+export async function handleMcp(req: Request, caller: Caller, db: Db, now = Date.now(), weather: () => Promise<WeatherStore | null> = async () => null): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method === "GET") return json({ name: "headway-mcp", transport: "streamable-http" });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -191,7 +220,7 @@ export async function handleMcp(req: Request, caller: Caller, db: Db, now = Date
         protocolVersion: PROTOCOL_VERSION,
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: "headway", version: SERVER_VERSION },
-        instructions: "Caltrain for one rider: my_commute answers \"when's my next train?\" from their saved morning/evening stations; next_trains for any pair; service_alerts; track_train to get an arrival alert on their iPhone. Times are Pacific. A board with live=false is the timetable only.",
+        instructions: "Caltrain for one rider: my_commute answers \"when's my next train?\" from their saved morning/evening stations; next_trains for any pair; service_alerts; track_train to get an arrival alert on their iPhone; station_weather for the weather at stations (boards also carry the weather where they leave and where they get off). Times are Pacific. A board with live=false is the timetable only.",
       });
     case "notifications/initialized":
       return new Response(null, { status: 202, headers: cors });
@@ -203,7 +232,7 @@ export async function handleMcp(req: Request, caller: Caller, db: Db, now = Date
       const name = String(msg.params?.name ?? "");
       const args = (msg.params?.arguments ?? {}) as Record<string, unknown>;
       try {
-        const result = await callTool(name, args, caller, db, now);
+        const result = await callTool(name, args, caller, db, now, weather);
         return reply({ content: [{ type: "text", text: JSON.stringify(result, null, 2) }], structuredContent: result });
       } catch (e) {
         return reply({ content: [{ type: "text", text: `Error: ${(e as Error).message}` }], isError: true });

@@ -53,6 +53,25 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
     private val _board = MutableStateFlow<Board?>(null)
     val board: StateFlow<Board?> = _board.asStateFlow()
 
+    /** Every station's weather (GET /api/weather), reloaded at most every ten minutes. */
+    private val _weather = MutableStateFlow<WeatherReport?>(null)
+    val weather: StateFlow<WeatherReport?> = _weather.asStateFlow()
+    private val _weatherError = MutableStateFlow(false)
+    val weatherError: StateFlow<Boolean> = _weatherError.asStateFlow()
+    private var weatherLoadedAt = 0L
+
+    /** The forecast only changes every two hours on the server: ask again after ten minutes, or when pulled. */
+    suspend fun loadWeather(force: Boolean = false) {
+        if (!force && System.currentTimeMillis() - weatherLoadedAt < 10 * 60_000L) return
+        try {
+            _weather.value = apiClient.getWeather()
+            _weatherError.value = false
+            weatherLoadedAt = System.currentTimeMillis()
+        } catch (e: Exception) {
+            _weatherError.value = true
+        }
+    }
+
     private val _tracked = MutableStateFlow<TrackedWithProgress?>(null)
     val tracked: StateFlow<TrackedWithProgress?> = _tracked.asStateFlow()
 
