@@ -1,4 +1,4 @@
-FitLoop turns the plan your AI agent writes into something you can follow, set by set and meal by meal. Pay once and everything below is yours: no subscription, no in-app purchases, no ads. FitLoop has no AI of its own and no AI bill: it works with the assistant you already use.
+FitLoop turns the plan your AI agent writes into something you can follow, set by set and meal by meal. Try all of it free for a week, then keep it with FitLoop Pro: yearly, or once for life. No ads. FitLoop has no AI of its own and no AI bill: it works with the assistant you already use.
 
 BRING YOUR OWN COACH
 • Connect Claude or another AI assistant over MCP from Settings (one tap copies the address)
@@ -37,3 +37,8 @@ YOUR DATA, YOUR SWITCHES
 Live heart rate, a daily Apple Health summary, manual entries and progress photos are each a switch in Settings, and so is everything your agent may see. Health data is never used for advertising. No ads, no analytics, no tracking. Delete everything from Settings at any time.
 
 FitLoop shows the plan your own agent writes. It isn't medical advice: talk to a doctor before starting a new exercise or diet program.
+
+FITLOOP PRO
+FitLoop is free to download, and using it on iPhone needs FitLoop Pro: start with a free week on the yearly plan, or unlock it once for life. Payment is charged to your Apple Account. The yearly plan renews automatically unless you cancel at least 24 hours before the end of the current period; manage or cancel it in your Apple Account settings.
+Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://fitloop.hejitech.workers.dev/privacy/

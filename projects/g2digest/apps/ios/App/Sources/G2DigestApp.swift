@@ -6,7 +6,7 @@ struct G2DigestApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainView()
+            ProGate { MainView() }
         }
     }
 }

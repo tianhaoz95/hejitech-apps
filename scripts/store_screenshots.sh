@@ -116,7 +116,9 @@ for DEV in "${DEVICES[@]}"; do
     if [ "$PROJECT" = g2digest ]; then EXTRA=(-g2digest_view_mode "$a"); args="$b"; else args="$a"; fi
     xcrun simctl terminate "$ID" "$BUNDLE" 2>/dev/null || true
     # shellcheck disable=SC2086
-    xcrun simctl launch "$ID" "$BUNDLE" ${PREFS[@]+"${PREFS[@]}"} ${EXTRA[@]+"${EXTRA[@]}"} $args >/dev/null
+    # -proUnlocked: Debug builds skip the Pro purchase screen (apps with in-app purchases, skill
+    # heji-app-store-iap); other apps ignore it.
+    xcrun simctl launch "$ID" "$BUNDLE" ${PREFS[@]+"${PREFS[@]}"} ${EXTRA[@]+"${EXTRA[@]}"} -proUnlocked $args >/dev/null
     sleep "${SHOT_WAIT:-9}"
     f="$OUT/$(printf '%02d' $n)-$name.png"
     if [ "$DIR" = iphone-duo ]; then

@@ -2,7 +2,7 @@
   "accent": "#3EE07A",
   "out": "screenshots/iphone-6.9-captioned",
   "slides": [
-    { "kind": "phone", "images": ["screenshots/iphone-6.9/01-trains.png"], "badge": "One price · No subscription",
+    { "kind": "phone", "images": ["screenshots/iphone-6.9/01-trains.png"], "badge": "1 week free · Then yearly or for life",
       "title": "Know when to <em>leave</em>", "sub": "Live Caltrain departures, delays and a leave-by countdown for every train" },
     { "kind": "phone", "images": ["screenshots/iphone-6.9/02-commute.png"],
       "title": "Set your commute <em>once</em>", "sub": "Morning and evening trips, and alerts only for the trains you take" },

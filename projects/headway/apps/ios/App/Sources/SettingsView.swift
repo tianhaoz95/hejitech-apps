@@ -67,6 +67,7 @@ struct SettingsView: View {
                         Label("Even G2 Glasses", systemImage: "eyeglasses")
                     }
                 }
+                ProSettingsSection()
                 Section("Account") {
                     LabeledContent("Signed in as", value: model.email ?? "—")
                     Button("Sign out") { Task { await model.signOut() } }

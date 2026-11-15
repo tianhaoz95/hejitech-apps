@@ -20,10 +20,13 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.5.1"
+    static let currentVersion = "1.6.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.6.0", date: "November 2026", items: [
+            WhatsNewItem(icon: "checkmark.seal", title: "Headway Pro", description: "Headway is now free to download: try everything for a week, then keep it with Headway Pro, yearly or once for life. Manage it, or restore a purchase, in Settings."),
+        ]),
         ReleaseNotes(version: "1.5.1", date: "November 2026", items: [
             WhatsNewItem(icon: "mappin.and.ellipse", title: "Already at the station", description: "Standing on the platform counts as being at the station now, so leave-by times no longer add a walk or drive (or parking minutes) you don't need. The card says \"At\" your station instead."),
         ]),

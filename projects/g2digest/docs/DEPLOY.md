@@ -106,7 +106,12 @@ Done 2026-11-14: the migration was already applied; the three APNS_* secrets are
 
 ## Price
 
-Owner's call (2026-11-14): paid upfront, $9.99 on the App Store, one-time, no in-app purchases or
-subscription; the web app stays free. A one-time price doesn't grow with each reader's stored editions
-and audio: if storage costs climb, add a retention limit rather than a subscription.
-
+Price (owner's call; paid upfront 2026-11-13, then on 2026-11-14 changed to a free download with
+in-app purchases): **G2 Digest Pro**, needed for the whole iPhone app after a 1-week free trial, as the
+yearly subscription `com.hejitech.g2digest.pro.annual` ($14.99/yr, the trial is its introductory
+offer) or the lifetime unlock `com.hejitech.g2digest.pro.lifetime` ($29.99 once). The App Store price of
+the app itself is Free. StoreKit 2 checks the purchase on the phone (`ProStore.swift`, `ProViews.swift`:
+the gate, the purchase screen, Settings › G2 Digest Pro); no server is involved, so the web app, glasses
+and Android aren't gated. Debug builds skip the gate with `-proUnlocked`. Products, review
+screenshots and notes: skill `heji-app-store-iap` (`iap.mjs status com.hejitech.g2digest`).
+Storage grows with each reader's editions and audio: if that cost climbs, add a retention limit.

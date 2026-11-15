@@ -186,3 +186,16 @@ on 2026-10-26: lines are now measured in pixels, see above.)
 
 TL;DR on by default; 12 cards for a new user; text footer `♪ DEEP DIVE 4 MIN`; a method keyword on
 every discovery card; the five templates; free-text `instructions`.
+
+## G2 Digest Pro: a free download with in-app purchases (2026-11-14)
+
+The owner moved G2 Digest from a one-time price to a free download that needs G2 Digest Pro after a
+1-week free trial (yearly subscription with the trial as its introductory offer, or a lifetime
+unlock), to get experience with subscriptions. Gating the whole iPhone app (rather than a free
+tier) keeps the paid model closest to the old one-time price and needs no per-feature gating.
+StoreKit 2 verifies purchases on the phone (`Transaction.currentEntitlements`), so there is no
+purchases table or App Store notification endpoint: only the iPhone app is gated. If the web app,
+glasses or Android ever need Pro, copy Waypack's server-side verification (`projects/waypack`
+DECISIONS #72) into this project. Nobody had bought the paid version (it was never live), so
+there is no grandfathering.
+

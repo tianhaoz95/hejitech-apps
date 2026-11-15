@@ -63,3 +63,16 @@ made while building, with the reason for each.
   notes for the agent.
 - **No medical advice.** FitLoop shows the agent's plan and the user's records; the guide tells the
   agent to send pain, dizziness, chest symptoms or eating concerns to a professional.
+
+## FitLoop Pro: a free download with in-app purchases (2026-11-14)
+
+The owner moved FitLoop from a one-time price to a free download that needs FitLoop Pro after a
+1-week free trial (yearly subscription with the trial as its introductory offer, or a lifetime
+unlock), to get experience with subscriptions. Gating the whole iPhone app (rather than a free
+tier) keeps the paid model closest to the old one-time price and needs no per-feature gating.
+StoreKit 2 verifies purchases on the phone (`Transaction.currentEntitlements`), so there is no
+purchases table or App Store notification endpoint: only the iPhone app is gated. If the web app,
+glasses or Android ever need Pro, copy Waypack's server-side verification (`projects/waypack`
+DECISIONS #72) into this project. Nobody had bought the paid version (it was never live), so
+there is no grandfathering.
+

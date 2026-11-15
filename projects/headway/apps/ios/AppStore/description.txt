@@ -1,4 +1,4 @@
-Headway puts your next Caltrain where you'll see it: on your iPhone, Lock Screen, watch and Even Realities G2 glasses. Pay once and everything below is yours: no subscription, no in-app purchases, no ads.
+Headway puts your next Caltrain where you'll see it: on your iPhone, Lock Screen, watch and Even Realities G2 glasses. Try all of it free for a week, then keep it with Headway Pro: yearly, or once for life. No ads.
 
 YOUR COMMUTE, ALREADY OPEN
 • Save a morning and an evening pair of stations once. Headway opens on the right direction for the time of day, and so do your watch and widgets
@@ -43,3 +43,8 @@ PRIVATE BY DESIGN
 No ads, no analytics, no tracking. Location is optional, used for one estimate at a time and never stored. Delete everything Headway keeps about you from Settings at any time.
 
 Sign in with Apple or Google. Caltrain times come from Caltrain's published timetable and 511.org live data. Headway is not affiliated with Caltrain.
+
+HEADWAY PRO
+Headway is free to download, and using it on iPhone needs Headway Pro: start with a free week on the yearly plan, or unlock it once for life. Payment is charged to your Apple Account. The yearly plan renews automatically unless you cancel at least 24 hours before the end of the current period; manage or cancel it in your Apple Account settings.
+Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://headway.hejitech.workers.dev/privacy/

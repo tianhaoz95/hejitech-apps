@@ -52,6 +52,7 @@ struct SettingsView: View {
                     Link("Connect an agent (MCP)", destination: model.backend.config.site.appendingPathComponent("settings/"))
                     Text("Add \(model.backend.config.site.absoluteString)/mcp as a connector in Claude or another MCP client and sign in with this account.").font(.footnote).foregroundStyle(.secondary)
                 }
+                ProSettingsSection()
                 Section("Account") {
                     LabeledContent("Signed in as", value: model.email ?? "—")
                     Button("Sign out") { model.signOut() }

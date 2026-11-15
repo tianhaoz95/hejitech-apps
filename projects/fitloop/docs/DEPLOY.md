@@ -60,9 +60,15 @@ Then connect a real agent: in Claude, Settings → Connectors → Add custom con
    Privacy answers (published 2026-11-12): email, user id, health, fitness, photos (progress photos)
    and other user content (check-ins, notes for the agent), all app functionality, linked to the
    user, not used for tracking.
-4. Price (owner's call, 2026-11-13; raised to $9.99 on 2026-11-14 as a one-time, lifetime price): paid upfront, $9.99 on the App Store and Google Play, no
-   in-app purchases or subscription; the web app stays free. Play can go paid → free but never back,
-   so keep the Play app paid until a decision to change it. Store text: `apps/ios/AppStore/description.txt`;
+4. Price (owner's call; paid upfront 2026-11-13, then on 2026-11-14 changed to a free download with
+in-app purchases): **FitLoop Pro**, needed for the whole iPhone app after a 1-week free trial, as the
+yearly subscription `com.hejitech.fitloop.pro.annual` ($19.99/yr, the trial is its introductory
+offer) or the lifetime unlock `com.hejitech.fitloop.pro.lifetime` ($39.99 once). The App Store price of
+the app itself is Free. StoreKit 2 checks the purchase on the phone (`ProStore.swift`, `ProViews.swift`:
+the gate, the purchase screen, Settings › FitLoop Pro); no server is involved, so the web app, glasses
+and Android aren't gated. Debug builds skip the gate with `-proUnlocked`. Products, review
+screenshots and notes: skill `heji-app-store-iap` (`iap.mjs status com.hejitech.fitloop`).
+   Google Play keeps its one-time $9.99 until Play Billing is added (Play can go paid → free but never back). Store text: `apps/ios/AppStore/description.txt`;
    captioned slides: `node scripts/store_captions.mjs projects/fitloop/apps/ios/AppStore/captions.json`.
 
 ## 5. Even Hub plugin

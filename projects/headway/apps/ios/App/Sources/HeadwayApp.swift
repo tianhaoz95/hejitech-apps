@@ -63,6 +63,7 @@ struct RootView: View {
     @State private var showWhatsNew = false
 
     var body: some View {
+        ProGate {
         Group {
             switch model.phase {
             case .launching:
@@ -73,8 +74,9 @@ struct RootView: View {
                 MainTabs()
             }
         }
+        }
         .onChange(of: model.phase) { _, phase in
-            if phase == .ready, WhatsNewView.shouldShowAutomatically { showWhatsNew = true }
+            if phase == .ready, ProStore.shared.isPro, WhatsNewView.shouldShowAutomatically { showWhatsNew = true }
         }
         .sheet(isPresented: $showWhatsNew, onDismiss: WhatsNewView.markSeen) { WhatsNewView() }
     }

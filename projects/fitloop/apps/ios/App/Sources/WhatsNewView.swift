@@ -20,10 +20,13 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.1.0"
+    static let currentVersion = "1.2.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.2.0", date: "November 2026", items: [
+            WhatsNewItem(icon: "checkmark.seal", title: "FitLoop Pro", description: "FitLoop is now free to download: try everything for a week, then keep it with FitLoop Pro, yearly or once for life. Manage it, or restore a purchase, in Settings."),
+        ]),
         ReleaseNotes(version: "1.1.0", date: "November 2026", items: [
             WhatsNewItem(icon: "ipad", title: "FitLoop on iPad", description: "FitLoop now runs on iPad, in any orientation, with your day, plan and progress kept to a comfortable reading width."),
             WhatsNewItem(icon: "rectangle.portrait.on.rectangle.portrait", title: "Made for iPhone Duo", description: "Unfold iPhone Duo and FitLoop uses the whole inner display, with the tabs down the side."),

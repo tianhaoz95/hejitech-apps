@@ -2,7 +2,7 @@
   "accent": "#FF7A3D",
   "out": "screenshots/iphone-6.9-captioned",
   "slides": [
-    { "kind": "phone", "images": ["screenshots/iphone-6.9/01-today.png"], "badge": "One price · No subscription",
+    { "kind": "phone", "images": ["screenshots/iphone-6.9/01-today.png"], "badge": "1 week free · Then yearly or for life",
       "title": "Your agent's plan, <em>ready</em>", "sub": "Bring Claude or another assistant: it writes your workouts and meals, FitLoop runs them" },
     { "kind": "phone", "images": ["screenshots/iphone-6.9/02-workout.png"],
       "title": "Follow it <em>set by set</em>", "sub": "Targets, rest timers, how-to cues and demos for every exercise" },
