@@ -101,6 +101,8 @@ ul.rc li::before { content: "↻"; color: #3e7a8c; font-weight: 800; }
       html += '<div class="sticky draft"><i class="tape t2"></i><b>' + (c.status === "draft" ? "Draft: only you can see this" : "Hidden from the gallery") + "</b>" +
         "<p>Check it for anything personal (names, phone numbers, where you stayed). Publishing lists it in the gallery for anyone to plan from.</p>" +
         '<button class="btn" id="pub" type="button">Publish to the gallery</button><button class="btn secondary" id="del" type="button">Delete</button></div>';
+    } else if (c.owner && c.hidden_after_reports) {
+      html += '<div class="sticky draft"><i class="tape t2"></i><b>Hidden from the gallery after reports</b><p>Travelers reported this trip, so it\'s out of the gallery while we review it. Only you can see it. Questions: info@hejitech.com.</p></div>';
     } else if (c.owner) {
       html += '<div class="sticky draft" style="background:#e5f2ea"><i class="tape t1"></i><b>Your template is live</b><p>' + esc(WG.planned(c)) + '. Edits from your agent go back to draft until you publish again.</p><button class="btn secondary" id="unpub" type="button">Take it down</button></div>';
     }
@@ -126,6 +128,13 @@ ul.rc li::before { content: "↻"; color: #3e7a8c; font-weight: 800; }
     if (rm) html += '<h3 class="h">The route</h3><div class="rm">' + rm + '</div><div class="legend">' + c.plan.map(function (d, i) { return '<span><i style="background:' + WG.dayColor(i) + '"></i>Day ' + (i + 1) + "</span>"; }).join("") + "</div>";
     html += '<h3 class="h">Day by day</h3><div class="days">' + c.plan.map(function (d, i) { return '<div class="day"><b style="color:' + WG.dayColor(i) + '">Day ' + (i + 1) + "</b><div><strong>" + esc(d.title) + "</strong><small>" + d.stops.map(function (s) { return esc(s.name); }).join(" · ") + "</small></div></div>"; }).join("") + "</div>";
     if (c.recheck.length) html += '<h3 class="h">Your agent re-checks</h3><ul class="rc">' + c.recheck.map(function (r) { return "<li>" + esc(r) + "</li>"; }).join("") + "</ul>";
+    // Report (DECISIONS #73): anyone signed in, on someone else's trip; the Worker asks to sign in otherwise.
+    if (!c.owner) html += '<p class="muted small" style="margin-top:28px"><button id="report" type="button" style="background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit">⚑ Report this trip</button></p>' +
+      '<dialog id="reportDlg"><form method="dialog" id="reportForm"><h3 style="margin-top:0">Report this trip</h3><p class="muted small">What\'s wrong with it? You won\'t see it again, and we review every report.</p>' +
+      [["misleading", "Wrong or misleading"], ["unsafe", "Unsafe advice"], ["offensive", "Offensive or hateful"], ["spam", "Spam or advertising"], ["other", "Something else"]].map(function (r) { return '<label style="display:block;margin:6px 0"><input type="radio" name="reason" value="' + r[0] + '" required> ' + r[1] + "</label>"; }).join("") +
+      '<label for="rdetails">Anything we should know? <span class="muted">(optional)</span></label><textarea id="rdetails" rows="2" maxlength="1000"></textarea>' +
+      '<label style="display:block;margin:10px 0"><input type="checkbox" id="rblock"> Hide trips from this traveler</label><p id="rerr" class="small" style="color:#b3261e"></p>' +
+      '<div class="row"><button class="btn" id="rsend" type="submit" value="send">Report</button><button class="btn secondary" type="submit" value="cancel" formnovalidate>Cancel</button></div></form></dialog>';
     html += "</div></div>";
     $("page").innerHTML = html;
     void dayStops;
@@ -228,6 +237,26 @@ ul.rc li::before { content: "↻"; color: #3e7a8c; font-weight: 800; }
     ["when", "who", "chg"].forEach(function (id) { $(id).addEventListener("input", update); });
     $("copy").addEventListener("click", function () { var b = this; navigator.clipboard.writeText(prompt()).then(function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy prompt"; }, 1500); }); });
     update();
+    var rep = $("report"), dlg = $("reportDlg");
+    if (rep && dlg) {
+      rep.addEventListener("click", function () { $("rerr").textContent = ""; dlg.showModal(); });
+      $("reportForm").addEventListener("submit", function (ev) {
+        if (ev.submitter && ev.submitter.value === "cancel") return;
+        ev.preventDefault();
+        var reason = (document.querySelector('input[name="reason"]:checked') || {}).value;
+        $("rsend").disabled = true;
+        fetch("/api/templates/" + encodeURIComponent(slug) + "/report", {
+          method: "POST", credentials: "same-origin",
+          headers: { "X-Waypack": "1", "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: reason, details: $("rdetails").value.trim(), block: $("rblock").checked }),
+        }).then(function (r) { return r.json().then(function (j) { if (r.status === 401) throw new Error("Sign in to report trips: waypack.hejitech.workers.dev/account"); if (!r.ok) throw new Error(j.error || "Couldn't send the report"); return j; }); })
+          .then(function () {
+            dlg.close();
+            $("page").innerHTML = '<div class="sticky tilt-l" style="max-width:560px;margin:30px auto"><i class="tape"></i><b class="hand" style="font-size:2rem">Thanks for the report</b><p>You won\'t see this trip again, and we\'ll review it. <a href="/discover">Back to Discover</a></p></div>';
+          })
+          .catch(function (e) { $("rerr").textContent = e.message; $("rsend").disabled = false; });
+      });
+    }
     var pub = $("pub"), del = $("del"), unpub = $("unpub");
     if (pub) pub.addEventListener("click", function () { pub.disabled = true; act("/api/templates/" + c.template_id + "/publish", "POST").then(load).catch(function (e) { alert(e.message); pub.disabled = false; }); });
     if (unpub) unpub.addEventListener("click", function () { unpub.disabled = true; act("/api/templates/" + c.template_id + "/unpublish", "POST").then(load).catch(function (e) { alert(e.message); unpub.disabled = false; }); });

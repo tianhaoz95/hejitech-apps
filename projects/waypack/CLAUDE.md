@@ -8,7 +8,7 @@ Waypack turns an AI agent into a travel planner whose output works fully offline
 the Waypack skill and MCP server) publishes a **trip bundle** (a self-contained mobile web app plus
 `manifest.json`), the backend or the phone cuts an offline vector map of the trip area, and the
 Flutter app downloads both. `docs/design.md` is the design, `docs/DECISIONS.md` records every
-deviation and owner decision (#1–#72): read it before proposing architectural changes and don't
+deviation and owner decision (#1–#73): read it before proposing architectural changes and don't
 reopen decided options (see "Decided" below). `docs/DEPLOY.md` is setup, secrets and recovery.
 
 ## Commands
@@ -80,6 +80,9 @@ Generated, never edit by hand: `services/mcp/src/generated/guide.ts` (from `skil
   Worker verifies App Store transactions itself (`src/lib/appstore.ts`) into `app_store_purchases`;
   `planDetails()` takes the best plan of both sources. Offline maps are Pro-only, with no per-account
   exceptions besides the review account (#71).
+- **The trip gallery is moderated** (#73): ⚑ Report on every template page (app and site), blocks per
+  viewer, three reports hide a template until `services/mcp/scripts/moderation.mjs` decides. Any new
+  gallery surface must filter through `publishedCards(db, viewerId)` / `templateBySlug(…, viewerId)`.
 - **No paid Cloudflare Containers until there are paying users**: device maps in production (#54).
 - Files in Supabase Storage, not R2 (#56). Mac DMGs are GitHub release assets (#57) and the Mac app
   updates with Sparkle from `releases/latest` (#65), so **Waypack is the only project with

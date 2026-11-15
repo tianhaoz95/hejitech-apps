@@ -20,6 +20,9 @@ import '../widgets/template_route_map.dart';
 
 Api _api(BuildContext context) => context.read<AppState>().api;
 
+/// Bumped after a report or block so open gallery lists reload without that trip (DECISIONS #73).
+final galleryChanged = ValueNotifier<int>(0);
+
 void openTemplate(BuildContext context, TripTemplate t) => Navigator.push(
   context,
   MaterialPageRoute(
@@ -60,7 +63,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   void initState() {
     super.initState();
+    galleryChanged.addListener(_load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    galleryChanged.removeListener(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -503,11 +513,13 @@ class _TemplateSearchScreenState extends State<TemplateSearchScreen> {
   @override
   void initState() {
     super.initState();
+    galleryChanged.addListener(_search);
     _search();
   }
 
   @override
   void dispose() {
+    galleryChanged.removeListener(_search);
     _text.dispose();
     super.dispose();
   }
@@ -1111,6 +1123,23 @@ class _TemplateScreenState extends State<TemplateScreen> {
     }
   }
 
+  Future<void> _report(TripTemplate t) async {
+    final done = await showPaperSheet<bool>(
+      context,
+      builder: (_) => ReportTemplateSheet(slug: t.slug, api: _api(context)),
+    );
+    if (done != true || !mounted) return;
+    galleryChanged.value++;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          "Thanks for the report. You won't see this trip again, and we'll review it.",
+        ),
+      ),
+    );
+    Navigator.of(context).maybePop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = _t;
@@ -1119,6 +1148,14 @@ class _TemplateScreenState extends State<TemplateScreen> {
       title: t?.title ?? '',
       subtitle: t == null ? null : '${t.region} · ${t.facts}',
       actions: [
+        // Report (App Store guideline 1.2): signed in, someone else's trip.
+        if (t != null && !t.isOwner && context.read<AppState>().session != null)
+          RoundButton(
+            key: const Key('report-template'),
+            tooltip: 'Report',
+            icon: Icons.flag_outlined,
+            onPressed: () => _report(t),
+          ),
         if (t != null && t.url.isNotEmpty)
           RoundButton(
             tooltip: 'Share',
@@ -1542,6 +1579,149 @@ class _PlanSheetState extends State<PlanSheet> {
             style: TextStyle(fontSize: 12, color: p.muted),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Report a gallery trip: why, an optional note, and "Hide trips from this traveler" (a block). The
+/// Worker hides it for the reporter at once and from everyone after three reports (lib/reports.ts).
+class ReportTemplateSheet extends StatefulWidget {
+  const ReportTemplateSheet({super.key, required this.slug, required this.api});
+  final String slug;
+  final Api api;
+  @override
+  State<ReportTemplateSheet> createState() => _ReportTemplateSheetState();
+}
+
+class _ReportTemplateSheetState extends State<ReportTemplateSheet> {
+  static const reasons = {
+    'misleading': 'Wrong or misleading',
+    'unsafe': 'Unsafe advice',
+    'offensive': 'Offensive or hateful',
+    'spam': 'Spam or advertising',
+    'other': 'Something else',
+  };
+  String? _reason;
+  bool _block = false;
+  bool _sending = false;
+  String? _error;
+  final _details = TextEditingController();
+
+  @override
+  void dispose() {
+    _details.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    try {
+      await widget.api.reportTemplate(
+        widget.slug,
+        reason: _reason!,
+        details: _details.text.trim(),
+        block: _block,
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _sending = false;
+          _error = '$e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Paper.of(context);
+    // Material: the radio and switch rows paint their ink on it, not under the paper's colour.
+    return Material(
+      type: MaterialType.transparency,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          MediaQuery.viewInsetsOf(context).bottom + 8,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Report this trip',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: p.ink,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "What's wrong with it? You won't see it again, and we review every report.",
+              style: TextStyle(fontSize: 13.5, height: 1.4, color: p.muted),
+            ),
+            const SizedBox(height: 8),
+            RadioGroup<String>(
+              groupValue: _reason,
+              onChanged: (v) => setState(() => _reason = v),
+              child: Column(
+                children: [
+                  for (final e in reasons.entries)
+                    RadioListTile<String>(
+                      key: Key('report-reason-${e.key}'),
+                      value: e.key,
+                      title: Text(e.value, style: TextStyle(color: p.ink)),
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                    ),
+                ],
+              ),
+            ),
+            TextField(
+              key: const Key('report-details'),
+              controller: _details,
+              maxLength: 1000,
+              maxLines: 3,
+              minLines: 1,
+              decoration: const InputDecoration(
+                labelText: 'Anything we should know? (optional)',
+              ),
+            ),
+            SwitchListTile.adaptive(
+              key: const Key('report-block'),
+              value: _block,
+              onChanged: (v) => setState(() => _block = v),
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                'Hide trips from this traveler',
+                style: TextStyle(color: p.ink),
+              ),
+              subtitle: Text(
+                'None of their trips will show up for you.',
+                style: TextStyle(color: p.muted),
+              ),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(_error!, style: TextStyle(color: p.err)),
+              ),
+            PaperButton(
+              key: const Key('report-send'),
+              expand: true,
+              kind: PaperButtonKind.danger,
+              label: _sending ? 'Sending…' : 'Report',
+              onPressed: _reason == null || _sending ? null : _send,
+            ),
+          ],
+        ),
       ),
     );
   }

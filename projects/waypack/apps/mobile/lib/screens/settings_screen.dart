@@ -15,6 +15,7 @@ import '../state/app_state.dart';
 import '../util/format.dart';
 import '../widgets/scrapbook.dart';
 import '../widgets/pro_sheet.dart';
+import 'discover_screen.dart' show galleryChanged;
 import '../services/pro_store.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -556,6 +557,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 18),
           PaperCard(
             children: [
+              PaperRow(
+                key: const Key('clear-template-blocks'),
+                icon: Icons.visibility_outlined,
+                chip: ChipColor.mint,
+                title: 'Show hidden travelers again',
+                subtitle: 'Trips from travelers you hid in Discover come back. Trips you reported stay hidden.',
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  try {
+                    final r = await s.api.clearTemplateBlocks();
+                    galleryChanged.value++;
+                    final n = r['unblocked'] is int ? r['unblocked'] as int : 0;
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          n == 0
+                              ? 'No hidden travelers.'
+                              : 'Showing trips from $n traveler${n == 1 ? '' : 's'} again.',
+                        ),
+                      ),
+                    );
+                  } catch (e) {
+                    messenger.showSnackBar(SnackBar(content: Text('$e')));
+                  }
+                },
+              ),
               PaperRow(
                 icon: Icons.logout,
                 chip: ChipColor.blue,

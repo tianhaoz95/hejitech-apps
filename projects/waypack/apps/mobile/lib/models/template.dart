@@ -7,11 +7,24 @@ class TripTemplate {
   final Map<String, dynamic> raw;
 
   static const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   String get slug => raw['slug'] as String;
+
+  /// The signed-in viewer wrote it (the Worker says so on the template page).
+  bool get isOwner => raw['owner'] == true;
   String get title => raw['title'] as String? ?? '';
   String get tagline => raw['tagline'] as String? ?? '';
   String get region => raw['region'] as String? ?? '';
@@ -22,11 +35,13 @@ class TripTemplate {
 
   /// YYYY-MM.
   String get traveled => raw['traveled'] as String? ?? '';
-  int get travelMonth => int.tryParse(traveled.length >= 7 ? traveled.substring(5, 7) : '') ?? 1;
+  int get travelMonth =>
+      int.tryParse(traveled.length >= 7 ? traveled.substring(5, 7) : '') ?? 1;
   String get traveledLabel =>
       '${months[(travelMonth - 1).clamp(0, 11)]} ${traveled.length >= 4 ? traveled.substring(0, 4) : ''}';
-  List<int> get goodMonths =>
-      ((raw['months'] as List?) ?? const []).map((e) => (e as num).toInt()).toList();
+  List<int> get goodMonths => ((raw['months'] as List?) ?? const [])
+      .map((e) => (e as num).toInt())
+      .toList();
   String get season => raw['season'] as String? ?? '';
   String get pace => raw['pace'] as String? ?? '';
   String get gettingAround => raw['getting_around'] as String? ?? '';
@@ -41,8 +56,10 @@ class TripTemplate {
   bool get wouldGoAgain => raw['would_go_again'] as bool? ?? true;
   int get remixCount => (raw['remix_count'] as num?)?.toInt() ?? 0;
   String get url => raw['url'] as String? ?? '';
-  List<String> get recheck => ((raw['recheck'] as List?) ?? const []).cast<String>();
-  List<String> get reasons => ((raw['reasons'] as List?) ?? const []).cast<String>();
+  List<String> get recheck =>
+      ((raw['recheck'] as List?) ?? const []).cast<String>();
+  List<String> get reasons =>
+      ((raw['reasons'] as List?) ?? const []).cast<String>();
   Map<String, dynamic> get scene =>
       (raw['scene'] as Map?)?.cast<String, dynamic>() ?? const {};
 
@@ -99,11 +116,20 @@ class TripTemplate {
     final routes = <Map<String, dynamic>>[];
     final days = <Map<String, dynamic>>[];
     for (final (di, d) in plan.indexed) {
-      final stops = [for (final s in d.stops) if (s.lat != null && s.lon != null) s];
+      final stops = [
+        for (final s in d.stops)
+          if (s.lat != null && s.lon != null) s,
+      ];
       final items = <Map<String, dynamic>>[];
       for (final (si, s) in stops.indexed) {
         final id = 'd${di + 1}s${si + 1}';
-        places.add({'id': id, 'name': s.name, 'lat': s.lat, 'lon': s.lon, 'category': 'other'});
+        places.add({
+          'id': id,
+          'name': s.name,
+          'lat': s.lat,
+          'lon': s.lon,
+          'category': 'other',
+        });
         items.add({'place_id': id});
       }
       if (stops.length >= 2) {
@@ -116,7 +142,9 @@ class TripTemplate {
           'to': 'd${di + 1}s${stops.length}',
           'geometry': {
             'type': 'LineString',
-            'coordinates': [for (final s in stops) [s.lon, s.lat]],
+            'coordinates': [
+              for (final s in stops) [s.lon, s.lat],
+            ],
           },
         });
         items.add({'route_id': id});
@@ -124,13 +152,16 @@ class TripTemplate {
       days.add({'date': 'day-${di + 1}', 'title': d.title, 'items': items});
     }
     if (places.length < 2) return null;
-    final lats = places.map((p) => p['lat'] as double), lons = places.map((p) => p['lon'] as double);
+    final lats = places.map((p) => p['lat'] as double),
+        lons = places.map((p) => p['lon'] as double);
     double lo(Iterable<double> v) => v.reduce((a, b) => a < b ? a : b);
     double hi(Iterable<double> v) => v.reduce((a, b) => a > b ? a : b);
     return {
       'title': title,
       'timezone': 'UTC',
-      'map': {'bbox': [lo(lons), lo(lats), hi(lons), hi(lats)]},
+      'map': {
+        'bbox': [lo(lons), lo(lats), hi(lons), hi(lats)],
+      },
       'places': places,
       'routes': routes,
       'days': days,
@@ -190,8 +221,9 @@ class DiscoverCollection {
   DiscoverCollection(this.raw);
   final Map<String, dynamic> raw;
   String get name => raw['name'] as String? ?? '';
-  Map<String, String> get query => ((raw['query'] as Map?) ?? const {})
-      .map((k, v) => MapEntry(k as String, '$v'));
+  Map<String, String> get query => ((raw['query'] as Map?) ?? const {}).map(
+    (k, v) => MapEntry(k as String, '$v'),
+  );
   List<TripTemplate> get items => ((raw['items'] as List?) ?? const [])
       .map((t) => TripTemplate(t as Map<String, dynamic>))
       .toList();

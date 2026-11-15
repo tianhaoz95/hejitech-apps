@@ -7,6 +7,7 @@
 // What's public is only what's built here: no dates (just the month it was traveled), no names
 // (crew shape only), booking codes masked, route geometry dropped. The owner is never shown unless
 // they chose a credit name.
+import { hiddenFor } from "./reports.js";
 import type { Manifest } from "@waypack/bundle-schema";
 import type { Env } from "../env.js";
 import { randomToken } from "./crypto.js";
@@ -87,9 +88,10 @@ export interface TemplateRow {
   created_at: string;
   updated_at: string;
   published_at: string | null;
+  moderated_at?: string | null;
 }
 
-const COLS = "id,user_id,trip_id,version,slug,status,title,card,manifest,remix_count,created_at,updated_at,published_at";
+const COLS = "id,user_id,trip_id,version,slug,status,title,card,manifest,remix_count,created_at,updated_at,published_at,moderated_at";
 const LIST_COLS = "id,user_id,trip_id,version,slug,status,title,card,remix_count,created_at,updated_at,published_at";
 const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SLUG_RE = /^[a-z0-9-]{3,80}$/;
@@ -434,9 +436,16 @@ export function listCard(c: TemplateCard): Omit<TemplateCard, "plan"> {
 }
 
 /** Published cards, newest first. The gallery is small for now, so filtering happens in the Worker. */
-export async function publishedCards(db: Db): Promise<TemplateCard[]> {
-  const rows = await db.select<TemplateRow>("trip_templates", `select=${LIST_COLS}&status=eq.published&order=published_at.desc&limit=500`);
-  return rows.map((r) => ({ ...r.card, remix_count: r.remix_count, status: r.status }));
+export async function publishedCards(db: Db, viewerId?: string): Promise<TemplateCard[]> {
+  // Templates hidden after reports (moderated_at) are out for everyone; a signed-in viewer also doesn't
+  // see the ones they reported or whose author they blocked (lib/reports.ts).
+  const [rows, hide] = await Promise.all([
+    db.select<TemplateRow>("trip_templates", `select=${LIST_COLS}&status=eq.published&moderated_at=is.null&order=published_at.desc&limit=500`),
+    hiddenFor(db, viewerId),
+  ]);
+  return rows
+    .filter((r) => !hide.templates.has(r.id) && !hide.owners.has(r.user_id))
+    .map((r) => ({ ...r.card, remix_count: r.remix_count, status: r.status }));
 }
 
 /** Slug from a template link (…/trips/<slug>) or the bare slug. */
@@ -451,13 +460,17 @@ export async function templateBySlug(db: Db, slug: string, viewerId?: string): P
   if (!SLUG_RE.test(slug)) return null;
   const row = await db.one<TemplateRow>("trip_templates", `select=${COLS}&slug=${eq(slug)}`);
   if (!row) return null;
-  if (row.status !== "published" && row.user_id !== viewerId) return null;
+  if (row.user_id === viewerId) return row;
+  if (row.status !== "published" || row.moderated_at) return null;
+  const hide = await hiddenFor(db, viewerId);
+  if (hide.templates.has(row.id) || hide.owners.has(row.user_id)) return null;
   return row;
 }
 
 /** Public JSON for the template page (no owner id, no trip id). */
 export function publicTemplate(env: Env, row: TemplateRow, viewerId?: string) {
-  return { ...row.card, remix_count: row.remix_count, status: row.status, owner: row.user_id === viewerId, template_id: row.user_id === viewerId ? row.id : undefined, ...templateLinks(env, row.slug) };
+  const owner = row.user_id === viewerId;
+  return { ...row.card, remix_count: row.remix_count, status: row.status, owner, template_id: owner ? row.id : undefined, hidden_after_reports: owner && !!row.moderated_at, ...templateLinks(env, row.slug) };
 }
 
 /** What an agent plans from: the card (notes, re-checks) and the cleaned manifest. Counts a "planned from it". */

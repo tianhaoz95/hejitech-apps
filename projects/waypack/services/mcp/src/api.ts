@@ -22,6 +22,7 @@ import { handleMacDownload } from "./lib/releases.js";
 import { proxyTiles } from "./lib/hosted.js";
 import { deletePreview, listPreviews, PreviewError, previewOrigin, publishPreview } from "./lib/previews.js";
 import { listShares, publicSummary, ShareError, shareByToken, shareTrip, unshareTrip } from "./lib/shares.js";
+import { clearBlocks, reportTemplate, ReportError, type ReportInput } from "./lib/reports.js";
 import { deleteTemplate, filterCards, homeFeed, listCard, listMyTemplates, matchReasons, parseQuery, publicTemplate, publishedCards, setTemplateStatus, templateBySlug, TemplateError } from "./lib/templates.js";
 import { acceptInvite, companionTrips, createInvite, inviteSummary, listMembers, MemberError, removeMember, revokeInvite, tripAccess } from "./lib/members.js";
 
@@ -278,6 +279,17 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
 
   // The owner's templates (drafts are reviewed and published here or by the agent).
   if (path === "/api/templates" && req.method === "GET") return Response.json({ templates: await listMyTemplates(env, db, user.userId) });
+  // Report a gallery template (App Store guideline 1.2): lib/reports.ts.
+  const rep = m(/^\/api\/templates\/([a-z0-9-]{3,80})\/report$/);
+  if (rep && req.method === "POST") {
+    try {
+      return Response.json(await reportTemplate(db, user.userId, rep[1], (await req.json().catch(() => ({}))) as ReportInput));
+    } catch (e) {
+      if (e instanceof ReportError) return jsonErr(e.status, e.message);
+      throw e;
+    }
+  }
+  if (path === "/api/template-blocks" && req.method === "DELETE") return Response.json({ unblocked: await clearBlocks(db, user.userId) });
   const tpl = m(/^\/api\/templates\/([0-9a-f-]{36})(\/publish|\/unpublish)?$/);
   if (tpl) {
     try {
@@ -473,20 +485,23 @@ async function members(fn: () => Promise<unknown>): Promise<Response> {
 async function handlePublicTemplates(req: Request, env: Env, url: URL): Promise<Response> {
   const db = new Db(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
   const path = url.pathname.replace(/\/$/, "");
-  const cache = { "Cache-Control": "public, max-age=60" };
-  if (path === "/api/public/templates/home") return Response.json(homeFeed(await publishedCards(db)), { headers: cache });
+  // Vary: a signed-in viewer gets a filtered answer (reports, blocks), never the shared anonymous copy.
+  const cache = { "Cache-Control": "public, max-age=60", Vary: "Cookie, Authorization" };
+  // Signed in: leave out what the viewer reported or blocked (lib/reports.ts), and don't share the cache.
+  const viewer = req.headers.has("Authorization") || req.headers.get("Cookie")?.includes("wp_session") ? await authUser(req, env).catch(() => null) : null;
+  const headers = viewer ? { "Cache-Control": "private, no-store", Vary: "Cookie, Authorization" } : cache;
+  if (path === "/api/public/templates/home") return Response.json(homeFeed(await publishedCards(db, viewer?.userId)), { headers });
   if (path === "/api/public/templates") {
     const q = parseQuery(url.searchParams);
-    const all = await publishedCards(db);
+    const all = await publishedCards(db, viewer?.userId);
     const results = filterCards(all, q).map((c) => ({ ...listCard(c), reasons: matchReasons(c, q) }));
-    return Response.json({ query: q, total: all.length, count: results.length, results }, { headers: cache });
+    return Response.json({ query: q, total: all.length, count: results.length, results }, { headers });
   }
   const one = path.match(/^\/api\/public\/templates\/([a-z0-9-]{3,80})$/);
   if (one) {
-    const viewer = await authUser(req, env).catch(() => null);
     const row = await templateBySlug(db, one[1], viewer?.userId);
     if (!row) return jsonErr(404, "This trip isn't in the gallery (anymore).");
-    return Response.json(publicTemplate(env, row, viewer?.userId), { headers: { "Cache-Control": row.status === "published" && !viewer ? "public, max-age=60" : "no-store" } });
+    return Response.json(publicTemplate(env, row, viewer?.userId), { headers: { "Cache-Control": row.status === "published" && !viewer ? "public, max-age=60" : "no-store", Vary: "Cookie, Authorization" } });
   }
   return jsonErr(404, "not found");
 }

@@ -52,7 +52,9 @@ class Api {
     final res = await http.Response.fromStream(
       await _http.send(req).timeout(const Duration(seconds: 30)),
     );
-    if (res.statusCode == 401 && canRetry && Supabase.instance.client.auth.currentSession != null) {
+    if (res.statusCode == 401 &&
+        canRetry &&
+        Supabase.instance.client.auth.currentSession != null) {
       try {
         await Supabase.instance.client.auth.refreshSession();
         return await _json(method, path, body: body, canRetry: false);
@@ -95,8 +97,7 @@ class Api {
 
   /// Public web share link (no app required to view).
   Future<String> shareTrip(String tripId) async =>
-      (await _json('POST', '/api/trips/$tripId/share'))['share_url']
-          as String;
+      (await _json('POST', '/api/trips/$tripId/share'))['share_url'] as String;
 
   /// Trip gallery (public, no sign-in needed): the magazine home.
   Future<DiscoverHome> discoverHome() async =>
@@ -105,11 +106,34 @@ class Api {
   /// Gallery search. Keys: q, season, month, length, who, move, sort (see templates.ts parseQuery).
   Future<List<TripTemplate>> searchTemplates(Map<String, String> query) async {
     final q = Uri(queryParameters: query.isEmpty ? null : query).query;
-    final j = await _json('GET', '/api/public/templates${q.isEmpty ? '' : '?$q'}');
+    final j = await _json(
+      'GET',
+      '/api/public/templates${q.isEmpty ? '' : '?$q'}',
+    );
     return (j['results'] as List)
         .map((t) => TripTemplate(t as Map<String, dynamic>))
         .toList();
   }
+
+  /// Report a gallery trip (and optionally hide its author's trips): services/mcp/src/lib/reports.ts.
+  Future<Map<String, dynamic>> reportTemplate(
+    String slug, {
+    required String reason,
+    String details = '',
+    bool block = false,
+  }) => _json(
+    'POST',
+    '/api/templates/$slug/report',
+    body: {
+      'reason': reason,
+      if (details.isNotEmpty) 'details': details,
+      'block': block,
+    },
+  );
+
+  /// Show trips from every hidden traveler again.
+  Future<Map<String, dynamic>> clearTemplateBlocks() =>
+      _json('DELETE', '/api/template-blocks');
 
   Future<TripTemplate> template(String slug) async =>
       TripTemplate(await _json('GET', '/api/public/templates/$slug'));
@@ -121,12 +145,15 @@ class Api {
       _json('POST', '/api/tokens', body: {'label': label});
   Future<void> revokeToken(String id) => _json('DELETE', '/api/tokens/$id');
   Future<void> deleteTrip(String id) => _json('DELETE', '/api/trips/$id');
+
   /// [appleAuthorizationCode]: a fresh Sign in with Apple code, so the Worker can revoke Waypack's Apple token.
   Future<void> deleteAccount({String? appleAuthorizationCode}) => _json(
-        'DELETE',
-        '/api/account',
-        body: appleAuthorizationCode == null ? null : {'apple_authorization_code': appleAuthorizationCode},
-      );
+    'DELETE',
+    '/api/account',
+    body: appleAuthorizationCode == null
+        ? null
+        : {'apple_authorization_code': appleAuthorizationCode},
+  );
 }
 
 class DownloadInfo {

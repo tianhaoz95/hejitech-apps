@@ -135,6 +135,12 @@ Original checklist:
 - Pro for free by email (testers, early adopters, the owner): `scripts/grant_pro.sh waypack <email>
   [--until YYYY-MM-DD] [--revoke] | --list`; `planDetails()` counts it everywhere (plan_source `grant`).
 
+## 4c. Gallery moderation (DECISIONS #73)
+Reports on gallery templates: `node projects/waypack/services/mcp/scripts/moderation.mjs list` (open
+reports by template, with each reporter's reason and note, never who), then `remove <slug> "why"` or
+`keep <slug>` (`--local` for the local stack). Three open reports already hide a template from everyone.
+The terms promise a review within 24 hours: check the list daily while there's no alert.
+
 ## 4b. Releases (GitHub Actions)
 - **CI** (`.github/workflows/waypack-ci.yml`): pushes/PRs touching `projects/waypack/`, `supabase/` or the shared root files run Waypack's package builds, typechecks and tests (incl. the SDK's Playwright tests), plus `flutter analyze` and `flutter test`.
 - **Ship a version:** `scripts/cut_release.sh waypack` from the repo root (try `--dry-run` first; settings in `projects/waypack/release.env`). It checks main is clean, pushed and green in Waypack CI, bumps `pubspec.yaml`, and publishes GitHub Release `waypack-v<major>.<minor>.<patch>` marked as the repo's latest (releases up to v1.8.9 were tagged `v<version>`), which starts:

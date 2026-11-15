@@ -41,6 +41,7 @@ First release: download trips from your AI agent, offline maps with GPS, native 
 - Native features: offline download manager with integrity checks, native Today view, GPS map, trip reminders, share sheet.
 - Waypack Pro (in-app purchases submitted with this version): Settings > Get Waypack Pro opens the purchase sheet (yearly with a free week, or lifetime; Restore Purchases, Terms and Privacy are on it). The demo account is already Pro (offline maps download); to try buying, sign in with Apple instead.
 - Sign-in: Sign in with Apple or Google; App Review uses "Sign in with email" with the demo account in the review details (DECISIONS #71).
+- Trip gallery (Discover) is user-generated content: every trip page has ⚑ Report (reason, note, "Hide trips from this traveler"); the reporter stops seeing it at once, three reports hide it from everyone, and we review reports within 24 hours (terms: https://waypack.hejitech.workers.dev/terms). Settings › "Show hidden travelers again" undoes hiding.
 - Location is used only to show the user's position on the offline map (When In Use).
 
 ## Privacy nutrition label / Data safety

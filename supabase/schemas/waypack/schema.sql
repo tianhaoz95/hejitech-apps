@@ -257,6 +257,8 @@ CREATE TABLE waypack.trip_templates (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     published_at timestamp with time zone,
+    moderated_at timestamp with time zone,
+    moderation_note text,
     CONSTRAINT trip_templates_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'published'::text, 'hidden'::text])))
 );
 
@@ -583,4 +585,32 @@ create table waypack.pro_grants (
 );
 alter table waypack.pro_grants enable row level security;
 grant select, insert, update, delete on table waypack.pro_grants to service_role;
+
+-- Reports on gallery templates (App Store guideline 1.2; DECISIONS #73). One per person and template:
+-- the reporter stops seeing it at once, and three open reports hide it from everyone
+-- (trip_templates.moderated_at) until the owner reviews it with services/mcp/scripts/moderation.mjs.
+create table waypack.template_reports (
+  id uuid primary key default gen_random_uuid(),
+  template_id uuid not null references waypack.trip_templates(id) on delete cascade,
+  reporter_id uuid not null,
+  reason text not null check (reason in ('spam', 'offensive', 'unsafe', 'misleading', 'other')),
+  details text check (char_length(details) <= 1000),
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz,
+  resolution text check (resolution in ('removed', 'kept')),
+  unique (template_id, reporter_id)
+);
+create index template_reports_open on waypack.template_reports (template_id) where resolved_at is null;
+alter table waypack.template_reports enable row level security;
+grant select, insert, update, delete on table waypack.template_reports to service_role;
+
+-- "Hide trips from this traveler": the gallery leaves out every template of blocked_user_id for user_id.
+create table waypack.template_blocks (
+  user_id uuid not null,
+  blocked_user_id uuid not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, blocked_user_id)
+);
+alter table waypack.template_blocks enable row level security;
+grant select, insert, update, delete on table waypack.template_blocks to service_role;
 

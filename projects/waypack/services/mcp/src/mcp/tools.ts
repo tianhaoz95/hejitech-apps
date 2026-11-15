@@ -521,7 +521,7 @@ export const tools: ToolDef<ToolCtx>[] = [
       if (args.who === "kids" || args.who === "couple" || args.who === "friends" || args.who === "dog") q.who = args.who;
       if (args.getting_around === "car" || args.getting_around === "nocar") q.move = args.getting_around;
       const limit = Math.min(20, Math.max(1, Number(args.limit) || 8));
-      const all = await publishedCards(ctx.db);
+      const all = await publishedCards(ctx.db, ctx.userId);
       let hits = filterCards(all, q);
       let relaxed = false;
       // Nothing for the exact filters: fall back to the text/place match alone so the agent still sees nearby options.
