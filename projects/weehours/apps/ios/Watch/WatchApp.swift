@@ -81,7 +81,14 @@ final class PhoneLink: NSObject, ObservableObject, WCSessionDelegate {
         let runningId: String
     }
 
-    @Published var line = "Open the iPhone app"
+    @Published var line: String = {
+        #if DEBUG
+        // `-demoLine "Fed 2h40m ago · left next"`: a status line without a paired iPhone (store screenshots;
+        // watch simulators can't sync with an unsigned phone build).
+        if let demo = UserDefaults.standard.string(forKey: "demoLine") { return demo }
+        #endif
+        return "Open the iPhone app"
+    }()
     @Published var openFeed = ""
     @Published var sleeping = false
     /// Only children not born yet: movements, no feeds, sleep or diapers.
