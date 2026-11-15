@@ -26,14 +26,15 @@ export type Action =
   | "audit"
   | "request" // ask HQ for something (an on-demand request), follow up on it, close it
   | "answer_request" // claim and answer a request (agents and runners)
-  | "sweep"; // take due scout and CEO runs and do them in the caller's own session (start_sweep)
+  | "sweep" // take queued and due runs (any kind) and do them in the caller's own session (start_sweep)
+  | "refresh_policy"; // re-read the .hq/ policy from the repo's default branch on GitHub (sync_policy)
 
 const ALLOWED: Record<Role, readonly Action[]> = {
-  admin: ["read", "comment", "propose", "decide", "set_status", "run_verb", "run_l3_verb", "start_run", "attach", "sync", "pause", "tokens", "members", "connect_agent", "audit", "request", "sweep"],
-  approver: ["read", "comment", "propose", "decide", "set_status", "run_verb", "run_l3_verb", "start_run", "attach", "connect_agent", "request", "sweep"],
+  admin: ["read", "comment", "propose", "decide", "set_status", "run_verb", "run_l3_verb", "start_run", "attach", "sync", "pause", "tokens", "members", "connect_agent", "audit", "request", "sweep", "refresh_policy"],
+  approver: ["read", "comment", "propose", "decide", "set_status", "run_verb", "run_l3_verb", "start_run", "attach", "connect_agent", "request", "sweep", "refresh_policy"],
   viewer: ["read", "comment"],
-  runner: ["read", "comment", "propose", "attach", "claim", "sync", "run_verb", "answer_request", "sweep"],
-  agent: ["read", "comment", "propose", "attach", "run_verb", "rank", "answer_request", "sweep"],
+  runner: ["read", "comment", "propose", "attach", "claim", "sync", "run_verb", "answer_request", "sweep", "refresh_policy"],
+  agent: ["read", "comment", "propose", "attach", "run_verb", "rank", "answer_request", "sweep", "refresh_policy"],
 };
 
 export const can = (role: Role, action: Action): boolean => ALLOWED[role].includes(action);

@@ -5,3 +5,4 @@ export * from "./roles.ts";
 export * from "./markdown.ts";
 export * from "./request.ts";
 export * from "./sweep.ts";
+export * from "./hqfiles.ts";

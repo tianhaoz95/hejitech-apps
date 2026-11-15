@@ -20,5 +20,5 @@ features:
   - title: Guardrails in code
     details: Tier ceilings, verb checks, budgets, WIP limits and a kill switch are enforced by the server. Agents can't approve, release, push or change policy.
   - title: Any repo, any agent
-    details: Add .hq/ folders to a repo and connect the MCP server. Say "do a sweep for HQ" in any connected agent, or schedule it, and it does the routine work in that session; a runner runs Claude Code headless for builds and unattended machines.
+    details: Add .hq/ folders to a repo and connect the MCP server. Say "do a sweep for HQ" in any connected agent, or schedule it, and it does all of HQ's work in that session, builds and reviews included; nothing else to install. The optional runner runs agents headless under a hard deny-list on machines nobody watches.
 ---

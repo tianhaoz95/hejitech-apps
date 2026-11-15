@@ -2,7 +2,13 @@
 
 The repo side of [HQ](https://hq.hejitech.workers.dev), a repo's autopilot: scheduled agents propose
 maintenance, reliability and performance work as evidence-backed cards, the team approves them in
-the portal or the iPhone app, and a runner on your machine builds what was approved.
+the portal or the iPhone app, and agents build what was approved.
+
+You don't need this package to use HQ: connect any MCP-capable agent to HQ's MCP server and say
+"do a sweep for HQ", and it does all the work (requests, scouts, ranking, builds, reviews, verbs,
+health, refreshing the policy from GitHub) in its own session. Use `hq` to lint `.hq/` folders,
+to sync a private repo's policy, or to run a runner: agents started headless under a hard
+deny-list on a machine nobody watches.
 
 ```sh
 npm install -g @hejitech/hq      # or: npx @hejitech/hq <command>

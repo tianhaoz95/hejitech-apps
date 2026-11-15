@@ -4,8 +4,14 @@
 // workspace, and every rule that matters is enforced here, whoever calls: roles, the card gate,
 // tier ceilings, who may move a card, verb checks, the budget, the kill switch, WIP limits.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import yaml from "js-yaml";
 import {
   buildContext,
+  buildPolicy,
+  gitBlobSha,
+  hqFile,
+  parsePolicyTree,
+  POLICY_FILES_COMMAND,
   can,
   canTransition,
   checkCardAgainstPolicy,
@@ -41,6 +47,7 @@ import {
   type Status,
   type SweepPlan,
   type SweepRun,
+  verbCommand,
 } from "@hq/core";
 
 export interface Env {
@@ -53,6 +60,8 @@ export interface Env {
   SUPABASE_ANON_KEY: string;
   /** Secret. Server-side only; bypasses RLS for every project in the shared Supabase project. */
   SUPABASE_SERVICE_ROLE_KEY: string;
+  /** Where sync_policy reads a repo's files (default https://raw.githubusercontent.com; tests serve a fixture). */
+  GITHUB_RAW_URL?: string;
   /** With the two secrets below, account deletion revokes Sign in with Apple tokens (apple.ts). */
   APPLE_TEAM_ID?: string;
   APPLE_SIWA_KEY_ID?: string;
@@ -75,6 +84,8 @@ export interface Caller {
   name: string;
   workspaceId: string;
   userId?: string;
+  /** The MCP session (Mcp-Session-Id) the call came in on, when the client sends one. */
+  session?: string;
 }
 
 export interface Ctx {
@@ -238,18 +249,65 @@ export async function getPolicy(x: Ctx, ws: string) {
 
 export async function requirePolicy(x: Ctx, ws: string): Promise<RepoPolicy> {
   const p = await getPolicy(x, ws);
-  if (!p) throw new HttpError(409, "this workspace has no policy yet: run `hq sync` in the repo with a runner token");
+  if (!p) throw new HttpError(409, `this workspace has no policy yet: call the MCP tool sync_policy with the output of \`${POLICY_FILES_COMMAND}\` (or run \`hq sync\` in the repo)`);
   return p.policy;
 }
 
 export async function syncPolicy(x: Ctx, c: Caller, policy: RepoPolicy, commit: string | null) {
   need(c, "sync");
   if (!policy || typeof policy.repo !== "string" || typeof policy.projects !== "object") throw new HttpError(400, "policy: expected the output of buildPolicy()");
+  return writePolicy(x, c, policy, commit, "cli");
+}
+
+async function writePolicy(x: Ctx, c: Caller, policy: RepoPolicy, commit: string | null, via: "cli" | "github") {
   const ws = await getWorkspace(x, c.workspaceId);
   if (policy.repo.toLowerCase() !== ws.repo.toLowerCase()) throw new HttpError(409, `this workspace is for ${ws.repo}, but .hq/HQ.md says repo: ${policy.repo}`);
-  const changed = JSON.stringify(ws.policy) !== JSON.stringify(policy);
+  const changed = canonical(ws.policy) !== canonical(policy);
   must(await x.db.from("workspaces").update({ policy, commit_sha: commit, synced_at: now() }).eq("id", c.workspaceId), "sync");
-  await audit(x, c, "policy.sync", policy.repo, { commit, projects: Object.keys(policy.projects), changed });
+  await audit(x, c, "policy.sync", policy.repo, { commit, projects: Object.keys(policy.projects), changed, via });
+  return { ok: true, changed, repo: policy.repo, projects: Object.keys(policy.projects), commit };
+}
+
+/** JSON with sorted keys: jsonb doesn't keep key order, so a stored policy compares by content. */
+const canonical = (v: unknown): string =>
+  v && typeof v === "object" ? (Array.isArray(v) ? `[${v.map(canonical).join(",")}]` : `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`).join(",")}}`) : JSON.stringify(v ?? null);
+
+const MAX_POLICY_FILES = 60;
+
+/**
+ * sync_policy: the caller says where the .hq/ files are (`git ls-tree -r origin/HEAD` output) and HQ
+ * reads each HQ.md itself from the repo's default branch on GitHub, checking it is the blob the
+ * listing names. So any connected agent can refresh the policy, and none can write one: the words
+ * come from GitHub. Verbs come from the listing's executable .hq/bin entries. Private repos: hq sync.
+ */
+export async function syncFromRepo(x: Ctx, c: Caller, tree: string, commit: string | null) {
+  need(c, "refresh_policy");
+  const ws = await getWorkspace(x, c.workspaceId);
+  const t = parsePolicyTree(tree);
+  if (!t.files.some((f) => f.dir === "")) throw new HttpError(400, `tree: no .hq/HQ.md at the repository root in that listing; pass the output of: ${POLICY_FILES_COMMAND}`);
+  if (t.files.length > MAX_POLICY_FILES) throw new HttpError(400, `tree: at most ${MAX_POLICY_FILES} .hq/HQ.md files`);
+  if (t.notExecutable.length) throw new HttpError(422, "policy refused", t.notExecutable.map((p) => `${p}: not executable (chmod +x, commit, push)`));
+  const raw = (x.env.GITHUB_RAW_URL || "https://raw.githubusercontent.com").replace(/\/+$/, "");
+  const files = await Promise.all(
+    t.files.map(async (f) => {
+      const url = `${raw}/${ws.repo}/HEAD/${f.path.split("/").map(encodeURIComponent).join("/")}`;
+      const res = await fetch(url, { headers: { "User-Agent": "hq-sync" } }).catch(() => null);
+      if (!res || res.status === 404) throw new HttpError(409, `couldn't read ${f.path} from ${ws.repo}'s default branch on GitHub (a private repository? then sync with the CLI: hq sync)`);
+      if (!res.ok) throw new HttpError(502, `GitHub answered ${res.status} for ${f.path}; try again later`);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if ((await gitBlobSha(bytes)) !== f.sha) {
+        throw new HttpError(409, `${f.path} on GitHub isn't the file in your listing: run git fetch and list again (GitHub's raw files can lag a push by a few minutes)`);
+      }
+      try {
+        return hqFile(f.dir, new TextDecoder().decode(bytes), t.bin[f.dir] ?? [], (s) => yaml.load(s));
+      } catch (e) {
+        throw new HttpError(422, "policy refused", [(e as Error).message]);
+      }
+    })
+  );
+  const built = buildPolicy(files);
+  if (!built.ok) throw new HttpError(422, "policy refused", built.errors);
+  return writePolicy(x, c, built.value, commit && /^[0-9a-f]{40}$/.test(commit) ? commit : null, "github");
 }
 
 export async function setPaused(x: Ctx, c: Caller, paused: boolean) {
@@ -694,18 +752,29 @@ export async function startRun(x: Ctx, c: Caller, kind: string, scout: string | 
   return enqueueRun(x, c.workspaceId, { kind, scout, project: project ?? (kind === "scout" ? "repo-wide" : null), agent, requested_by: c.name, args: { card_limit: 3 } });
 }
 
-export async function requestVerb(x: Ctx, c: Caller, project: string, verb: string, dryRun: boolean, cardId: string | null) {
+/** Where a verb lives, repo-relative. */
+const verbPathOf = (policy: RepoPolicy, project: string, verb: string) => `${project === "repo-wide" ? "" : `${policy.projects[project]?.dir}/`}.hq/bin/${verb}`;
+
+/**
+ * run_verb / POST /verbs. Queues the verb for a runner, or with `hold` (run_here over MCP) hands it to
+ * the caller to run in its own session, closed with finish_sweep.
+ */
+export async function requestVerb(x: Ctx, c: Caller, project: string, verb: string, dryRun: boolean, cardId: string | null, hold = false) {
   need(c, "run_verb");
+  if (hold) need(c, "sweep");
   const ws = c.workspaceId;
   const policy = await requirePolicy(x, ws);
   const card = cardId ? await getCard(x, c, cardId) : null;
   const actor = can(c.role, "run_l3_verb") ? "owner" : c.role === "runner" ? "runner" : "agent";
   const check = checkVerb({ project, verb, dryRun, card: card && { tier: card.tier, status: card.status, project: card.project } }, policy, actor);
-  await audit(x, c, check.allowed ? "verb.request" : "verb.refused", `${project}/${verb}`, { dryRun, cardId, reason: check.reason });
+  await audit(x, c, check.allowed ? "verb.request" : "verb.refused", `${project}/${verb}`, { dryRun, cardId, reason: check.reason, here: hold });
   if (!check.allowed) throw new HttpError(403, `refused: ${check.reason}`);
   if (!dryRun && (await isPaused(x, ws)) && actor !== "owner") throw new HttpError(423, "HQ is paused in this workspace");
   const id = await enqueueRun(x, ws, { kind: "verb", project, verb, card_id: cardId, args: { dry_run: dryRun }, runs_on: check.policy?.runs_on ?? "any", requested_by: who(c) });
-  return { run_id: id, reason: check.reason };
+  if (!hold) return { run_id: id, reason: check.reason };
+  const got = must(await x.db.from("runs").update({ status: "running", runner: sweeper(c), agent: `${c.name} (sweep)`, started_at: now() }).eq("id", id).eq("status", "queued").select("id"), "hold verb") as { id: string }[];
+  if (!got.length) throw new HttpError(409, `run ${id} for ${project}/${verb} is already running elsewhere`);
+  return { run_id: id, reason: check.reason, held: true, path: verbPathOf(policy, project, verb), command: verbCommand(project, verb, verbPathOf(policy, project, verb), dryRun) };
 }
 
 // What a person is waiting on comes first: their verbs, their questions, their requests.
@@ -827,41 +896,66 @@ const allScouts = (policy: RepoPolicy) => [
   ...Object.values(policy.projects).flatMap((p) => p.scouts.map((s) => ({ ...s, project: p.name, dir: p.dir as string | null }))),
 ];
 
+/** Who holds a run an MCP agent took (start_sweep, run_verb with run_here): only it can close it. */
 const sweeper = (c: Caller) => `sweep:${c.name}`;
 
+/** Every health verb in the policy, repo-relative. */
+const healthVerbs = (policy: RepoPolicy) =>
+  [["repo-wide", policy.verbs] as const, ...Object.values(policy.projects).map((p) => [p.name, p.verbs] as const)]
+    .filter(([, v]) => v.health)
+    .map(([project]) => ({ project, path: verbPathOf(policy, project, "health") }));
+
+export interface SweepOptions {
+  project?: string | null;
+  scouts?: string[];
+  force?: boolean;
+  ceo?: boolean;
+  /** false: leave builds and reviews for later (or for a runner). */
+  build?: boolean;
+}
+
 /**
- * start_sweep: the scout runs that are due (or the ones named, or all with force), plus the CEO when
- * it's due, become runs this caller holds ("running", runner sweep:<name>), so the cron and runners
- * leave them alone and the schedule and budget count them. A queued run (enqueued by the cron, no
- * runner has it yet) is taken over; one a runner or another sweep already holds is skipped.
+ * start_sweep: everything queued for this workspace that an agent can do in its own session becomes
+ * a run this caller holds ("running", runner sweep:<name>), so the cron and runners leave it alone and
+ * the schedule and budget count it: owner requests, replies to comments, verbs, the health check, the
+ * due scouts and the CEO, builds of approved cards (within the WIP and open-PR limits) and reviews of
+ * cards another session built. Naming scouts runs just those. A run a runner or another sweep already
+ * holds is skipped.
  */
-export async function startSweep(x: Ctx, c: Caller, o: { project?: string | null; scouts?: string[]; force?: boolean; ceo?: boolean } = {}): Promise<SweepPlan & { context: Context }> {
+export async function startSweep(x: Ctx, c: Caller, o: SweepOptions = {}): Promise<SweepPlan & { context: Context }> {
   need(c, "sweep");
   const ws = c.workspaceId;
   const w = await getWorkspace(x, ws);
   const policy = await requirePolicy(x, ws);
   if (w.paused) throw new HttpError(423, "HQ is paused in this workspace: nothing to sweep until an admin resumes it");
   const spent = await spentThisWeek(x, ws);
-  if (overBudget(spent, policy)) throw new HttpError(402, `this week's budget is spent ($${spent} of $${policy.weekly_budget_usd}): scouts wait until the week resets (Monday, UTC)`);
+  const over = overBudget(spent, policy);
   const project = o.project && o.project !== "all" ? o.project : null;
   if (project && project !== "repo-wide" && !policy.projects[project]) throw new HttpError(400, `unknown project ${project}`);
+  const inProject = (p: string | null) => !project || p === project;
   const named = new Set(o.scouts ?? []);
-  const inScope = allScouts(policy).filter((s) => !project || s.project === project);
+  const inScope = allScouts(policy).filter((s) => inProject(s.project));
   const unknown = [...named].filter((n) => !inScope.some((s) => s.name === n));
   if (unknown.length) throw new HttpError(400, `no scout ${unknown.join(", ")}${project ? ` in ${project}` : ""}; scouts: ${[...new Set(inScope.map((s) => s.name))].join(", ") || "none"}`);
+  const everything = !named.size;
   const at = new Date();
   const runs: SweepRun[] = [];
   const skipped: SweepPlan["skipped"] = [];
-  const open = (must(await x.db.from("runs").select("*").eq("workspace_id", ws).in("kind", ["scout", "ceo"]).in("status", ["queued", "running"]), "open runs") as Record<string, unknown>[]).map(toRun);
+  const open = (must(await x.db.from("runs").select("*").eq("workspace_id", ws).in("status", ["queued", "running"]).order("created_at").limit(500), "open runs") as Record<string, unknown>[]).map(toRun);
+  const queued = (kind: string) => open.filter((r) => r.kind === kind && r.status === "queued");
   const agent = `${c.name} (sweep)`;
+  const asRunner: Caller = { role: "runner", name: sweeper(c), workspaceId: ws };
+  const hold = async (r: Run, args?: Record<string, unknown>) => {
+    const upd: Record<string, unknown> = { status: "running", runner: sweeper(c), agent, started_at: now() };
+    if (args) upd.args = { ...r.args, ...args };
+    const got = must(await x.db.from("runs").update(upd).eq("id", r.id).eq("status", "queued").select("id"), "take run") as { id: string }[];
+    return got.length > 0;
+  };
   // Take the queued run if there is one, else start one; null when someone else holds it.
-  const take = async (kind: "scout" | "ceo", scout: string | null, proj: string | null, cardLimit: number): Promise<string | null> => {
+  const take = async (kind: "scout" | "ceo" | "health", scout: string | null, proj: string | null, cardLimit: number): Promise<string | null> => {
     const existing = open.find((r) => r.kind === kind && (r.scout ?? "") === (scout ?? "") && (r.project ?? "") === (proj ?? ""));
     if (existing?.status === "running") return null;
-    if (existing) {
-      const got = must(await x.db.from("runs").update({ status: "running", runner: sweeper(c), agent, started_at: now() }).eq("id", existing.id).eq("status", "queued").select("id"), "take run") as { id: string }[];
-      return got.length ? existing.id : null;
-    }
+    if (existing) return (await hold(existing)) ? existing.id : null;
     const id = newRunId();
     must(
       await x.db.from("runs").insert({ id, workspace_id: ws, kind, project: proj, scout, args: kind === "scout" ? { card_limit: cardLimit } : {}, runs_on: "any", agent, status: "running", runner: sweeper(c), started_at: now(), requested_by: c.name }),
@@ -869,50 +963,204 @@ export async function startSweep(x: Ctx, c: Caller, o: { project?: string | null
     );
     return id;
   };
+  const cardOf = async (id: string | null) => (id ? await getCard(x, asRunner, id).catch(() => null) : null);
+  const busy = "a runner or another sweep is doing it now";
+
+  // Owner requests, with the queued run that goes with each.
+  const requests: SweepPlan["requests"] = [];
+  if (everything) {
+    for (const r of (await listRequests(x, c, { status: ["open", "claimed"], limit: 20 })).filter((q) => isClaimable(q, at) && (!project || !q.project || q.project === project))) {
+      const run = queued("request").find((q) => q.request_id === r.id);
+      requests.push({ id: r.id, project: r.project, body: r.body, run_id: run && (await hold(run)) ? run.id : null });
+    }
+  }
+
+  if (everything) {
+    // Replies to the owner's comments.
+    for (const r of queued("reply").filter((q) => inProject(q.project))) {
+      const card = await cardOf(r.card_id);
+      if (await hold(r)) runs.push({ id: r.id, kind: "reply", scout: null, project: r.project, project_dir: null, card_limit: 0, card_id: r.card_id, card_title: card?.title ?? null });
+    }
+    // Verbs someone asked for: the tier and approval are checked again, the card may have moved.
+    for (const r of queued("verb").filter((q) => inProject(q.project))) {
+      const card = await cardOf(r.card_id);
+      const dry = r.args.dry_run === true;
+      const check = checkVerb({ project: r.project ?? "repo-wide", verb: r.verb ?? "", dryRun: dry, card: card && { tier: card.tier, status: card.status, project: card.project } }, policy, r.requested_by.includes(":") ? "agent" : "owner");
+      if (!check.allowed) {
+        await finishRun(x, asRunner, r.id, { status: "cancelled", summary: `refused now: ${check.reason}` });
+        continue;
+      }
+      if (await hold(r)) runs.push({ id: r.id, kind: "verb", scout: null, project: r.project, project_dir: null, card_limit: 0, card_id: r.card_id, verb: r.verb, verb_path: verbPathOf(policy, r.project ?? "repo-wide", r.verb!), dry_run: dry });
+    }
+    // The health check: queued by the hourly cron, or due.
+    const checks = healthVerbs(policy).filter((h) => inProject(h.project));
+    if (checks.length && (queued("health").length || isDue("hourly", await lastRun(x, ws, "health", null, null), at))) {
+      const id = await take("health", null, null, 0);
+      if (id) runs.push({ id, kind: "health", scout: null, project: null, project_dir: null, card_limit: 0, health: checks });
+      else skipped.push({ scout: "health", project: "repo-wide", reason: busy });
+    }
+  }
+
+  // Scouts and the CEO (the weekly budget holds them back, nothing else).
   for (const s of inScope) {
     if (named.size && !named.has(s.name)) continue;
     // Queued by the cron and waiting for a runner: that's due work, whatever the last-run time says.
-    const queued = open.some((r) => r.kind === "scout" && r.status === "queued" && r.scout === s.name && r.project === s.project);
-    const due = o.force || queued || named.has(s.name) || isDue(s.schedule, await lastRun(x, ws, "scout", s.name, s.project), at);
+    const waiting = queued("scout").some((r) => r.scout === s.name && r.project === s.project);
+    const due = o.force || waiting || named.has(s.name) || isDue(s.schedule, await lastRun(x, ws, "scout", s.name, s.project), at);
     if (!due) {
       skipped.push({ scout: s.name, project: s.project, reason: s.schedule === "manual" ? "manual: name it or pass force" : `${s.schedule}, not due yet` });
       continue;
     }
+    if (over) {
+      skipped.push({ scout: s.name, project: s.project, reason: `this week's budget is spent ($${spent} of $${policy.weekly_budget_usd})` });
+      continue;
+    }
     const id = await take("scout", s.name, s.project, s.card_limit);
-    if (!id) skipped.push({ scout: s.name, project: s.project, reason: "a runner or another sweep is doing it now" });
+    if (!id) skipped.push({ scout: s.name, project: s.project, reason: busy });
     else runs.push({ id, kind: "scout", scout: s.name, project: s.project, project_dir: s.dir, card_limit: s.card_limit });
   }
   // The CEO ranks the whole inbox: in a sweep of everything when it's due, or when asked (ceo: true).
-  const wantCeo = o.ceo === true || (o.ceo !== false && !named.size && !project && (o.force || open.some((r) => r.kind === "ceo" && r.status === "queued") || isDue(policy.ceo_schedule, await lastRun(x, ws, "ceo", null, null), at)));
-  if (wantCeo) {
+  const wantCeo = o.ceo === true || (o.ceo !== false && everything && !project && (o.force || queued("ceo").length > 0 || isDue(policy.ceo_schedule, await lastRun(x, ws, "ceo", null, null), at)));
+  if (wantCeo && over) skipped.push({ scout: "ceo", project: "repo-wide", reason: "this week's budget is spent" });
+  else if (wantCeo) {
     const id = await take("ceo", null, null, 0);
     if (id) runs.push({ id, kind: "ceo", scout: null, project: null, project_dir: null, card_limit: 0 });
-    else skipped.push({ scout: "ceo", project: "repo-wide", reason: "a runner or another sweep is doing it now" });
+    else skipped.push({ scout: "ceo", project: "repo-wide", reason: busy });
   }
-  const requests = (await listRequests(x, c, { status: ["open", "claimed"], limit: 20 }))
-    .filter((r) => isClaimable(r, at))
-    .filter((r) => !project || !r.project || r.project === project)
-    .map((r) => ({ id: r.id, project: r.project, body: r.body }));
-  await audit(x, c, "sweep.start", null, { runs: runs.map((r) => r.id), skipped: skipped.length, requests: requests.length });
-  return { runs, skipped, requests, context: await getContext(x, c, null) };
+
+  if (everything && o.build !== false) {
+    // Builds of approved cards, within the WIP and open-PR limits.
+    const building = must(await x.db.from("cards").select("project, status").eq("workspace_id", ws).in("status", ["building", "in_review"]), "busy cards") as { project: string; status: string }[];
+    const wip = new Map<string, number>();
+    for (const b of building.filter((b) => b.status === "building")) wip.set(b.project, (wip.get(b.project) ?? 0) + 1);
+    let prs = building.length;
+    for (const r of queued("build").filter((q) => inProject(q.project))) {
+      const card = await cardOf(r.card_id);
+      if (!card || card.status !== "approved") {
+        await finishRun(x, asRunner, r.id, { status: "cancelled", summary: `card is ${card?.status ?? "gone"}, not approved` });
+        continue;
+      }
+      if ((wip.get(card.project) ?? 0) >= policy.wip_per_project) {
+        skipped.push({ scout: `build ${card.id}`, project: card.project, reason: `${card.project} already has ${policy.wip_per_project} card(s) building` });
+        continue;
+      }
+      if (prs >= policy.max_open_prs) {
+        skipped.push({ scout: `build ${card.id}`, project: card.project, reason: `${policy.max_open_prs} cards are already built or building (max_open_prs)` });
+        continue;
+      }
+      if (!(await hold(r, { mcp_session: c.session ?? null }))) continue;
+      await setStatus(x, asRunner, ws, card.id, "building");
+      wip.set(card.project, (wip.get(card.project) ?? 0) + 1);
+      prs++;
+      const verbs = card.project === "repo-wide" ? policy.verbs : policy.projects[card.project]?.verbs ?? {};
+      runs.push({
+        id: r.id, kind: "build", scout: null, project: card.project, project_dir: card.project === "repo-wide" ? null : policy.projects[card.project]?.dir ?? null, card_limit: 0,
+        card_id: card.id, card_title: card.title, branch: `hq/${card.id}`,
+        verify: verbs.verify ? verbPathOf(policy, card.project, "verify") : null, setup: policy.verbs.setup ? verbPathOf(policy, "repo-wide", "setup") : null,
+      });
+    }
+    // Reviews: never by the session that built the card.
+    for (const r of queued("review").filter((q) => inProject(q.project))) {
+      const card = await cardOf(r.card_id);
+      if (!card) continue;
+      const built = must(await x.db.from("runs").select("args").eq("workspace_id", ws).eq("kind", "build").eq("card_id", card.id).order("created_at", { ascending: false }).limit(1).maybeSingle(), "build run") as { args: Record<string, unknown> | null } | null;
+      if (c.session && built?.args?.mcp_session === c.session) {
+        skipped.push({ scout: `review ${card.id}`, project: card.project, reason: "built in this session: another session (or a runner) reviews it" });
+        continue;
+      }
+      if (await hold(r)) runs.push({ id: r.id, kind: "review", scout: null, project: card.project, project_dir: null, card_limit: 0, card_id: card.id, card_title: card.title, branch: card.branch ?? `hq/${card.id}` });
+    }
+  }
+
+  await audit(x, c, "sweep.start", null, { runs: runs.map((r) => `${r.kind}:${r.id}`), skipped: skipped.length, requests: requests.length });
+  return { runs, skipped, requests, push: policy.push, context: await getContext(x, c, null) };
 }
 
-/** finish_sweep: close the runs this caller took with start_sweep. */
-export async function finishSweep(x: Ctx, c: Caller, items: { id: string; status?: string; summary?: string; cost_usd?: number }[]) {
+export interface SweepResult {
+  id: string;
+  status?: string;
+  summary?: string;
+  cost_usd?: number;
+  output?: string;
+  /** verb runs: the verb's exit code. */
+  exit_code?: number;
+  /** build runs: the branch, the project's verify result, the PR (push on). */
+  branch?: string;
+  verify?: { exit_code: number; output?: string };
+  pr_url?: string;
+  /** the health check: one entry per project. */
+  health?: { project: string; data: Record<string, unknown> }[];
+}
+
+/** finish_sweep: close (or hand back) the runs this caller holds, with what each kind reports. */
+export async function finishSweep(x: Ctx, c: Caller, items: SweepResult[]) {
   need(c, "sweep");
   if (!Array.isArray(items) || !items.length) throw new HttpError(400, "runs: one entry per run from start_sweep");
   const ws = c.workspaceId;
   const asRunner: Caller = { role: "runner", name: sweeper(c), workspaceId: ws };
-  const finished: { id: string; status: string }[] = [];
+  const finished: { id: string; status: string; note?: string }[] = [];
   for (const it of items) {
     const row = must(await x.db.from("runs").select("*").eq("workspace_id", ws).eq("id", String(it?.id ?? "")).maybeSingle(), "run");
     if (!row) throw new HttpError(404, `no run ${it?.id}`);
     const run = toRun(row);
     if (run.runner !== sweeper(c)) throw new HttpError(403, `run ${run.id} isn't this sweep's`);
     if (run.status !== "running") throw new HttpError(409, `run ${run.id} is already ${run.status}`);
-    const status = it.status ?? "done";
-    if (status !== "done" && status !== "failed") throw new HttpError(400, "status: done or failed");
-    await finishRun(x, asRunner, run.id, { status, summary: String(it.summary ?? ""), cost_usd: Number(it.cost_usd ?? 0) || 0 });
+    let status = it.status ?? "done";
+    if (!["done", "failed", "released"].includes(status)) throw new HttpError(400, "status: done, failed or released");
+    let summary = String(it.summary ?? "").slice(0, 2000);
+    const output = typeof it.output === "string" ? it.output : "";
+
+    if (status === "released") {
+      // Handed back: queued again for another session or a runner.
+      must(await x.db.from("runs").update({ status: "queued", runner: null, agent: null, started_at: null, args: { ...run.args, mcp_session: null } }).eq("id", run.id), "release run");
+      if (run.kind === "build" && run.card_id && (await getCard(x, asRunner, run.card_id)).status === "building") await setStatus(x, asRunner, ws, run.card_id, "approved");
+      if (run.kind === "request" && run.request_id) must(await x.db.from("requests").update({ status: "open", claimed_by: null, claimed_until: null }).eq("workspace_id", ws).eq("id", run.request_id).eq("status", "claimed"), "release request");
+      await audit(x, c, "run.release", run.id, { kind: run.kind, reason: summary });
+      finished.push({ id: run.id, status: "released" });
+      continue;
+    }
+
+    const extra: { branch?: string; pr_url?: string } = {};
+    if (run.kind === "build" && status === "done") {
+      const policy = await requirePolicy(x, ws);
+      const branch = String(it.branch ?? "").trim();
+      if (!/^[\w][\w./-]{0,200}$/.test(branch)) throw new HttpError(400, `run ${run.id}: a finished build needs its branch (e.g. hq/${run.card_id})`);
+      extra.branch = branch;
+      const verbs = run.project === "repo-wide" || !run.project ? policy.verbs : policy.projects[run.project]?.verbs ?? {};
+      if (verbs.verify) {
+        const v = it.verify;
+        if (!v || !Number.isInteger(v.exit_code)) throw new HttpError(400, `run ${run.id}: ${run.project} has a verify verb: run it in the worktree and pass verify: { exit_code, output }`);
+        await attachEvidence(x, asRunner, run.card_id!, "build", { type: "test", ref: ".hq/bin/verify (run by the building session)", text: `exit ${v.exit_code}\n${String(v.output ?? "").slice(-5000)}` });
+        if (v.exit_code !== 0) {
+          status = "failed";
+          summary = `verify failed (exit ${v.exit_code}): ${summary}`;
+        }
+      }
+      if (it.pr_url) {
+        if (!policy.push) throw new HttpError(400, `run ${run.id}: push is off in .hq/HQ.md, so there's no PR to report`);
+        if (!/^https:\/\/\S+$/.test(String(it.pr_url))) throw new HttpError(400, `run ${run.id}: pr_url must be an https URL`);
+        extra.pr_url = String(it.pr_url);
+      }
+    }
+    if (run.kind === "verb" && status === "done") {
+      if (!Number.isInteger(it.exit_code)) throw new HttpError(400, `run ${run.id}: pass the verb's exit_code`);
+      if (it.exit_code !== 0) status = "failed";
+      summary = summary || `${run.verb}${run.args.dry_run ? " (dry run)" : ""} exited ${it.exit_code}`;
+      if (run.card_id) await attachEvidence(x, asRunner, run.card_id, "verb", { type: "log", ref: `.hq/bin/${run.verb}${run.args.dry_run ? " --dry-run" : ""}`, text: `exit ${it.exit_code}\n${output.slice(-7000)}` });
+    }
+    if (run.kind === "health" && status === "done") {
+      const policy = await requirePolicy(x, ws);
+      if (!Array.isArray(it.health) || !it.health.length) throw new HttpError(400, `run ${run.id}: pass health: one { project, data } per project`);
+      const lines: string[] = [];
+      for (const h of it.health) {
+        if (h?.project !== "repo-wide" && !policy.projects[h?.project]) throw new HttpError(400, `run ${run.id}: unknown project ${h?.project}`);
+        const data = h.data && typeof h.data === "object" && !Array.isArray(h.data) ? h.data : { ok: false, error: "no JSON" };
+        await writeHealth(x, ws, h.project, data);
+        lines.push(`${h.project}: ${data.ok === false ? "needs attention" : "ok"}`);
+      }
+      summary = summary || lines.join("; ");
+    }
+    await finishRun(x, asRunner, run.id, { status, summary, output, cost_usd: Number(it.cost_usd ?? 0) || 0, ...extra });
     finished.push({ id: run.id, status });
   }
   return { finished };
@@ -964,9 +1212,13 @@ export async function scheduleAll(x: Ctx, at = new Date()) {
 
 export async function putHealth(x: Ctx, c: Caller, project: string, data: Record<string, unknown>) {
   need(c, "claim");
-  const ok = !(data && typeof data === "object" && data.ok === false);
-  must(await x.db.from("health").upsert({ workspace_id: c.workspaceId, project, data, ok, at: now() }), "health");
+  await writeHealth(x, c.workspaceId, project, data);
   return { ok: true };
+}
+
+async function writeHealth(x: Ctx, ws: string, project: string, data: Record<string, unknown>) {
+  const ok = !(data && typeof data === "object" && data.ok === false);
+  must(await x.db.from("health").upsert({ workspace_id: ws, project, data, ok, at: now() }), "health");
 }
 
 export async function healthBoard(x: Ctx, c: Caller) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SKILL_DIRS, scoutTask, sweepMarkdown, type SweepPlan } from "../src/index.ts";
+import { gitBlobSha, hqFile, parseHqMd, parsePolicyTree, POLICY_FILES_COMMAND, SKILL_DIRS, scoutTask, sweepMarkdown, type SweepPlan } from "../src/index.ts";
 import {
   buildContext,
   buildPolicy,
@@ -326,3 +326,81 @@ describe("sweeps", () => {
     expect(can("viewer", "sweep")).toBe(false);
   });
 });
+
+describe("sweeps do every kind of run", () => {
+  const plan = (over: Partial<SweepPlan> = {}): SweepPlan => ({ runs: [], skipped: [], requests: [], ...over });
+  const base = { scout: null, project: "alpha", project_dir: "apps/alpha", card_limit: 0 };
+  const all = plan({
+    requests: [{ id: "req-1", project: null, body: "Faster CI", run_id: "run-q" }],
+    runs: [
+      { ...base, id: "run-b", kind: "build", card_id: "hq-1", card_title: "Retry", branch: "hq/hq-1", verify: "apps/alpha/.hq/bin/verify", setup: ".hq/bin/setup" },
+      { ...base, id: "run-v", kind: "review", card_id: "hq-2", branch: "hq/hq-2" },
+      { ...base, id: "run-s", kind: "scout", scout: "ci", card_limit: 2 },
+      { ...base, id: "run-r", kind: "reply", card_id: "hq-3" },
+      { ...base, id: "run-x", kind: "verb", verb: "release", verb_path: "apps/alpha/.hq/bin/release", dry_run: true },
+      { ...base, id: "run-h", kind: "health", project: null, health: [{ project: "alpha", path: "apps/alpha/.hq/bin/health" }] },
+      { ...base, id: "run-c", kind: "ceo", project: null },
+    ],
+  });
+  it("orders the work: requests, replies, verbs and health, scouts, the CEO, builds, reviews, then the policy and closing", () => {
+    const md = sweepMarkdown(all, "# ctx");
+    const order = ["req-1", "Reply on card hq-3", "Verb release (dry run)", "Health check, run run-h", "Scout ci (alpha)", "CEO, run run-c", "Build card hq-1", "Review card hq-2", "sync_policy", "Close the sweep"];
+    const at = order.map((t) => md.indexOf(t));
+    expect(at.every((i) => i > 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+    for (const id of ["run-q", "run-b", "run-v", "run-s", "run-r", "run-x", "run-h", "run-c"]) expect(md.slice(md.indexOf("Close the sweep"))).toContain(id);
+  });
+  it("a build works in its own worktree, runs the project's verify and stays local while push is off", () => {
+    const md = sweepMarkdown(all, "ctx");
+    expect(md).toContain("worktree add -b hq/hq-1");
+    expect(md).toContain("HQ_VERB=setup");
+    expect(md).toContain("HQ_PROJECT=alpha HQ_VERB=verify");
+    expect(md).toContain("don't push it");
+    expect(md).toContain("Builds change code, but only in their own worktree");
+    const pushed = sweepMarkdown({ ...all, push: true }, "ctx");
+    expect(pushed).toContain("git push -u origin hq/hq-1");
+    expect(pushed).toContain("gh pr create --head hq/hq-1");
+  });
+  it("a review hands back a branch it can't see; a verb says how to run it", () => {
+    const md = sweepMarkdown(all, "ctx");
+    expect(md).toContain('git rev-parse --verify hq/hq-2');
+    expect(md).toContain('status "released"');
+    expect(md).toContain("HQ_PROJECT=alpha HQ_VERB=release HQ_REPO_ROOT=\"$PWD\" HQ_DRY_RUN=1 ./apps/alpha/.hq/bin/release --dry-run");
+  });
+  it("a sweep without builds stays read only", () => {
+    expect(sweepMarkdown(plan({ runs: [{ ...base, id: "run-s", kind: "scout", scout: "ci" }] }), "ctx")).toContain("Work read only throughout");
+  });
+});
+
+describe("reading .hq/ from a git listing", () => {
+  const tree = [
+    "100644 blob 0dc44423b369a34cbc446ab25325808794fdd70d\t.hq/HQ.md",
+    "100755 blob 500f73c61a1b5c998bf837081d6859a099e9050c\t.hq/bin/health",
+    "100644 blob f46bf5ef0e4c251f328aed672ca869c079e51167\tapps/alpha/.hq/HQ.md",
+    "100755 blob 258f3b091e77b499654d661a2607586e46c02b6b\tapps/alpha/.hq/bin/release",
+    "100644 blob 258f3b091e77b499654d661a2607586e46c02b6b\tapps/alpha/.hq/bin/notes",
+    "100644 blob 258f3b091e77b499654d661a2607586e46c02b6b\tnode_modules/x/.hq/HQ.md",
+    "100644 blob 258f3b091e77b499654d661a2607586e46c02b6b\ta/b/c/d/e/.hq/HQ.md",
+    "100644 blob 258f3b091e77b499654d661a2607586e46c02b6b\tapps/alpha/README.md",
+    "not a tree line",
+  ].join("\n");
+  it("keeps HQ.md files and executable verbs in folders HQ searches", () => {
+    const t = parsePolicyTree(tree);
+    expect(t.files.map((f) => f.dir)).toEqual(["", "apps/alpha"]);
+    expect(t.bin).toEqual({ "": ["health"], "apps/alpha": ["release"] });
+    expect(t.notExecutable).toEqual(["apps/alpha/.hq/bin/notes"]);
+    expect(POLICY_FILES_COMMAND).toContain("git ls-tree -r origin/HEAD");
+  });
+  it("git blob ids match git hash-object", async () => {
+    expect(await gitBlobSha(new TextEncoder().encode("hello\n"))).toBe("ce013625030ba8dba906f756967f9e9ca394464a");
+  });
+  it("parses HQ.md with the YAML loader it's given, into what buildPolicy takes", () => {
+    const load = (t: string) => Object.fromEntries(t.split("\n").map((l) => l.split(": ")).map(([k, v]) => [k, /^\d+$/.test(v) ? Number(v) : v]));
+    const root = hqFile("", "---\nhq: 1\nrepo: a/b\n---\n# Guidance\n", ["health"], load);
+    const r = buildPolicy([root]);
+    expect(r.ok && r.value.repo).toBe("a/b");
+    expect(r.ok && r.value.guidance).toBe("# Guidance");
+    expect(() => parseHqMd("no frontmatter", "x/.hq/HQ.md", load)).toThrow(/x\/.hq\/HQ.md: HQ.md must start/);
+  });
+});
+

@@ -204,7 +204,7 @@ struct RequestDetailView: View {
                 }
                 Section("Thread") {
                     if d.messages.isEmpty {
-                        Text(r.status == "open" || r.status == "claimed" ? "No answer yet. A runner picks this up on its next check; an agent connected over MCP sees it in its context." : "No messages.")
+                        Text(r.status == "open" || r.status == "claimed" ? "No answer yet. The next sweep (any agent connected over MCP) or a runner picks this up." : "No messages.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     ForEach(d.messages) { m in

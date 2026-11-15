@@ -4,6 +4,8 @@ A repo's autopilot "CEO", as a product teams sign up for: scheduled agents find 
 reliability, performance and opportunity work and propose it as evidence-backed **cards**; the
 team approves, rejects or discusses them in a web portal and an iPhone app; executors build
 approved cards on branches and a second agent reviews them. Brand-new products stay with people.
+All of it works from any agent connected to the MCP server ("do a sweep for HQ"); the `hq` CLI and
+its runner are optional (private repos, machines nobody watches).
 PRD: `reports/2026-11-08-hq-prd` (v2: §10 workspaces). Decisions: `docs/decisions.md`.
 
 **A workspace is one repository and the people who work on it** (HQ is built for monorepos).
@@ -21,8 +23,9 @@ monorepo is its first customer.
 packages/core/      @hq/core: the contracts in code: card schema + lifecycle (card.ts), on-demand
                     requests (request.ts), the safe markdown renderer and figure frame (markdown.ts),
                     HQ.md policy merge, tiers, verb checks, budget, schedules (policy.ts),
-                    get_context (context.ts), who may do what (roles.ts), the scout and CEO tasks and
-                    the sweep's instructions (sweep.ts). Shared by the Worker and the CLI.
+                    get_context (context.ts), who may do what (roles.ts), every role's task text and
+                    the sweep's instructions (sweep.ts), reading .hq/ from a checkout or a `git
+                    ls-tree` listing (hqfiles.ts). Shared by the Worker and the CLI.
 services/web/       @hq/web: Cloudflare Worker (KV for OAuth, hourly cron) on the shared Supabase
                     project (schema `hq`, bucket `hq`; supabase/schemas/hq/schema.sql)
   src/worker/       store.ts (every rule, workspace scoping and role check), api.ts (people:
@@ -56,8 +59,8 @@ npm run -s hq -- verb tradeboard health  # run a verb as the runner would
 
 # Local: `supabase start` (repo root), then the Worker on 127.0.0.1:8799 with email sign-in
 echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > projects/hq/services/web/.dev.vars
-npm run dev:worker -w @hq/web
-node projects/hq/scripts/test-api.mjs     # 28 steps: two teams, roles, isolation, the whole loop
+npm run dev:worker -w @hq/web -- --var GITHUB_RAW_URL:http://127.0.0.1:8797   # the var: test-api's stand-in for GitHub
+node projects/hq/scripts/test-api.mjs     # 29 steps: two teams, roles, isolation, the whole loop, sweeps
 
 # Sign in once per machine (asks for the address, then the browser or a pasted token), then sync
 npm run -s hq -- login && npm run -s hq -- sync
@@ -92,23 +95,38 @@ reach any screen without taps (`-production` for the hosted HQ, `-serverURL` for
   finished builds enqueue reviews; owner comments enqueue replies. Runners claim them
   (`/api/runs/claim`), respecting the kill switch, the weekly budget (scouts/CEO only), WIP per
   project and the open-PR limit.
-- **Sweeps** (`start_sweep` / `finish_sweep` on MCP, `sweep.ts` + `startSweep` in store.ts): any
-  connected agent does the routine work in its own session, no runner: "do a sweep for HQ", the
-  `sweep` MCP prompt, or a scheduled task in the Claude app. `start_sweep` turns the due scouts (a
-  scout the cron queued counts as due; `scouts` names some, `force` runs all) and the CEO, when due
-  and the sweep covers everything, into runs the caller holds (`running`, runner `sweep:<name>`), so
-  runners skip them and schedule and budget count them; it returns the steps (open requests first,
-  then each scout's task, the CEO, then `finish_sweep`) with the repo context. Only that caller can
-  close them; unclosed ones fail after 6 hours. Refused while paused or over budget. Scout and CEO
-  text lives in `@hq/core`, so the runner's launch prompts and a sweep say the same thing. A sweep
-  has no deny-list: it's told to stay read only, and the server's tier and approval checks still
-  hold.
+- **Sweeps** (`start_sweep` / `finish_sweep` on MCP, `sweep.ts` + `startSweep`/`finishSweep` in
+  store.ts): any connected agent does all of HQ's work in its own session, no runner and no CLI:
+  "do a sweep for HQ", the `sweep` MCP prompt, or a scheduled task. `start_sweep` turns everything
+  queued that the session can do into runs it holds (`running`, runner `sweep:<name>`), so runners
+  skip them and schedule and budget count them: open requests (with their queued run), replies,
+  verbs (tier re-checked), the health check, the due scouts and the CEO (the budget holds back only
+  these two), builds of approved cards (WIP and open-PR limits; card → building) and reviews. It
+  returns the steps in that order with the repo context. A build makes its own worktree
+  (`../.hq-worktrees/<repo>-<card>`, branch `hq/<card>` from `origin/HEAD`, the repo's `setup` verb),
+  runs the project's `verify` there and reports it: `finish_sweep` refuses a done build without its
+  branch or, when the project has a verify verb, its result, and a failing verify fails it. PRs only
+  with `push: true`. A review is refused to the MCP session that built the card (`Mcp-Session-Id`,
+  handed out on `initialize`, kept in the build run's `args.mcp_session`). `released` hands a run
+  back to the queue (a build's card back to approved). Only that caller can close its runs;
+  unclosed ones fail after 6 hours. `run_verb` with `run_here` holds a verb run the same way.
+  Refused while paused. Task text lives in `@hq/core`, so the runner's prompts and a sweep say the
+  same thing. A sweep has no deny-list: it runs with the session's permissions and is told what
+  not to do; the server's tier, approval and verb checks still hold.
+- **Policy from GitHub** (`sync_policy`, `syncFromRepo`): the agent sends `git ls-tree -r origin/HEAD`
+  lines for `.hq/` files; the Worker reads each HQ.md from `raw.githubusercontent.com/<repo>/HEAD/…`
+  (`GITHUB_RAW_URL` in tests), checks its git blob id matches the listing, takes verbs from the
+  listing's executable `.hq/bin` entries, builds the policy (`buildPolicy`, same as the CLI) and
+  stores it. Agents may do this (`refresh_policy`): the words come from GitHub's default branch, not
+  from them. Public repos only; private ones use `hq sync`. Policies compare by content (`jsonb`
+  reorders keys).
 - **Workspaces**: every row has a `workspace_id`; people need a role in it (`memberRole`), tokens
   belong to one. RLS lets members read their workspaces' rows directly; every write goes through the
   Worker. A synced policy must name the workspace's repo. Invites are single-use, expiring codes.
-- **Credentials**: only the runner holds them. Agents it starts get an agent token for the MCP
-  server and a deny-list (no push, merge, release, deploy, secrets; `HQ_DENY_TOOLS` adds repo-
-  specific ones). Agents can't approve, change policy, pause HQ or see tokens.
+- **Credentials**: an agent connected over OAuth acts for the member who allowed it; a runner holds
+  its tokens and gives the agents it starts an agent token for the MCP server and a deny-list (no
+  push, merge, release, deploy, secrets; `HQ_DENY_TOOLS` adds repo-specific ones). Agents can't
+  approve, write policy (only refresh it from GitHub), pause HQ or see tokens.
 - **Signing the CLI in** (`apps/cli/src/credentials.ts`, `login.ts`): commands that talk to HQ use
   `HQ_URL` + `HQ_TOKEN` (+ `HQ_AGENT_TOKEN`) when set, else the login saved for the repo
   (`~/.config/hq/credentials.json`, mode 600, keyed by `repo:`), else they start `hq login` when there

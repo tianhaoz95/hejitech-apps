@@ -5,9 +5,8 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { accessSync, constants, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import yaml from "js-yaml";
-import { buildPolicy, type HqFile, type RepoPolicy } from "@hq/core";
+import { buildPolicy, MAX_HQ_DEPTH, parseHqMd as parseWith, SKIP_DIRS as SKIP, type HqFile, type RepoPolicy } from "@hq/core";
 
-const SKIP = new Set(["node_modules", ".git", "dist", "build", ".wrangler", ".derived", "Pods", "DerivedData", ".build", ".dart_tool", "target", ".next", ".venv", "venv"]);
 /** Verbs that only read; every other verb must support --dry-run. */
 export const READ_ONLY_VERBS = new Set(["health", "verify", "evidence", "setup"]);
 
@@ -28,7 +27,7 @@ export function headCommit(root: string): string | null {
 }
 
 /** Every folder that contains .hq/HQ.md, repo-relative ("" for the root). Depth-limited. */
-export function findHqDirs(root: string, maxDepth = 4): string[] {
+export function findHqDirs(root: string, maxDepth = MAX_HQ_DEPTH): string[] {
   const out: string[] = [];
   const walk = (dir: string, depth: number) => {
     if (existsSync(join(dir, ".hq", "HQ.md"))) out.push(relative(root, dir));
@@ -55,16 +54,7 @@ export function findHqDirs(root: string, maxDepth = 4): string[] {
 }
 
 export function parseHqMd(text: string, where: string): { frontmatter: Record<string, unknown>; body: string } {
-  const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
-  if (!m) throw new Error(`${where}: HQ.md must start with YAML frontmatter between --- lines`);
-  let fm: unknown;
-  try {
-    fm = yaml.load(m[1]);
-  } catch (e) {
-    throw new Error(`${where}: invalid YAML frontmatter: ${(e as Error).message.split("\n")[0]}`);
-  }
-  if (!fm || typeof fm !== "object" || Array.isArray(fm)) throw new Error(`${where}: frontmatter must be a YAML mapping`);
-  return { frontmatter: fm as Record<string, unknown>, body: m[2] };
+  return parseWith(text, where, (t) => yaml.load(t));
 }
 
 /** The repo's name in HQ (`repo:` in the root .hq/HQ.md), or null when there is no readable root policy. */

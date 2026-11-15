@@ -8,13 +8,15 @@ approve on branches, a second agent reviews the result, and you ship it. New pro
 yours.
 
 HQ works on any repo that adds `.hq/` folders: `HQ.md` (policy HQ enforces + guidance agents read)
-and `bin/` verbs (`health`, `verify`, `release`, …) that wrap the repo's own scripts.
+and `bin/` verbs (`health`, `verify`, `release`, …) that wrap the repo's own scripts. Connect any
+MCP-capable agent and say "do a sweep for HQ": it does all of HQ's work in its own session, builds
+and reviews included. The `hq` CLI and its runner are optional.
 
 | Part | Where |
 |---|---|
 | Contracts in code (card, policy, context) | `packages/core` |
 | Worker: portal, API, MCP server, scheduler | `services/web` |
-| `hq` CLI + runner + agent adapters (published as `@hejitech/hq`) | `apps/cli` |
+| `hq` CLI + optional runner + agent adapters (published as `@hejitech/hq`) | `apps/cli` |
 | iPhone app | `apps/ios` |
 
 Start here: `CLAUDE.md` (commands, architecture), `docs/decisions.md`, `docs/DEPLOY.md`.

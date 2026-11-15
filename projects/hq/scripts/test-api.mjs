@@ -4,13 +4,18 @@
 // it drives the whole loop in one and proves the other can't see or touch it: sign-in → workspace →
 // invites and roles → tokens → sync → propose (and every refusal) → rank → figures → requests (ask,
 // claim, propose, answer, follow up) → approve → claim → build →
-// review → discuss → verbs (tier and role checks) → pause → schedule → sweep → isolation → audit.
+// review → discuss → verbs (tier and role checks) → pause → schedule → sweep (every kind of run,
+// builds and reviews in different sessions, no runner) → policy from GitHub → isolation → audit.
 //
 //   node projects/hq/scripts/test-api.mjs     (HQ_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY default to local)
+//
+// The Worker must read "GitHub" from this script's stand-in (it serves the fixture's files):
+// start it with `npm run dev:worker -w @hq/web -- --var GITHUB_RAW_URL:http://127.0.0.1:8797`.
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { mkdtempSync, readFileSync, statSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,10 +36,10 @@ const step = async (name, fn) => {
   console.log(`ok ${passed} - ${name}`);
 };
 
-async function call(token, method, path, body) {
+async function call(token, method, path, body, session) {
   const res = await fetch(U + path, {
     method,
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}), ...(session ? { "Mcp-Session-Id": session } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
@@ -57,8 +62,8 @@ async function person(name) {
 }
 
 let rpcId = 0;
-async function tool(token, name, args) {
-  const r = await call(token, "POST", "/mcp", { jsonrpc: "2.0", id: ++rpcId, method: "tools/call", params: { name, arguments: args } });
+async function tool(token, name, args, session) {
+  const r = await call(token, "POST", "/mcp", { jsonrpc: "2.0", id: ++rpcId, method: "tools/call", params: { name, arguments: args } }, session);
   assert.equal(r.status, 200, JSON.stringify(r.data));
   const res = r.data.result;
   return { error: res.isError ? res.content[0].text : null, value: res.structuredContent };
@@ -69,6 +74,29 @@ const card = (over = {}) => ({
   evidence: [{ type: "ci_run", ref: "https://example.com/runs/1" }, { type: "metric", name: "failure rate", value: 0.4, source: "last 5 runs" }],
   plan: "Retry with backoff.", verify: "Next 3 runs pass.", tier: "L2", verbs: ["health"], ...over,
 });
+
+// GitHub's raw files for example/fixture, served from the fixture folder, and the `git ls-tree`
+// listing an agent would send (blob ids from the working tree, modes from the executable bit).
+const RAW_PORT = 8797;
+const fixtureFiles = [];
+(function walk(dir, rel) {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name), r = rel ? `${rel}/${e.name}` : e.name;
+    if (e.isDirectory()) walk(p, r);
+    else fixtureFiles.push({ path: r, file: p, mode: statSync(p).mode & 0o111 ? "100755" : "100644" });
+  }
+})(fixture, "");
+const blob = (b) => createHash("sha1").update(`blob ${b.length}\0`).update(b).digest("hex");
+const lsTree = fixtureFiles.map((f) => `${f.mode} blob ${blob(readFileSync(f.file))}\t${f.path}`).join("\n");
+let rawRequests = 0;
+const raw = createServer((req, res) => {
+  rawRequests++;
+  const m = decodeURIComponent(req.url ?? "").match(/^\/example\/fixture\/HEAD\/(.+)$/);
+  const f = m && fixtureFiles.find((x) => x.path === m[1]);
+  if (!f) return res.writeHead(404).end("404: Not Found");
+  res.writeHead(200, { "Content-Type": "text/plain" }).end(readFileSync(f.file));
+});
+await new Promise((r) => raw.listen(RAW_PORT, "127.0.0.1", r));
 
 let ada, bo, cy, eve, ws, other, runner, agent, otherAgent, cardId;
 const W = (p) => `/api/w/${ws}${p}`;
@@ -130,6 +158,25 @@ await step("hq sync uploads the fixture repo's policy; only for the workspace's 
   assert.equal(wrongRepo.status, 409);
 });
 
+await step("sync_policy: an agent says where the .hq/ files are; HQ reads them from GitHub, the same policy hq sync uploads", async () => {
+  const before = (await call(ada.token, "GET", W("/config"))).data;
+  const r = await tool(agent, "sync_policy", { tree: lsTree, commit: "0".repeat(40) });
+  assert.equal(r.error, null, `${r.error} (start the Worker with --var GITHUB_RAW_URL:http://127.0.0.1:${RAW_PORT})`);
+  assert.equal(r.value.changed, false, "the same policy as the CLI's");
+  assert.deepEqual(r.value.projects, ["alpha"]);
+  assert.ok(rawRequests >= 2, "read from the stand-in for GitHub");
+  const after = (await call(ada.token, "GET", W("/config"))).data;
+  assert.deepEqual(after.policy, before.policy);
+  assert.equal(after.commit_sha, "0".repeat(40));
+  assert.deepEqual(Object.keys(after.policy.projects.alpha.verbs).sort(), ["health", "release", "verify"]);
+  // A listing that doesn't match GitHub, names a file GitHub doesn't have, or has no root is refused.
+  const tampered = lsTree.replace(/^(\d+ blob )[0-9a-f]{40}(\t\.hq\/HQ\.md)$/m, `$1${"1".repeat(40)}$2`);
+  assert.match((await tool(agent, "sync_policy", { tree: tampered })).error, /isn't the file in your listing/);
+  assert.match((await tool(agent, "sync_policy", { tree: `${lsTree}\n100644 blob ${"2".repeat(40)}\tapps/beta/.hq/HQ.md` })).error, /couldn't read apps\/beta\/.hq\/HQ.md/);
+  assert.match((await tool(agent, "sync_policy", { tree: lsTree.split("\n").filter((l) => !l.endsWith("\t.hq/HQ.md")).join("\n") })).error, /no .hq\/HQ.md at the repository root/);
+  assert.match((await tool(otherAgent, "sync_policy", { tree: lsTree })).error, /eve\/mono, but .hq\/HQ.md says repo: example\/fixture|couldn't read/);
+});
+
 await step("hq login in the browser: an admin allows it, the CLI collects tokens once and saves them", async () => {
   // The Worker's side: only an admin, only for this repo, one claim per secret.
   const verifier = randomBytes(32).toString("hex");
@@ -187,7 +234,9 @@ await step("MCP: instructions, tools; agents can't approve", async () => {
   const init = await call(agent, "POST", "/mcp", { jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
   assert.match(init.data.result.instructions, /get_context/);
   const names = (await call(agent, "POST", "/mcp", { jsonrpc: "2.0", id: 2, method: "tools/list" })).data.result.tools.map((t) => t.name);
-  for (const n of ["get_context", "create_proposal", "list_cards", "get_card", "comment", "attach_evidence", "run_verb", "rank_cards", "withdraw_card", "list_requests", "claim_request", "answer_request"]) assert.ok(names.includes(n), n);
+  for (const n of ["get_context", "create_proposal", "list_cards", "get_card", "comment", "attach_evidence", "run_verb", "rank_cards", "withdraw_card", "list_requests", "claim_request", "answer_request", "start_sweep", "finish_sweep", "sync_policy"]) assert.ok(names.includes(n), n);
+  const res = await fetch(U + "/mcp", { method: "POST", headers: { Authorization: `Bearer ${agent}`, "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 9, method: "initialize", params: {} }) });
+  assert.match(res.headers.get("mcp-session-id") ?? "", /^hq-/, "initialize hands out a session id");
   assert.equal((await fetch(U + "/mcp", { headers: { Authorization: `Bearer ${agent}` } })).status, 405, "no server stream");
 });
 
@@ -455,7 +504,7 @@ await step("only admins pause; pause stops scouts and builds; the scheduler enqu
   await call(ada.token, "POST", W("/settings"), { paused: false });
 });
 
-await step("sweeps: an agent takes the due scout and CEO runs over MCP, runners leave them alone, only it can close them", async () => {
+await step("sweeps: an agent does every kind of queued run in its own session; runners leave them alone; only it can close them", async () => {
   const init = await call(agent, "POST", "/mcp", { jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
   assert.match(init.data.result.instructions, /start_sweep/);
   assert.ok(init.data.result.capabilities.prompts);
@@ -463,48 +512,108 @@ await step("sweeps: an agent takes the due scout and CEO runs over MCP, runners 
   assert.deepEqual(prompts.map((p) => p.name), ["sweep"]);
   const got = (await call(agent, "POST", "/mcp", { jsonrpc: "2.0", id: 3, method: "prompts/get", params: { name: "sweep", arguments: { project: "alpha" } } })).data.result;
   assert.match(got.messages[0].content.text, /start_sweep with project "alpha"/);
-  // The scheduler queued ci-watch and the CEO in the step above; no runner has them yet.
-  const s = (await tool(agent, "start_sweep", { format: "json" })).value;
+  const A = "session-a", B = "session-b";
+  // Queued for a runner that never comes: a build (approved card), a reply (a comment), a verb. The
+  // scheduler queued ci-watch, the CEO and health in the step above.
+  const propose = async (over) => {
+    const r = await tool(agent, "create_proposal", card(over));
+    assert.equal(r.error, null, r.error);
+    return r.value.id;
+  };
+  const built = await propose({ title: "Build me in a sweep", verbs: [] });
+  await call(bo.token, "POST", W(`/cards/${built}/decision`), { decision: "approved" });
+  const talked = await propose({ title: "Talk to me in a sweep" });
+  await call(bo.token, "POST", W(`/cards/${talked}/comments`), { body: "Is this still true?" });
+  assert.equal((await tool(agent, "run_verb", { project: "alpha", verb: "health" })).error, null);
+
+  const s = (await tool(agent, "start_sweep", { format: "json" }, A)).value;
+  const kinds = [...new Set(s.runs.map((r) => r.kind))].sort();
+  assert.deepEqual(kinds, ["build", "ceo", "health", "reply", "scout", "verb"], JSON.stringify(s));
   const scout = s.runs.find((r) => r.kind === "scout");
   const ceo = s.runs.find((r) => r.kind === "ceo");
-  assert.equal(scout?.scout, "ci-watch", JSON.stringify(s));
-  assert.equal(scout.project, "repo-wide");
-  assert.ok(ceo, JSON.stringify(s));
+  const build = s.runs.find((r) => r.kind === "build");
+  assert.equal(scout.scout, "ci-watch");
+  assert.equal(build.card_id, built);
+  assert.equal(build.branch, `hq/${built}`);
+  assert.equal(build.verify, "apps/alpha/.hq/bin/verify");
+  assert.deepEqual(s.runs.find((r) => r.kind === "health").health.map((h) => h.project).sort(), ["alpha", "repo-wide"]);
   assert.ok(s.context?.repo, "context comes along");
-  // Asked again: nothing due, nothing waiting for this sweep.
-  const again = (await tool(agent, "start_sweep", {})).value;
-  assert.equal(again.runs.length, 0, JSON.stringify(again));
-  assert.match(again.markdown, /ci-watch \(repo-wide\): daily, not due yet/);
-  // A runner gets the health run, never the sweep's.
-  const claimed = [];
+  assert.equal((await call(ada.token, "GET", W(`/cards/${built}`))).data.card.status, "building");
+  const md = (await tool(agent, "start_sweep", {}, A)).value;
+  assert.equal(md.runs.length, 0, "asked again: everything is held");
+  assert.match(md.markdown, /ci-watch \(repo-wide\): daily, not due yet/);
+  // A runner gets none of the sweep's runs.
   for (;;) {
     const c = (await call(runner, "POST", "/api/runs/claim", { runner: "ci", capabilities: ["any"] })).data;
     if (!c.run) break;
-    claimed.push(c.run.id);
+    assert.ok(!s.runs.some((r) => r.id === c.run.id), `runner got ${c.run.kind}`);
     await call(runner, "POST", `/api/runs/${c.run.id}/finish`, { status: "done", summary: c.run.kind });
   }
-  assert.ok(!claimed.includes(scout.id) && !claimed.includes(ceo.id), claimed.join());
   // Only this sweep closes its runs: not another workspace's agent, not a runner, not twice.
   assert.match((await tool(otherAgent, "finish_sweep", { runs: [{ id: scout.id }] })).error, /no run/);
   assert.match((await tool(runner, "finish_sweep", { runs: [{ id: scout.id }] })).error ?? "", /isn't this sweep's/);
-  const f = await tool(agent, "finish_sweep", { runs: [{ id: scout.id, summary: "no failures on main", cost_usd: 0.11 }, { id: ceo.id, summary: "ranked 3 cards" }] });
+  // A build needs its branch and, when the project has one, its verify result.
+  assert.match((await tool(agent, "finish_sweep", { runs: [{ id: build.id }] }, A)).error, /needs its branch/);
+  assert.match((await tool(agent, "finish_sweep", { runs: [{ id: build.id, branch: build.branch }] }, A)).error, /verify verb/);
+  assert.match((await tool(agent, "finish_sweep", { runs: [{ id: build.id, branch: build.branch, verify: { exit_code: 0 }, pr_url: "https://github.com/x/pull/1" }] }, A)).error, /push is off/);
+  const f = await tool(agent, "finish_sweep", { runs: [
+    { id: scout.id, summary: "no failures on main", cost_usd: 0.11 },
+    { id: ceo.id, summary: "ranked 3 cards" },
+    { id: build.id, branch: build.branch, verify: { exit_code: 0, output: '{"ok":true}' }, summary: "retry added" },
+    ...s.runs.filter((r) => r.kind === "reply").map((r) => ({ id: r.id, summary: "answered" })),
+    { id: s.runs.find((r) => r.kind === "verb").id, exit_code: 0, output: '{"ok":true}' },
+    { id: s.runs.find((r) => r.kind === "health").id, health: [{ project: "alpha", data: { ok: true, from: "sweep" } }, { project: "repo-wide", data: { ok: true } }] },
+  ] }, A);
   assert.equal(f.error, null, f.error);
-  assert.deepEqual(f.value.finished.map((x) => x.status), ["done", "done"]);
+  assert.equal(f.value.finished.length, s.runs.length);
+  assert.ok(f.value.finished.every((x) => x.status === "done"), JSON.stringify(f.value));
   assert.match((await tool(agent, "finish_sweep", { runs: [{ id: scout.id }] })).error, /already done/);
+  const d = (await call(ada.token, "GET", W(`/cards/${built}`))).data;
+  assert.equal(d.card.status, "in_review");
+  assert.equal(d.card.branch, `hq/${built}`);
+  assert.ok(d.attachments.some((a) => a.evidence.ref?.startsWith(".hq/bin/verify")), "the verify result is on the card");
+  assert.equal((await call(cy.token, "GET", W("/health"))).data.projects.find((p) => p.project === "alpha").health.data.from, "sweep");
   const runs = (await call(ada.token, "GET", W("/runs"))).data;
   const row = runs.find((r) => r.id === scout.id);
-  assert.equal(row.status, "done");
   assert.equal(row.summary, "no failures on main");
   assert.equal(row.cost_usd, 0.11);
   assert.match(row.runner, /^sweep:/);
-  // force runs it now; naming an unknown scout, or sweeping while paused, is refused.
-  const forced = (await tool(agent, "start_sweep", { force: true, ceo: false, format: "json" })).value;
+  // The review: never the session that built it. Another session takes it, can hand it back, then does it.
+  const same = (await tool(agent, "start_sweep", { format: "json" }, A)).value;
+  assert.ok(!same.runs.some((r) => r.kind === "review"));
+  assert.ok(same.skipped.some((x) => /built in this session/.test(x.reason)), JSON.stringify(same.skipped));
+  const other1 = (await tool(agent, "start_sweep", { format: "json" }, B)).value;
+  const review = other1.runs.find((r) => r.kind === "review");
+  assert.equal(review?.card_id, built, JSON.stringify(other1));
+  assert.equal((await tool(agent, "finish_sweep", { runs: [{ id: review.id, status: "released", summary: "no such branch here" }] }, B)).value.finished[0].status, "released");
+  const other2 = (await tool(agent, "start_sweep", { format: "json" }, B)).value;
+  assert.equal(other2.runs.find((r) => r.kind === "review")?.id, review.id, "released runs come back");
+  await tool(agent, "attach_evidence", { id: built, phase: "review", evidence: { type: "review", text: "VERDICT: ship" } }, B);
+  assert.equal((await tool(agent, "finish_sweep", { runs: [{ id: review.id, summary: "ship" }] }, B)).error, null);
+  // A build handed back puts its card back to approved and its run back in the queue.
+  const again = await propose({ title: "Hand me back", verbs: [] });
+  await call(bo.token, "POST", W(`/cards/${again}/decision`), { decision: "approved" });
+  const third = (await tool(agent, "start_sweep", { format: "json", ceo: false }, B)).value;
+  const b2 = third.runs.find((r) => r.kind === "build");
+  assert.equal(b2?.card_id, again, JSON.stringify(third));
+  await tool(agent, "finish_sweep", { runs: [{ id: b2.id, status: "released", summary: "can't build alpha here" }] }, B);
+  assert.equal((await call(ada.token, "GET", W(`/cards/${again}`))).data.card.status, "approved");
+  assert.ok((await tool(agent, "start_sweep", { format: "json", build: false }, B)).value.runs.every((r) => r.kind !== "build"), "build: false leaves builds");
+  // run_verb with run_here: the session holds it and gets the command.
+  const v = await tool(agent, "run_verb", { project: "alpha", verb: "health", run_here: true }, B);
+  assert.equal(v.error, null, v.error);
+  assert.match(v.value.command, /HQ_PROJECT=alpha HQ_VERB=health .*\.\/apps\/alpha\/\.hq\/bin\/health/);
+  assert.equal((await tool(agent, "finish_sweep", { runs: [{ id: v.value.run_id, exit_code: 1, output: "boom" }] }, B)).value.finished[0].status, "failed", "a non-zero exit fails it");
+  // force runs a scout now; naming an unknown scout, or sweeping while paused, is refused.
+  const forced = (await tool(agent, "start_sweep", { scouts: ["ci-watch"], format: "json" })).value;
   assert.deepEqual(forced.runs.map((r) => r.scout), ["ci-watch"]);
   await tool(agent, "finish_sweep", { runs: [{ id: forced.runs[0].id, status: "failed", summary: "gave up" }] });
   assert.match((await tool(agent, "start_sweep", { scouts: ["nope"] })).error, /no scout nope; scouts: ci-watch/);
   await call(ada.token, "POST", W("/settings"), { paused: true });
   assert.match((await tool(agent, "start_sweep", {})).error, /paused/);
   await call(ada.token, "POST", W("/settings"), { paused: false });
+  // Leave nothing building or queued behind for the steps below.
+  await call(bo.token, "POST", W(`/cards/${again}/decision`), { decision: "rejected", reason: "test" });
 });
 
 await step("health lands on the board; the audit log records who did what (admins only)", async () => {
@@ -558,4 +667,5 @@ await step("OAuth metadata for MCP clients is published", async () => {
   assert.equal((await call(null, "POST", "/mcp", { jsonrpc: "2.0", id: 1, method: "tools/list" })).status, 401);
 });
 
+raw.close();
 console.log(`\n${passed} passed`);

@@ -73,7 +73,8 @@ jobs:
         working-directory: projects/hq/services/web
         run: |
           echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > .dev.vars
-          npm run dev:worker > /tmp/worker.log 2>&1 &
+          # sync_policy reads "GitHub" from test-api.mjs's stand-in, which serves the fixture repo.
+          npm run dev:worker -- --var GITHUB_RAW_URL:http://127.0.0.1:8797 > /tmp/worker.log 2>&1 &
           for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8799/api/health-check && break; sleep 1; done
           curl -sf -o /dev/null http://127.0.0.1:8799/api/health-check || { cat /tmp/worker.log; exit 1; }
       - run: node projects/hq/scripts/test-api.mjs

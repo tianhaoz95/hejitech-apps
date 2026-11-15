@@ -60,7 +60,8 @@ export HQ_URL=https://hq.hejitech.workers.dev HQ_TOKEN=hq_run_… HQ_AGENT_TOKEN
 
 which always win over a saved login.
 
-To keep the runner going, a launchd agent (`~/Library/LaunchAgents/com.hejitech.hq-runner.plist`)
+The runner is optional (§6: sweeps do the same work in any connected agent's session); it's the
+way to work on a machine nobody watches, with each agent under a hard deny-list. To keep it going, a launchd agent (`~/Library/LaunchAgents/com.hejitech.hq-runner.plist`)
 that runs the same command from the repo root, after `hq login` as the same user or with those variables. Builds go to `../.hq-worktrees`
 next to the repo, on the same disk (`HQ_WORKDIR`), from `main` (`HQ_BASE`).
 
@@ -77,13 +78,25 @@ other iOS projects.
 - **OAuth-capable MCP clients**: add `https://hq.hejitech.workers.dev/mcp`; on the consent page an
   admin or approver picks the workspace and allows it.
 - **Headless agents**: a workspace agent token as `Authorization: Bearer hq_agt_…` on `/mcp`.
-- **Sweeps without a runner**: in any connected session, say "do a sweep for HQ" (or use the
-  server's `sweep` prompt, `/hq:sweep` in Claude Code). The agent calls `start_sweep`, answers
-  waiting requests, runs the scouts that are due and the CEO's ranking, then `finish_sweep`. For a
-  routine, make a scheduled task in the Claude desktop app, in a session opened on this repo with
-  HQ's MCP server connected, with the prompt "Do a sweep for HQ" (daily, say). The schedules in
-  `.hq/HQ.md` still decide which scouts are due, so a sweep more often than that only does what's
-  due. Building approved cards still needs a runner.
+- **Everything over MCP, no CLI**: in any connected session opened on the repo, say "do a sweep
+  for HQ" (or use the server's `sweep` prompt, `/hq:sweep` in Claude Code). The agent calls
+  `start_sweep` and does every kind of queued work in that session: waiting requests, replies to
+  comments, verbs someone asked for, the health check, the scouts that are due, the CEO's ranking,
+  builds of approved cards (each in `../.hq-worktrees/<repo>-<card>` on branch `hq/<card>`, the
+  project's `verify` run there, pushed with a PR only when `push: true`) and reviews of cards
+  another session built; then `finish_sweep`. It ends by refreshing HQ's copy of the policy
+  (`sync_policy`: the agent lists the `.hq/` files with `git ls-tree`, HQ reads them from GitHub),
+  so `hq sync` isn't needed either (public repos; a private one still syncs with the CLI). For a
+  routine, make a scheduled task in the Claude desktop app (or any agent's scheduler, or a cron job
+  running a headless agent) in a session on this repo with HQ's MCP server connected, with the
+  prompt "Do a sweep for HQ" (daily, say). The schedules in `.hq/HQ.md` still decide which scouts
+  are due, so a sweep more often than that only does what's due. A sweep runs with the session's
+  own permissions: set that agent's tool permissions to what a build may do (no `cut_release.sh`,
+  no deploys) if it runs unattended. One thing still differs from a runner: a review is refused to
+  the session that built the card, so a card built in today's sweep is reviewed by the next one (or
+  by another session); with `push: false` that must be on the same machine, since the branch is
+  local. A sweep that can't do a run (a missing tool or key, a branch it can't see) hands it back
+  (`released`) for another session or a runner.
 - **A different CEO**: set `agents.ceo` in the root `.hq/HQ.md` and give the runner a template,
   e.g. `HQ_AGENT_CODEX_CMD='codex exec --full-auto "$(cat {prompt_file})"'` (untested).
 

@@ -90,3 +90,19 @@ v0.1 (the owner said "use your best judgement"; each is easy to change).
   server, so a sweeping agent still can't build or release anything; it can only file cards. HQ
   still owns the schedule (what is due, the budget); the runner stays the way to sweep on a machine
   nobody is watching, and the only way to build approved cards.
+- **Everything over MCP; the CLI is optional** (2026-11-15): one toolset. A sweep now takes every
+  kind of queued run, not just scouts and the CEO: requests, replies, verbs, health, builds of
+  approved cards and reviews, so "do a sweep for HQ" in a connected agent (by hand, a routine, or a
+  cron job running a headless agent with that prompt) replaces `hq runner`, and `sync_policy`
+  replaces `hq sync`. What the runner gave and how a sweep keeps it: **isolation**: the build's own
+  worktree and `hq/<card>` branch, same path as the runner's; **an independent check**: the
+  project's `verify` is still required (`finish_sweep` refuses a done build without it, a failure
+  fails it), though the building session runs it, and the review must come from another MCP session
+  (the server issues `Mcp-Session-Id` and remembers which one built the card); **the deny-list**:
+  gone in a sweep, replaced by the session's own permissions and what it's told, with the server's
+  tier, approval and verb checks unchanged; **unattended machines**: a scheduled agent does it.
+  Policy can't come from the agent, since agents may not write policy: it sends only where the
+  files are (`git ls-tree`), HQ reads them from GitHub's default branch and checks each against the
+  listing's blob id, so an agent can refresh the policy but never change it. That needs a public
+  repo (no GitHub token in HQ); private repos keep `hq sync`. The runner stays for a hard sandbox on
+  a machine nobody watches.

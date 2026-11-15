@@ -1,7 +1,7 @@
 // Launch prompts for each role. HQ writes the first prompt of every scheduled run, with the context
 // included, so the agent never has to discover .hq/ on its own (PRD §7, way in #1). The scout and
-// CEO tasks come from @hq/core (sweep.ts): a sweep over MCP hands out the same text.
-import { CARD_FORMAT, CEO_TASK, scoutTask } from "@hq/core";
+// every role's task comes from @hq/core (sweep.ts): a sweep over MCP hands out the same text.
+import { CARD_FORMAT, CEO_TASK, executorSteps, replyTask, reviewChecks, scoutTask } from "@hq/core";
 
 export interface CardDetail {
   card: {
@@ -95,18 +95,12 @@ ${o.context}
 ${cardText(o.card)}
 
 ## Your task
-You're in a git worktree at ${o.worktree} on branch ${o.branch} (from ${o.base}). Only work there.
-1. Read the project's CLAUDE.md/AGENTS.md for how to build and test.
-2. Make the change the plan describes, as small as it can be. If the plan turns out wrong, do the right smaller thing and say so.
-3. Run the project's tests. Show the failure before your fix when there is one. If you start a server, stop it by its PID; never pkill/killall by name (other people's servers run on this machine).
-4. Commit on ${o.branch} with a clear message. Don't push, merge, release or deploy; don't touch .hq/ folders.
-5. Attach evidence with the hq MCP tool attach_evidence (phase "build"): the tests you ran and their result (type test), measured before/after numbers with their source (type metric), anything else that proves it works.
-If you can't finish, commit nothing broken, attach what you found (type log) and say why.
+${executorSteps({ cardId: o.card.card.id, branch: o.branch, worktree: o.worktree, base: o.base })}
 ${FOOTER}`;
 }
 
 export function reviewPrompt(o: { card: CardDetail; context: string; worktree: string; base: string; branch: string }) {
-  return `You are HQ's reviewer. Another agent built this card; check its work before the owner sees it. You didn't write it, so be skeptical.
+  return `You are HQ's reviewer. Another agent built this card; check its work before the owner sees it.
 
 ${o.context}
 
@@ -114,10 +108,7 @@ ${o.context}
 ${cardText(o.card)}
 
 ## Your task
-The change is on branch ${o.branch} in ${o.worktree}. Review \`git diff ${o.base}...${o.branch}\` and the evidence attached.
-- Does it do what the card says, and only that? Any bugs, missing tests, risky edits, secrets, .hq/ changes?
-- Does the evidence actually prove it works?
-Don't edit anything. Attach ONE evidence item with attach_evidence: phase "review", type "review", text starting with "VERDICT: ship", "VERDICT: fix first" or "VERDICT: reject", then your reasons in a few bullets.
+${reviewChecks({ cardId: o.card.card.id, branch: o.branch, where: `in ${o.worktree}`, base: o.base })}
 ${FOOTER}`;
 }
 
@@ -130,6 +121,6 @@ ${o.context}
 ${cardText(o.card)}
 
 ## Your task
-Read the latest owner comment. Investigate in the repo if needed (read only). Then answer with the hq MCP tool comment on card ${o.card.card.id}: direct, short, with evidence (comments are markdown). If they asked for a different approach, say how the plan changes. Don't edit files.
+${replyTask(o.card.card.id)}
 ${FOOTER}`;
 }

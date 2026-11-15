@@ -167,7 +167,7 @@ async function request(id: string) {
       el("h2", {}, "Thread"),
       d.messages.length ? el("div", { class: "thread" }, d.messages.map((m) =>
         el("div", { class: `msg ${m.kind === "reply" ? "me" : m.kind === "system" ? "sys" : ""}` }, el("div", { class: "small muted" }, m.kind === "system" ? "HQ" : m.author, " · ", ago(m.created_at)), md(m.body))))
-        : el("p", { class: "empty" }, waiting ? "No answer yet. A runner picks this up on its next check; an agent connected over MCP sees it in its context." : "No messages."),
+        : el("p", { class: "empty" }, waiting ? "No answer yet. The next sweep (any agent connected over MCP) or a runner picks this up." : "No messages."),
       canDecide() ? el("form", { class: "comment", onsubmit: (e: Event) => { e.preventDefault(); if (!box.value.trim()) return; act(() => api(`~/requests/${id}/messages`, { method: "POST", json: { body: box.value } }), "Sent: an agent will pick it up"); } },
         box, el("button", { class: "btn", type: "submit" }, r.status === "closed" ? "Reopen with this" : "Send")) : null));
 }
@@ -338,7 +338,7 @@ async function runs() {
   const start = (body: unknown, msg: string) => api("~/runs", { method: "POST", json: body }).then(() => { toast(msg); runs(); }).catch((e) => toast(String(e.message ?? e), true));
   view(
     el("h1", {}, "Runs"),
-    el("p", { class: "muted" }, policy ? `Policy from ${policy.repo}, synced ${ago(cfg.synced_at)}${cfg.commit_sha ? ` at ${cfg.commit_sha.slice(0, 8)}` : ""}.` : "No policy yet: run `hq sync` in the repo."),
+    el("p", { class: "muted" }, policy ? `Policy from ${policy.repo}, synced ${ago(cfg.synced_at)}${cfg.commit_sha ? ` at ${cfg.commit_sha.slice(0, 8)}` : ""}.` : "No policy yet: say \"do a sweep for HQ\" to an agent connected over MCP (it reads .hq/ from GitHub), or run `hq sync` in the repo."),
     el("div", { class: "actions wrap" },
       el("button", { class: "btn", onclick: () => start({ kind: "ceo" }, "CEO run queued") }, "Run CEO now"),
       el("button", { class: "btn", onclick: () => start({ kind: "health" }, "Health run queued") }, "Check health now"),
@@ -426,7 +426,7 @@ async function settings() {
     el("section", { class: "panel" },
       el("h2", {}, "Connect agents and runners"),
       el("p", {}, "MCP server: ", el("code", {}, `${location.origin}/mcp`)),
-      el("p", { class: "muted small" }, "Assistants that support OAuth connect with that URL; an admin or approver picks this workspace and approves. Runners and headless agents use a token."),
+      el("p", { class: "muted small" }, "Assistants that support OAuth connect with that URL; an admin or approver picks this workspace and approves. A connected agent does all of HQ's work when told \"Do a sweep for HQ\". Runners and headless agents use a token."),
       admin ? el("form", { class: "inline", onsubmit: async (e: Event) => {
         e.preventDefault();
         try {
@@ -547,15 +547,16 @@ async function route() {
   }
 }
 
-/** A new workspace before its first `hq sync`: what to do next. */
+/** A new workspace before HQ has read its policy: what to do next. */
 function notSynced() {
   view(el("section", { class: "panel" },
     el("h1", {}, `Connect ${current!.repo}`),
-    el("p", { class: "muted" }, "HQ hasn't seen this repo's policy yet. Three steps:"),
+    el("p", { class: "muted" }, "HQ hasn't seen this repo's policy yet. Three steps, nothing to install:"),
     el("ol", { class: "steps" },
-      el("li", {}, "Install the command: ", el("code", {}, "npm install -g @hejitech/hq"), ". Add ", el("code", {}, ".hq/HQ.md"), " at the repo root (", el("code", {}, `hq init --repo ${current!.repo}`), " writes one), and one per project you want HQ to manage."),
-      el("li", {}, "In the repo, run ", el("code", {}, "hq login"), isAdmin() ? " and allow it in the browser: it creates and saves the runner and agent tokens." : ": ask an admin for a runner token to paste, or to run it for you."),
-      el("li", {}, "Still in the repo: ", el("code", {}, "hq sync"), ", then start ", el("code", {}, "hq runner"), " on a machine that has the repo checked out. A headless machine takes ", el("code", {}, "HQ_URL"), ", ", el("code", {}, "HQ_TOKEN"), " and ", el("code", {}, "HQ_AGENT_TOKEN"), " from ", isAdmin() ? el("a", { href: "#/settings" }, "Settings") : "an admin", " instead."))));
+      el("li", {}, "Add ", el("code", {}, ".hq/HQ.md"), " at the repo root (with ", el("code", {}, `repo: ${current!.repo}`), "), and one per project you want HQ to manage. Commit and push them to the default branch."),
+      el("li", {}, "Connect your agent to the MCP server ", el("code", {}, `${location.origin}/mcp`), " (Claude Code: ", el("code", {}, `claude mcp add --transport http hq ${location.origin}/mcp`), "), and allow it for this workspace on the page it opens", isAdmin() ? "." : " (an admin or approver can)."),
+      el("li", {}, "In a session opened on the repo, say ", el("code", {}, "Do a sweep for HQ"), ". It reads the policy from GitHub and does the work; schedule that prompt daily to keep HQ going.")),
+    el("p", { class: "muted small" }, "A private repository, or a machine nobody watches? The ", el("code", {}, "hq"), " command (", el("code", {}, "npm install -g @hejitech/hq"), ") syncs the policy (", el("code", {}, "hq login"), ", ", el("code", {}, "hq sync"), ") and runs a runner (", el("code", {}, "hq runner"), "). A headless machine takes ", el("code", {}, "HQ_URL"), ", ", el("code", {}, "HQ_TOKEN"), " and ", el("code", {}, "HQ_AGENT_TOKEN"), " from ", isAdmin() ? el("a", { href: "#/settings" }, "Settings") : "an admin", " instead.")));
 }
 
 supabase.auth.onAuthStateChange((event) => {

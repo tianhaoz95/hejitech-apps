@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# The project's own check after a build. Read-only.
+echo '{"ok":true,"verified":"alpha"}'
