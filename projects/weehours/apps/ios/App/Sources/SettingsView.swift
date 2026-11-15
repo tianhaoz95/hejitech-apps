@@ -305,11 +305,12 @@ struct SettingsView: View {
         Section {
             NavigationLink { PaywallView() } label: {
                 HStack {
-                    Label("Lifetime Access", systemImage: "checkmark.seal.fill")
+                    Label("Wee Hours Pro", systemImage: "checkmark.seal.fill")
                     Spacer()
-                    Text("All features included").foregroundStyle(.secondary)
+                    Text(Self.describe(model.entitlement?.access(now: Date()))).foregroundStyle(.secondary)
                 }
             }
+            .accessibilityIdentifier("pro-row")
             .accessibilityIdentifier("settings-plus")
         }
     }
@@ -826,69 +827,6 @@ struct AgentsView: View {
         }
         .navigationTitle("AI agents")
         .task { await model.loadTokens() }
-    }
-}
-
-// MARK: - Lifetime Access & Data Policy
-
-struct PaywallView: View {
-    @EnvironmentObject var model: AppModel
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.title2)
-                            .foregroundStyle(Theme.accent)
-                        Text("Wee Hours Lifetime")
-                            .font(.largeTitle.bold())
-                    }
-                    Text("One-time purchase · Lifetime use for your newborn")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Included Features").font(.headline)
-                    Label("Voice logging with the on-device AI model", systemImage: "mic.fill")
-                    Label("Apple Watch app, complications and Action Button", systemImage: "applewatch")
-                    Label("Even G2 glasses and R1 ring companion support", systemImage: "eyeglasses")
-                    Label("Smart reminders for whoever is on duty", systemImage: "bell.fill")
-                    Label("AI assistant connectivity via MCP", systemImage: "sparkles")
-                    Label("Family Sharing: one purchase covers your Apple family group", systemImage: "person.2.fill")
-                }
-                .font(.subheadline)
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
-
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "archivebox.fill").foregroundStyle(.orange)
-                        Text("Data Retention Notice").font(.headline)
-                    }
-                    Text("In the future, baby data that is inactive for more than a year might be archived. If that happens, we will provide a way to download your complete archive and re-import it anytime.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Legal & Privacy").font(.caption.bold()).foregroundStyle(.secondary)
-                    HStack(spacing: 16) {
-                        Link("Privacy Policy", destination: URL(string: "https://weehours.hejitech.workers.dev/privacy/")!)
-                        Link("Terms of Use", destination: URL(string: "https://weehours.hejitech.workers.dev/terms/")!)
-                    }
-                    .font(.footnote)
-                }
-            }
-            .padding()
-        }
-        .navigationTitle("Lifetime Access")
     }
 }
 

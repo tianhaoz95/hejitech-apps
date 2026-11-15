@@ -246,7 +246,7 @@ final class AppModel: ObservableObject {
                 await handle(transcript: demo)
             }
             if !UserDefaults.standard.bool(forKey: "skipPermissions") { await ReminderScheduler.requestPermission() }
-            entitlement = localEntitlement   // every feature is included (no in-app purchases)
+            await setUpPro()
             // `-demoPhotos <n>`: n generated pictures on the newest entry (screenshots and checks)
             let demoPhotos = UserDefaults.standard.integer(forKey: "demoPhotos")
             if demoPhotos > 0, let newest = log.effective.last {
@@ -344,7 +344,7 @@ final class AppModel: ObservableObject {
     var localEntitlement: Entitlement {
         get {
             if let d = SharedStore.defaults.data(forKey: "entitlement"), let e = try? LogCoding.decoder.decode(Entitlement.self, from: d) { return e }
-            let e = Entitlement(trialStartedAt: Date(), plan: .lifetime)
+            let e = Entitlement(trialStartedAt: Date())   // the 14-day trial starts on this phone
             SharedStore.defaults.set(try? LogCoding.encoder.encode(e), forKey: "entitlement")
             return e
         }
@@ -648,7 +648,8 @@ final class AppModel: ObservableObject {
             pending = localOnly ? [] : try service.store.unsyncedEvents().sorted { $0.loggedAt < $1.loggedAt }
             partnerActivity.removeAll { $0.until < Date() }
             await SharedStore.publish(from: service)
-            if let me { ReminderScheduler.apply(ReminderPlanner.plan(logs: children, household: household, me: me, now: Date(), snoozedUntil: snoozedUntil)) }
+            // Reminders are Pro after the trial: with none allowed, the scheduled ones are cleared.
+            if let me { ReminderScheduler.apply(allows(.reminders) ? ReminderPlanner.plan(logs: children, household: household, me: me, now: Date(), snoozedUntil: snoozedUntil) : []) }
             let named = shown.count > 1
             if !UserDefaults.standard.bool(forKey: "skipPermissions") {
                 SessionActivities.sync(shown.compactMap { b in all[b.id].map { (b, $0) } }, named: named)
@@ -853,6 +854,7 @@ final class AppModel: ObservableObject {
 
     /// Dictating a note: the audio is transcribed here and deleted, as with voice entries.
     func startDictation() throws {
+        guard requirePro(.voice) else { return }
         try recorder.start()
         Task { await transcriber.warmUp() }
     }
@@ -876,6 +878,7 @@ final class AppModel: ObservableObject {
 
     func startVoice() {
         guard !recording else { return }
+        guard requirePro(.voice) else { return }
         let language = VoiceLanguage.current
         if language.translates && !SpeechModelManager.isReady {
             error = SpeechModelMissing(language: language).errorDescription
@@ -1027,6 +1030,7 @@ final class AppModel: ObservableObject {
     }
 
     func createToken(name: String, write: Bool) async -> String? {
+        guard requirePro(.mcp) else { return nil }
         defer { Task { await loadTokens() } }
         do { return try await backend.createAccessToken(name: name, scope: write ? "write" : "read") } catch {
             self.error = error.localizedDescription
@@ -1045,11 +1049,80 @@ final class AppModel: ObservableObject {
         await loadTokens()
     }
 
+    /// Wee Hours Pro (Pro.swift): logging by tap and the Watch always; the rest during the trial or with Pro.
     func allows(_ feature: Entitlement.Feature) -> Bool {
-        true
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "proUnlocked") { return true }   // `-proUnlocked YES`: screenshots
+        #endif
+        guard let entitlement else { return true }
+        return entitlement.allows(feature, now: Date())
+    }
+
+    /// For a Pro feature's entry point: true when allowed; otherwise opens Wee Hours Pro.
+    func requirePro(_ feature: Entitlement.Feature) -> Bool {
+        if allows(feature) { return true }
+        screen = "paywall"
+        return false
+    }
+
+    /// Connects StoreKit to the household: who buys (appAccountToken) and where purchases go.
+    private func setUpPro() async {
+        let pro = ProPurchases.shared
+        pro.userId = { [weak self] in self.flatMap { $0.localOnly ? nil : $0.backend.session?.userId } }
+        pro.sendToServer = { [weak self] signed in
+            guard let self, !self.localOnly else { return }
+            try await self.postTransactions(signed)
+        }
+        pro.onChange = { [weak self] in await self?.refreshEntitlement() }
+        await pro.refreshOwned()
+        if !localOnly { await pro.syncToServer() }
+        await refreshEntitlement()
+    }
+
+    /// The household's entitlement: the server's for an account household (shared by every parent),
+    /// the phone's for a local-only one, plus anything this Apple Account owns that hasn't reached
+    /// the server yet.
+    func refreshEntitlement() async {
+        var e: Entitlement
+        if localOnly {
+            e = localEntitlement
+        } else if let server = try? await backend.fetchEntitlement() {
+            e = server
+        } else {
+            e = entitlement ?? localEntitlement
+        }
+        if let owned = ProPurchases.shared.owned, e.access(now: Date()) != .lifetime {
+            if owned.plan == .lifetime || (owned.expires ?? .distantPast) > (e.expiresAt ?? .distantPast) {
+                e.plan = owned.plan
+                e.expiresAt = owned.plan == .lifetime ? nil : owned.expires
+            }
+        }
+        if localOnly { localEntitlement = e }
+        entitlement = e
+    }
+
+    private func postTransactions(_ signed: [String]) async throws {
+        let jwt = try await backend.sessionToken()
+        var req = URLRequest(url: URL(string: "\(passBaseURL)/api/appstore/transactions")!)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 30
+        req.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["transactions": signed])
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard (resp as? HTTPURLResponse)?.statusCode == 200 else {
+            let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            throw PurchaseShareError(message: obj?["error"] as? String ?? "the server didn't accept it")
+        }
+    }
+
+    struct PurchaseShareError: LocalizedError {
+        let message: String
+        var errorDescription: String? { message }
     }
 
     func exportCSV() -> URL? {
+        guard requirePro(.export) else { return nil }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(household.active.count > 1 ? household.name : household.babyName)-log.csv")
         do {
             try CSVExport.csv(log: log, household: household).write(to: url, atomically: true, encoding: .utf8)

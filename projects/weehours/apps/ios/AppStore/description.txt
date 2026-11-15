@@ -1,0 +1,31 @@
+Wee Hours is a baby log you can use with your hands full.
+
+Say "finished the bottle, about 90 ml" or "dirty diaper" and it's logged. Speech is transcribed and understood on your iPhone, works offline, and the audio never leaves your phone.
+
+LOG ANY WAY
+• Voice, from the app, the Speak widget, Control Center or Siri
+• One tap on the Now screen
+• Your watch: buttons, or tilt mode with just the watch arm
+• Even Realities G2 glasses and R1 ring
+
+ONE LOG FOR THE WHOLE HOUSEHOLD
+• Partners and caregivers see every entry within seconds
+• "Fed 2h40m ago · left side next" at a glance
+• Who's on duty, shift notes and gentle reminders
+• Twins and siblings, and the weeks before birth (kick counts)
+
+TRACK WHAT YOU NEED
+Feeds (bottle, breast, pumping, solids), diapers, sleep, growth, and optional care, health and activity entries like baths, medication, temperature and tummy time. Turn on only what you use.
+
+YOURS
+• Use it without an account, or sign in to sync
+• Photos on entries, CSV export
+• Connect your own AI assistant over MCP to ask about the log
+• No ads, no tracking
+
+FREE TO LOG, PRO WHEN YOU WANT MORE
+Wee Hours is free to download, with 14 days of everything for each new household. After that, logging by tap, your watch and your whole log stay free. Wee Hours Pro adds voice logging, reminders, glasses, AI assistants, photos and CSV export, monthly, yearly or once for life, and one purchase covers everyone in your household. Subscriptions are charged to your Apple Account and renew automatically unless you cancel at least 24 hours before the end of the current period; manage or cancel them in your Apple Account settings.
+Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://weehours.hejitech.workers.dev/privacy/
+
+Wee Hours records what happened. It doesn't give medical advice.

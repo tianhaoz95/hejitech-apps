@@ -92,6 +92,19 @@ The PRD ("Newborn Log — PRD") plus the changes agreed while planning, and the 
 | Release | The plugin's version is the iPhone app's `MARKETING_VERSION`; `weehours-glasses-release.yml` attaches the `.ehpk` to each `weehours-v<version>` release; uploading to the Even Hub portal stays by hand | One version across surfaces, as `cut_release.sh` intends; the Even Hub portal has no upload API |
 | Paywall | Pairing follows `Entitlement.allows(.glasses)` on the phone; paired glasses keep logging after a trial ends | Logging never stops working (Billing above) |
 
+## Wee Hours Pro (2026-11-14, prepared autonomously for the owner's review)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Model | Free download; the household's 14-day trial (`Entitlement`) as before; then Wee Hours Pro: monthly, yearly or lifetime, in-app (StoreKit 2) | The Billing row above (owner's original request). The 10-28 App Store prep had assumed a paid-upfront app with Family Sharing; the owner moved Headway, FitLoop and G2 Digest to in-app Pro on 2026-11-14, so Wee Hours follows its own billing design instead. **Owner to confirm before submitting** |
+| What's free | Logging by tap, the Watch, the glasses already paired, reading and editing the log | "Logging never stops working" (Billing). The Watch is tap logging on the wrist |
+| What's Pro (after the trial) | Voice (incl. dictated notes), reminders (cleared when not allowed), pairing new glasses, AI agent tokens, CSV export, photos | `Entitlement.Feature`; each entry point calls `AppModel.requirePro`, which opens the purchase screen |
+| Prices | Placeholders: $2.99 a month, $19.99 a year, $39.99 lifetime (USA base, Apple's equalized prices elsewhere) | The newborn months are the busy ones (monthly), a year covers the first year (≈ 7 months of monthly), lifetime ≈ 2 years. **Owner's call; change in App Store Connect before submitting** |
+| No App Store free trial | The subscriptions have no introductory offer | The household trial already gives 14 days without a card; a second trial would confuse |
+| Household-wide | A purchase is verified by the Worker (`services/web/src/worker/appstore.ts`, x5c pinned to Apple Root CA G3, no SDK) into `weehours.app_store_purchases`, and `weehours.entitlements` becomes the household's best active purchase, so both parents have Pro. App Store Server Notifications V2 at `/appstore/notifications` keep renewals, expiries and refunds in step | Billing is "per household" |
+| Local-only households | Their trial starts on the phone; a purchase is kept on the phone (StoreKit) | No server to share it with; signing in later sends it to the household |
+| `record_purchase` | Clients can no longer call it (service role only) | It trusted the client's claim: any signed-in user could have given their household Pro |
+
 ## Not done yet
 
 See the report (`report/v0/site`, "What's verified") for what was verified in simulators and what still needs devices or the hosted project.

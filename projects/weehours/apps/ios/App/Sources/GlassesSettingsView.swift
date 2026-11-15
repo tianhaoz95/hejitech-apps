@@ -87,6 +87,8 @@ struct GlassesSettingsView: View {
                 }
             }
             Button(pairing == nil ? "Get pairing code" : "Get a new code") {
+                // Pairing new glasses is Pro after the trial; glasses already paired keep logging.
+                guard model.requirePro(.glasses) else { return }
                 Task {
                     asking = true
                     justPaired = nil

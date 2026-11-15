@@ -264,8 +264,9 @@ language sql stable security definer set search_path = weehours, extensions as $
   select to_jsonb(e) - 'household_id' - 'source' - 'updated_at' from entitlements e where household_id = my_household_id()
 $$;
 
--- Development stand-in for App Store server notifications: the client reports a StoreKit
--- sandbox purchase. Production replaces this with signed-transaction verification.
+-- Former development stand-in (the client reported its own purchase). App Store purchases are now
+-- verified by the Worker (services/web/src/worker/appstore.ts) into app_store_purchases and written
+-- to entitlements with the service key, so clients may no longer call this.
 create or replace function weehours.record_purchase(p_plan text, p_expires_at timestamptz) returns void
 language plpgsql security definer set search_path = weehours, extensions as $$
 begin
@@ -274,6 +275,35 @@ begin
   values (my_household_id(), p_plan, case when p_plan = 'lifetime' then null else p_expires_at end, now())
   on conflict (household_id) do update set plan = excluded.plan, expires_at = excluded.expires_at, updated_at = now();
 end $$;
+
+revoke execute on function weehours.record_purchase(text, timestamptz) from public, anon, authenticated;
+grant execute on function weehours.record_purchase(text, timestamptz) to service_role;
+
+-- Wee Hours Pro bought in the iPhone app (docs/decisions.md "Wee Hours Pro"): one row per original
+-- transaction, verified by the Worker; the household's entitlement is its best active purchase.
+create table weehours.app_store_purchases (
+  original_transaction_id text primary key,
+  household_id uuid not null references weehours.households(id) on delete cascade,
+  user_id uuid not null,
+  product_id text not null,
+  plan text not null check (plan in ('monthly', 'yearly', 'lifetime')),
+  environment text not null,
+  transaction_id text not null,
+  expires_at timestamptz,
+  revoked_at timestamptz,
+  signed_at timestamptz not null,
+  updated_at timestamptz not null default now()
+);
+create index app_store_purchases_household on weehours.app_store_purchases(household_id);
+alter table weehours.app_store_purchases enable row level security;
+
+-- App Store Server Notifications already handled (Apple retries until it gets a 2xx).
+create table weehours.app_store_notifications (
+  id text primary key,
+  type text not null,
+  received_at timestamptz not null default now()
+);
+alter table weehours.app_store_notifications enable row level security;
 
 -- ---------------------------------------------------------------- access tokens
 

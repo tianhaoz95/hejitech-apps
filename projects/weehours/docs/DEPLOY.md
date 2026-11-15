@@ -62,6 +62,13 @@ pins). Optional: `WEEHOURS_FEEDBACKKIT_RELEASE_TOKEN`, created with
 after `npx feedbackkit-cli login`. The workflow imports the existing identities, so CI never
 creates certificates.
 
+## 3b. Wee Hours Pro (in-app purchases)
+App Store Connect (app 6823293298): group "Wee Hours Pro" (22581321) with `com.hejitech.weehours.pro.monthly`
+(6835032644) and `.pro.yearly` (6835032528), non-consumable `com.hejitech.weehours.pro.lifetime` (6835033524);
+Server Notifications V2 (production + sandbox) at `https://weehours.hejitech.workers.dev/appstore/notifications`.
+The Worker needs nothing new (Apple's root is in the code). Prices, review screenshots and the first submission
+with the app version: skill `heji-app-store-iap` (`iap.mjs status com.hejitech.weehours`).
+
 ## 4. Even Hub (glasses)
 
 The glasses app ships with the iPhone app, under the same version: `scripts/cut_release.sh weehours`

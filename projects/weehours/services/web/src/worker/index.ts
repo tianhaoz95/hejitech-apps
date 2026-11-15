@@ -17,6 +17,7 @@ import { createClient } from "@supabase/supabase-js";
 import { derive, status, statusLine, validate, type LogEvent } from "@weehours/core";
 import { handleAccountDelete } from "./account.ts";
 import { handleGlasses } from "./glasses.ts";
+import { handlePurchases } from "./purchases.ts";
 import { handleMcp, type Caller, type Db } from "./mcp.ts";
 
 export interface Env {
@@ -286,6 +287,11 @@ const app = {
     if (url.pathname.startsWith("/api/glasses/")) {
       const deps = { db: admin(env), kv: env.OAUTH_KV, supabaseUrl: env.SUPABASE_URL, serviceKey: env.SUPABASE_SERVICE_ROLE_KEY, sessionUser: (r: Request) => supabaseUser(env, r) };
       return handleGlasses(req, url, deps, ctx);
+    }
+    // Wee Hours Pro bought in the iPhone app, verified here and shared by the household (appstore.ts).
+    if (url.pathname === "/api/appstore/transactions" || url.pathname === "/appstore/notifications") {
+      const r = await handlePurchases(req, url, admin(env), (q) => supabaseUser(env, q));
+      if (r) return r;
     }
     if (url.pathname === "/api/account/delete") {
       const apple = env.APPLE_TEAM_ID && env.APPLE_SIWA_KEY_ID && env.APPLE_SIWA_PRIVATE_KEY
