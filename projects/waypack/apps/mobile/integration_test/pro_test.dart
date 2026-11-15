@@ -27,8 +27,9 @@ void main() {
 
   testWidgets('Waypack Pro sheet', (t) async {
     final state = await bootstrap();
-    if (Supabase.instance.client.auth.currentSession != null)
+    if (Supabase.instance.client.auth.currentSession != null) {
       await state.signOut();
+    }
     await t.pumpWidget(
       ChangeNotifierProvider.value(value: state, child: const WaypackApp()),
     );
