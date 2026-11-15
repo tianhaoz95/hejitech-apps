@@ -118,7 +118,7 @@ for DEV in "${DEVICES[@]}"; do
     # shellcheck disable=SC2086
     # -proUnlocked: Debug builds skip the Pro purchase screen (apps with in-app purchases, skill
     # heji-app-store-iap); other apps ignore it.
-    xcrun simctl launch "$ID" "$BUNDLE" ${PREFS[@]+"${PREFS[@]}"} ${EXTRA[@]+"${EXTRA[@]}"} -proUnlocked $args >/dev/null
+    xcrun simctl launch "$ID" "$BUNDLE" ${PREFS[@]+"${PREFS[@]}"} ${EXTRA[@]+"${EXTRA[@]}"} -proUnlocked YES $args >/dev/null
     sleep "${SHOT_WAIT:-9}"
     f="$OUT/$(printf '%02d' $n)-$name.png"
     if [ "$DIR" = iphone-duo ]; then
