@@ -289,8 +289,40 @@ export function weatherReport(store: WeatherStore | null, now: number, stations:
   return { source: WEATHER_SOURCE, updated_at: fetched.length ? Math.min(...fetched) : null, stations: list, alerts };
 }
 
+/**
+ * The animated backdrop behind a board, one of a few the apps draw. It follows whichever end of the
+ * ride has the more eventful weather (a storm at either end beats sun at the other), so a glance at
+ * the Trains tab says what you're heading into.
+ */
+export type WeatherTheme = "clear_day" | "clear_night" | "partly_day" | "partly_night" | "cloudy" | "fog" | "rain" | "storm" | "snow";
+
+/** How eventful a condition is: the higher one picks the theme. */
+const EVENTFUL: Record<WeatherCondition, number> = {
+  clear: 0, mostly_clear: 0, partly_cloudy: 1, wind: 1, cloudy: 2, haze: 3, smoke: 3, fog: 3, drizzle: 4, rain: 5, showers: 5, snow: 6, thunder: 7,
+};
+
+export function themeOf(h: Pick<WeatherHour, "cond" | "day">): WeatherTheme {
+  switch (h.cond) {
+    case "clear": case "mostly_clear": return h.day ? "clear_day" : "clear_night";
+    case "partly_cloudy": case "wind": return h.day ? "partly_day" : "partly_night";
+    case "cloudy": return "cloudy";
+    case "fog": case "haze": case "smoke": return "fog";
+    case "drizzle": case "rain": case "showers": return "rain";
+    case "snow": return "snow";
+    case "thunder": return "storm";
+  }
+}
+
+/** The theme for a ride: the more eventful end; on a tie, where you are now. */
+export function rideTheme(from: WeatherHour | null, to: WeatherHour | null): WeatherTheme | null {
+  const pick = !from ? to : !to ? from : EVENTFUL[to.cond] > EVENTFUL[from.cond] ? to : from;
+  return pick ? themeOf(pick) : null;
+}
+
 /** The weather on a board: at the departure station now, and at the destination when the next train gets there. */
 export interface BoardWeather {
+  /** The backdrop the apps animate behind this board. */
+  theme: WeatherTheme;
   from: WeatherHour | null;
   to: WeatherHour | null;
   /** When `to` applies: the next (not cancelled) train's predicted arrival, epoch ms. */
@@ -310,7 +342,7 @@ export function boardWeather(store: WeatherStore | null, b: Pick<Board, "from" |
   const alerts = [...stationAlerts(store, b.from.id, now), ...stationAlerts(store, b.to.id, now)]
     .filter((a) => !seen.has(a.id) && seen.add(a.id))
     .map(({ event, headline, severity }) => ({ event, headline, severity }));
-  return { from, to, to_at: to ? toAt : null, alerts };
+  return { theme: rideTheme(from, to)!, from, to, to_at: to ? toAt : null, alerts };
 }
 
 const WORDS: Record<WeatherCondition, string> = {

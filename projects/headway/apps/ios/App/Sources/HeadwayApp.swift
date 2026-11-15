@@ -86,7 +86,7 @@ struct MainTabs: View {
     @Environment(AppModel.self) private var model
     @State private var tab = Self.initialTab
 
-    /// `-screen trains|weather|commute|family|settings` opens a tab directly (screenshots without taps).
+    /// `-screen trains|commute|family|settings` opens a tab directly (screenshots without taps).
     static var initialTab: String {
         let args = ProcessInfo.processInfo.arguments
         if let i = args.firstIndex(of: "-screen"), i + 1 < args.count {
@@ -100,7 +100,6 @@ struct MainTabs: View {
     var body: some View {
         TabView(selection: $tab) {
             Tab("Trains", systemImage: "tram.fill", value: "trains") { BoardView() }
-            Tab("Weather", systemImage: "cloud.sun.fill", value: "weather") { WeatherView() }
             Tab("Commute", systemImage: "arrow.left.arrow.right", value: "commute") { CommuteView() }
             Tab("Family", systemImage: "person.2.fill", value: "family") { FamilyView() }
                 .badge(model.family?.invites.count ?? 0)

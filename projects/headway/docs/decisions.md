@@ -294,3 +294,12 @@ zones, mapped once into `weathergrid.gen.json` by `scripts/build-weather-grid.mj
   cloudy, and the umbrella nudge waits for 40%. Ocean alerts (surf, rip currents, small craft) are
   dropped. Nothing older than 12 hours is shown.
 - Not on the watch, widget or glasses yet: the board data is there when they want it.
+
+**1.8.0: the weather is a backdrop, not a tab.** The owner decided weather isn't the app's core, so
+the Weather tab and the board's weather card went. The Trains tab instead animates the ride's
+weather behind the board (`board.weather.theme`, chosen in core by `rideTheme`: the more eventful end
+of the ride, since a storm where you get off matters more than sun where you are), and the board's
+header has a small "from → to" chip with icons and temperatures. Nine themes (clear and partly
+cloudy by day and night, cloudy, fog, rain, storm, snow) are drawn in code on both apps with the
+same palettes: pastel in light mode, deep in dark mode, so text keeps its contrast; still with
+Reduce Motion (iPhone) or animations off (Android). `/api/weather` and MCP's `station_weather` stay.

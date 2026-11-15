@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
-  boardWeather, conditionOf, emptyWeatherStore, mergeWeather, parseAlerts, parseHourly, STATIONS, weatherAt, weatherLine, weatherReport, weatherWork,
-  WEATHER_BATCH, WEATHER_CELLS, WEATHER_GRID, WEATHER_REFRESH_MS, WEATHER_RETRY_MS, type BoardTrain, type WeatherStore,
+  boardWeather, conditionOf, rideTheme, emptyWeatherStore, mergeWeather, parseAlerts, parseHourly, STATIONS, weatherAt, weatherLine, weatherReport, weatherWork,
+  WEATHER_BATCH, WEATHER_CELLS, WEATHER_GRID, WEATHER_REFRESH_MS, WEATHER_RETRY_MS, type BoardTrain, type WeatherHour, type WeatherStore,
 } from "../src/index.ts";
 
 // A real hourly forecast for San Francisco's cell (MTR/86,105), 2026-11-15 08:00 → 11-17 07:00 Pacific.
@@ -113,5 +113,17 @@ describe("what riders see", () => {
     expect(w?.to?.t).toBe(Date.parse("2026-11-15T09:00:00-08:00"));
     expect(w?.from?.t).toBe(Date.parse("2026-11-15T08:00:00-08:00"));
     expect(weatherLine(w!.from!)).toBe("59° Cloudy");
+    expect(w?.theme).toBe("cloudy");
+  });
+
+  it("themes a ride by its more eventful end, day or night", () => {
+    const h = (cond: WeatherHour["cond"], day = true) => ({ t: 0, temp_f: 60, pop: 0, wind_mph: 0, cond, text: "", day });
+    expect(rideTheme(h("clear"), h("rain"))).toBe("rain");
+    expect(rideTheme(h("thunder"), h("snow"))).toBe("storm");
+    expect(rideTheme(h("fog"), h("partly_cloudy"))).toBe("fog");
+    expect(rideTheme(h("clear", false), null)).toBe("clear_night");
+    expect(rideTheme(null, h("partly_cloudy"))).toBe("partly_day");
+    expect(rideTheme(h("cloudy"), h("cloudy", false))).toBe("cloudy");
+    expect(rideTheme(null, null)).toBeNull();
   });
 });

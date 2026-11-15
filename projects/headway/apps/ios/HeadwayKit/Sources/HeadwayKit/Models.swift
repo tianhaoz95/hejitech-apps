@@ -745,7 +745,20 @@ public struct BoardWeatherAlert: Codable, Hashable, Sendable {
     public var severity: String
 }
 
+/// Mirrors core's `WeatherTheme`: the animated backdrop behind a board. An unknown value (from a newer
+/// Worker) decodes as `.cloudy`.
+public enum WeatherTheme: String, Codable, CaseIterable, Sendable {
+    case clearDay = "clear_day", clearNight = "clear_night", partlyDay = "partly_day", partlyNight = "partly_night"
+    case cloudy, fog, rain, storm, snow
+
+    public init(from decoder: Decoder) throws {
+        self = WeatherTheme(rawValue: try decoder.singleValueContainer().decode(String.self)) ?? .cloudy
+    }
+}
+
 public struct BoardWeather: Codable, Hashable, Sendable {
+    /// The backdrop behind the board (the more eventful end of the ride). Older Workers didn't send it.
+    public var theme: WeatherTheme?
     public var from: WeatherHour?
     public var to: WeatherHour?
     /// When `to` applies: the next train's predicted arrival, epoch ms.
@@ -753,7 +766,7 @@ public struct BoardWeather: Codable, Hashable, Sendable {
     public var alerts: [BoardWeatherAlert]
 
     enum CodingKeys: String, CodingKey {
-        case from, to, alerts
+        case theme, from, to, alerts
         case toAt = "to_at"
     }
 }

@@ -464,8 +464,28 @@ data class WeatherHour(
 @Serializable
 data class BoardWeatherAlert(val event: String, val headline: String, val severity: String = "Unknown")
 
+/** Mirrors core's `WeatherTheme`: the animated backdrop behind a board. */
+@Serializable
+enum class WeatherTheme {
+    @SerialName("clear_day") CLEAR_DAY,
+    @SerialName("clear_night") CLEAR_NIGHT,
+    @SerialName("partly_day") PARTLY_DAY,
+    @SerialName("partly_night") PARTLY_NIGHT,
+    @SerialName("cloudy") CLOUDY,
+    @SerialName("fog") FOG,
+    @SerialName("rain") RAIN,
+    @SerialName("storm") STORM,
+    @SerialName("snow") SNOW;
+
+    companion object {
+        fun fromWire(s: String): WeatherTheme? = entries.firstOrNull { it.name.equals(s, ignoreCase = true) }
+    }
+}
+
 @Serializable
 data class BoardWeather(
+    /** The backdrop behind the board (the more eventful end of the ride); null from a Worker before 1.7.1 or an unknown theme. */
+    val theme: WeatherTheme? = null,
     val from: WeatherHour? = null,
     val to: WeatherHour? = null,
     /** When `to` applies: the next train's predicted arrival, epoch ms. */

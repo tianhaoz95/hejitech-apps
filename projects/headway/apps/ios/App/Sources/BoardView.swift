@@ -12,7 +12,6 @@ struct BoardView: View {
     }
 
     @State private var picking = false
-    @State private var showingWeather = false
     @State private var now = Clock.now()
     @State private var sort: BoardSort = .leaving
     private let tick = Timer.publish(every: 20, on: .main, in: .common).autoconnect()
@@ -65,14 +64,6 @@ struct BoardView: View {
                     if !riding, let walk = b.walkMinutes {
                         Section {
                             CatchCard(board: b, walkMinutes: walk, now: now)
-                        }
-                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                        .listRowBackground(Color.clear)
-                    }
-
-                    if let w = b.weather {
-                        Section {
-                            BoardWeatherStrip(board: b, weather: w) { showingWeather = true }
                         }
                         .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                         .listRowBackground(Color.clear)
@@ -171,7 +162,15 @@ struct BoardView: View {
                 }
             }
             .sheet(isPresented: $picking) { PairPicker() }
-            .sheet(isPresented: $showingWeather) { WeatherView(asSheet: true) }
+            .scrollContentBackground(model.weatherTheme == nil ? .automatic : .hidden)
+            .background {
+                if let theme = model.weatherTheme {
+                    WeatherBackdrop(theme: theme)
+                        .transition(.opacity)
+                        .id(theme)
+                }
+            }
+            .animation(.easeInOut(duration: 0.8), value: model.weatherTheme)
             .onReceive(tick) { _ in now = Clock.now(); Task { await model.refresh() } }
         }
     }
@@ -182,7 +181,13 @@ struct BoardHeader: View {
     var body: some View {
         HStack {
             Text(board.leg == "custom" ? "Next trains" : board.leg == "morning" ? "Morning commute" : "Evening commute")
-            Spacer()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .layoutPriority(-1)
+            Spacer(minLength: 6)
+            if let w = board.weather, w.from != nil || w.to != nil {
+                BoardWeatherChip(board: board, weather: w).fixedSize()
+            }
             Text(board.live ? "LIVE" : "TIMETABLE")
                 .font(.caption2.weight(.bold))
                 .padding(.horizontal, 6).padding(.vertical, 2)

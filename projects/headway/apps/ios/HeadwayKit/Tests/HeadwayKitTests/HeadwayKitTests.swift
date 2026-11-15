@@ -29,6 +29,9 @@ final class HeadwayKitTests: XCTestCase {
     func testUnknownWeatherConditionDecodesAsCloudy() throws {
         let h = try Backend.decoder.decode(WeatherHour.self, from: Data(#"{"t":0,"temp_f":50,"pop":0,"wind_mph":3,"cond":"volcanic_ash","text":"Ash","day":true}"#.utf8))
         XCTAssertEqual(h.cond, .cloudy)
+        let w = try Backend.decoder.decode(BoardWeather.self, from: Data(#"{"theme":"partly_night","from":null,"to":null,"to_at":null,"alerts":[]}"#.utf8))
+        XCTAssertEqual(w.theme, .partlyNight)
+        XCTAssertEqual(try Backend.decoder.decode(BoardWeather.self, from: Data(#"{"theme":"aurora","alerts":[]}"#.utf8)).theme, .cloudy)
         XCTAssertEqual(WeatherHour(t: 0, tempF: 54, pop: 70, windMph: 5, cond: .rain, text: "Rain", day: true).line, "54° Rain 70%")
     }
 

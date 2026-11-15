@@ -47,7 +47,7 @@ private val StatusBlue = Color(0xFF64B5F6)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BoardScreen(viewModel: HeadwayViewModel, onShowWeather: () -> Unit = {}) {
+fun BoardScreen(viewModel: HeadwayViewModel) {
     val board by viewModel.board.collectAsState()
     val tracked by viewModel.tracked.collectAsState()
     val onTrain by viewModel.onTrain.collectAsState()
@@ -78,7 +78,14 @@ fun BoardScreen(viewModel: HeadwayViewModel, onShowWeather: () -> Unit = {}) {
         }
     }
 
+    // The ride's weather, animated behind the whole board (the more eventful end of the ride).
+    val weatherTheme = viewModel.debugWeatherTheme ?: board?.weather?.theme
+    Box(Modifier.fillMaxSize()) {
+    androidx.compose.animation.Crossfade(targetState = weatherTheme, animationSpec = androidx.compose.animation.core.tween(800), label = "weather") { theme ->
+        if (theme != null) WeatherBackdrop(theme)
+    }
     Scaffold(
+        containerColor = if (weatherTheme != null) Color.Transparent else MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
@@ -112,7 +119,7 @@ fun BoardScreen(viewModel: HeadwayViewModel, onShowWeather: () -> Unit = {}) {
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = if (weatherTheme != null) Color.Transparent else MaterialTheme.colorScheme.background)
             )
         }
     ) { padding ->
@@ -161,7 +168,6 @@ fun BoardScreen(viewModel: HeadwayViewModel, onShowWeather: () -> Unit = {}) {
                         b.tip?.let { tip -> item(key = "tip") { InsightBanner(tip) } }
                         b.walkMinutes?.let { walk -> if (catchTarget(b) != null) item(key = "catch") { CatchCard(b, walk, now) } }
                     }
-                    b.weather?.let { w -> item(key = "weather") { BoardWeatherStrip(b, w, onClick = onShowWeather) } }
 
                     item(key = "header") {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -170,8 +176,11 @@ fun BoardScreen(viewModel: HeadwayViewModel, onShowWeather: () -> Unit = {}) {
                                     when (b.leg) { "custom" -> "Next trains"; "morning" -> "Morning commute"; else -> "Evening commute" },
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
+                                b.weather?.let { w -> if (w.from != null || w.to != null) { BoardWeatherChip(b, w); Spacer(Modifier.width(8.dp)) } }
                                 Pill(if (b.live) "LIVE" else "TIMETABLE", if (b.live) StatusGreen else StatusGrey)
                             }
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -284,6 +293,7 @@ fun BoardScreen(viewModel: HeadwayViewModel, onShowWeather: () -> Unit = {}) {
                 item { Spacer(modifier = Modifier.height(16.dp)) }
             }
         }
+    }
     }
 
     if (picking) {
