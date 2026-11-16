@@ -18,8 +18,11 @@ struct ReleaseNotes: Identifiable {
 /// refuses until `currentVersion` and the top release entry describe the version being released
 /// (projects/hq/release.env).
 enum WhatsNew {
-    static let currentVersion = "0.4.0"
+    static let currentVersion = "0.4.1"
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.4.1", date: "November 2026", items: [
+            WhatsNewItem(icon: "sparkles", title: "What's New, any time", description: "Every release's changes, with a clearer look, now open from Settings too."),
+        ]),
         ReleaseNotes(version: "0.4.0", date: "November 2026", items: [
             WhatsNewItem(icon: "sparkles", title: "Everything from a connected agent", description: "Nothing to install: “Do a sweep for HQ” also builds the cards you approved (each on its own branch, checked with the project’s verify), reviews cards another session built, answers your comments, runs the verbs you asked for and checks health."),
             WhatsNewItem(icon: "arrow.triangle.2.circlepath", title: "No more hq sync", description: "The sweep refreshes HQ’s copy of your .hq/ policy straight from GitHub."),
