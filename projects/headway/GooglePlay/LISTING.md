@@ -81,9 +81,11 @@ Still the owner's:
    add `HEADWAY_REVIEW_PASSWORD` from `~/Credentials/review-accounts.env`, save.
 2. **AI asset declaration:** Store listings › Default › Next › "Don't label assets" › Save (no Headway
    asset is AI-made). Until then the listing is a draft and the release preview says "Add a full description".
-3. **Video:** upload `background-location-demo.mp4` (in-app disclosure, both Android prompts, the ongoing
-   notification) to the HEJI TECH channel as unlisted, then paste the link into:
-   - **Location permissions.** App purpose: "Headway shows live Caltrain departures, delays and leave-by
+3. ~~Video~~ done 2026-11-12: unlisted at https://www.youtube.com/watch?v=aElyX-qc_LA on the Chrome
+   account's own "HEJI TECH" channel (UCaTlcJuZlIzoXE0CcRCaigg, not the promo channel UCCx17…; owner's
+   choice). Location permissions (texts below) and Foreground service (Background location updates ›
+   Other) declarations saved with it. App content shows nothing left.
+   - Location permissions. App purpose: "Headway shows live Caltrain departures, delays and leave-by
      times for a rider's commute and alerts them when their train is late, cancelled or about to arrive
      at their stop. It also tracks the train the rider is on so delay and arrival alerts follow the
      ride." Location access: "On-train detection (Settings > On a train > 'Also with the app closed').
@@ -92,6 +94,4 @@ Still the owner's:
      for your train' notification shows while it runs. An in-app disclosure explains this before
      Android's location prompts; the rider can switch it off at any time. Location is only used to match
      the train and is not stored."
-   - **Foreground service permissions:** FOREGROUND_SERVICE_LOCATION › Background location updates ›
-     Other, same link.
 4. Publishing overview: send the production releases for review.
