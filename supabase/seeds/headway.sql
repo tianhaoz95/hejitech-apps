@@ -34,3 +34,6 @@ on conflict (token_hash) do nothing;
 insert into headway.access_tokens (token_hash, user_id, name) values
   ('41b30b1a5e350f74f9f00d127c90e24edffd2a22079e5fbdfe59182788633229', '00000000-0000-4000-8000-00000000c47e', 'Seed assistant')
 on conflict (token_hash) do nothing;
+
+-- Pro for the seed account, as a tester would have it (scripts/grant_pro.sh), so its glasses and assistant tokens work.
+insert into headway.pro_grants (email, until, note) values ('rider@example.com', null, 'seed') on conflict (email) do nothing;

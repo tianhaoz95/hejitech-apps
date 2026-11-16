@@ -147,3 +147,6 @@ insert into fitloop.device_tokens (token_hash, user_id, label) values ('319dfdf0
 on conflict (token_hash) do nothing;
 insert into fitloop.access_tokens (token_hash, user_id, name) values ('90fb09661f7033737787058aa718568520eeb411f6a188f1ea7a51ff7346fb9f', '00000000-0000-4000-8000-0000000f1700', 'Seed agent')
 on conflict (token_hash) do nothing;
+
+-- Pro for the seed account, as a tester would have it (scripts/grant_pro.sh), so its glasses and assistant tokens work.
+insert into fitloop.pro_grants (email, until, note) values ('athlete@example.com', null, 'seed') on conflict (email) do nothing;

@@ -3,6 +3,7 @@
 // in the URL because podcast apps can't send headers; it reads only this user's editions and is
 // revoked from the web app like a device.
 import { episodes, type Bundle } from "@g2digest/core";
+import { proStatus } from "./billing.ts";
 import { BUCKET, resolveDevice, type Db, type Env } from "./store.ts";
 
 const EDITIONS_IN_FEED = 14;
@@ -14,6 +15,11 @@ export async function podcastFeed(_req: Request, env: Env, db: Db, url: URL): Pr
   if (!m) return new Response("Not found", { status: 404 });
   const feed = await resolveDevice(db, m[1]);
   if (!feed || feed.kind !== "feed") return new Response("This feed was turned off. Make a new one in G2 Digest.", { status: 403 });
+  // The podcast feed is part of G2 Digest Pro, like the web app and the glasses (billing.ts).
+  const email = (await db.auth.admin.getUserById(feed.userId).catch(() => null))?.data.user?.email;
+  if (!(await proStatus(db, feed.userId, email)).pro) {
+    return new Response(`This feed needs G2 Digest Pro. Start a free week in the app or at ${env.PUBLIC_URL}/pro/`, { status: 402 });
+  }
 
   if (m[3]) {
     const { data } = await db.storage.from(BUCKET).createSignedUrl(`${feed.userId}/${m[3]}`, 3600);

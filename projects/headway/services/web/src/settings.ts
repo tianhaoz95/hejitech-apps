@@ -2,6 +2,7 @@
 // and deleting Headway's data. Everything is saved through the Worker (checkSettings in @headway/core).
 import { checkSettings, newLeg, STATIONS, type Leg, type Settings } from "@headway/core";
 import { api, el, requireSession, spinner, supabase } from "./supabase.ts";
+import { loadPro, paywall, planPanel, waitForPro } from "./pro.ts";
 
 const root = document.getElementById("app")!;
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -183,6 +184,14 @@ async function render() {
   root.replaceChildren(spinner());
   const session = await requireSession(root, render);
   if (!session) return;
+  // Headway Pro (pro.ts): without it the page is the offer; with it, a panel says where it's from.
+  const back = new URLSearchParams(location.search).get("pro");
+  const pro = back === "success" ? await waitForPro() : await loadPro();
+  if (back) history.replaceState(null, "", location.pathname);
+  if (pro && !pro.pro) {
+    root.replaceChildren(paywall(pro), dangerPanel());
+    return;
+  }
   const r = await api<{ settings: Settings; saved: boolean; email: string | null }>("/api/settings");
   if (!r.ok) {
     root.replaceChildren(el("p", { class: "error" }, "Couldn't load your settings. Reload to try again."));
@@ -267,6 +276,7 @@ async function render() {
         el("h1", {}, "Your commute"),
         r.body.email ? el("span", { class: "badge" }, r.body.email) : null),
       el("p", { class: "muted" }, "Before the switch time your glasses and the app open on your morning trains; after it, on your evening ones.")),
+    ...(pro ? [planPanel(pro)] : []),
     morning.node,
     evening.node,
     el("section", { class: "panel" },

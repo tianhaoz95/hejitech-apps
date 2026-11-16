@@ -1,5 +1,5 @@
 // The tour: a built-in bundle the plugin plays whenever there's no edition to read (not paired yet,
-// paired but nothing published, offline with nothing fetched). The glasses never show a dead end:
+// paired but nothing published, offline with nothing fetched, an account without G2 Digest Pro). The glasses never show a dead end:
 // every gesture works on it, it teaches the ring, and its last section says what to do next. Even
 // Hub reviewers see it too, since they install without an account. Generic product copy only, no
 // topics (check-no-topics.mjs), no audio (nothing to fetch), and no URLs (cards never show one: the
@@ -8,12 +8,13 @@ import { TOUR_GUIDE_VERSION } from "./render.ts";
 import type { Bundle, CardInput } from "./types.ts";
 
 /** Why there's no edition: decides the tour's "next step" card. */
-export type TourReason = "pair" | "waiting" | "offline";
+export type TourReason = "pair" | "waiting" | "offline" | "pro";
 
 const NEXT: Record<TourReason, Pick<CardInput, "title" | "body">> = {
   pair: { title: "Pair your glasses", body: "Sign in to G2 Digest on the web, open Pair, and type the code on your phone." },
   waiting: { title: "Paired", body: "Your first edition isn't out yet. Connect an agent from Agents on the web." },
   offline: { title: "Offline", body: "Nothing fetched yet. Connect your phone, then open G2 Digest again." },
+  pro: { title: "G2 Digest Pro", body: "Your editions need G2 Digest Pro. Start a free week in the app or on the web." },
 };
 
 /** True for a bundle made by `tour()` (the plugin doesn't remember a position on it). */

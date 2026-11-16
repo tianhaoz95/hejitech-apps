@@ -65,6 +65,24 @@ curl -s -o /dev/null -w "%{http_code}\n" https://headway.hejitech.workers.dev/mc
 curl -s https://headway.hejitech.workers.dev/.well-known/oauth-authorization-server | jq .issuer
 ```
 
+
+### Pro on the web (Stripe) and App Store notifications
+
+Set up 2026-11-16 (decisions: "Pro on every platform"). Stripe is the shared HEJI account; the
+product, the yearly and lifetime prices and the webhook (`https://headway.hejitech.workers.dev/stripe/webhook`,
+five events) come from `node scripts/stripe_pro.mjs headway --live` (idempotent; ids and the webhook
+secret in `~/Credentials/stripe.env`, `HEADWAY_STRIPE_*`). The price ids are `env.production.vars` in
+`wrangler.jsonc`; the keys are secrets:
+
+```sh
+npx wrangler secret put STRIPE_SECRET_KEY --env production       # HEJI_TECHNOLOGY_LIVE_SECRET_KEY
+npx wrangler secret put STRIPE_WEBHOOK_SECRET --env production   # HEADWAY_STRIPE_WEBHOOK_SECRET
+```
+
+App Store Server Notifications V2 (production and sandbox) go to `/appstore/notifications`:
+`node .claude/skills/heji-app-store-iap/iap.mjs notifications com.hejitech.headway https://headway.hejitech.workers.dev/appstore/notifications`.
+Locally, put the sandbox key and `node scripts/stripe_pro.mjs headway`'s price ids in `.dev.vars`.
+
 ## 4. iPhone app
 
 1. App Store Connect (the owner): a new app record for `com.hejitech.headway` (name "Headway",

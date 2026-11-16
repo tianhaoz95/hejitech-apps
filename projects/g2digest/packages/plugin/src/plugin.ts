@@ -333,6 +333,12 @@ export async function bootPlugin(opts: PluginOptions) {
       await kv.set(K.list, "");
       return showTour("pair", "This device was unpaired. Pair it again with a new code.");
     }
+    if (res?.status === 402) {
+      // The account has no G2 Digest Pro (any store): the tour, ending with how to get it.
+      await kv.set(K.bundle, "");
+      await kv.set(K.list, "");
+      return showTour("pro", "Your editions on these glasses need G2 Digest Pro: start a free week in the G2 Digest app or on the web.");
+    }
     let list: EditionRow[] | null = null;
     if (res?.ok) {
       list = (await res.json()) as EditionRow[];

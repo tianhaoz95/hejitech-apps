@@ -893,3 +893,28 @@ table.gesture-table td:first-child { width: 130px; white-space: nowrap; padding-
 .hero.with-promo .promo .play::after { left: 33px; top: 18px; border-width: 12px 0 12px 21px; }
 .hero.with-promo .promo-wrap figcaption { margin-top: 12px; text-align: center; }
 @media (max-width: 700px) { .hero.with-promo { padding-top: 24px; } .hero.with-promo .promo-wrap { margin-top: 24px; } .hero.with-promo .promo .play { width: 68px; height: 48px; margin: -24px 0 0 -34px; } .hero.with-promo .promo .play::after { left: 27px; top: 14px; border-width: 10px 0 10px 17px; } }
+
+/* Headway Pro (pro.ts): the offer over a blurred glimpse of the app, as in the apps ("Peek"). */
+.pro-peek { position: relative; min-height: 640px; display: flex; align-items: flex-end; justify-content: center; padding-top: 140px; }
+.pro-glimpse { position: absolute; inset: 0 0 auto; padding: 8px 4px; filter: blur(6px); opacity: 0.85; pointer-events: none; user-select: none; }
+.pro-glimpse h2 { font-size: 30px; margin: 0 0 12px; }
+.pro-glimpse-row { display: flex; gap: 16px; padding: 14px 16px; margin-bottom: 8px; border-radius: var(--radius-sm); background: var(--card); border: 1px solid var(--line); }
+.pro-glimpse-row b { color: var(--accent); min-width: 64px; }
+.pro-glimpse-row small { display: block; color: var(--muted); }
+.pro-sheet { position: relative; width: 100%; max-width: 520px; background: var(--card); border: 1px solid var(--line); border-radius: 28px; padding: 22px 22px 18px; box-shadow: 0 -10px 40px rgb(0 0 0 / 0.16); display: flex; flex-direction: column; gap: 12px; }
+.pro-lock { font-size: 12.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.pro-hook { font-size: 26px; line-height: 1.15; margin: 0; }
+.pro-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+@media (max-width: 480px) { .pro-tiles { grid-template-columns: repeat(2, 1fr); } }
+.pro-tiles span { padding: 12px 6px; border-radius: 12px; background: var(--accent-soft); text-align: center; font-size: 12.5px; font-weight: 650; }
+.pro-plans { display: grid; gap: 10px; margin-top: 4px; }
+.pro-plan { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 16px 14px 14px; border-radius: 16px; border: 2px solid var(--line); background: var(--card-sub); color: var(--fg); font: inherit; cursor: pointer; }
+.pro-plan.on { border-color: var(--accent); background: var(--accent-soft); }
+.pro-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line-strong); flex: none; box-sizing: border-box; }
+.pro-plan.on .pro-radio { border: 6px solid var(--accent); }
+.pro-plan-text { flex: 1; } .pro-plan-text b, .pro-plan-price b { display: block; font-size: 16px; }
+.pro-plan-text small { color: var(--muted); font-size: 12.5px; }
+.pro-tag { position: absolute; top: -10px; right: 14px; font-style: normal; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 99px; background: var(--accent); color: var(--accent-fg); }
+.pro-cta { width: 100%; height: auto; padding: 15px; font-size: 17px; border-radius: 16px; }
+.pro-center { text-align: center; margin: 0; }
+.tiny { font-size: 11.5px; line-height: 1.45; }

@@ -46,6 +46,24 @@ curl -s https://fitloop.hejitech.workers.dev/.well-known/oauth-authorization-ser
 Then connect a real agent: in Claude, Settings → Connectors → Add custom connector →
 `https://fitloop.hejitech.workers.dev/mcp`, sign in, and ask for a plan.
 
+
+### Pro on the web (Stripe) and App Store notifications
+
+Set up 2026-11-16 (decisions: "Pro on every platform"). Stripe is the shared HEJI account; the
+product, the yearly and lifetime prices and the webhook (`https://fitloop.hejitech.workers.dev/stripe/webhook`,
+five events) come from `node scripts/stripe_pro.mjs fitloop --live` (idempotent; ids and the webhook
+secret in `~/Credentials/stripe.env`, `FITLOOP_STRIPE_*`). The price ids are `env.production.vars` in
+`wrangler.jsonc`; the keys are secrets:
+
+```sh
+npx wrangler secret put STRIPE_SECRET_KEY --env production       # HEJI_TECHNOLOGY_LIVE_SECRET_KEY
+npx wrangler secret put STRIPE_WEBHOOK_SECRET --env production   # FITLOOP_STRIPE_WEBHOOK_SECRET
+```
+
+App Store Server Notifications V2 (production and sandbox) go to `/appstore/notifications`:
+`node .claude/skills/heji-app-store-iap/iap.mjs notifications com.hejitech.fitloop https://fitloop.hejitech.workers.dev/appstore/notifications`.
+Locally, put the sandbox key and `node scripts/stripe_pro.mjs fitloop`'s price ids in `.dev.vars`.
+
 ## 4. iPhone and Watch apps
 
 1. App Store Connect (the owner): a new app record for `com.hejitech.fitloop` (category Health &

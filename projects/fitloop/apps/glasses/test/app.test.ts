@@ -96,6 +96,17 @@ describe("plugin", () => {
     expect(t.posts.at(-1)).toEqual({ path: "/api/feedback", body: { date: DATE, ref: "full-body-a/bike", tags: ["too_easy"] } });
     expect(t.lines().at(-1)).toBe(">> SENT TO YOUR AGENT");
   });
+  it("without FitLoop Pro on the account: the demo day and a note, and nothing is sent", async () => {
+    const calls: string[] = [];
+    const t = setup((u, init) => { calls.push(`${init?.method ?? "GET"} ${u.pathname}`); return json({ error: "pro_required" }, 402); });
+    await t.app.start();
+    expect(t.app.paired).toBe(true);
+    expect(t.app.needsPro).toBe(true);
+    expect(t.store.data[K.token]).toBe("fld_x");
+    expect(t.app.world().demo).toBe(true);
+    expect(t.app.world().note).toBe("Get FitLoop Pro in the app");
+    expect(calls.filter((c) => c.startsWith("POST"))).toEqual([]);
+  });
   it("forgets a revoked token", async () => {
     const t = setup(() => json({ error: "x" }, 401));
     await t.app.start();

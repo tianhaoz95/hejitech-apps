@@ -101,11 +101,16 @@ public final class AppModel: ObservableObject {
         }
         // The built-in tour until the first refresh brings an edition.
         self.currentBundle = TourBuilder.makeTour(reason: hasAccess ? .waiting : .pair)
-        // Pro given by email (scripts/grant_pro.sh), checked by the purchase gate after sign-in.
+        // Pro on the account (any store, or given by email), checked by the purchase gate after sign-in.
         ProStore.shared.grantChecker = { [weak self] in
             guard let self, self.isSignedIn else { throw CancellationError() }
             let a = try JSONDecoder().decode(ProGrantAnswer.self, from: try await self.api.fetchProGrant())
             return (a.pro, a.untilDate, a.email)
+        }
+        // Purchases made on this iPhone go to the account, so Pro works on the web and glasses too.
+        ProStore.shared.transactionUploader = { [weak self] signed in
+            guard let self, self.isSignedIn else { return }
+            try await self.api.uploadPurchases(signed)
         }
     }
 

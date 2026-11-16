@@ -6,6 +6,7 @@ const root = __dirname;
 const pages = {
   index: "index.html",
   login: "login/index.html",
+  pro: "pro/index.html",
   pair: "pair/index.html",
   brief: "brief/index.html",
   edition: "edition/index.html",

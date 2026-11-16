@@ -47,6 +47,24 @@ path `projects/g2digest/*`.
 Smoke test: `/`, `/preview/fixture`, `/.well-known/oauth-authorization-server`, `POST /mcp` without
 a token (401 with `resource_metadata`).
 
+
+### Pro on the web (Stripe) and App Store notifications
+
+Set up 2026-11-16 (decisions: "Pro on every platform"). Stripe is the shared HEJI account; the
+product, the yearly and lifetime prices and the webhook (`https://g2digest.hejitech.workers.dev/stripe/webhook`,
+five events) come from `node scripts/stripe_pro.mjs g2digest --live` (idempotent; ids and the webhook
+secret in `~/Credentials/stripe.env`, `G2DIGEST_STRIPE_*`). The price ids are `env.production.vars` in
+`wrangler.jsonc`; the keys are secrets:
+
+```sh
+npx wrangler secret put STRIPE_SECRET_KEY --env production       # HEJI_TECHNOLOGY_LIVE_SECRET_KEY
+npx wrangler secret put STRIPE_WEBHOOK_SECRET --env production   # G2DIGEST_STRIPE_WEBHOOK_SECRET
+```
+
+App Store Server Notifications V2 (production and sandbox) go to `/appstore/notifications`:
+`node .claude/skills/heji-app-store-iap/iap.mjs notifications com.hejitech.g2digest https://g2digest.hejitech.workers.dev/appstore/notifications`.
+Locally, put the sandbox key and `node scripts/stripe_pro.mjs g2digest`'s price ids in `.dev.vars`.
+
 ## 4. Plugin
 
 - Load the hosted page on the glasses with no package: `evenhub qr --url https://g2digest.hejitech.workers.dev/glasses/`

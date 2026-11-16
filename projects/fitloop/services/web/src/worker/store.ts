@@ -4,6 +4,11 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { dayState, normalizeSettings, type Checkin, type Feedback, type Plan, type PublishedPlan, type Settings } from "@fitloop/core";
 
 export interface Env {
+  /** Stripe (billing.ts): the HEJI account's secret key and this Worker's webhook secret (secrets), the two price ids (vars). */
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  STRIPE_PRICE_ANNUAL?: string;
+  STRIPE_PRICE_LIFETIME?: string;
   OAUTH_KV: KVNamespace;
   ASSETS: Fetcher;
   /** This site's origin; the MCP resource is `${PUBLIC_URL}/mcp`. */

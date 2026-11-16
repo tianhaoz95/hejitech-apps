@@ -71,6 +71,8 @@ export class FitLoopApp {
   data: TodayData | null = null;
   hr: number | null = null;
   paired = false;
+  /** The paired account has no FitLoop Pro (402 from the Worker). */
+  needsPro = false;
   online = true;
   workoutActive = false;
   private queue: Queued[] = [];
@@ -94,8 +96,8 @@ export class FitLoopApp {
       hr: this.hr,
       showHr: d?.glasses.show_hr ?? true,
       autoRest: d?.glasses.auto_rest_timer ?? true,
-      note: !this.paired ? undefined : !this.online ? `Offline${this.queue.length ? `: ${this.queue.length} to send` : ""}` : undefined,
-      demo: !this.paired,
+      note: !this.paired ? undefined : this.needsPro ? "Get FitLoop Pro in the app" : !this.online ? `Offline${this.queue.length ? `: ${this.queue.length} to send` : ""}` : undefined,
+      demo: !this.paired || this.needsPro,
     };
   }
 
@@ -139,6 +141,15 @@ export class FitLoopApp {
         this.data = null;
         this.render();
         this.status("These glasses were unpaired. Pair again with a new code.");
+        return;
+      }
+      this.needsPro = res.status === 402;
+      if (this.needsPro) {
+        // The account has no FitLoop Pro (any store): the demo day and a note, never a dead end.
+        this.data = demoDay(this.today(), parse<Checkin[]>(await this.opts.store.get(K.demo)) ?? []);
+        this.online = true;
+        this.render();
+        this.status("Your plan on these glasses needs FitLoop Pro: start a free week in the FitLoop app or on the web.");
         return;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -205,10 +216,10 @@ export class FitLoopApp {
         const checkin: Checkin = { ...c.checkin, plan_version: this.data?.plan?.version ?? 0, at: new Date(this.now()).toISOString() };
         this.data?.checkins.push(checkin);
         this.render();
-        if (!this.paired) await this.opts.store.set(K.demo, JSON.stringify(this.data?.checkins ?? []));
+        if (!this.paired || this.needsPro) await this.opts.store.set(K.demo, JSON.stringify(this.data?.checkins ?? []));
         else await this.send({ path: "/api/checkins", body: checkin });
       } else if (c.kind === "feedback") {
-        if (this.paired) await this.send({ path: "/api/feedback", body: { date: c.date, ref: c.ref, tags: c.tags } });
+        if (this.paired && !this.needsPro) await this.send({ path: "/api/feedback", body: { date: c.date, ref: c.ref, tags: c.tags } });
       } else if (c.kind === "exit") {
         this.opts.onExit?.();
       } else if (c.kind === "workout") {

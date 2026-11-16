@@ -81,6 +81,12 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|f
 - **Wear OS app** (`apps/android/wear`): Companion smartwatch app built with Wear Compose. Features live wrist departure board, one-tap trip tracking, a glanceable Wear OS Tile (`HeadwayBoardTileService`) on the watch carousel, and a watch face complication (`NextTrainComplicationService`) for departure countdowns.
 - **Android Core library** (`apps/android/core`): Shared Kotlin data models, Caltrain station index, Pacific time conversions (`Clock`), coroutine HTTP API client (`HeadwayApiClient`), and Wearable Data Layer message serialization (`WatchSyncState`).
 
+**Pro on every platform** (`docs/decisions.md`, 2026-11-16): `worker/billing.ts` (purchases from every store +
+`pro_grants` → `proStatus()`, GET /api/pro, Stripe Checkout/portal/webhook, the 402 gate for the web, glasses and
+MCP), `worker/appstore.ts` (App Store JWS + Server Notifications), `worker/pro-config.ts` (names, products, the
+web's Pro page), web `src/pro.ts` (the Peek paywall over Stripe). The iPhone app's `ProStore` hands its
+transactions to the account. Tests: `services/web/test/billing.test.ts`. Setup: `docs/DEPLOY.md`.
+
 ## Pitfalls
 
 - `test-api.mjs`'s "Not on it" uses its second user: on the seed rider it hides the card for 20 minutes.

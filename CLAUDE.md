@@ -177,6 +177,13 @@ are the `heji-app-store-iap` skill. What worked:
   Headway, FitLoop and G2 Digest went in this way on 2026-11-14 (Waypack isn't submitted yet).
 - Free Pro for an email address (testers, early adopters, the owner): `scripts/grant_pro.sh <project>
   <email> [--until YYYY-MM-DD] [--revoke] | --list` (skill §5). Waypack, Headway, FitLoop, G2 Digest.
+- Pro on every platform (Headway, FitLoop, G2 Digest, 2026-11-16): one answer per account. Each Worker
+  keeps `<project>.purchases` (App Store transactions verified against Apple's root, Stripe's signed
+  webhook) and combines it with `pro_grants` in GET /api/pro (`worker/billing.ts`, `appstore.ts`,
+  `pro-config.ts`; the same files in each project). The web sells Pro with Stripe Checkout (`node
+  scripts/stripe_pro.mjs <project> [--live]` makes the product, prices and webhook) and the web, glasses
+  and MCP get 402 without it; the iPhone apps gate on the phone and hand their transactions to the
+  account. Google Play Billing is still the owner's call (Android stays paid upfront until then).
 - Owner's prices and model: memory, and each project's `docs/DEPLOY.md` price note.
 
 ## Common pitfalls

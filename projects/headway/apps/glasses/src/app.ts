@@ -54,6 +54,8 @@ export class HeadwayApp {
   onTrain: OnTrainCard | null = null;
   paired = false;
   note: string | undefined;
+  /** The paired account has no Headway Pro (402 from the Worker). */
+  needsPro = false;
   private pair: Pair | null = null;
   private readonly fetch: Fetch;
   private readonly now: () => number;
@@ -125,6 +127,20 @@ export class HeadwayApp {
           this.paired = false;
           this.status("These glasses were unpaired. Pair again with a new code.");
           return this.refresh();
+        }
+        this.needsPro = res.status === 402;
+        if (this.needsPro) {
+          // The account has no Headway Pro (any store): a live board for the last pair, like unpaired.
+          this.hasCommute = false;
+          this.onTrain = null;
+          this.board = await this.publicBoard(this.pair ?? DEFAULT_PAIR);
+          await this.refreshProgress(null);
+          this.note = "Get Headway Pro in the app";
+          if (this.board) await this.opts.store.set(K.last, JSON.stringify({ from: this.board.from.id, to: this.board.to.id }));
+          this.nav.boardChanged(this.world());
+          this.render();
+          this.status("Your commute on these glasses needs Headway Pro: start a free week in the Headway app or on the web.");
+          return;
         }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const body = (await res.json()) as { board: Board | null; has_commute: boolean; tracked: (Tracked & { progress: TrainProgress }) | null; on_train?: OnTrainCard | null };

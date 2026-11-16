@@ -5,7 +5,7 @@ import { initialState, step } from "../src/player.ts";
 import { isTour, tour, type TourReason } from "../src/tour.ts";
 import { fixtureBundle } from "./helpers.ts";
 
-const REASONS: TourReason[] = ["pair", "waiting", "offline"];
+const REASONS: TourReason[] = ["pair", "waiting", "offline", "pro"];
 
 describe("tour (the bundle shown when there's no edition)", () => {
   it.each(REASONS)("every card fits the glasses (%s)", (reason) => {
@@ -18,6 +18,7 @@ describe("tour (the bundle shown when there's no edition)", () => {
   it("ends with the next step for the reason", () => {
     expect(render(tour("pair", "2026-10-24")).at(-2)!.lines.join(" ")).toContain("Pair your glasses");
     expect(render(tour("waiting", "2026-10-24")).at(-2)!.lines.join(" ")).toContain("Connect an agent");
+    expect(render(tour("pro", "2026-10-24")).at(-2)!.lines.join(" ")).toContain("G2 Digest Pro");
   });
   it("answers every gesture on every card (Even Hub review)", () => {
     const frames = render(tour("pair", "2026-10-24"));

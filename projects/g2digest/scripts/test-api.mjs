@@ -319,4 +319,20 @@ await step("pages: home, pretty edition/preview routes, plugin page, spike, fixt
   assert.equal((await fetch(`${site}/nope`)).status, 404);
 });
 
+await step("Pro: one answer per account; without it the web gets 402 and the apps aren't refused", async () => {
+  assert.equal((await call("/api/pro", { auth: session })).body.pro, true, "the seed account's grant");
+  const theirs = await call("/api/pro", { auth: other });
+  assert.equal(theirs.status, 200, theirs.text);
+  assert.equal(theirs.body.pro, false);
+  assert.equal(theirs.body.had_purchase, false);
+  const web = { "Sec-Fetch-Site": "same-origin" }; // what every browser sends; native apps (and Node) don't
+  const refused = await call("/api/brief", { auth: other, headers: web });
+  assert.equal(refused.status, 402, refused.text);
+  assert.equal(refused.body.error, "pro_required");
+  assert.notEqual((await call("/api/brief", { auth: other })).status, 402, "native apps gate on the phone");
+  assert.equal((await call("/api/brief", { auth: session, headers: web })).status, 200);
+  const junk = await call("/api/appstore/transactions", { method: "POST", auth: other, body: { transactions: ["junk"] } });
+  assert.deepEqual(junk.body.rejected, ["not a JWS"]);
+  assert.equal((await fetch(`${site}/stripe/webhook`, { method: "POST", body: "{}", headers: { "Stripe-Signature": "t=1,v1=00" } })).status, 400);
+});
 console.log(`G2 Digest integration: ${steps.length} checks passed`);

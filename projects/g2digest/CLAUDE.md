@@ -63,6 +63,12 @@ Local tokens from the seed: agent `g2a_dev_local_token`, glasses `g2d_dev_local_
   the list; the tour is the root page when there's nothing to read), contextual menu as a second route to the deep dive, bridge local storage for the
   token / last bundle / position / audio mode, Cache Storage for audio.
 
+**Pro on every platform** (`docs/decisions.md`, 2026-11-16): `worker/billing.ts` (purchases from every store +
+`pro_grants` → `proStatus()`, GET /api/pro, Stripe Checkout/portal/webhook, the 402 gate for the web, glasses and
+MCP), `worker/appstore.ts` (App Store JWS + Server Notifications), `worker/pro-config.ts` (names, products, the
+web's Pro page), web `src/pro.ts` (the Peek paywall over Stripe). The iPhone app's `ProStore` hands its
+transactions to the account. Tests: `services/web/test/billing.test.ts`. Setup: `docs/DEPLOY.md`.
+
 ## Pitfalls
 
 - The Even SDK returns a bridge object in any browser: check `flutter_inappwebview` (as

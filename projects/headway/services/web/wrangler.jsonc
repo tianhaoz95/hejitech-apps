@@ -16,7 +16,7 @@
     "binding": "ASSETS",
     "not_found_handling": "404-page",
     "html_handling": "auto-trailing-slash",
-    "run_worker_first": ["/mcp", "/mcp/*", "/authorize", "/token", "/register", "/.well-known/*", "/api/*", "/eta/*"]
+    "run_worker_first": ["/mcp", "/mcp/*", "/stripe/*", "/appstore/*", "/authorize", "/token", "/register", "/.well-known/*", "/api/*", "/eta/*"]
   },
   "triggers": { "crons": ["* * * * *"] },
   "vars": {
@@ -44,6 +44,8 @@
       "workers_dev": true,
       "triggers": { "crons": ["* * * * *"] },
       "vars": {
+        "STRIPE_PRICE_ANNUAL": "price_1UcRiqJiNqYDPd3owBxXwmAj",
+        "STRIPE_PRICE_LIFETIME": "price_1UcRirJiNqYDPd3oezbwV5b1",
         "PUBLIC_URL": "https://headway.hejitech.workers.dev",
         "SUPABASE_URL": "https://jitdzllkxfhlrxxvljhp.supabase.co",
         "SUPABASE_ANON_KEY": "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8",

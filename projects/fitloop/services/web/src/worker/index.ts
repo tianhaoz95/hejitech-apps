@@ -14,6 +14,8 @@
 
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { handleApi } from "./api.ts";
+import { handleNotification } from "./appstore.ts";
+import { handleStripeWebhook, proRequired, proStatus } from "./billing.ts";
 import { handleMcp, type Caller } from "./mcp.ts";
 import { admin, json, PREFIX, resolveAgent, supabaseUser, type Env as BaseEnv } from "./store.ts";
 
@@ -31,6 +33,10 @@ const mcpHandler = {
     const props = ctx.props;
     if (!props?.userId) return new Response("unauthorized", { status: 401 });
     const caller: Caller = { userId: props.userId, via: props.via };
+    // Assistants need Pro, like the web and the glasses (billing.ts).
+    const proDb = admin(env);
+    const email = (await proDb.auth.admin.getUserById(props.userId).catch(() => null))?.data.user?.email;
+    if (!(await proStatus(proDb, props.userId, email)).pro) return json(proRequired(env), 402);
     return handleMcp(req, caller, admin(env), env.PUBLIC_URL);
   },
 };
@@ -123,6 +129,13 @@ const app = {
         const { items } = await env.OAUTH_PROVIDER.listUserGrants(user.id);
         await Promise.all(items.map((g) => env.OAUTH_PROVIDER.revokeGrant(g.id, user.id)));
       }
+    }
+    // The stores tell us about renewals, cancellations and refunds (billing.ts, appstore.ts).
+    if (url.pathname === "/stripe/webhook" && req.method === "POST") return handleStripeWebhook(env, admin(env), req);
+    if (url.pathname === "/appstore/notifications" && req.method === "POST") {
+      const r = await handleNotification(admin(env), await req.json().catch(() => null));
+      console.log("appstore notification", r.result);
+      return json({ ok: r.status < 300, result: r.result }, r.status);
     }
     if (url.pathname.startsWith("/api/")) return handleApi(req, env, url);
     return env.ASSETS.fetch(req);

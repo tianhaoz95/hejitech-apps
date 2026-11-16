@@ -199,3 +199,29 @@ glasses or Android ever need Pro, add server-side verification (skill `heji-app-
 into this project. Nobody had bought the paid version (it was never live), so
 there is no grandfathering.
 
+## G2 Digest Pro on every platform: Stripe on the web, one answer for every store (2026-11-16)
+
+The owner asked for the same paywall on every platform, the web selling Pro through Stripe, and a
+purchase on any platform unlocking all of them. This amends "G2 Digest Pro: a free download with in-app
+purchases" (only the iPhone app was gated, checked on the phone).
+
+- **One answer.** `g2digest.purchases` holds a row per purchase from any store (`app_store:<original
+  transaction id>`, `stripe:<subscription or payment intent>`, later `play:<token>`); the Worker
+  verifies each store's own record before writing it (`worker/appstore.ts`: Apple's JWS chain pinned to
+  Apple Root CA - G3, as Waypack does; `worker/billing.ts`: Stripe's signed webhook). `proStatus()`
+  combines them with `pro_grants` and GET /api/pro returns it, with the web's offers.
+- **Web.** Stripe Checkout (the yearly plan with a 7-day trial on the account's first purchase, or
+  lifetime, same US prices as the App Store) and Stripe's portal, from `/pro/` (the Peek paywall,
+  `src/pro.ts`). Without Pro the web gets 402 for every signed-in page and the podcast feed. Products, prices and the webhook come from
+  `scripts/stripe_pro.mjs g2digest --live`; everything carries metadata app=g2digest on the shared HEJI account.
+- **iPhone.** StoreKit still decides on the phone, and the app also accepts Pro from the account (any
+  store). It hands its transactions to POST /api/appstore/transactions after sign-in, a purchase and a
+  restore; App Store Server Notifications V2 (`/appstore/notifications`) report renewals and refunds.
+  The server doesn't refuse native requests, so builds from before this (one is in App Review) keep
+  working: the web, the glasses (device tokens) and assistants (MCP) are what it gates.
+- **Glasses and assistants.** A paired account without Pro gets 402; the plugin shows what it shows
+  unpaired with a note to get Pro in the app.
+- **Google Play** is the owner's open call: making the Android app free to sell Pro with Play Billing
+  can't be undone on Play. Until then Android stays a one-time purchase on Play and isn't counted here.
+- Purchase rows are kept when someone deletes their G2 Digest data: they are the account's purchase records.
+

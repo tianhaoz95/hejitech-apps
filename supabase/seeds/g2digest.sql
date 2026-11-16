@@ -70,3 +70,6 @@ insert into g2digest.access_tokens (user_id, name, token_hash) values
 insert into g2digest.device_tokens (user_id, kind, label, token_hash) values
   ('00000000-0000-4000-8000-0000000002d1', 'glasses', 'Dev glasses', encode(digest('g2d_dev_local_device', 'sha256'), 'hex')),
   ('00000000-0000-4000-8000-0000000002d1', 'feed', 'Dev podcast feed', encode(digest('g2f_dev_local_feed', 'sha256'), 'hex'));
+
+-- Pro for the seed account, as a tester would have it (scripts/grant_pro.sh), so its glasses and assistant tokens work.
+insert into g2digest.pro_grants (email, until, note) values ('reader@example.com', null, 'seed') on conflict (email) do nothing;

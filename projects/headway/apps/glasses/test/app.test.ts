@@ -100,6 +100,18 @@ describe("paired", () => {
     expect(store.data[K.token]).toBe("");
     expect(app.paired).toBe(false);
   });
+  it("without Headway Pro on the account: a live board and a note to get Pro", async () => {
+    const store = memory({ [K.token]: "hwd_free" });
+    const { app, lines } = setup((u) => (u.pathname === "/api/me/board" ? json({ error: "pro_required" }, 402)
+      : u.pathname === "/api/board" ? json({ ...board(u.searchParams.get("from")!, u.searchParams.get("to")!, NOW, null)!, live: true }) : json({}, 404)), store);
+    await app.start();
+    expect(app.paired).toBe(true);
+    expect(app.needsPro).toBe(true);
+    expect(store.data[K.token]).toBe("hwd_free");
+    expect(lines()[0]).toMatch(/^SF > SJ DIRIDON/);
+    expect(lines().at(-2)).toBe("Get Headway Pro in the app");
+    for (const l of lines()) expect(textPx(l)).toBeLessThanOrEqual(LINE_PX);
+  });
   it("pairs with a code", async () => {
     const store = memory();
     const { app } = setup((u) => (u.pathname === "/api/pair" ? json({ device_token: "hwd_new" }) : u.pathname === "/api/me/board" ? json({ board: commute, has_commute: true, tracked: null }) : json({}, 404)), store);

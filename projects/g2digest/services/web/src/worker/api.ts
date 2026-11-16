@@ -9,8 +9,13 @@ import { checkBrief, type Brief } from "@g2digest/core";
 import {
   admin, Conflict, getEdition, json, listEditions, loadBrief, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken,
   resolveDevice, saveBrief, sha256, signedAudio, supabaseUser, type Db, type Env,
-  proGrant,
 } from "./store.ts";
+import { checkout, fromBrowser, offers, portal, proRequired, proStatus, StripeError } from "./billing.ts";
+import { recordTransactions } from "./appstore.ts";
+
+/** What a signed-in account can still do without Pro on the web: delete its data. */
+const OPEN_WITHOUT_PRO = new Set(["/api/account"]);
+
 import { podcastFeed } from "./feed.ts";
 
 const PAIR_FAILURES_PER_WINDOW = 10;
@@ -76,6 +81,35 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   const who = await caller(env, db, req);
   if (!who) return reply({ error: "sign in, or pair this device again" }, 401);
 
+  // ------------------------------------------------------------ Pro (billing.ts, appstore.ts)
+  // One answer for every platform: App Store, Stripe and Google Play purchases and grants by email.
+  if (path === "/api/pro" && req.method === "GET") {
+    const status = await proStatus(db, who.userId, who.email);
+    const onSale = who.via === "session" ? await offers(env).catch(() => []) : [];
+    return reply({ ...status, email: who.email ?? null, offers: onSale });
+  }
+  if (path === "/api/appstore/transactions" && req.method === "POST") {
+    if (who.via !== "session") return reply({ error: "sign in" }, 403);
+    const body = (await req.json().catch(() => null)) as { transactions?: unknown } | null;
+    const r = await recordTransactions(db, who.userId, body?.transactions);
+    return reply({ ...r, ...(await proStatus(db, who.userId, who.email)) });
+  }
+  if ((path === "/api/billing/checkout" || path === "/api/billing/portal") && req.method === "POST") {
+    if (who.via !== "session") return reply({ error: "sign in" }, 403);
+    try {
+      const body = (await req.json().catch(() => ({}))) as { plan?: unknown };
+      const user = { userId: who.userId, email: who.email };
+      return reply({ url: path.endsWith("checkout") ? await checkout(env, db, user, body.plan) : await portal(env, db, user) });
+    } catch (e) {
+      if (e instanceof StripeError) return reply({ error: e.message }, e.status);
+      throw e;
+    }
+  }
+  // The web pages and the glasses need Pro; the native apps gate on the phone (billing.ts).
+  if ((who.via === "device" || fromBrowser(req)) && !OPEN_WITHOUT_PRO.has(path) && !(await proStatus(db, who.userId, who.email)).pro) {
+    return reply(proRequired(env), 402);
+  }
+
   // ------------------------------------------------------------ editions (session or device)
   if (path === "/api/device" && req.method === "GET") return reply({ paired: true, via: who.via });
   const ed = path.match(/^\/api\/editions\/(latest|\d{4}-\d{2}-\d{2})$/);
@@ -84,11 +118,6 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
 
   if (who.via !== "session") return reply({ error: "this needs the web app (a device token only reads editions)" }, 403);
   const userId = who.userId;
-  // Pro given by email (scripts/grant_pro.sh); purchases are checked on the phone by StoreKit.
-  if (path === "/api/pro" && req.method === "GET") {
-    const grant = who.via === "session" ? await proGrant(db, who.email) : null;
-    return reply({ pro: Boolean(grant), source: grant ? "grant" : null, until: grant?.until ?? null, email: who.email ?? null });
-  }
 
   // ------------------------------------------------------------ brief (session only, never the agent)
   if (path === "/api/brief" && req.method === "GET") return reply(await loadBrief(db, userId));

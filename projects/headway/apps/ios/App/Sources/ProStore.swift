@@ -30,7 +30,10 @@ final class ProStore {
 
     /// Asks the app's Worker `GET /api/pro` for the signed-in account; set by the app at launch.
     var grantChecker: (() async throws -> (pro: Bool, until: Date?, email: String?))?
-    /// The person tapped "Have a Pro invite? Sign in": the gate shows the sign-in instead of the paywall.
+    /// Hands this phone's App Store purchases to the signed-in account (POST /api/appstore/transactions),
+    /// so the web, the glasses and every other app signed in to it have Pro too. Set by the app.
+    var transactionUploader: (([String]) async throws -> Void)?
+    /// The person tapped "Already have Pro? Sign in": the gate shows the sign-in instead of the paywall.
     var inviteSignIn = false
     private(set) var checkingGrant = false
     /// Shown on the paywall after an invite sign-in without a grant.
@@ -50,18 +53,19 @@ final class ProStore {
         guard let check = grantChecker, !checkingGrant else { return }
         checkingGrant = true
         defer { checkingGrant = false }
+        await uploadPurchases()
         do {
             let answer = try await check()
             // No end date = for good: store a far-future date.
             grantUntil = answer.pro ? (answer.until ?? .distantFuture) : nil
             UserDefaults.standard.set(grantUntil?.timeIntervalSince1970 ?? 0, forKey: Self.grantKey)
-            grantNote = answer.pro ? nil : "There's no Headway Pro invite for \(answer.email ?? "this account") yet."
+            grantNote = answer.pro ? nil : "There's no Headway Pro on \(answer.email ?? "this account") yet."
             if answer.pro { inviteSignIn = false }
         } catch is CancellationError {
             // Signed out: nothing to check.
         } catch {
             // Offline: keep the last answer, and say why the paywall is still up (the app checks again when it comes back).
-            if !isPro { grantNote = "Couldn't check for a Headway Pro invite: \(error.localizedDescription)" }
+            if !isPro { grantNote = "Couldn't check your account for Headway Pro: \(error.localizedDescription)" }
         }
     }
 
@@ -130,6 +134,17 @@ final class ProStore {
         checked = true
     }
 
+    /// Sends what this Apple Account owns to the signed-in account (after a purchase or restore, and
+    /// before each account check). Signed out, or offline, it waits for the next time.
+    func uploadPurchases() async {
+        guard let upload = transactionUploader else { return }
+        var signed: [String] = []
+        for await result in Transaction.currentEntitlements {
+            if case .verified(let t) = result, Self.ids.contains(t.productID) { signed.append(result.jwsRepresentation) }
+        }
+        if !signed.isEmpty { try? await upload(signed) }
+    }
+
     func buy(_ id: String) async {
         guard let product = products[id], busy == nil else { return }
         busy = id
@@ -144,6 +159,7 @@ final class ProStore {
                     error = "The App Store couldn't verify this purchase."
                 }
                 await refresh()
+                await uploadPurchases()
             case .pending:
                 error = "The purchase is waiting for approval. Headway unlocks as soon as it's approved."
             case .userCancelled:
@@ -168,6 +184,7 @@ final class ProStore {
             return
         }
         await refresh()
+        await uploadPurchases()
         if plan == nil { error = "No Headway Pro purchase was found for this Apple Account." }
     }
 }

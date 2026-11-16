@@ -38,6 +38,8 @@ export async function api<T = unknown>(path: string, init: RequestInit = {}): Pr
     headers: { "Content-Type": "application/json", ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}), ...(init.headers ?? {}) },
   });
   const body = (await res.json().catch(() => ({}))) as T;
+  // Without G2 Digest Pro the API answers 402: the web app's place for that is the offer at /pro/.
+  if (res.status === 402 && !location.pathname.startsWith("/pro/")) location.href = "/pro/";
   return { ok: res.ok, status: res.status, body };
 }
 

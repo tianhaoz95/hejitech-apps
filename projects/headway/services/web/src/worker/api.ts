@@ -4,6 +4,8 @@
 //   none                          stations, any board, a train's progress, status; POST /api/pair (throttled)
 //   session or glasses token      the user's commute board, the tracked train, the train they're on
 //   Supabase session (web, iPhone) settings, pairing codes, devices, push registration, agent tokens, family group, delete data
+//   session                        GET /api/pro, POST /api/appstore/transactions, /api/billing/checkout|portal (billing.ts)
+// Without Pro, the web pages and the glasses get 402 pro_required for everything signed in (billing.ts).
 import { devClock, now as clockNow } from "./clock.ts";
 import { appleKey, revokeIfPossible } from "./apple.ts";
 import { board, boardWeather, checkSettings, weatherReport, WEATHER_CELLS, isTravelMode, clock, commuteArrival, commuteBoard, commuteDoneCard, detectOnTrain, newLeg, onTrainCard, stillOnTrain, normalizeSettings, progress, station, STATIONS, timetableDaysLeft, TIMETABLE, tripProgressStops, validOrigin, type CommuteDone, type ExpressPreference, type OnTrainSample, type TravelMode, type Notification, type Settings, type Tracked } from "@headway/core";
@@ -15,8 +17,12 @@ import { agentCanEdit, recentAgentChanges, setAgentCanEdit, undoAgentChange } fr
 import {
   admin, bearer, createEtaShare, json, loadCommuteDone, loadEtaShare, loadLastRide, loadOnTrain, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
   revokeEtaShares, saveCommuteDone, saveLastRide, saveOnTrain, type OnTrainSession, saveSettings, saveTracked, sha256, supabaseUser, updateEtaShareExpiry, type Db, type Env,
-  proGrant,
 } from "./store.ts";
+import { checkout, fromBrowser, offers, portal, proRequired, proStatus, StripeError } from "./billing.ts";
+import { recordTransactions } from "./appstore.ts";
+
+/** What a signed-in account can still do without Pro on the web: delete its data. */
+const OPEN_WITHOUT_PRO = new Set(["/api/account"]);
 
 /** Every table holding a user's Headway rows (DELETE /api/account, the review account's reset). */
 /** An FCM registration token: URL-safe base64 with a colon, around 150–250 characters (never plain hex, which is an APNs token). */
@@ -200,10 +206,33 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   const who = await caller(env, db, req);
   if (!who) return reply({ error: "sign in, or pair these glasses again" }, 401);
   const userId = who.userId;
-  // Pro given by email (scripts/grant_pro.sh); purchases are checked on the phone by StoreKit.
+  // ------------------------------------------------------------ Pro (billing.ts, appstore.ts)
+  // One answer for every platform: App Store, Stripe and Google Play purchases and grants by email.
   if (path === "/api/pro" && req.method === "GET") {
-    const grant = who.via === "session" ? await proGrant(db, who.email) : null;
-    return reply({ pro: Boolean(grant), source: grant ? "grant" : null, until: grant?.until ?? null, email: who.email ?? null });
+    const status = await proStatus(db, userId, who.email);
+    const onSale = who.via === "session" ? await offers(env).catch(() => []) : [];
+    return reply({ ...status, email: who.email ?? null, offers: onSale });
+  }
+  if (path === "/api/appstore/transactions" && req.method === "POST") {
+    if (who.via !== "session") return reply({ error: "sign in" }, 403);
+    const body = (await req.json().catch(() => null)) as { transactions?: unknown } | null;
+    const r = await recordTransactions(db, userId, body?.transactions);
+    return reply({ ...r, ...(await proStatus(db, userId, who.email)) });
+  }
+  if ((path === "/api/billing/checkout" || path === "/api/billing/portal") && req.method === "POST") {
+    if (who.via !== "session") return reply({ error: "sign in" }, 403);
+    try {
+      const body = (await req.json().catch(() => ({}))) as { plan?: unknown };
+      const user = { userId, email: who.email };
+      return reply({ url: path.endsWith("checkout") ? await checkout(env, db, user, body.plan) : await portal(env, db, user) });
+    } catch (e) {
+      if (e instanceof StripeError) return reply({ error: e.message }, e.status);
+      throw e;
+    }
+  }
+  // The web pages and the glasses need Pro; the native apps gate on the phone (billing.ts).
+  if ((who.via === "device" || fromBrowser(req)) && !OPEN_WITHOUT_PRO.has(path) && !(await proStatus(db, userId, who.email)).pro) {
+    return reply(proRequired(env), 402);
   }
 
   // ------------------------------------------------------------ session or glasses

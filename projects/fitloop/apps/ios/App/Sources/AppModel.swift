@@ -52,6 +52,11 @@ final class AppModel {
             let a = try await self.backend.call("GET", "/api/pro", as: ProGrantAnswer.self)
             return (a.pro, a.untilDate, a.email)
         }
+        // Purchases made on this iPhone go to the account, so Pro works on the web and glasses too.
+        ProStore.shared.transactionUploader = { [weak self] signed in
+            guard let self, self.backend.session != nil else { return }
+            _ = try await self.backend.call("POST", "/api/appstore/transactions", body: ["transactions": signed], as: UploadedPurchases.self)
+        }
         #if DEBUG
         // `-date YYYY-MM-DD` opens another day (screenshots of a workout day without taps).
         let args = ProcessInfo.processInfo.arguments
@@ -328,3 +333,6 @@ enum Keychain {
         return SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess ? out as? Data : nil
     }
 }
+
+/// POST /api/appstore/transactions's answer (only the count is read).
+private struct UploadedPurchases: Decodable { let saved: Int }

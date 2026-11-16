@@ -92,6 +92,11 @@ final class AppModel {
             let a = try await self.backend.call("GET", "/api/pro", as: ProGrantAnswer.self)
             return (a.pro, a.untilDate, a.email)
         }
+        // Purchases made on this iPhone go to the account, so Pro works on the web and glasses too.
+        ProStore.shared.transactionUploader = { [weak self] signed in
+            guard let self, self.backend.session != nil else { return }
+            _ = try await self.backend.call("POST", "/api/appstore/transactions", body: ["transactions": signed], as: UploadedPurchases.self)
+        }
         if let cached = UserDefaults.standard.data(forKey: "stations"), let s = try? JSONDecoder().decode([Station].self, from: cached) { stations = s }
 
         watch.onTrack = { [weak self] tripId, serviceDate, from, to in
@@ -650,3 +655,6 @@ enum Keychain {
         return SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess ? out as? Data : nil
     }
 }
+
+/// POST /api/appstore/transactions's answer (only the count is read).
+private struct UploadedPurchases: Decodable { let saved: Int }

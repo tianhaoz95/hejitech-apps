@@ -13,7 +13,7 @@
     "binding": "ASSETS",
     "not_found_handling": "404-page",
     "html_handling": "auto-trailing-slash",
-    "run_worker_first": ["/mcp", "/mcp/*", "/authorize", "/token", "/register", "/.well-known/*", "/api/*"]
+    "run_worker_first": ["/mcp", "/mcp/*", "/stripe/*", "/appstore/*", "/authorize", "/token", "/register", "/.well-known/*", "/api/*"]
   },
   "vars": {
     "PUBLIC_URL": "http://127.0.0.1:8794",
@@ -33,6 +33,8 @@
       "name": "fitloop",
       "workers_dev": true,
       "vars": {
+        "STRIPE_PRICE_ANNUAL": "price_1UcRisJiNqYDPd3ojuTWNxNd",
+        "STRIPE_PRICE_LIFETIME": "price_1UcRitJiNqYDPd3oMN08NEV0",
         "PUBLIC_URL": "https://fitloop.hejitech.workers.dev",
         "SUPABASE_URL": "https://jitdzllkxfhlrxxvljhp.supabase.co",
         "SUPABASE_ANON_KEY": "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8",

@@ -188,7 +188,7 @@ struct PaywallView: View {
             .font(.footnote)
             .disabled(pro.busy != nil)
             if !signedIn {
-                Button("Have a Pro invite? Sign in") { pro.inviteSignIn = true }
+                Button("Already have Pro? Sign in") { pro.inviteSignIn = true }
                     .font(.footnote).frame(maxWidth: .infinity)
                     .accessibilityIdentifier("invite-sign-in")
             }

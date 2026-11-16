@@ -90,6 +90,12 @@ FitLoop hosts and serves exercise demonstration GIFs at `/api/exercises/<slug>.g
 - **Procedural Rigging Engine** (`@fitloop/core`): Pure TypeScript parametric 2D skeletal animation engine using `omggif`. Renders rounded capsule limbs with depth layering and smooth sinusoidal motion cycles. Presets include `cat-cow`, `bird-dog`, `childs-pose`, `kneeling-hip-flexor`, and `basketball`.
 - **MCP tools**: `upload_exercise_gif` (upload custom or auto-cache) and `render_exercise_animation` (procedural generation).
 
+**Pro on every platform** (`docs/decisions.md`, 2026-11-16): `worker/billing.ts` (purchases from every store +
+`pro_grants` → `proStatus()`, GET /api/pro, Stripe Checkout/portal/webhook, the 402 gate for the web, glasses and
+MCP), `worker/appstore.ts` (App Store JWS + Server Notifications), `worker/pro-config.ts` (names, products, the
+web's Pro page), web `src/pro.ts` (the Peek paywall over Stripe). The iPhone app's `ProStore` hands its
+transactions to the account. Tests: `services/web/test/billing.test.ts`. Setup: `docs/DEPLOY.md`.
+
 ## Pitfalls
 
 - Dates are the client's local `YYYY-MM-DD` (`/api/today?date=`); the agent's "today" comes from

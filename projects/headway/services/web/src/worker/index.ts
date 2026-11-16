@@ -11,12 +11,15 @@
 //   POST /authorize               the consent page approves or denies, with the user's Supabase session
 //   GET/DELETE /api/grants        connected assistants (signed-in user)
 //   /api/*                        api.ts
+//   POST /stripe/webhook, POST /appstore/notifications   the stores' renewals, cancellations, refunds (billing.ts)
 //   scheduled (cron)              cron.ts
 //   everything else               static assets
 
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { progress, tripProgressStops, type Tracked } from "@headway/core";
 import { handleApi } from "./api.ts";
+import { handleNotification } from "./appstore.ts";
+import { handleStripeWebhook, proRequired, proStatus } from "./billing.ts";
 import { now as clockNow } from "./clock.ts";
 import { runCron } from "./cron.ts";
 import { renderEtaHtml } from "./eta.ts";
@@ -42,6 +45,9 @@ const mcpHandler = {
     if (!props?.userId) return new Response("unauthorized", { status: 401 });
     const caller: Caller = { userId: props.userId, via: props.via, client: props.client ?? null };
     const db = admin(env);
+    // Assistants need Pro, like the web and the glasses (billing.ts).
+    const email = (await db.auth.admin.getUserById(props.userId).catch(() => null))?.data.user?.email;
+    if (!(await proStatus(db, props.userId, email)).pro) return json(proRequired(env), 402);
     return handleMcp(req, caller, db, clockNow(env), () => loadWeather(env), (patch) => agentEditCommute(env, db, props.userId, caller.client ?? null, patch));
   },
 };
@@ -184,6 +190,13 @@ const app = {
           "Cache-Control": "public, max-age=15",
         },
       });
+    }
+    // The stores tell us about renewals, cancellations and refunds (billing.ts, appstore.ts).
+    if (url.pathname === "/stripe/webhook" && req.method === "POST") return handleStripeWebhook(env, admin(env), req);
+    if (url.pathname === "/appstore/notifications" && req.method === "POST") {
+      const r = await handleNotification(admin(env), await req.json().catch(() => null));
+      console.log("appstore notification", r.result);
+      return json({ ok: r.status < 300, result: r.result }, r.status);
     }
     if (url.pathname.startsWith("/api/")) return handleApi(req, env, url);
     return env.ASSETS.fetch(req);

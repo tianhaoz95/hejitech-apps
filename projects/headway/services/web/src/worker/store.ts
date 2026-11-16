@@ -13,6 +13,11 @@ export interface Env {
   SUPABASE_ANON_KEY: string;
   /** Secret. Server-side only; bypasses RLS for every project in the shared Supabase project. */
   SUPABASE_SERVICE_ROLE_KEY: string;
+  /** Stripe (billing.ts): the HEJI account's secret key and this Worker's webhook secret (secrets), the two price ids (vars). */
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  STRIPE_PRICE_ANNUAL?: string;
+  STRIPE_PRICE_LIFETIME?: string;
   /** Secrets for the App Review demo account (review.ts): its email and SHA-256 of its password. */
   REVIEW_EMAIL?: string;
   REVIEW_PASSWORD_SHA256?: string;

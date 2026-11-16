@@ -17,6 +17,8 @@
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { notifyEdition } from "./push.ts";
 import { handleApi } from "./api.ts";
+import { handleNotification } from "./appstore.ts";
+import { handleStripeWebhook, proRequired, proStatus } from "./billing.ts";
 import { handleMcp, type Caller } from "./mcp.ts";
 import { admin, deleteUserData, json, PREFIX, sha256, supabaseUser, type Env as BaseEnv } from "./store.ts";
 
@@ -35,6 +37,9 @@ const mcpHandler = {
     if (!props?.userId) return new Response("unauthorized", { status: 401 });
     const caller: Caller = { userId: props.userId, via: props.via };
     const db = admin(env);
+    // Assistants need Pro, like the web and the glasses (billing.ts).
+    const email = (await db.auth.admin.getUserById(props.userId).catch(() => null))?.data.user?.email;
+    if (!(await proStatus(db, props.userId, email)).pro) return json(proRequired(env), 402);
     return handleMcp(req, caller, db, env.OAUTH_KV, (userId, e) => notifyEdition(env, db, userId, e));
   },
 };
@@ -135,6 +140,13 @@ const app = {
     if (url.pathname === "/authorize") return authorize(req, env);
     if (url.pathname === "/api/grants" || url.pathname.startsWith("/api/grants/")) return grants(req, env, url);
     if (url.pathname === "/api/account" && req.method === "DELETE") return deleteAccount(req, env);
+    // The stores tell us about renewals, cancellations and refunds (billing.ts, appstore.ts).
+    if (url.pathname === "/stripe/webhook" && req.method === "POST") return handleStripeWebhook(env, admin(env), req);
+    if (url.pathname === "/appstore/notifications" && req.method === "POST") {
+      const r = await handleNotification(admin(env), await req.json().catch(() => null));
+      console.log("appstore notification", r.result);
+      return json({ ok: r.status < 300, result: r.result }, r.status);
+    }
     if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/feed/")) return handleApi(req, env, url);
     // Pretty routes for one date: the page reads the date from location.pathname.
     const page = url.pathname.match(/^\/(edition|preview)\/(?:\d{4}-\d{2}-\d{2}|latest|fixture)\/?$/);

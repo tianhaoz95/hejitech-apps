@@ -144,6 +144,11 @@ public actor G2DigestAPI {
         try await send("/api/pro")
     }
 
+    /// Hands this iPhone's App Store purchases (signed transactions) to the account.
+    public func uploadPurchases(_ signed: [String]) async throws {
+        _ = try await send("/api/appstore/transactions", method: "POST", json: ["transactions": signed])
+    }
+
     public func fetchDeviceStatus() async throws -> DeviceStatus {
         try decode(DeviceStatus.self, try await send("/api/device"))
     }
