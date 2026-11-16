@@ -20,10 +20,13 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.10.0"
+    static let currentVersion = "1.10.1"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.10.1", date: "November 2026", items: [
+            WhatsNewItem(icon: "arrow.triangle.2.circlepath", title: "A fresh build", description: "Nothing new to try in this one: it's a new build of 1.10.0, with Siri, Shortcuts and everything else as before."),
+        ]),
         ReleaseNotes(version: "1.10.0", date: "November 2026", items: [
             WhatsNewItem(icon: "mic.fill", title: "Ask Siri", description: "Say \"When's my next train in Headway\", \"Track my train with Headway\", \"Where's my train in Headway\" or \"Stop tracking in Headway\". Siri answers with live times, delays and when to leave. It works on your watch too."),
             WhatsNewItem(icon: "square.stack.3d.up.fill", title: "In the Shortcuts app", description: "Next Train, Track My Next Train, Where's My Train and Stop Tracking are actions you can build your own shortcuts and automations with."),
