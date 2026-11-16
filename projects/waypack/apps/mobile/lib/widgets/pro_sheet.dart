@@ -285,8 +285,9 @@ class _ProSheetState extends State<ProSheet> {
     String cta() {
       if (chosen == null) return '';
       if (pro.busy == chosen.id) return 'Opening the App Store…';
-      if (chosen.id == ProStore.lifetimeId)
+      if (chosen.id == ProStore.lifetimeId) {
         return 'Unlock for life · ${chosen.price}';
+      }
       return pro.introEligible
           ? 'Try 1 week free'
           : 'Continue · ${chosen.price}/year';
@@ -294,8 +295,9 @@ class _ProSheetState extends State<ProSheet> {
 
     String ctaNote() {
       if (chosen == null) return '';
-      if (chosen.id == ProStore.lifetimeId)
+      if (chosen.id == ProStore.lifetimeId) {
         return 'One payment. Yours for good.';
+      }
       return pro.introEligible
           ? 'Then ${chosen.price} a year. Cancel anytime.'
           : 'Renews every year. Cancel anytime.';
