@@ -42,7 +42,7 @@ struct RootView: View {
     @State private var showWhatsNew = false
 
     var body: some View {
-        ProGate(signedIn: model.phase == .ready, invite: { SignInView() }) {
+        MembershipGate(signedIn: model.phase == .ready, invite: { SignInView() }) {
         Group {
             switch model.phase {
             case .launching: ProgressView().controlSize(.large)
@@ -52,7 +52,7 @@ struct RootView: View {
         }
         }
         .onChange(of: model.phase) { _, phase in
-            if phase == .ready, ProStore.shared.isPro, WhatsNewView.shouldShowAutomatically { showWhatsNew = true }
+            if phase == .ready, Membership.shared.isMember, WhatsNewView.shouldShowAutomatically { showWhatsNew = true }
         }
         .sheet(isPresented: $showWhatsNew, onDismiss: WhatsNewView.markSeen) { WhatsNewView() }
     }

@@ -1,50 +1,34 @@
-Headway puts your next Caltrain where you'll see it: on your iPhone, Lock Screen, watch and Even Realities G2 glasses. Try all of it free for a week, then keep it with Headway Pro: yearly, or once for life. No ads.
+Caltrain, minus the guesswork. Headway knows which way you're going at this hour, which train you can still make, and when to walk out the door.
 
-YOUR COMMUTE, ALREADY OPEN
-• Save a morning and an evening pair of stations once. Headway opens on the right direction for the time of day, and so do your watch and widgets
-• Live departures with delays, express, limited and local trains, and the arrival time at your stop
-• "Leave in 6 min": when to walk out the door for each train, from the minutes you set or estimated from where you are
-• Get to the station on foot, by bike, e-bike, e-scooter or car, set for each leg
-• Spot when a later express gets you there sooner than the local leaving now
-• Late trains stay on the board marked Due or May have left, because real trains run a few minutes behind
+MORNING. EVENING. DONE.
+Save the two legs of your commute once. Before your switch time Headway opens northbound (or southbound), after it the other way, and your watch and widgets follow along.
 
-ALERTS THAT MATTER, AND ONLY THOSE
-• Your train is running late past the minutes you pick, or is cancelled
-• Caltrain service alerts for your stations and direction
-• A leave-now reminder for your usual train
-• A heads-up a few minutes before your stop
-• Priority alerts only cover your direction inside the hours you choose; everything else stays quiet
-• Once you've got off at your stop, the rest of that day's commute alerts stop
+THE BOARD
+• Every departure for your pair of stations, live from 511.org: delays, cancellations, locals, limiteds and expresses
+• "Leave in 6 min" next to each train, from your walk, bike, e-scooter or drive time
+• The arrival time at your stop, and when a later express beats the local leaving now
+• Trains running a little behind stay on the board as "Due" instead of vanishing
 
-ON THE TRAIN
-• Track a train with a Live Activity on the Lock Screen and in the Dynamic Island: countdown, next stops and delays
-• Headway can notice you're riding and show your next stop, arrival and stops left (optional)
-• Share a live ETA link with anyone. It opens in any browser and stops when you arrive
+ONLY THE ALERTS YOU'D WANT
+Late past your threshold, cancelled, a service alert for your stretch of line, time to leave for your usual train, a nudge two stops before yours. Quiet outside the hours you pick, and done for the day once you're off the train.
 
-AT A GLANCE
-• Pin the next three trains to your Lock Screen
-• Next trains widget for the Home Screen and Lock Screen
-• A watch app with the board, and watch face complications: minutes until your train leaves and minutes until you need to go, green while you have time and orange when you need to hurry
-• Runs on iPad too
+RIDING
+Track a train in a Live Activity and the Dynamic Island. Headway can notice you're aboard and count down the stops. Send someone a live ETA link that expires when you arrive.
 
-FAMILY
-• Make a family group of up to 8 people and invite them by email
-• Follow each other's trains on your Lock Screen until they arrive
-• Hear when someone's usual train is late or cancelled, or see a status like "Running late"
-• Nothing is shared until each person turns it on and picks who sees it. Your location is never shared
+LOCK SCREEN, HOME SCREEN, WRIST
+Pin the next three trains to the Lock Screen, add the Next Trains widget, or glance at the watch: complications turn orange when it's time to hurry.
 
-HEADS-UP ON EVEN G2 GLASSES
-Pair Even Realities G2 glasses with a 6-digit code: the next trains, when to leave and your train's progress in view, with the R1 ring to flip direction or track a train. Glasses are optional.
+FAMILY ON THE LINE
+Up to 8 people. Follow each other's trains until they get in, hear when someone's usual train is late. Each person chooses what to share; locations are never shared.
 
-ASK YOUR ASSISTANT
-Connect Claude or another AI assistant over MCP and ask "when's my next train home?" or "is my train late?"
+ALSO
+Ask Siri "When's my next train in Headway". Pair Even Realities G2 glasses to see the board in your line of sight. Connect Claude or another assistant to ask about your commute.
 
-PRIVATE BY DESIGN
-No ads, no analytics, no tracking. Location is optional, used for one estimate at a time and never stored. Delete everything Headway keeps about you from Settings at any time.
+Your location, if you allow it, is used for one walking estimate at a time and never kept. Data you save can be erased from Settings.
 
-Sign in with Apple or Google. Caltrain times come from Caltrain's published timetable and 511.org live data. Headway is not affiliated with Caltrain.
+Not affiliated with Caltrain. Schedules: Caltrain's published timetable. Live data: 511.org.
 
-HEADWAY PRO
-Headway is free to download, and using it on iPhone needs Headway Pro: start with a free week on the yearly plan, or unlock it once for life. Payment is charged to your Apple Account. The yearly plan renews automatically unless you cancel at least 24 hours before the end of the current period; manage or cancel it in your Apple Account settings.
-Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-Privacy Policy: https://headway.hejitech.workers.dev/privacy/
+PRICING
+The download is free; riding with Headway takes a Headway Pro subscription. New subscribers get 7 days free, then $4.99 per year, or choose a single $9.99 purchase that never expires (US prices; your local App Store price is shown before you buy). Your Apple Account is charged when you confirm, and the yearly plan renews unless turned off at least a day before it ends, from your Apple Account's Subscriptions page.
+Terms (Apple's standard license): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy: https://headway.hejitech.workers.dev/privacy/

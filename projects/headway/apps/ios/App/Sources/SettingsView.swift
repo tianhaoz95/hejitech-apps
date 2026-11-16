@@ -68,7 +68,7 @@ struct SettingsView: View {
                     }
                 }
                 AssistantsSection()
-                ProSettingsSection()
+                PassSettingsSection()
                 Section("Account") {
                     LabeledContent("Signed in as", value: model.email ?? "—")
                     Button("Sign out") { Task { await model.signOut() } }

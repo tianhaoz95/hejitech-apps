@@ -13,11 +13,11 @@ enum IntentHost {
 
     /// The iPhone app needs Headway Pro (bought, or given by email), as its screens do.
     static func checkAccess() async throws {
-        _ = AppModel.shared  // sets up ProStore's grant check
-        let pro = ProStore.shared
+        _ = AppModel.shared  // sets up RiderPass's grant check
+        let pro = RiderPass.shared
         if !pro.checked { await pro.refresh() }
-        if !pro.isPro, AppModel.shared.backend.session != nil { await pro.checkGrant() }
-        guard pro.isPro else { throw HeadwayIntentError.pro }
+        if !pro.hasPass, AppModel.shared.backend.session != nil { await pro.checkAccount() }
+        guard pro.hasPass else { throw HeadwayIntentError.pro }
     }
 
     /// The board, the watch and the Live Activity follow on the next refresh (now, if the app is running).

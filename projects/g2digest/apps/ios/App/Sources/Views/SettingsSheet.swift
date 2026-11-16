@@ -172,7 +172,7 @@ public struct SettingsSheet: View {
                 }
                 #endif
 
-                ProSettingsSection()
+                ReaderAccessSection()
                 Section("App Information") {
                     Button {
                         dismiss()

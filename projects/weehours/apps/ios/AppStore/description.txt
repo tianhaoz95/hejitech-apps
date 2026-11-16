@@ -20,12 +20,12 @@ Feeds (bottle, breast, pumping, solids), diapers, sleep, growth, and optional ca
 YOURS
 • Use it without an account, or sign in to sync
 • Photos on entries, CSV export
-• Connect your own AI assistant over MCP to ask about the log
-• No ads, no tracking
+• Ask your own AI assistant "when did she last eat?"
+• Nothing about your baby is sold or used for ads
 
-FREE TO LOG, PRO WHEN YOU WANT MORE
-Wee Hours is free to download, with 14 days of everything for each new household. After that, logging by tap, your watch and your whole log stay free. Wee Hours Pro adds voice logging, reminders, glasses, AI assistants, photos and CSV export, monthly, yearly or once for life, and one purchase covers everyone in your household. Subscriptions are charged to your Apple Account and renew automatically unless you cancel at least 24 hours before the end of the current period; manage or cancel them in your Apple Account settings.
-Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-Privacy Policy: https://weehours.hejitech.workers.dev/privacy/
+FREE TO LOG, PRO FOR THE HARD NIGHTS
+Every new household gets 14 days of everything. After that, tap logging, the watch and your full history stay free forever. Wee Hours Pro brings back voice, reminders, glasses, assistants, photos and export: $2.99 a month, $19.99 a year or $39.99 once (US prices; your App Store shows yours), and one purchase covers everyone at home. Your Apple Account is charged when you confirm; monthly and yearly plans renew on their own unless you switch renewal off at least 24 hours before the period ends, under your Apple Account's Subscriptions.
+Standard license: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy: https://weehours.hejitech.workers.dev/privacy/
 
 Wee Hours records what happened. It doesn't give medical advice.

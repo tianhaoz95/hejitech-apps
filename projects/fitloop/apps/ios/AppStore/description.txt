@@ -1,44 +1,31 @@
-FitLoop turns the plan your AI agent writes into something you can follow, set by set and meal by meal. Try all of it free for a week, then keep it with FitLoop Pro: yearly, or once for life. No ads. FitLoop has no AI of its own and no AI bill: it works with the assistant you already use.
+You already have a coach: the AI assistant you talk to every day. FitLoop is where its program becomes reps, rest and meals you can actually follow.
 
-BRING YOUR OWN COACH
-• Connect Claude or another AI assistant over MCP from Settings (one tap copies the address)
-• Your agent interviews you about your goals, injuries and limits, equipment, schedule and diet, then writes a plan: the workouts and meals for every day of the week
-• It writes new versions as you go; FitLoop keeps every version on the Plan tab
+HOW IT WORKS
+1. Connect Claude (or another assistant) from Settings with one tap.
+2. Your assistant asks about your goals, old injuries, equipment, schedule and food, then writes your week: every workout, every meal.
+3. You train and eat from FitLoop. It writes the next week from what really happened.
 
-TODAY
-• The day's workout and meals in one list, with calories and protein against your targets
-• Check off a meal, or mark it "ate less" or "ate more"
-• Reminders for workouts and meals, an evening nudge and a weekly review, each one a switch
+IN THE GYM
+The workout player walks you through each exercise: target reps and weight, an automatic rest timer, form cues and a looping demonstration. Swap to the alternative your coach planned, or skip and say why. Heart rate streams from your watch and the session lands in Apple Health.
 
-THE WORKOUT PLAYER
-• Step through every set: the exercise, the target reps and load, and a rest timer that starts itself
-• How-to cues and animated demonstrations for each exercise
-• Swap an exercise for the alternative your agent planned, or skip it, and it's recorded for your agent
-• Heart rate from your watch while you train, and the workout saved to Apple Health
+AT THE TABLE
+Today's meals sit next to the workout with calories and protein against your targets. Tap a meal done, or mark that you ate less or more.
 
-TELL YOUR AGENT, RIGHT THEN
-Too hard, knee hurt, still hungry: leave a note on any set, workout or meal. Your agent reads it next time, replies in the Feedback tab and adjusts the next plan. You change a day (skip, swap, a smaller portion); your agent writes the plan.
+TALK BACK
+"Left knee twinged on lunges." "Still hungry after lunch." Notes on any set or meal go straight to your coach, who answers in Feedback and changes the plan.
 
-PLAN AND PROGRESS
-• Plan: your goals, what the plan works around, daily targets and the whole week ahead
-• Progress: workouts and meals done over the last 4 weeks, your streak, and vitals such as weight, resting heart rate and sleep
+THE LONG VIEW
+Every version of your plan is kept. Four weeks of adherence, your streak, and weight, resting heart rate and sleep if you share them.
 
-ON YOUR WRIST
-• A watch app with the current exercise, the set, the rest timer and your heart rate; mark a set done from your wrist
-• A watch face complication with today's progress
+ON THE WRIST AND IN VIEW
+The watch app shows the set, the rest countdown and your heart rate; finish a set with a tap. Even Realities G2 glasses can show the same set hands-free between reps.
 
-IN VIEW ON EVEN G2 GLASSES
-Even Realities G2 glasses and the R1 ring show the exercise, the set and a rest timer that starts itself, with demonstrations and meals that check off with a tap. Glasses are optional.
+WHAT YOUR COACH SEES IS UP TO YOU
+Heart rate, the daily Health summary, manual entries and photos are separate switches. Health data never feeds advertising, and nothing tracks you across apps.
 
-ALSO ON THE WEB
-The same account works in the FitLoop web app, for when you want a bigger screen.
+FitLoop shows the program your assistant writes; it is not medical advice. Check with a doctor before starting a new training or eating plan.
 
-YOUR DATA, YOUR SWITCHES
-Live heart rate, a daily Apple Health summary, manual entries and progress photos are each a switch in Settings, and so is everything your agent may see. Health data is never used for advertising. No ads, no analytics, no tracking. Delete everything from Settings at any time.
-
-FitLoop shows the plan your own agent writes. It isn't medical advice: talk to a doctor before starting a new exercise or diet program.
-
-FITLOOP PRO
-FitLoop is free to download, and using it on iPhone needs FitLoop Pro: start with a free week on the yearly plan, or unlock it once for life. Payment is charged to your Apple Account. The yearly plan renews automatically unless you cancel at least 24 hours before the end of the current period; manage or cancel it in your Apple Account settings.
-Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-Privacy Policy: https://fitloop.hejitech.workers.dev/privacy/
+MEMBERSHIP
+FitLoop is free to install and runs on a FitLoop Pro membership: a 7-day free trial, then $19.99 a year, or $39.99 once for good (US prices; the App Store shows yours). Charged to your Apple Account at confirmation; the yearly membership auto-renews unless you switch it off 24 hours or more before renewal in your Apple Account settings.
+License: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy: https://fitloop.hejitech.workers.dev/privacy/

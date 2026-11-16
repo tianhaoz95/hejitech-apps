@@ -47,13 +47,13 @@ final class AppModel {
         let session = Keychain.get("session").flatMap { try? JSONDecoder().decode(AuthSession.self, from: $0) }
         backend = Backend(config: Self.config, session: session)
         backend.onSessionChange = { s in Keychain.set(s.flatMap { try? JSONEncoder().encode($0) }, for: "session") }
-        ProStore.shared.grantChecker = { [weak self] in
+        Membership.shared.accountLookup = { [weak self] in
             guard let self, self.backend.session != nil else { throw CancellationError() }
-            let a = try await self.backend.call("GET", "/api/pro", as: ProGrantAnswer.self)
+            let a = try await self.backend.call("GET", "/api/pro", as: MembershipAnswer.self)
             return (a.pro, a.untilDate, a.email)
         }
         // Purchases made on this iPhone go to the account, so Pro works on the web and glasses too.
-        ProStore.shared.transactionUploader = { [weak self] signed in
+        Membership.shared.receiptSender = { [weak self] signed in
             guard let self, self.backend.session != nil else { return }
             _ = try await self.backend.call("POST", "/api/appstore/transactions", body: ["transactions": signed], as: UploadedPurchases.self)
         }

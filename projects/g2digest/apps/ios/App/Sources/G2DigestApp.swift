@@ -7,7 +7,7 @@ struct G2DigestApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ProGate(signedIn: appModel.isSignedIn, invite: { NavigationStack { PairingSheet(appModel: appModel) } }) {
+            ReaderGate(signedIn: appModel.isSignedIn, invite: { NavigationStack { PairingSheet(appModel: appModel) } }) {
                 MainView(appModel: appModel)
             }
         }

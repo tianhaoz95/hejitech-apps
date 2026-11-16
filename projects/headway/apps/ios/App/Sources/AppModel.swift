@@ -87,13 +87,13 @@ final class AppModel {
             Keychain.set(s.flatMap { try? JSONEncoder().encode($0) }, for: "session")
             Task { @MainActor in self?.syncWatch() }
         }
-        ProStore.shared.grantChecker = { [weak self] in
+        RiderPass.shared.accountCheck = { [weak self] in
             guard let self, self.backend.session != nil else { throw CancellationError() }
-            let a = try await self.backend.call("GET", "/api/pro", as: ProGrantAnswer.self)
+            let a = try await self.backend.call("GET", "/api/pro", as: AccountPassAnswer.self)
             return (a.pro, a.untilDate, a.email)
         }
         // Purchases made on this iPhone go to the account, so Pro works on the web and glasses too.
-        ProStore.shared.transactionUploader = { [weak self] signed in
+        RiderPass.shared.purchaseUploader = { [weak self] signed in
             guard let self, self.backend.session != nil else { return }
             _ = try await self.backend.call("POST", "/api/appstore/transactions", body: ["transactions": signed], as: UploadedPurchases.self)
         }
