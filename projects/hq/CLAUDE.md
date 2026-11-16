@@ -71,7 +71,7 @@ HQ_DENY_TOOLS='Bash(*cut_release.sh*)' npm run -s hq -- runner     # --once to d
 
 iOS: `cd apps/ios && xcodegen generate`, then build the `App` scheme. Debug builds use the local
 stack; launch arguments `-signInEmail <e> -signInPassword <p> -screen inbox|requests|health|runs|settings|card:<id>|request:<id>` (and `-hq.workspace <id>` to pick the workspace)
-reach any screen without taps (`-production` for the hosted HQ, `-serverURL` for another Worker).
+reach any screen without taps (`-whatsNew YES` shows What's New, signed in or not; `-production` for the hosted HQ, `-serverURL` for another Worker).
 
 ## How it works
 

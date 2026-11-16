@@ -386,6 +386,7 @@ struct SettingsView: View {
     @State private var invite: Invite?
     @State private var error: String?
     @State private var confirmDelete = false
+    @State private var showWhatsNew = false
     @State private var notifications: UNAuthorizationStatus?
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
@@ -473,6 +474,7 @@ struct SettingsView: View {
                 Text("Deleting removes your memberships and every workspace where you're the only member. Team workspaces keep their history, and another member becomes admin if you were the only one.")
             }
             Section {
+                Button { showWhatsNew = true } label: { Label("What's New", systemImage: "sparkles") }
                 Link("Privacy Policy", destination: Backend.shared.config.site.appendingPathComponent("privacy/"))
                 Link("Terms of Use", destination: Backend.shared.config.site.appendingPathComponent("terms/"))
                 Link("Support", destination: Backend.shared.config.site.appendingPathComponent("support/"))
@@ -488,6 +490,7 @@ struct SettingsView: View {
                 }
             }
         } message: { Text("This can't be undone.") }
+        .sheet(isPresented: $showWhatsNew) { WhatsNewView() }
         .navigationTitle("Settings")
         .task(id: scenePhase) {
             // Again on return from the Settings app, where the permission may have changed.

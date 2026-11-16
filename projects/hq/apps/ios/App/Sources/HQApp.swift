@@ -23,9 +23,9 @@ struct HQApp: App {
                     NavigationStack { WorkspaceSetupView(first: true) }
                 case .ready:
                     RootTabs()
-                        .sheet(isPresented: $showWhatsNew) { WhatsNewView() }
                 }
             }
+            .sheet(isPresented: $showWhatsNew) { WhatsNewView() }
             .environment(model)
             .task { await model.load() }
             .onOpenURL { url in Task { await model.open(url) } }
