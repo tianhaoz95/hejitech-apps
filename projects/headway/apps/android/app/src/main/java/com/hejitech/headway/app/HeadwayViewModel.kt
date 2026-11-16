@@ -53,6 +53,43 @@ class HeadwayViewModel(application: Application) : AndroidViewModel(application)
     private val _board = MutableStateFlow<Board?>(null)
     val board: StateFlow<Board?> = _board.asStateFlow()
 
+    /** Whether assistants may change the commute over MCP, and what they changed (Settings › Assistants). */
+    private val _agentAccess = MutableStateFlow<AgentAccess?>(null)
+    val agentAccess: StateFlow<AgentAccess?> = _agentAccess.asStateFlow()
+    private val _agentError = MutableStateFlow<String?>(null)
+    val agentError: StateFlow<String?> = _agentError.asStateFlow()
+
+    /** Also reloads the settings: an assistant may have changed them since the app last looked. */
+    fun loadAgentAccess() {
+        viewModelScope.launch {
+            runCatching { apiClient.getAgentAccess() }.onSuccess { _agentAccess.value = it }
+            runCatching { apiClient.getSettings() }.onSuccess { _settings.value = it.settings }
+        }
+    }
+
+    fun setAgentEditing(on: Boolean) {
+        viewModelScope.launch {
+            _agentError.value = null
+            runCatching { apiClient.setAgentAccess(on) }
+                .onSuccess { _agentAccess.value = it }
+                .onFailure { _agentError.value = readable(it) }
+        }
+    }
+
+    /** Puts the commute back to before an assistant's change. */
+    fun undoAgentChange(change: AgentChange) {
+        viewModelScope.launch {
+            _agentError.value = null
+            runCatching { apiClient.undoAgentChange(change.id) }
+                .onSuccess { r ->
+                    _settings.value = r.settings
+                    _agentAccess.value = _agentAccess.value?.copy(changes = r.changes)
+                    refreshNow()
+                }
+                .onFailure { _agentError.value = readable(it) }
+        }
+    }
+
     /** Debug builds: `--es weatherTheme rain` shows that backdrop whatever the forecast. */
     var debugWeatherTheme: WeatherTheme? = null
 

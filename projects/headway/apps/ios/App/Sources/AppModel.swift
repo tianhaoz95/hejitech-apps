@@ -26,6 +26,9 @@ final class AppModel {
     /// The leg you finished today, while its alerts are held back.
     var commuteDone: CommuteDoneCard?
     var settings = Settings.defaults
+    /// Whether assistants may change the commute over MCP, and what they changed (Settings › Assistants).
+    var agentAccess: AgentAccess?
+    var agentError: String?
     var settingsSaved = false
     var stations: [Station] = []
     /// A pair picked on the Trains tab instead of the commute (nil: the commute for the time of day).
@@ -556,6 +559,36 @@ final class AppModel {
     }
 
     // MARK: settings
+
+    func loadAgentAccess() async {
+        guard phase == .ready else { return }
+        if let a = try? await backend.agentAccess() { agentAccess = a }
+    }
+
+    func setAgentEditing(_ on: Bool) async {
+        agentError = nil
+        do { agentAccess = try await backend.setAgentAccess(editSettings: on) } catch { agentError = error.localizedDescription }
+    }
+
+    /// Puts the commute back to before an assistant's change.
+    func undoAgentChange(_ change: AgentChange) async {
+        agentError = nil
+        do {
+            let r = try await backend.undoAgentChange(change.id)
+            settings = r.settings
+            agentAccess?.changes = r.changes
+            await refresh()
+        } catch {
+            agentError = error.localizedDescription
+        }
+    }
+
+    /// An assistant changed the commute (a "settings" notification): show the new settings and the change.
+    func assistantChangedSettings() async {
+        if let r = try? await backend.settings() { settings = r.settings }
+        await loadAgentAccess()
+        await refresh()
+    }
 
     func save(_ s: Settings) async -> Bool {
         do {

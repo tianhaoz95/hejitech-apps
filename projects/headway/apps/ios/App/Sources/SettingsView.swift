@@ -67,6 +67,7 @@ struct SettingsView: View {
                         Label("Even G2 Glasses", systemImage: "eyeglasses")
                     }
                 }
+                AssistantsSection()
                 ProSettingsSection()
                 Section("Account") {
                     LabeledContent("Signed in as", value: model.email ?? "—")
@@ -76,7 +77,7 @@ struct SettingsView: View {
                     Button("What's New") { whatsNew = true }
                     Link("Help", destination: model.backend.config.site.appendingPathComponent("support/"))
                     Link("Privacy", destination: model.backend.config.site.appendingPathComponent("privacy/"))
-                    Link("Assistants (MCP) and web settings", destination: model.backend.config.site.appendingPathComponent("settings/"))
+                    Link("Web settings", destination: model.backend.config.site.appendingPathComponent("settings/"))
                     LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")
                 }
                 Section {
@@ -92,5 +93,71 @@ struct SettingsView: View {
             }
             .task { await model.registerForPushIfAllowed() }
         }
+    }
+}
+
+/// Settings › Assistants: whether connected assistants (MCP) may change the commute, and every change
+/// they made, with Undo. Off until the rider turns it on; no assistant can reach this switch.
+struct AssistantsSection: View {
+    @Environment(AppModel.self) private var model
+    @State private var showAll = false
+
+    var body: some View {
+        Section {
+            Toggle("Let assistants change my commute", isOn: Binding(
+                get: { model.agentAccess?.editSettings ?? false },
+                set: { on in Task { await model.setAgentEditing(on) } }
+            ))
+            .disabled(model.agentAccess == nil)
+            let changes = model.agentAccess?.changes ?? []
+            ForEach(showAll ? changes : Array(changes.prefix(3))) { c in
+                AgentChangeRow(change: c)
+            }
+            if changes.count > 3 && !showAll {
+                Button("Show all \(changes.count) changes") { showAll = true }
+            }
+            if let e = model.agentError {
+                Text(e).font(.footnote).foregroundStyle(.red)
+            }
+            Link("Connect an assistant (MCP)", destination: model.backend.config.site.appendingPathComponent("settings/"))
+        } header: {
+            Text("Assistants")
+        } footer: {
+            Text("With this on, assistants you've connected, like Claude, can change your stations, usual trains, how you get to the station, commute days and alerts. Your iPhone tells you each time, and you can undo it here. They can't change on-train mode, family or devices. Assistants can always read your commute and trains.")
+        }
+        .task { await model.loadAgentAccess() }
+    }
+}
+
+struct AgentChangeRow: View {
+    @Environment(AppModel.self) private var model
+    let change: AgentChange
+    @State private var undoing = false
+
+    var body: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(change.client ?? "An assistant").font(.subheadline.weight(.semibold))
+                if let d = change.createdDate {
+                    Text(d, format: .relative(presentation: .named)).font(.caption).foregroundStyle(.secondary)
+                }
+                ForEach(change.summary, id: \.self) { line in
+                    Text(line).font(.footnote).foregroundStyle(change.undoneAt == nil ? .primary : .secondary)
+                }
+            }
+            Spacer(minLength: 8)
+            if change.undoneAt != nil {
+                Text("Undone").font(.caption).foregroundStyle(.secondary)
+            } else {
+                Button(undoing ? "Undoing…" : "Undo") {
+                    undoing = true
+                    Task { await model.undoAgentChange(change); undoing = false }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(undoing)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }

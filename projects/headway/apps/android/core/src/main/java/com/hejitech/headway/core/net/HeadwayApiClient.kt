@@ -297,6 +297,27 @@ class HeadwayApiClient(
         executeEmpty(builder.build())
     }
 
+    /** Whether assistants may change the commute, and what they changed. */
+    suspend fun getAgentAccess(): AgentAccess = withContext(Dispatchers.IO) {
+        val builder = Request.Builder().url("${config.site}/api/agent-access").get()
+        addAuthHeader(builder)
+        executeAndDecode(builder.build())
+    }
+
+    suspend fun setAgentAccess(editSettings: Boolean): AgentAccess = withContext(Dispatchers.IO) {
+        val body = buildJsonObject { put("edit_settings", editSettings) }.toString().toRequestBody(jsonMediaType)
+        val builder = Request.Builder().url("${config.site}/api/agent-access").put(body)
+        addAuthHeader(builder)
+        executeAndDecode(builder.build())
+    }
+
+    /** Puts the commute back to before an assistant's change. */
+    suspend fun undoAgentChange(id: String): AgentUndoResponse = withContext(Dispatchers.IO) {
+        val builder = Request.Builder().url("${config.site}/api/agent-changes/$id/undo").post("{}".toRequestBody(jsonMediaType))
+        addAuthHeader(builder)
+        executeAndDecode(builder.build())
+    }
+
     /** Asks the server to send a test alert to every phone of this account. */
     suspend fun testPush() = withContext(Dispatchers.IO) {
         val builder = Request.Builder().url("${config.site}/api/push/test").post("{}".toRequestBody(jsonMediaType))

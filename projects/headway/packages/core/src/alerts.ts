@@ -27,7 +27,7 @@ export const DELAY_STEP_MIN = 5;
 /** Delay and cancellation alerts cover this many upcoming trains of a leg. */
 export const ALERT_TRAINS = 3;
 
-export type NotificationKind = "delay" | "cancellation" | "service" | "leave_now" | "arrival" | "better_train" | "on_train" | "family";
+export type NotificationKind = "delay" | "cancellation" | "service" | "leave_now" | "arrival" | "better_train" | "on_train" | "family" | "settings";
 
 export interface Notification {
   /** Dedupe key: the same key is never sent twice to one user. */

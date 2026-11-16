@@ -20,10 +20,14 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.8.0"
+    static let currentVersion = "1.9.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.9.0", date: "November 2026", items: [
+            WhatsNewItem(icon: "sparkles", title: "Let your assistant set up your commute", description: "Turn on Settings › Assistants › \"Let assistants change my commute\" and an assistant you've connected, like Claude, can change your stations, usual trains, how you get to the station, commute days and alerts. It's off unless you turn it on."),
+            WhatsNewItem(icon: "arrow.uturn.backward", title: "Every change, and Undo", description: "Your iPhone tells you each time an assistant changes something, and Settings › Assistants lists every change in plain words with Undo."),
+        ]),
         ReleaseNotes(version: "1.8.0", date: "November 2026", items: [
             WhatsNewItem(icon: "cloud.sun.rain.fill", title: "Your trains, in the weather", description: "The Trains tab now moves with the weather you're heading into: sun, clouds, fog, rain, storms or snow, by day or night. It follows whichever end of your ride has more going on."),
             WhatsNewItem(icon: "thermometer.medium", title: "Weather at a glance", description: "Beside your commute, a small badge shows the weather where you leave now and where you get off when your train gets there. The Weather tab is gone: everything you need is on the Trains tab."),

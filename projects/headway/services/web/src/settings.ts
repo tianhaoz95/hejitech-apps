@@ -383,8 +383,43 @@ async function phonesPanel() {
     devices.length ? el("div", { class: "row" }, test, out) : null);
 }
 
+interface AgentChange { id: string; client: string | null; summary: string[]; created_at: string; undone_at: string | null }
+interface AgentAccess { edit_settings: boolean; changes: AgentChange[] }
+
+/** "Let assistants change my commute" and what they changed, each with Undo. */
+async function agentEditing() {
+  const sw = toggle(false, "Let assistants change my commute");
+  const changes = el("ul", { class: "list" });
+  const note = el("p", { class: "small error" });
+  const show = (a: AgentAccess) => {
+    sw.checked = a.edit_settings;
+    changes.replaceChildren(...a.changes.map((c) => el("li", {},
+      el("div", { class: "setting-info" },
+        el("span", { class: "setting-title" }, `${c.client ?? "An assistant"} · ${new Date(c.created_at).toLocaleString()}`),
+        ...c.summary.map((line) => el("span", { class: "muted small" }, line))),
+      c.undone_at
+        ? el("span", { class: "muted small" }, "Undone")
+        : el("button", { class: "btn sm", type: "button", onclick: async () => {
+          const r = await api<{ error?: string }>(`/api/agent-changes/${c.id}/undo`, { method: "POST" });
+          if (!r.ok) { note.textContent = (r.body as { error?: string })?.error ?? "Couldn't undo."; return; }
+          await render();
+        } }, "Undo"))));
+  };
+  const r = await api<AgentAccess>("/api/agent-access");
+  if (r.ok) show(r.body);
+  sw.addEventListener("change", async () => {
+    const u = await api<AgentAccess>("/api/agent-access", { method: "PUT", body: JSON.stringify({ edit_settings: sw.checked }) });
+    if (u.ok) show(u.body); else sw.checked = !sw.checked;
+  });
+  return el("div", { class: "stack" },
+    settingRow("Let assistants change my commute",
+      "Connected assistants can change your stations, usual trains, how you get to the station, days and alerts. You're notified of every change and can undo it here. They can't change on-train mode, family or devices.", sw),
+    changes, note);
+}
+
 async function assistantsPanel() {
   const grants = el("ul", { class: "list" }), tokens = el("ul", { class: "list" }), fresh = el("div", {});
+  const editing = await agentEditing();
   const refresh = async () => {
     const [g, t] = await Promise.all([
       api<{ id: string; client_name: string | null; created_at: string }[]>("/api/grants"),
@@ -432,10 +467,11 @@ async function assistantsPanel() {
   });
 
   return section("Assistants (MCP)", "Claude · Cursor · Agents",
-    el("p", { class: "muted small" }, "Connect Claude or any MCP client to check live Caltrain departures or start tracking your train."),
+    el("p", { class: "muted small" }, "Connect Claude or any MCP client to check live Caltrain departures, start tracking your train, or (if you allow it below) set up your commute."),
     el("div", { class: "secret-box" },
       el("span", { class: "mono small" }, mcpUrl),
       copyMcp),
+    editing,
     grants,
     tokens,
     fresh,

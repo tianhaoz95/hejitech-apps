@@ -154,7 +154,7 @@ export async function sendPush(env: Env, device: PushDevice, n: Notification): P
         "thread-id": n.thread,
         // Delays, cancellations, leave-now and arrival are time-sensitive (they break through Focus
         // when the user allows it); service alerts and news about family are ordinary.
-        "interruption-level": !n.priority ? "passive" : n.kind === "service" || n.kind === "family" ? "active" : "time-sensitive",
+        "interruption-level": !n.priority ? "passive" : n.kind === "service" || n.kind === "family" || n.kind === "settings" ? "active" : "time-sensitive",
       },
       kind: n.kind,
       priority: n.priority,

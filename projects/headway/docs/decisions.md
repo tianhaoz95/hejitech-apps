@@ -303,3 +303,26 @@ header has a small "from → to" chip with icons and temperatures. Nine themes (
 cloudy by day and night, cloudy, fog, rain, storm, snow) are drawn in code on both apps with the
 same palettes: pastel in light mode, deep in dark mode, so text keeps its contrast; still with
 Reduce Motion (iPhone) or animations off (Android). `/api/weather` and MCP's `station_weather` stay.
+
+## Assistants may change the commute, when the rider allows it (2026-11-15, 1.9.0)
+
+The owner wanted assistants (MCP) to set up the commute: an agent does fine-grained setup ("the 7:45,
+I bike 6 minutes, alerts Monday–Thursday") better than tapping through screens. Built as recommended:
+
+- **A switch the rider owns, off by default** (`headway.agent_access`), shown in the iPhone and Android
+  Settings › Assistants and on the web settings page. Only the rider's own session reaches it
+  (`/api/agent-access`): no MCP tool reads or flips it, and the glasses token can't either. It's one
+  switch for every assistant; per-assistant permission is the next step if more get connected.
+- **Commute only** (core `applyCommutePatch`): legs (stations by id or name, usual train, travel mode
+  and minutes, window, express preference), days, the morning/evening switch time, express preference
+  and alert choices. Not on-train mode (it drives the phone's location), the share name, family,
+  devices or the account. The result goes through `checkSettings` like the app's own saves.
+- **`get_settings` is always there**: before 1.9.0 an assistant couldn't read the commute at all.
+- **Every change is visible and undoable**: `headway.agent_changes` keeps before/after and the change
+  in words (`settingsDiff`); the rider's phones get a "settings" push naming the assistant (its OAuth
+  client name, stored in the grant's props from 1.9.0; older grants and personal tokens show as "An
+  assistant"); Undo restores `before` unless the settings changed since (then it says so instead of
+  throwing away the later edit).
+- **Changes are permanent**: the tool's description tells assistants so, and to ask before using it for
+  a one-off ("late tomorrow"). A "today only" override that expires on its own would be the better
+  answer to one-off plans; not built yet.

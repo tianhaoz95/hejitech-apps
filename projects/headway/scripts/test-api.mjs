@@ -358,7 +358,51 @@ await step("MCP: 401 with the OAuth hint, initialize, tools", async () => {
   assert.match(r.headers.get("WWW-Authenticate") ?? "", /resource_metadata=/);
   assert.equal((await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } })).body.result.serverInfo.name, "headway");
   const names = (await rpc("tools/list")).body.result.tools.map((t) => t.name).sort();
-  assert.deepEqual(names, ["list_stations", "my_commute", "next_trains", "service_alerts", "share_eta", "station_weather", "stop_tracking", "track_train", "tracked_train"]);
+  assert.deepEqual(names, ["get_settings", "list_stations", "my_commute", "next_trains", "service_alerts", "share_eta", "station_weather", "stop_tracking", "track_train", "tracked_train", "update_commute"]);
+});
+await step("MCP settings: read always; change only when the rider allows it, notified and undoable", async () => {
+  const original = (await call("/api/settings", { auth: session })).body.settings;
+  assert.equal((await call("/api/agent-access", { method: "PUT", auth: session, body: { edit_settings: false } })).status, 200);
+  const s = await tool("get_settings");
+  assert.equal(s.assistant_can_edit, false);
+  assert.equal(s.evening.from_id, original.evening.from);
+  await assert.rejects(tool("update_commute", { evening: { usual: "16:00" } }), /hasn't allowed/);
+  // Only the rider's own session reaches the switch: not the glasses, not MCP.
+  assert.equal((await call("/api/agent-access", { method: "PUT", auth: SEED_DEVICE, body: { edit_settings: true } })).status, 403);
+  assert.equal((await call("/api/agent-access", { method: "PUT", auth: session, body: { edit_settings: "yes" } })).status, 400);
+  assert.equal((await call("/api/agent-access", { method: "PUT", auth: session, body: { edit_settings: true } })).body.edit_settings, true);
+
+  const r = await tool("update_commute", { evening: { usual: "16:00", travel_mode: "bike", walk_minutes: 6 }, days: [0, 1, 2, 3] });
+  assert.ok(r.changed.includes("Evening: getting there by walk → bike"), JSON.stringify(r.changed));
+  assert.ok(r.changed.includes("Commute days: Mon–Fri → Mon–Thu"));
+  const after = (await call("/api/settings", { auth: session })).body.settings;
+  assert.deepEqual([after.evening.usual, after.evening.travel_mode, after.evening.walk_minutes, after.days], ["16:00", "bike", 6, [0, 1, 2, 3]]);
+  assert.equal(after.morning.from, original.morning.from, "the rest stays");
+  await assert.rejects(tool("update_commute", { on_train: "background" }), /on-train mode/);
+  await assert.rejects(tool("update_commute", { morning: { from: "Atlantis" } }), /unknown station/);
+  assert.deepEqual((await tool("update_commute", { days: [0, 1, 2, 3] })).changed, [], "no change, no record");
+
+  const list = (await call("/api/agent-access", { auth: session })).body;
+  assert.equal(list.changes.length >= 1, true);
+  const change = list.changes[0];
+  assert.ok(change.summary.includes("Commute days: Mon–Fri → Mon–Thu"));
+  assert.equal((await call(`/api/agent-changes/${change.id}/undo`, { method: "POST", auth: other })).status, 404, "someone else's change");
+  const undone = await call(`/api/agent-changes/${change.id}/undo`, { method: "POST", auth: session });
+  assert.equal(undone.status, 200, undone.text);
+  assert.deepEqual(undone.body.settings, original);
+  assert.ok(undone.body.changes[0].undone_at);
+  assert.equal((await call(`/api/agent-changes/${change.id}/undo`, { method: "POST", auth: session })).status, 409);
+
+  // A change the rider has since built on isn't undone on its own.
+  await tool("update_commute", { alerts: { arrival_minutes: 9 } });
+  const second = (await call("/api/agent-access", { auth: session })).body.changes[0];
+  const edited = (await call("/api/settings", { auth: session })).body.settings;
+  await call("/api/settings", { method: "PUT", auth: session, body: { settings: { ...edited, switch_at: "13:00" } } });
+  assert.equal((await call(`/api/agent-changes/${second.id}/undo`, { method: "POST", auth: session })).status, 409);
+
+  await call("/api/settings", { method: "PUT", auth: session, body: { settings: original } });
+  await call("/api/agent-access", { method: "PUT", auth: session, body: { edit_settings: false } });
+  await assert.rejects(tool("update_commute", { days: [0] }), /hasn't allowed/);
 });
 await step("MCP: commute, next trains by name, alerts, tracking", async () => {
   const c = await tool("my_commute");
@@ -520,6 +564,11 @@ await step("RLS: clients read only their own rows; codes and snapshot aren't rea
   assert.ok(theirs.every((p) => p.user_id !== SEED_USER));
   assert.ok((await get("pairing_codes", session)).status >= 400);
   assert.ok((await get("realtime", session)).status >= 400);
+  // The assistants switch and change log are the Worker's alone: an assistant's client can't read or flip them.
+  for (const t of ["agent_access", "agent_changes"]) {
+    const r = await get(t, session);
+    assert.ok(r.status >= 400 || (Array.isArray(r.body) && r.body.length === 0), `${t} readable`);
+  }
 });
 await step("registers and removes activity tokens", async () => {
   const reg = await call("/api/me/activity", { method: "POST", auth: session, body: { token: "activity-token-test-123", kind: "update", trip_id: "409" } });

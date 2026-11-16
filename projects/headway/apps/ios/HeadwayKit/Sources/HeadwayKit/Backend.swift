@@ -285,6 +285,12 @@ public final class Backend: @unchecked Sendable {
     public func revokeEtaShare() async throws {
         let _: OK = try await call("DELETE", "/api/me/share")
     }
+    public func agentAccess() async throws -> AgentAccess { try await call("GET", "/api/agent-access") }
+    public func setAgentAccess(editSettings: Bool) async throws -> AgentAccess {
+        struct Body: Encodable { let edit_settings: Bool }
+        return try await call("PUT", "/api/agent-access", body: Body(edit_settings: editSettings))
+    }
+    public func undoAgentChange(_ id: String) async throws -> AgentUndoResponse { try await call("POST", "/api/agent-changes/\(id)/undo") }
     public func testPush() async throws { let _: OK = try await call("POST", "/api/push/test") }
     /// `appleAuthorizationCode`: a fresh Sign in with Apple code, so the Worker can revoke the app's Apple token.
     public func deleteData(appleAuthorizationCode: String? = nil) async throws {

@@ -53,6 +53,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         Task { @MainActor in
             await model?.refresh()
             if (notification.request.content.userInfo["kind"] as? String) == "family" { await model?.loadFamily() }
+            if (notification.request.content.userInfo["kind"] as? String) == "settings" { await model?.assistantChangedSettings() }
         }
         return [.banner, .sound, .list]
     }

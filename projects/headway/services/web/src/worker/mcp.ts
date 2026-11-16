@@ -1,8 +1,9 @@
 // MCP server (Streamable HTTP, JSON responses) at /mcp: an assistant asks "when's my next train?"
 // for the signed-in user. Authentication happens before this runs (index.ts): OAuth grants issued
 // by this Worker, or personal access tokens `hwa_…` made in the Headway app or on the web.
-import { atLocal, board, boardWeather, commuteBoard, departures, findStation, progress, STATIONS, station, TIMETABLE, weatherLine, weatherReport, zoned, type Board, type BoardTrain, type ExpressPreference, type WeatherHour, type WeatherStore } from "@headway/core";
+import { atLocal, board, boardWeather, daysText, TRAVEL_MODES, commuteBoard, departures, findStation, progress, STATIONS, station, TIMETABLE, weatherLine, weatherReport, zoned, type Board, type BoardTrain, type ExpressPreference, type WeatherHour, type WeatherStore } from "@headway/core";
 import { createEtaShare, loadSettings, loadSnapshot, loadTracked, saveTracked, type Db } from "./store.ts";
+import { agentCanEdit, type EditResult } from "./agent.ts";
 
 const PROTOCOL_VERSION = "2025-06-18";
 export const SERVER_VERSION = "0.1.0";
@@ -10,6 +11,8 @@ export const SERVER_VERSION = "0.1.0";
 export interface Caller {
   userId: string;
   via: "oauth" | "token";
+  /** The assistant's name, for the rider's notification and change list (null: unknown). */
+  client?: string | null;
 }
 
 const cors = {
@@ -18,6 +21,20 @@ const cors = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...cors } });
+
+const LEG_PATCH = {
+  type: ["object", "null"],
+  description: "Fields of this leg to change (others stay as they are); null removes the leg. To add a missing leg, give from and to.",
+  properties: {
+    from: { type: "string", description: "Station you board at (id, name or short name)." },
+    to: { type: "string", description: "Station you get off at." },
+    usual: { type: ["string", "null"], description: "The train you usually take, HH:MM (24 h, Pacific): the first train at or after it gets the leave-now reminder. null: none." },
+    walk_minutes: { type: "integer", minimum: 0, maximum: 90, description: "Minutes from door to platform (used for leave-by times when the phone's location isn't used)." },
+    travel_mode: { type: "string", enum: ["walk", "bike", "ebike", "scooter", "drive"], description: "How the rider gets to the station." },
+    window: { type: "object", description: "When this leg is watched for alerts, HH:MM (24 h).", properties: { start: { type: "string" }, end: { type: "string" } } },
+    express_preference: { type: "string", enum: ["all", "prefer_express", "express_only"] },
+  },
+};
 
 const STATION_ARG = { type: "string", description: "A Caltrain station: id (mountain_view), name (Mountain View) or short name (MTN VIEW). list_stations has them all." };
 
@@ -79,6 +96,41 @@ export const TOOLS = [
     annotations: { title: "Station weather", readOnlyHint: true, openWorldHint: false },
   },
   {
+    name: "get_settings",
+    title: "The rider's commute settings",
+    description: "The rider's saved commute: morning and evening legs (stations, usual train, how they get to the station and how long it takes, alert window, express preference), the days they commute, when the board switches to the evening leg, and which alerts they get. Also says whether they allow assistants to change it (update_commute).",
+    inputSchema: { type: "object", properties: {} },
+    annotations: { title: "Commute settings", readOnlyHint: true, openWorldHint: false },
+  },
+  {
+    name: "update_commute",
+    title: "Change the rider's commute",
+    description: "Changes the rider's saved commute settings, only if they turned on \"Let assistants change my commute\" in the Headway app (otherwise it fails and says so: tell the rider, don't retry). Send only the fields to change. Changes are PERMANENT, not for one day: for a one-off (\"I'm going in late tomorrow\") ask the rider first, since they would have to change it back. Call get_settings first. The rider's phone is notified of every change and can undo it. Can't change on-train/location mode, the name on shared ETA links, family or devices. Returns what changed, in words.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        morning: LEG_PATCH,
+        evening: LEG_PATCH,
+        days: { type: "array", items: { type: "integer", minimum: 0, maximum: 6 }, description: "Days the commute is watched for alerts, 0 = Monday … 6 = Sunday (the whole list)." },
+        switch_at: { type: "string", description: "HH:MM: before it the board shows the morning leg, after it the evening one." },
+        express_preference: { type: "string", enum: ["all", "prefer_express", "express_only"], description: "Default train preference." },
+        alerts: {
+          type: "object",
+          description: "Alert choices to change.",
+          properties: {
+            delay: { type: "boolean" }, delay_threshold: { type: "integer", minimum: 1, maximum: 60, description: "Minutes late before a delay alert." },
+            cancellation: { type: "boolean" }, service: { type: "boolean", description: "Caltrain service alerts for the rider's stations." },
+            leave_now: { type: "boolean" }, arrival: { type: "boolean" }, arrival_minutes: { type: "integer", minimum: 1, maximum: 60, description: "Minutes before reaching the stop." },
+            better_train: { type: "boolean", description: "When a later train gets there sooner." },
+            scope: { type: "string", enum: ["priority", "all"], description: "priority: only what affects the commute; all: also the rest, quietly." },
+            stop_when_done: { type: "boolean", description: "Stop a leg's alerts for the day once the rider reached its stop." },
+          },
+        },
+      },
+    },
+    annotations: { title: "Change commute", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
     name: "share_eta",
     title: "Share live train ETA",
     description: "Generates a shareable live web link (valid until 30 min after arrival) for the train the user is currently tracking.",
@@ -118,7 +170,10 @@ function stationArg(v: unknown, name: string) {
   return s;
 }
 
-async function callTool(name: string, args: Record<string, unknown>, caller: Caller, db: Db, now: number, weather: () => Promise<WeatherStore | null>): Promise<unknown> {
+const MODE_WORDS: Record<string, string> = { walk: "walk", bike: "bike", ebike: "e-bike", scooter: "scooter", drive: "drive" };
+const hm = (s: string | null | undefined) => (s ? local(atLocal(zoned(Date.now()).date, s)) : null);
+
+async function callTool(name: string, args: Record<string, unknown>, caller: Caller, db: Db, now: number, weather: () => Promise<WeatherStore | null>, editCommute: (patch: unknown) => Promise<EditResult>): Promise<unknown> {
   const withWeather = async (b: Board) => ((b.weather = boardWeather(await weather().catch(() => null), b, now)), b);
   switch (name) {
     case "my_commute": {
@@ -169,6 +224,27 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
         })),
       };
     }
+    case "get_settings": {
+      const [{ settings: s, saved }, canEdit] = await Promise.all([loadSettings(db, caller.userId), agentCanEdit(db, caller.userId)]);
+      const leg = (l: typeof s.morning) => l && {
+        from: station(l.from)?.name ?? l.from, to: station(l.to)?.name ?? l.to, from_id: l.from, to_id: l.to,
+        usual: l.usual, usual_time: hm(l.usual), getting_there: `${MODE_WORDS[l.travel_mode ?? "walk"]}, ${l.walk_minutes} min`,
+        travel_mode: l.travel_mode ?? "walk", walk_minutes: l.walk_minutes, alert_window: l.window, express_preference: l.express_preference ?? "all",
+      };
+      return {
+        saved, assistant_can_edit: canEdit,
+        note: canEdit ? undefined : "update_commute is off: the rider can turn on \"Let assistants change my commute\" in the Headway app (Settings › Assistants).",
+        morning: leg(s.morning), evening: leg(s.evening), days: s.days, days_text: daysText(s.days), switch_at: s.switch_at,
+        express_preference: s.express_preference ?? "all", alerts: s.alerts,
+        travel_modes: TRAVEL_MODES,
+      };
+    }
+    case "update_commute": {
+      const r = await editCommute(args);
+      if (!r.ok) throw new Error(r.error);
+      if (!r.changes.length) return { changed: [], note: "That's how it was already: nothing changed." };
+      return { changed: r.changes, note: "Saved. The rider's phone was told, and they can undo it in Settings › Assistants." };
+    }
     case "list_stations":
       return { stations: STATIONS.map((s) => ({ id: s.id, name: s.name, short: s.short })) };
     case "track_train": {
@@ -201,7 +277,10 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
   throw new Error(`unknown tool ${name}`);
 }
 
-export async function handleMcp(req: Request, caller: Caller, db: Db, now = Date.now(), weather: () => Promise<WeatherStore | null> = async () => null): Promise<Response> {
+export async function handleMcp(
+  req: Request, caller: Caller, db: Db, now = Date.now(), weather: () => Promise<WeatherStore | null> = async () => null,
+  editCommute: (patch: unknown) => Promise<EditResult> = async () => ({ ok: false, status: 503, error: "not available" }),
+): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method === "GET") return json({ name: "headway-mcp", transport: "streamable-http" });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -220,7 +299,7 @@ export async function handleMcp(req: Request, caller: Caller, db: Db, now = Date
         protocolVersion: PROTOCOL_VERSION,
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: "headway", version: SERVER_VERSION },
-        instructions: "Caltrain for one rider: my_commute answers \"when's my next train?\" from their saved morning/evening stations; next_trains for any pair; service_alerts; track_train to get an arrival alert on their iPhone; station_weather for the weather at stations (boards also carry the weather where they leave and where they get off). Times are Pacific. A board with live=false is the timetable only.",
+        instructions: "Caltrain for one rider: my_commute answers \"when's my next train?\" from their saved morning/evening stations; next_trains for any pair; service_alerts; track_train to get an arrival alert on their iPhone; station_weather for the weather at stations (boards also carry the weather where they leave and where they get off); get_settings for their saved commute, and update_commute to change it when they allow assistants to (changes are permanent and the rider is notified). Times are Pacific. A board with live=false is the timetable only.",
       });
     case "notifications/initialized":
       return new Response(null, { status: 202, headers: cors });
@@ -232,7 +311,7 @@ export async function handleMcp(req: Request, caller: Caller, db: Db, now = Date
       const name = String(msg.params?.name ?? "");
       const args = (msg.params?.arguments ?? {}) as Record<string, unknown>;
       try {
-        const result = await callTool(name, args, caller, db, now, weather);
+        const result = await callTool(name, args, caller, db, now, weather, editCommute);
         return reply({ content: [{ type: "text", text: JSON.stringify(result, null, 2) }], structuredContent: result });
       } catch (e) {
         return reply({ content: [{ type: "text", text: `Error: ${(e as Error).message}` }], isError: true });

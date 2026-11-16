@@ -11,6 +11,7 @@ import { apnsConfigured, fcmConfigured, NOT_BOARD_ACTIVITY, PUSH_DEVICE_COLUMNS,
 import { reviewSignIn } from "./review.ts";
 import { handleFamily, leaveFamily } from "./family.ts";
 import { loadWeather } from "./weather.ts";
+import { agentCanEdit, recentAgentChanges, setAgentCanEdit, undoAgentChange } from "./agent.ts";
 import {
   admin, bearer, createEtaShare, json, loadCommuteDone, loadEtaShare, loadLastRide, loadOnTrain, loadSettings, loadSnapshot, loadTracked, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken, resolveDevice,
   revokeEtaShares, saveCommuteDone, saveLastRide, saveOnTrain, type OnTrainSession, saveSettings, saveTracked, sha256, supabaseUser, updateEtaShareExpiry, type Db, type Env,
@@ -20,7 +21,7 @@ import {
 /** Every table holding a user's Headway rows (DELETE /api/account, the review account's reset). */
 /** An FCM registration token: URL-safe base64 with a colon, around 150–250 characters (never plain hex, which is an APNs token). */
 const FCM_TOKEN = /^(?=.*[^0-9a-fA-F])[A-Za-z0-9_:\-]{64,4096}$/;
-const USER_TABLES = ["profiles", "pairing_codes", "device_tokens", "access_tokens", "push_devices", "activity_tokens", "tracked_trips", "sent_notifications"] as const;
+const USER_TABLES = ["profiles", "pairing_codes", "device_tokens", "access_tokens", "push_devices", "activity_tokens", "tracked_trips", "sent_notifications", "agent_access", "agent_changes"] as const;
 
 /** "Not on this train" holds this long, so the same stretch of track doesn't ask again. */
 const DISMISS_ON_TRAIN_MS = 20 * 60_000;
@@ -424,6 +425,25 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     const n: Notification = { key: `test:${now}`, kind: "service", priority: true, thread: "headway-test", title: "Headway alerts work", body: "You'll hear from Headway like this when your train is late, cancelled or almost at your stop." };
     const results = await Promise.all(data.map((d) => sendPush(env, d, n)));
     return reply({ results: results.map((r) => (r.ok ? "sent" : r.reason)) });
+  }
+
+  // ------------------------------------------------------------ assistants changing settings (MCP)
+  // The switch is only here, behind the rider's own session: no MCP tool can read or flip it.
+  if (path === "/api/agent-access" && req.method === "GET") {
+    const [edit_settings, changes] = await Promise.all([agentCanEdit(db, userId), recentAgentChanges(db, userId)]);
+    return reply({ edit_settings, changes });
+  }
+  if (path === "/api/agent-access" && req.method === "PUT") {
+    const body = (await req.json().catch(() => ({}))) as { edit_settings?: unknown };
+    if (typeof body.edit_settings !== "boolean") return reply({ error: "send { edit_settings: true | false }" }, 400);
+    await setAgentCanEdit(db, userId, body.edit_settings);
+    return reply({ edit_settings: body.edit_settings, changes: await recentAgentChanges(db, userId) });
+  }
+  const undo = path.match(/^\/api\/agent-changes\/([0-9a-f-]{36})\/undo$/);
+  if (undo && req.method === "POST") {
+    const r = await undoAgentChange(db, userId, undo[1]);
+    if (!r.ok) return reply({ error: r.error }, r.status);
+    return reply({ settings: r.settings, changes: await recentAgentChanges(db, userId) });
   }
 
   // ------------------------------------------------------------ agent tokens (MCP)

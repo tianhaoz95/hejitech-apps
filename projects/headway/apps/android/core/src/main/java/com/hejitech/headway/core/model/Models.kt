@@ -527,3 +527,27 @@ data class WeatherReport(
     val stations: List<StationWeather> = emptyList(),
     val alerts: List<WeatherAlert> = emptyList()
 )
+
+// Assistants changing settings (GET/PUT /api/agent-access).
+
+/** A change an assistant made to the commute over MCP. */
+@Serializable
+data class AgentChange(
+    val id: String,
+    /** The assistant's name, when its connection says (null: a personal token or an older connection). */
+    val client: String? = null,
+    /** What changed, one line each ("Evening: usual train 5:30 PM → 4:00 PM"). */
+    val summary: List<String> = emptyList(),
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("undone_at") val undoneAt: String? = null
+)
+
+@Serializable
+data class AgentAccess(
+    /** Whether connected assistants may change the commute (off until the rider turns it on). */
+    @SerialName("edit_settings") val editSettings: Boolean = false,
+    val changes: List<AgentChange> = emptyList()
+)
+
+@Serializable
+data class AgentUndoResponse(val settings: Settings, val changes: List<AgentChange> = emptyList())

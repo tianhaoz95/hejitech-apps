@@ -182,6 +182,9 @@ fun SettingsScreen(
                 }
             }
 
+            // Assistants (MCP): may they change the commute, and what they changed
+            item { AssistantsCard(viewModel, onConnect = { openUrl(context, "$site/settings/") }) }
+
             // Account
             item {
                 FormCard {
@@ -201,7 +204,7 @@ fun SettingsScreen(
                     LinkRow("What's New", external = false) { whatsNew = true }
                     LinkRow("Help") { openUrl(context, "$site/support/") }
                     LinkRow("Privacy") { openUrl(context, "$site/privacy/") }
-                    LinkRow("Assistants (MCP) and web settings") { openUrl(context, "$site/settings/") }
+                    LinkRow("Web settings") { openUrl(context, "$site/settings/") }
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text("Version", modifier = Modifier.weight(1f))
                         Text(BuildConfig.VERSION_NAME, color = StatusGrey)
@@ -306,3 +309,43 @@ private sealed class LocationDisclosure(val message: String) {
             "or shared. Next, Android asks for location access."
     )
 }
+
+/**
+ * Settings › Assistants: whether connected assistants (MCP) may change the commute, and every change
+ * they made, with Undo. Off until the rider turns it on; no assistant can reach this switch.
+ */
+@Composable
+private fun AssistantsCard(viewModel: HeadwayViewModel, onConnect: () -> Unit) {
+    val access by viewModel.agentAccess.collectAsState()
+    val error by viewModel.agentError.collectAsState()
+    var showAll by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { viewModel.loadAgentAccess() }
+    FormCard {
+        Text("Assistants", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        SwitchRow("Let assistants change my commute", access?.editSettings ?: false) { viewModel.setAgentEditing(it) }
+        val changes = access?.changes.orEmpty()
+        (if (showAll) changes else changes.take(3)).forEach { c ->
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.Top) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(c.client ?: "An assistant", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    agentWhen(c.createdAt)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = StatusGrey) }
+                    c.summary.forEach { line ->
+                        Text(line, style = MaterialTheme.typography.bodySmall, color = if (c.undoneAt == null) MaterialTheme.colorScheme.onSurface else StatusGrey)
+                    }
+                }
+                if (c.undoneAt != null) Text("Undone", style = MaterialTheme.typography.bodySmall, color = StatusGrey)
+                else OutlinedButton(onClick = { viewModel.undoAgentChange(c) }) { Text("Undo") }
+            }
+        }
+        if (changes.size > 3 && !showAll) TextButton(onClick = { showAll = true }) { Text("Show all ${changes.size} changes") }
+        error?.let { Text(it, color = StatusRed, style = MaterialTheme.typography.bodySmall) }
+        LinkRow("Connect an assistant (MCP)") { onConnect() }
+        Note("With this on, assistants you've connected, like Claude, can change your stations, usual trains, how you get to the station, commute days and alerts. Your phone tells you each time, and you can undo it here. They can't change on-train mode, family or devices. Assistants can always read your commute and trains.")
+    }
+}
+
+/** "Nov 15, 4:02 PM" in the phone's time zone. */
+private fun agentWhen(iso: String): String? = runCatching {
+    val instant = java.time.OffsetDateTime.parse(iso).toInstant()
+    java.time.format.DateTimeFormatter.ofPattern("MMM d, h:mm a", java.util.Locale.US).withZone(java.time.ZoneId.systemDefault()).format(instant)
+}.getOrNull()

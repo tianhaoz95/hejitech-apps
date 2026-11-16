@@ -816,3 +816,51 @@ public struct WeatherReport: Codable, Hashable, Sendable {
         case updatedAt = "updated_at"
     }
 }
+
+// MARK: - Assistants changing settings (GET/PUT /api/agent-access)
+
+/** A change an assistant made to the commute over MCP. */
+public struct AgentChange: Codable, Hashable, Identifiable, Sendable {
+    public var id: String
+    /// The assistant's name, when its connection says (nil: a personal token or an older connection).
+    public var client: String?
+    /// What changed, one line each ("Evening: usual train 5:30 PM → 4:00 PM").
+    public var summary: [String]
+    public var createdAt: String
+    public var undoneAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, client, summary
+        case createdAt = "created_at"
+        case undoneAt = "undone_at"
+    }
+
+    public var createdDate: Date? { ISO8601DateFormatter.flexible(createdAt) }
+}
+
+public struct AgentAccess: Codable, Hashable, Sendable {
+    /// Whether connected assistants may change the commute (off until the rider turns it on).
+    public var editSettings: Bool
+    public var changes: [AgentChange]
+
+    enum CodingKeys: String, CodingKey {
+        case changes
+        case editSettings = "edit_settings"
+    }
+}
+
+public struct AgentUndoResponse: Codable, Sendable {
+    public var settings: Settings
+    public var changes: [AgentChange]
+}
+
+extension ISO8601DateFormatter {
+    /// Postgres timestamps, with or without fractional seconds.
+    static func flexible(_ s: String) -> Date? {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = f.date(from: s) { return d }
+        f.formatOptions = [.withInternetDateTime]
+        return f.date(from: s)
+    }
+}

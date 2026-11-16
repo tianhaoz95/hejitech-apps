@@ -259,3 +259,29 @@ create table headway.pro_grants (
 alter table headway.pro_grants enable row level security;
 grant select, insert, update, delete on table headway.pro_grants to service_role;
 
+
+-- Assistants changing settings (MCP `update_commute`): the rider's switch, off unless they turn it on
+-- in the app, and every change an assistant made (before/after) so the app can show and undo it.
+-- Only the Worker reads and writes them (service key): an assistant can never turn the switch on.
+create table headway.agent_access (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  edit_settings boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+alter table headway.agent_access enable row level security;
+grant select, insert, update, delete on table headway.agent_access to service_role;
+
+create table headway.agent_changes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  -- The assistant's name as its OAuth client registered it, or "personal access token".
+  client text,
+  summary text[] not null,
+  before jsonb not null,
+  after jsonb not null,
+  created_at timestamptz not null default now(),
+  undone_at timestamptz
+);
+create index agent_changes_user_created on headway.agent_changes (user_id, created_at desc);
+alter table headway.agent_changes enable row level security;
+grant select, insert, update, delete on table headway.agent_changes to service_role;

@@ -22,6 +22,7 @@ import { runCron } from "./cron.ts";
 import { renderEtaHtml } from "./eta.ts";
 import { handleMcp, type Caller } from "./mcp.ts";
 import { loadWeather } from "./weather.ts";
+import { agentEditCommute } from "./agent.ts";
 import { admin, json, loadEtaShare, loadSnapshot, PREFIX, resolveAgent, supabaseUser, updateEtaShareExpiry, type Env as BaseEnv } from "./store.ts";
 
 export interface Env extends BaseEnv {
@@ -31,14 +32,17 @@ export interface Env extends BaseEnv {
 interface Props {
   userId: string;
   via: "oauth" | "token";
+  /** The assistant's name as its OAuth client registered it (grants made before 1.9.0 don't have it). */
+  client?: string;
 }
 
 const mcpHandler = {
   async fetch(req: Request, env: Env, ctx: ExecutionContext & { props?: Props }): Promise<Response> {
     const props = ctx.props;
     if (!props?.userId) return new Response("unauthorized", { status: 401 });
-    const caller: Caller = { userId: props.userId, via: props.via };
-    return handleMcp(req, caller, admin(env), clockNow(env), () => loadWeather(env));
+    const caller: Caller = { userId: props.userId, via: props.via, client: props.client ?? null };
+    const db = admin(env);
+    return handleMcp(req, caller, db, clockNow(env), () => loadWeather(env), (patch) => agentEditCommute(env, db, props.userId, caller.client ?? null, patch));
   },
 };
 
@@ -72,7 +76,8 @@ async function authorize(req: Request, env: Env): Promise<Response> {
     const user = await supabaseUser(env, req);
     if (!user) return json({ error: "Your session expired. Sign in again." }, 401);
     const approved = await oauth.approveConsent(req, handle, { scope: ["mcp"] });
-    const props: Props = { userId: user.id, via: "oauth" };
+    const client = await oauth.lookupClient(approved.request.clientId).catch(() => null);
+    const props: Props = { userId: user.id, via: "oauth", ...(client?.clientName ? { client: client.clientName.slice(0, 60) } : {}) };
     const { redirectTo } = await oauth.completeAuthorization({
       request: approved.request,
       userId: user.id,
