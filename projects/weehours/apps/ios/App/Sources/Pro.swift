@@ -132,90 +132,211 @@ final class ProPurchases: ObservableObject {
 }
 
 /// What Pro costs and includes; opened from Settings and whenever a Pro feature is tapped after the
-/// trial. Shows what guideline 3.1.2 asks for: price per period, renewal terms, Restore, Terms, Privacy.
+/// trial. Drawn as a sheet over a blurred sample of the log ("Peek", reports/2026-11-16-pro-paywall-redesign).
+/// Shows what guideline 3.1.2 asks for: price per period, renewal terms, Restore, Terms, Privacy.
 struct PaywallView: View {
     @EnvironmentObject var model: AppModel
     @ObservedObject private var store = ProPurchases.shared
     @State private var manage = false
+    @State private var selected: Plan = .yearly
 
     private static let eula = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
+    private static let privacy = URL(string: "https://weehours.hejitech.workers.dev/privacy/")!
+    private static let perks: [(String, String)] = [
+        ("mic.fill", "Voice logging"),
+        ("bell.fill", "Duty reminders"),
+        ("eyeglasses", "Glasses & ring"),
+        ("sparkles", "AI assistant"),
+    ]
+    /// A sample night, only ever shown blurred behind the sheet.
+    private static let backdrop: [(String, String, String)] = [
+        ("3:12 AM", "Feed", "Bottle 120 ml · logged by voice"),
+        ("2:40 AM", "Diaper", "Wet"),
+        ("11:05 PM", "Sleep", "3 h 25 min"),
+        ("10:30 PM", "Feed", "Left side · 14 min"),
+        ("9:50 PM", "Diaper", "Dirty"),
+    ]
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Wee Hours Pro").font(.largeTitle.bold())
-                    Text(statusLine).font(.subheadline).foregroundStyle(.secondary)
+        ZStack(alignment: .top) {
+            backdropView
+                .blur(radius: 6)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            LinearGradient(colors: [.clear, Color(.systemBackground).opacity(0.55)], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+            // The sheet starts low enough for the log to show above it and scrolls up over it.
+            ScrollView {
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: 120)
+                    sheet
                 }
-                VStack(alignment: .leading, spacing: 12) {
-                    Label("Log by voice, hands-free, with the on-device AI", systemImage: "mic.fill")
-                    Label("Reminders for whoever is on duty", systemImage: "bell.fill")
-                    Label("Even G2 glasses and R1 ring", systemImage: "eyeglasses")
-                    Label("Your AI assistant over MCP", systemImage: "sparkles")
-                    Label("Photos on entries and CSV export", systemImage: "photo.on.rectangle")
-                    Label("One purchase covers everyone in your household", systemImage: "person.2.fill")
-                }
-                .font(.subheadline)
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
-                Text("Logging by tap, the Watch and your whole log stay free, always.")
-                    .font(.footnote).foregroundStyle(.secondary)
-
-                if model.entitlement?.access(now: Date()) == .lifetime || isSubscribed {
-                    if isSubscribed { Button("Manage Subscription") { manage = true } }
-                } else {
-                    if store.loading && store.products.isEmpty { ProgressView().frame(maxWidth: .infinity) }
-                    ForEach([Plan.yearly, .monthly, .lifetime], id: \.self) { plan in
-                        if let p = store.products[plan] {
-                            Button { Task { await store.buy(plan) } } label: {
-                                VStack(spacing: 2) {
-                                    Text(store.busy == plan.rawValue ? "Opening the App Store…" : title(plan, p)).font(.headline)
-                                    if plan == .yearly { Text("Best value").font(.caption) }
-                                }
-                                .frame(maxWidth: .infinity).padding(.vertical, 6)
-                            }
-                            .modifier(PlanButtonStyle(prominent: plan == .yearly))
-                            .accessibilityIdentifier("buy-\(plan.rawValue)")
-                        }
-                    }
-                    if let m = store.products[.monthly], let y = store.products[.yearly] {
-                        Text("Subscriptions (\(m.displayPrice) a month or \(y.displayPrice) a year) are charged to your Apple Account and renew automatically unless you cancel at least 24 hours before the end of the current period. Manage or cancel them in your Apple Account settings. Lifetime is a one-time purchase.")
-                            .font(.footnote).foregroundStyle(.secondary)
-                    }
-                    if store.products.isEmpty && !store.loading {
-                        Button("Try Again") { Task { await store.load() } }.buttonStyle(.bordered).frame(maxWidth: .infinity)
-                    }
-                }
-                if let e = store.error { Text(e).font(.footnote).foregroundStyle(.red) }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "archivebox.fill").foregroundStyle(.orange)
-                        Text("Data Retention Notice").font(.headline)
-                    }
-                    Text("In the future, baby data that is inactive for more than a year might be archived. If that happens, we will provide a way to download your complete archive and re-import it anytime.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
-
-                HStack(spacing: 16) {
-                    Button(store.busy == "restore" ? "Restoring…" : "Restore Purchases") { Task { await store.restore() } }
-                        .accessibilityIdentifier("restore-purchases")
-                    Link("Terms of Use", destination: Self.eula)
-                    Link("Privacy Policy", destination: URL(string: "https://weehours.hejitech.workers.dev/privacy/")!)
-                }
-                .font(.footnote)
             }
-            .padding()
+            .scrollBounceBehavior(.basedOnSize)
         }
         .navigationTitle("Wee Hours Pro")
         .navigationBarTitleDisplayMode(.inline)
         .manageSubscriptionsSheet(isPresented: $manage)
         .task { await store.load() }
+    }
+
+    private var backdropView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Last night").font(.largeTitle.bold()).padding(.bottom, 4)
+            ForEach(Self.backdrop, id: \.0) { time, kind, detail in
+                HStack(alignment: .firstTextBaseline, spacing: 14) {
+                    Text(time).font(.headline).foregroundStyle(.tint).frame(width: 88, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(kind).font(.headline)
+                        Text(detail).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(14)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private var sheet: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Capsule().fill(.secondary.opacity(0.4)).frame(width: 36, height: 5).frame(maxWidth: .infinity)
+            Label("Unlock all of Wee Hours", systemImage: "lock.fill")
+                .font(.footnote.weight(.bold)).textCase(.uppercase).foregroundStyle(.tint)
+            Text("Log the night without opening your eyes.").font(.title2.bold()).fixedSize(horizontal: false, vertical: true)
+            Label(statusLine, systemImage: "calendar")
+                .font(.footnote.weight(.semibold)).foregroundStyle(.tint)
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .background(Color.accentColor.opacity(0.14), in: Capsule())
+            HStack(spacing: 6) {
+                ForEach(Self.perks, id: \.1) { icon, text in
+                    VStack(spacing: 6) {
+                        Image(systemName: icon).font(.body.weight(.semibold)).foregroundStyle(.tint)
+                        Text(text).font(.caption2.weight(.semibold)).foregroundStyle(Color.primary)
+                            .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.vertical, 10).padding(.horizontal, 2)
+                    .background(Color.accentColor.opacity(0.13), in: RoundedRectangle(cornerRadius: 12))
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            Text("Also photos on entries and CSV export. One purchase covers everyone in your household.")
+                .font(.footnote).foregroundStyle(.secondary)
+            Label("Logging by tap, the Watch and your whole log stay free, always.", systemImage: "checkmark")
+                .font(.footnote).foregroundStyle(.secondary)
+
+            if model.entitlement?.access(now: Date()) == .lifetime || isSubscribed {
+                if isSubscribed {
+                    Button("Manage Subscription") { manage = true }
+                        .buttonStyle(.bordered).frame(maxWidth: .infinity)
+                }
+            } else {
+                if store.loading && store.products.isEmpty { ProgressView().frame(maxWidth: .infinity) }
+                VStack(spacing: 8) {
+                    ForEach([Plan.yearly, .monthly, .lifetime], id: \.self) { plan in
+                        if let p = store.products[plan] { planRow(plan, p) }
+                    }
+                }
+                if let p = store.products[selected] {
+                    Button { Task { await store.buy(selected) } } label: {
+                        Text(store.busy == selected.rawValue ? "Opening the App Store…" : cta(selected, p))
+                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 8)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.roundedRectangle(radius: 16))
+                    .accessibilityIdentifier("buy-pro")
+                    Text(selected == .lifetime ? "One payment, for your whole household." : "Renews every \(selected == .monthly ? "month" : "year"). Cancel anytime.")
+                        .font(.footnote).foregroundStyle(.secondary).frame(maxWidth: .infinity)
+                }
+                if let m = store.products[.monthly], let y = store.products[.yearly] {
+                    Text("Subscriptions (\(m.displayPrice) a month or \(y.displayPrice) a year) are charged to your Apple Account and renew automatically unless you cancel at least 24 hours before the end of the current period. Manage or cancel them in your Apple Account settings. Lifetime is a one-time purchase.")
+                        .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                }
+                if store.products.isEmpty && !store.loading {
+                    Button("Try Again") { Task { await store.load() } }.buttonStyle(.bordered).frame(maxWidth: .infinity)
+                }
+            }
+            if let e = store.error { Text(e).font(.footnote).foregroundStyle(.red) }
+
+            DisclosureGroup {
+                Text("In the future, baby data that is inactive for more than a year might be archived. If that happens, we will provide a way to download your complete archive and re-import it anytime.")
+                    .font(.footnote).foregroundStyle(.secondary).padding(.top, 4)
+            } label: {
+                Label("Data Retention Notice", systemImage: "archivebox.fill").font(.footnote.weight(.semibold))
+            }
+
+            HStack {
+                Button(store.busy == "restore" ? "Restoring…" : "Restore Purchases") { Task { await store.restore() } }
+                    .accessibilityIdentifier("restore-purchases")
+                Spacer()
+                Link("Terms of Use", destination: Self.eula)
+                Spacer()
+                Link("Privacy Policy", destination: Self.privacy)
+            }
+            .font(.footnote)
+        }
+        .padding(.horizontal, 20).padding(.top, 8)
+        .padding(.bottom, VoiceButton.size + 40)   // clear of the floating tab bar and voice button
+        .background(
+            Color(.secondarySystemGroupedBackground)
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 30, topTrailingRadius: 30))
+                .shadow(color: .black.opacity(0.18), radius: 20, y: -6)
+                .ignoresSafeArea(edges: .bottom)
+        )
+    }
+
+    private func planRow(_ plan: Plan, _ p: Product) -> some View {
+        let on = selected == plan
+        return Button { selected = plan } label: {
+            HStack(spacing: 12) {
+                Image(systemName: on ? "largecircle.fill.circle" : "circle")
+                    .font(.title3).foregroundStyle(on ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(plan == .yearly ? "Yearly" : plan == .monthly ? "Monthly" : "Lifetime").font(.headline)
+                    Text(plan == .lifetime ? "Pay once, keep it for good" : "\(p.displayPrice) every \(plan == .monthly ? "month" : "year")")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(title(plan, p)).font(.headline)
+                    if plan == .yearly {
+                        Text("\((p.price / 12).formatted(p.priceFormatStyle))/mo").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 14).padding(.top, 18).padding(.bottom, 14)
+            .background(on ? Color.accentColor.opacity(0.12) : Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(on ? Color.accentColor : .clear, lineWidth: 2))
+            .overlay(alignment: .topTrailing) {
+                if plan == .yearly {
+                    Text("BEST VALUE").font(.caption2.weight(.heavy))
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(Color.accentColor, in: Capsule()).foregroundStyle(.black.opacity(0.8))
+                        .offset(x: -12, y: -10)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityIdentifier("buy-\(plan.rawValue)")
+    }
+
+    private func cta(_ plan: Plan, _ p: Product) -> String {
+        switch plan {
+        case .lifetime: return "Unlock for life · \(p.displayPrice)"
+        case .monthly: return "Get Pro · \(p.displayPrice)/month"
+        case .yearly: return "Get Pro · \(p.displayPrice)/year"
+        }
     }
 
     private var isSubscribed: Bool {
@@ -235,16 +356,9 @@ struct PaywallView: View {
 
     private func title(_ plan: Plan, _ p: Product) -> String {
         switch plan {
-        case .monthly: return "\(p.displayPrice) per month"
-        case .yearly: return "\(p.displayPrice) per year"
-        case .lifetime: return "Lifetime · \(p.displayPrice) once"
+        case .monthly: return "\(p.displayPrice)/month"
+        case .yearly: return "\(p.displayPrice)/year"
+        case .lifetime: return "\(p.displayPrice) once"
         }
-    }
-}
-
-private struct PlanButtonStyle: ViewModifier {
-    let prominent: Bool
-    func body(content: Content) -> some View {
-        if prominent { content.buttonStyle(.borderedProminent) } else { content.buttonStyle(.bordered) }
     }
 }

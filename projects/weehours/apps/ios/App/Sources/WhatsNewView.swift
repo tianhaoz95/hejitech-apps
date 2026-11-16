@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.1.0"
+    static let currentVersion = "1.1.1"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,19 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.1.1",
+            date: "November 2026",
+            tagline: "A clearer Pro screen",
+            features: [
+                WhatsNewItem(
+                    icon: "sparkles",
+                    tint: Theme.accent,
+                    title: "A new Pro screen",
+                    description: "Wee Hours Pro now opens over a glimpse of your log, with monthly, yearly and lifetime in one list and one clear button for the plan you pick. Logging by tap, your watch and your whole log stay free."
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.1.0",
             date: "November 2026",

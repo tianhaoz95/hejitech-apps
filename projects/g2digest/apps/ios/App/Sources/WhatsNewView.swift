@@ -29,10 +29,13 @@ public struct ReleaseNotes: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.5.0"
+    public static let currentVersion = "0.5.1"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.5.1", date: "November 2026", items: [
+            WhatsNewItem(icon: "sparkles", title: "A new Pro screen", description: "The G2 Digest Pro screen is redesigned: it opens over a glimpse of the app, your plans in one list and one clear button for the one you pick."),
+        ]),
         ReleaseNotes(version: "0.5.0", date: "November 2026", items: [
             WhatsNewItem(icon: "checkmark.seal", title: "G2 Digest Pro", description: "G2 Digest is now free to download: try everything for a week, then keep it with G2 Digest Pro, yearly or once for life. Manage it, or restore a purchase, in Settings."),
         ]),

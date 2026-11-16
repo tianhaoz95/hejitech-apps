@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -19,9 +20,11 @@ import 'package:waypack/screens/today_screen.dart';
 import 'package:waypack/screens/trips_screen.dart';
 import 'package:waypack/services/api.dart';
 import 'package:waypack/services/local_server.dart';
+import 'package:waypack/services/pro_store.dart';
 import 'package:waypack/services/trip_store.dart';
 import 'package:waypack/state/app_state.dart';
 import 'package:waypack/util/today.dart';
+import 'package:waypack/widgets/pro_sheet.dart';
 import 'package:waypack/widgets/scrapbook.dart';
 
 /// The Tahoe example, moved so that its first day is today (in the trip's time zone).
@@ -164,6 +167,38 @@ void main() {
       expect(find.text('Settings'), findsOneWidget);
       expect(find.text('Connect your AI agent'), findsOneWidget);
       await shot(t, key, 'settings');
+    });
+
+    testWidgets('pro sheet: peek over the app ($mode)', (t) async {
+      final (key, state) = await pump(t, const SettingsScreen());
+      state.pro.products
+        ..[ProStore.annualId] = ProductDetails(
+          id: ProStore.annualId,
+          title: 'Waypack Pro',
+          description: '',
+          price: r'$14.99',
+          rawPrice: 14.99,
+          currencyCode: 'USD',
+        )
+        ..[ProStore.lifetimeId] = ProductDetails(
+          id: ProStore.lifetimeId,
+          title: 'Waypack Pro Lifetime',
+          description: '',
+          price: r'$39.99',
+          rawPrice: 39.99,
+          currencyCode: 'USD',
+        );
+      state.pro.introEligible = true;
+      showProSheet(t.element(find.byType(SettingsScreen)));
+      await t.pumpAndSettle();
+      expect(find.text('Try 1 week free'), findsOneWidget);
+      expect(find.text('1 WEEK FREE'), findsOneWidget);
+      expect(find.byKey(const Key('restore-purchases')), findsOneWidget);
+      await shot(t, key, 'pro_sheet');
+      await t.tap(find.byKey(const Key('buy-lifetime')));
+      await t.pump();
+      expect(find.text(r'Unlock for life · $39.99'), findsOneWidget);
+      await shot(t, key, 'pro_sheet_lifetime');
     });
 
     testWidgets('receive: manual entry ($mode)', (t) async {
