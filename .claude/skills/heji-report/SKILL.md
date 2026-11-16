@@ -89,11 +89,23 @@ Rules that make these reports useful:
 3. Read the hand-off as a stranger: evaluate `REPORT_HANDOFF()` headlessly (or stub
    `navigator.clipboard.writeText` and click `#copy`) and check it names the report, project,
    context and brief and carries every section, table and design block as text.
+   Check the copy on a phone too: open it over `PHONE=1` with Playwright's `devices["iPhone 13"]`
+   (not a secure context there), tap `#copy` and expect the "copied" toast; with
+   `document.execCommand = () => false` expect the select-and-copy sheet with the full text.
 4. Grep the folder for anything that mustn't be public, and for absolute paths
    (`grep -rn '/Users/\|/Volumes/' reports/<slug>`).
 5. Stop the server. Tell the user the serve command and URL, a few lines on what the report says,
    and how to respond: tick the checklist, write in **Your notes**, click **Copy summary** and paste
    it to any agent.
+
+**Mobile.** The owner often reviews on a phone. `PHONE=1 reports/<slug>/script/serve.sh` adds a second
+server on the Mac's Tailscale IPv4 (only that address, never `0.0.0.0`) and prints its URL; give the
+owner that URL when they want to review on the phone. Plain `http://100.x…` isn't a secure context,
+so `navigator.clipboard` doesn't exist there: the engine's `copyText()` then copies from a selected
+textarea with `execCommand("copy")` in the same tap, and if the browser refuses, opens a sheet with
+the whole text already selected. Never fall back to `prompt()` (iOS shows one line of it) and never
+`await` anything before the copy in a click handler (it loses the tap's permission). Keep using
+`copyText()` for any new copy button.
 
 Reports are committed with the work they belong to. When the owner is done with one, archive it:
 `.claude/skills/heji-archive-reports/reports.py archive <slug>`.

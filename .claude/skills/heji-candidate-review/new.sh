@@ -23,7 +23,8 @@ REPO="$(git -C "$ROOT" remote get-url origin 2>/dev/null | sed -E 's#^(git@[^:]+
 
 used="$(grep -ho ':-[0-9]\{4,5\}' "$ROOT"/reports/*/script/serve.sh "$ROOT"/reports/archive/*/script/serve.sh 2>/dev/null | grep -o '[0-9]*' || true)"
 PORT=8787
-while grep -qx "$PORT" <<<"$used"; do PORT=$((PORT + 1)); done
+# Also skip a port something is serving right now (another report, another session).
+while grep -qx "$PORT" <<<"$used" || lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; do PORT=$((PORT + 1)); done
 
 mkdir -p "$ROOT/reports"
 cp -R "$SKILL/template" "$DEST"

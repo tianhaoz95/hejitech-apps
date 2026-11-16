@@ -9,6 +9,46 @@
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const load = (k, d) => { try { return JSON.parse(localStorage.getItem(`${KEY}-${k}`)) ?? d; } catch { return d; } };
   const save = (k, v) => { try { localStorage.setItem(`${KEY}-${k}`, JSON.stringify(v)); } catch {} };
+  // ── copying that works on a phone. navigator.clipboard exists only in a secure context (https or
+  //    localhost); a page opened over Tailscale or the LAN (http://100.x…:port, `PHONE=1 serve.sh`) has
+  //    none. Then copy from a selected textarea with execCommand inside the same tap (iOS Safari allows
+  //    it), and if even that fails, show the text in a sheet, already selected, to copy by hand. Never
+  //    prompt(): iOS shows one line of it, so a long, multi-line hand-off can't be copied from there.
+  const copySheet = (text) => {
+    const wrap = document.createElement("div");
+    wrap.setAttribute("style", "position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;color-scheme:light dark");
+    wrap.innerHTML = `<div style="background:Canvas;color:CanvasText;width:min(720px,100%);max-height:88vh;display:flex;flex-direction:column;gap:10px;padding:16px 16px calc(16px + env(safe-area-inset-bottom));border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.3);font:15px/1.4 system-ui,sans-serif">
+      <b>Copy this text</b><span style="opacity:.7;font-size:13px">Your browser blocked automatic copying here. It's selected: tap Copy (or long-press › Copy).</span>
+      <textarea readonly style="flex:1;min-height:45vh;width:100%;box-sizing:border-box;font:13px/1.45 ui-monospace,Menlo,monospace;padding:10px;border-radius:10px;border:1px solid rgba(127,127,127,.4);background:transparent;color:inherit"></textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end"><button data-sel style="padding:10px 14px;border-radius:10px;border:0;font:600 15px system-ui">Select all</button><button data-done style="padding:10px 14px;border-radius:10px;border:0;font:600 15px system-ui">Done</button></div></div>`;
+    const ta = wrap.querySelector("textarea");
+    ta.value = text;
+    const sel = () => { ta.focus(); ta.select(); ta.setSelectionRange(0, text.length); };
+    wrap.addEventListener("click", (e) => {
+      if (e.target === wrap || e.target.closest("[data-done]")) wrap.remove();
+      else if (e.target.closest("[data-sel]")) sel();
+    });
+    document.body.appendChild(wrap);
+    sel();
+  };
+  const copyText = async (text) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      try { await navigator.clipboard.writeText(text); return true; } catch { /* fall through */ }
+    }
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.setAttribute("style", "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px");
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch { ok = false; }
+    ta.remove();
+    if (!ok) copySheet(text);
+    return ok;
+  };
+  window.COPY_TEXT = copyText;                    // for headless checks
   const toast = (msg) => { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); setTimeout(() => t.classList.remove("on"), 2200); };
 
   // ── theme
@@ -56,7 +96,7 @@
     if (!btn) return;
     const text = [...btn.parentElement.childNodes].filter((c) => c !== btn).map((c) => c.textContent).join("")
       .split("\n").map((l) => l.replace(/\s+#.*$/, "")).join("\n").trim();
-    try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; } catch { btn.textContent = "Select and copy"; }
+    btn.textContent = (await copyText(text)) ? "Copied" : "Copy";
     setTimeout(() => (btn.textContent = "Copy"), 1500);
   });
 
@@ -70,7 +110,7 @@
   document.addEventListener("click", async (e) => {
     const btn = e.target.closest("[data-copy-field]");
     if (!btn) return;
-    try { await navigator.clipboard.writeText($("pre", btn.closest(".field")).textContent); btn.textContent = "Copied"; } catch { btn.textContent = "Select and copy"; }
+    btn.textContent = (await copyText($("pre", btn.closest(".field")).textContent)) ? "Copied" : "Copy";
     setTimeout(() => (btn.textContent = "Copy"), 1500);
   });
 
@@ -168,7 +208,6 @@
   };
   window.REPORT_HANDOFF = handoff;               // for headless checks
   $("#copy").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(handoff()); toast("Hand-off copied: paste it to any agent"); }
-    catch { toast("Clipboard blocked: run REPORT_HANDOFF() in the console"); }
+    if (await copyText(handoff())) toast("Hand-off copied: paste it to any agent");
   });
 })();
