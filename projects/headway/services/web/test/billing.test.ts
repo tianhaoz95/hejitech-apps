@@ -1,6 +1,10 @@
 // Pro on every platform (billing.ts, appstore.ts): App Store JWS checks with a throwaway chain in
-// fixtures/appstore-chain.json (not Apple's; how it was made: projects/waypack/services/mcp/test/appstore.test.ts),
-// purchases from each store combining into one answer, and Stripe's webhook.
+// fixtures/appstore-chain.json (not Apple's), purchases from each store combining into one answer, and
+// Stripe's webhook. The chain (DER base64, keys as PKCS#8) was made like this:
+//   openssl ecparam -name secp384r1 -genkey -noout -out root.key
+//   openssl req -x509 -new -key root.key -sha384 -days 36500 -subj "/CN=Test Root" -addext basicConstraints=critical,CA:true -out root.pem
+//   intermediate: P-384, CA:true + extension 1.2.840.113635.100.6.2.1=ASN1:NULL, signed by root
+//   leaf: P-256 + extension 1.2.840.113635.100.6.11.1=ASN1:NULL, signed by the intermediate
 import { describe, expect, it } from "vitest";
 import fixture from "./fixtures/appstore-chain.json";
 import { APPLE_ROOT_G3, appStoreRow, handleNotification, parseCert, recordTransactions, verifyAppStoreJws, type AppStoreTransaction } from "../src/worker/appstore.ts";
