@@ -68,6 +68,11 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|f
   Supabase sign-in without an SDK) and `App/Sources` (`AppModel` drives `phase`; `route()` ends every
   sign-in path). Release builds use production, Debug the local stack. Tabs: Trains (board, flip,
   pick, swipe to track; the ride's weather as an animated backdrop and a from → to chip, `WeatherBackdrop.swift`), Commute (legs, alerts), Family (group, shares, follows, status, invites), Settings (alerts, on-train mode, location estimate, Even G2 glasses pairing, Assistants: the "let assistants change my commute" switch and their changes with Undo, account, What's New, delete data). Keeps the Watch in step via `WatchLink`.
+  `Intents/` (shared by the iPhone and watch apps; each target's `IntentHost.swift` supplies the signed-in client):
+  Siri / Shortcuts / Spotlight actions Next Train, Track My Next Train, Where's My Train and Stop Tracking, with
+  App Shortcuts phrases ("When's my next train in Headway"); what Siri says is HeadwayKit's `SiriSpeech` (tested).
+  `StationEntity` lives there too (the widget uses it). On iPhone they need Pro like the app; on the watch they use
+  the session the phone shared.
   `Widgets/`: the Home/Lock Screen "Next trains" widget (stations picked in its App Intent, public board, no
   App Group), the tracked-train Live Activity and the "next trains" board Live Activity (pinned from the Trains
   tab; the cron pushes it via update tokens whose `trip_id` is `board:<from>><to>`).

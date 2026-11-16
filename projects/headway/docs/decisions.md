@@ -326,3 +326,15 @@ I bike 6 minutes, alerts Monday–Thursday") better than tapping through screens
 - **Changes are permanent**: the tool's description tells assistants so, and to ask before using it for
   a one-off ("late tomorrow"). A "today only" override that expires on its own would be the better
   answer to one-off plans; not built yet.
+
+## Siri and Shortcuts (2026-11-16, 1.10.0)
+
+App Intents with App Shortcuts, so the phrases work with no setup: Next Train (the commute for the time
+of day, or any pair; one station given keeps the commute's other end), Track My Next Train (the next
+train the board says you can still catch), Where's My Train and Stop Tracking. The intents live in
+`apps/ios/Intents/` and are compiled into both the iPhone and the watch app; each has an `IntentHost`
+for its signed-in client (the iPhone app's Keychain session; on the watch, the session the phone
+shared). The spoken text is HeadwayKit's `SiriSpeech`, tested once for both. On iPhone they need Pro,
+as the app does; the watch isn't gated. Tracking from Siri gets its Live Activity from the cron's
+push-to-start, like tracking from the glasses or MCP. Every phrase names the app, and none says "Apple"
+(ITMS-90626 rejects the build).

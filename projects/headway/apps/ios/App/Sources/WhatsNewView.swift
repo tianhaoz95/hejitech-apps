@@ -20,10 +20,14 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.9.0"
+    static let currentVersion = "1.10.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.10.0", date: "November 2026", items: [
+            WhatsNewItem(icon: "mic.fill", title: "Ask Siri", description: "Say \"When's my next train in Headway\", \"Track my train with Headway\", \"Where's my train in Headway\" or \"Stop tracking in Headway\". Siri answers with live times, delays and when to leave. It works on your watch too."),
+            WhatsNewItem(icon: "square.stack.3d.up.fill", title: "In the Shortcuts app", description: "Next Train, Track My Next Train, Where's My Train and Stop Tracking are actions you can build your own shortcuts and automations with."),
+        ]),
         ReleaseNotes(version: "1.9.0", date: "November 2026", items: [
             WhatsNewItem(icon: "sparkles", title: "Let your assistant set up your commute", description: "Turn on Settings › Assistants › \"Let assistants change my commute\" and an assistant you've connected, like Claude, can change your stations, usual trains, how you get to the station, commute days and alerts. It's off unless you turn it on."),
             WhatsNewItem(icon: "arrow.uturn.backward", title: "Every change, and Undo", description: "Your iPhone tells you each time an assistant changes something, and Settings › Assistants lists every change in plain words with Undo."),

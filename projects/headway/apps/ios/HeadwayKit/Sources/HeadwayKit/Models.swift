@@ -310,6 +310,15 @@ public struct MyBoard: Codable, Sendable {
         case board, saved, tracked
         case hasCommute = "has_commute", onTrain = "on_train", commuteDone = "commute_done"
     }
+
+    public init(board: Board?, hasCommute: Bool, saved: Bool = false, tracked: TrackedWithProgress? = nil, onTrain: OnTrainCard? = nil, commuteDone: CommuteDoneCard? = nil) {
+        self.board = board
+        self.hasCommute = hasCommute
+        self.saved = saved
+        self.tracked = tracked
+        self.onTrain = onTrain
+        self.commuteDone = commuteDone
+    }
 }
 
 /// Your location showed you reached a leg's destination: no more alerts for it today.

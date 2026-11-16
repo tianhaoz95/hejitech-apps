@@ -20,10 +20,13 @@ data class ReleaseNotes(val version: String, val date: String, val items: List<W
  * app's `WhatsNewView.swift` (release.env's release_check refuses a version either doesn't describe).
  */
 object WhatsNew {
-    const val CURRENT_VERSION = "1.9.0"
+    const val CURRENT_VERSION = "1.10.0"
     private const val KEY_SEEN = "last_seen_whats_new_version"
 
     val releases = listOf(
+        ReleaseNotes(version = "1.10.0", date = "November 2026", items = listOf(
+            WhatsNewItem("A fresh build", "Nothing new to try on Android in this one: it's a new build, in step with the iPhone app, which now answers to Siri."),
+        )),
         ReleaseNotes(version = "1.9.0", date = "November 2026", items = listOf(
             WhatsNewItem("Let your assistant set up your commute", "Turn on Settings › Assistants › \"Let assistants change my commute\" and an assistant you've connected, like Claude, can change your stations, usual trains, how you get to the station, commute days and alerts. It's off unless you turn it on."),
             WhatsNewItem("Every change, and Undo", "Your phone tells you each time an assistant changes something, and Settings › Assistants lists every change in plain words with Undo."),
