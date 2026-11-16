@@ -297,6 +297,21 @@ class HeadwayApiClient(
         executeEmpty(builder.build())
     }
 
+    /** The account's Headway Pro, from any store or a grant (GET /api/pro). */
+    suspend fun getPro(): ProStatus = withContext(Dispatchers.IO) {
+        val builder = Request.Builder().url("${config.site}/api/pro").get()
+        addAuthHeader(builder)
+        executeAndDecode(builder.build())
+    }
+
+    /** Hands Play Billing purchases to the account; the Worker checks them with Google. */
+    suspend fun uploadPlayPurchases(purchases: List<PlayPurchaseUpload>): ProStatus = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(mapOf("purchases" to purchases)).toRequestBody(jsonMediaType)
+        val builder = Request.Builder().url("${config.site}/api/play/purchases").post(body)
+        addAuthHeader(builder)
+        executeAndDecode(builder.build())
+    }
+
     /** Whether assistants may change the commute, and what they changed. */
     suspend fun getAgentAccess(): AgentAccess = withContext(Dispatchers.IO) {
         val builder = Request.Builder().url("${config.site}/api/agent-access").get()

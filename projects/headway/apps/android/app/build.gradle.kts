@@ -94,6 +94,8 @@ dependencies {
     implementation(libs.navigation.compose)
     // Google sign-in opens in a browser tab and comes back to headway://login-callback.
     implementation(libs.browser)
+    // Headway Pro on Android: Play Billing (ProStore.kt); the Worker verifies purchases with Google.
+    implementation(libs.billing.ktx)
 
     implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.play.services)

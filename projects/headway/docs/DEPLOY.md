@@ -83,6 +83,11 @@ App Store Server Notifications V2 (production and sandbox) go to `/appstore/noti
 `node .claude/skills/heji-app-store-iap/iap.mjs notifications com.hejitech.headway https://headway.hejitech.workers.dev/appstore/notifications`.
 Locally, put the sandbox key and `node scripts/stripe_pro.mjs headway`'s price ids in `.dev.vars`.
 
+Google Play: the products `pro_annual` (subscription, base plan `yearly`, offer `free-week`) and
+`pro_lifetime` (one-time) need a build with Play Billing on a track first. The Worker reads purchases
+with a service account that has this app's "View financial data" and "Manage orders and
+subscriptions" in Play Console: `PLAY_SA_EMAIL` (var) and `PLAY_SA_KEY` (secret, the JSON's private_key).
+
 ## 4. iPhone app
 
 1. App Store Connect (the owner): a new app record for `com.hejitech.headway` (name "Headway",

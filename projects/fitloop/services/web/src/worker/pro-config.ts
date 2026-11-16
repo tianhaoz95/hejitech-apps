@@ -10,6 +10,9 @@ export const PRO = {
     "com.hejitech.fitloop.pro.annual": "annual",
     "com.hejitech.fitloop.pro.lifetime": "lifetime",
   } as Record<string, Tier>,
+  /** Google Play: the Android app's package and its Pro products (a subscription with a yearly base plan, a one-time product). */
+  packageName: "com.hejitech.fitloop",
+  playProducts: { annual: "pro_annual", lifetime: "pro_lifetime" },
   /** The web page with the paywall and the plan; Stripe Checkout and the portal return here. */
   accountPath: "/pro/",
   /** The free week on the yearly plan, as on the App Store (once per account, any store). */

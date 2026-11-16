@@ -15,7 +15,8 @@
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { handleApi } from "./api.ts";
 import { handleNotification } from "./appstore.ts";
-import { handleStripeWebhook, proRequired, proStatus } from "./billing.ts";
+import { handleStripeWebhook, proRequired } from "./billing.ts";
+import { freshProStatus } from "./play.ts";
 import { handleMcp, type Caller } from "./mcp.ts";
 import { admin, json, PREFIX, resolveAgent, supabaseUser, type Env as BaseEnv } from "./store.ts";
 
@@ -36,7 +37,7 @@ const mcpHandler = {
     // Assistants need Pro, like the web and the glasses (billing.ts).
     const proDb = admin(env);
     const email = (await proDb.auth.admin.getUserById(props.userId).catch(() => null))?.data.user?.email;
-    if (!(await proStatus(proDb, props.userId, email)).pro) return json(proRequired(env), 402);
+    if (!(await freshProStatus(env, proDb, props.userId, email)).pro) return json(proRequired(env), 402);
     return handleMcp(req, caller, admin(env), env.PUBLIC_URL);
   },
 };

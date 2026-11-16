@@ -25,7 +25,7 @@ object WhatsNew {
 
     val releases = listOf(
         ReleaseNotes(version = "1.10.3", date = "November 2026", items = listOf(
-            WhatsNewItem("A fresh build", "Nothing new to try in this one: it's a new build, in step with the iPhone app."),
+            WhatsNewItem("One Pro, everywhere", "Headway is now free on Google Play, with Headway Pro: a free week on the yearly plan, or once for life. Pro belongs to your account, so buying it here, on iPhone or on the web unlocks Headway everywhere you sign in."),
         )),
         ReleaseNotes(version = "1.10.2", date = "November 2026", items = listOf(
             WhatsNewItem("A fresh build", "Nothing new to try in this one: it's a new build, in step with the iPhone app."),

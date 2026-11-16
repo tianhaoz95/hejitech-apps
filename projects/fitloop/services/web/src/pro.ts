@@ -123,7 +123,7 @@ export function paywall(p: ProAnswer): HTMLElement {
     annual ? el("p", { class: "muted tiny pro-center" },
       `${trial ? `Free for 1 week, then ${annual.price}` : annual.price} a year, charged by Stripe. Renews automatically until you cancel; cancel anytime from this page. Lifetime is a one-time payment.`) : null,
     el("p", { class: "muted small pro-center" },
-      `Already have ${CONFIG.proName} from the iPhone app? Open the app signed in as ${p.email ?? "this account"}, and it's here too.`),
+      `Already have ${CONFIG.proName} from the iPhone or Android app? Open the app signed in as ${p.email ?? "this account"}, and it's here too.`),
     el("p", { class: "tiny pro-center" }, el("a", { href: "/terms/" }, "Terms"), " · ", el("a", { href: "/privacy/" }, "Privacy")));
   update();
   const glimpse = el("div", { class: "pro-glimpse", "aria-hidden": "true" },

@@ -8,6 +8,8 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,6 +33,7 @@ import com.hejitech.headway.app.ui.screens.BoardScreen
 import com.hejitech.headway.app.ui.screens.CommuteScreen
 import com.hejitech.headway.app.ui.screens.FamilyScreen
 import com.hejitech.headway.app.ui.screens.SettingsScreen
+import com.hejitech.headway.app.ui.screens.ProScreen
 import com.hejitech.headway.app.ui.screens.SignInScreen
 import com.hejitech.headway.app.ui.screens.WhatsNew
 import com.hejitech.headway.app.ui.screens.WhatsNewDialog
@@ -46,6 +49,9 @@ enum class MainTab(val title: String) {
 }
 
 class MainActivity : ComponentActivity() {
+    /** Headway Pro: Play Billing and the account's answer (ProStore.kt). */
+    private val pro by lazy { ProStore(this) }
+
 
     private val viewModel: HeadwayViewModel by viewModels()
 
@@ -102,6 +108,8 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         viewModel.onAppVisible(true)
+        // Back in the app: a purchase or renewal made elsewhere (another phone, the web) shows up.
+        if (viewModel.phase.value == Phase.READY) lifecycleScope.launch { pro.refresh() }
     }
 
     override fun onStop() {
@@ -153,6 +161,13 @@ class MainActivity : ComponentActivity() {
                 val phase by viewModel.phase.collectAsState()
                 var showWhatsNew by rememberSaveable { mutableStateOf(false) }
 
+                val proChecked by pro.checked.collectAsState()
+                val proStatus by pro.status.collectAsState()
+                // Headway Pro is the account's (any store): checked after sign-in, forgotten at sign-out.
+                LaunchedEffect(phase) {
+                    if (phase == Phase.READY) pro.refresh()
+                    if (phase == Phase.SIGNED_OUT) pro.forget()
+                }
                 LaunchedEffect(phase) {
                     if (phase == Phase.READY) {
                         askForNotificationsOnce()
@@ -164,11 +179,16 @@ class MainActivity : ComponentActivity() {
                     when (phase) {
                         Phase.LAUNCHING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                         Phase.SIGNED_OUT -> SignInScreen(viewModel)
-                        Phase.READY -> MainTabs(firstTab)
+                        Phase.READY -> when {
+                            proStatus?.pro == true || (proStatus == null && pro.cachedPro) -> MainTabs(firstTab)
+                            !proChecked -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                            else -> ProScreen(pro, proStatus?.email, onSignOut = { viewModel.signOut() })
+                        }
                     }
                 }
 
-                if (showWhatsNew) {
+                // What's New waits for Pro, as on iPhone: never over the paywall.
+                if (showWhatsNew && (proStatus?.pro == true || (proStatus == null && pro.cachedPro))) {
                     WhatsNewDialog(onDismiss = {
                         WhatsNew.markSeen(this@MainActivity)
                         showWhatsNew = false

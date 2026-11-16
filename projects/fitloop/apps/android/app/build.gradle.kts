@@ -84,6 +84,10 @@ dependencies {
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.activity.compose)
     implementation(libs.browser)
+    // FitLoop Pro on Android: Play Billing (ProStore.kt); the Worker verifies purchases with Google.
+    implementation(libs.billing.ktx)
+    // Play Billing brings an old Fragment; ActivityResult (the notification prompt) needs 1.3+.
+    implementation(libs.fragment)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)

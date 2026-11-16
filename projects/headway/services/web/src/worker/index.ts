@@ -19,7 +19,8 @@ import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflar
 import { progress, tripProgressStops, type Tracked } from "@headway/core";
 import { handleApi } from "./api.ts";
 import { handleNotification } from "./appstore.ts";
-import { handleStripeWebhook, proRequired, proStatus } from "./billing.ts";
+import { handleStripeWebhook, proRequired } from "./billing.ts";
+import { freshProStatus } from "./play.ts";
 import { now as clockNow } from "./clock.ts";
 import { runCron } from "./cron.ts";
 import { renderEtaHtml } from "./eta.ts";
@@ -47,7 +48,7 @@ const mcpHandler = {
     const db = admin(env);
     // Assistants need Pro, like the web and the glasses (billing.ts).
     const email = (await db.auth.admin.getUserById(props.userId).catch(() => null))?.data.user?.email;
-    if (!(await proStatus(db, props.userId, email)).pro) return json(proRequired(env), 402);
+    if (!(await freshProStatus(env, db, props.userId, email)).pro) return json(proRequired(env), 402);
     return handleMcp(req, caller, db, clockNow(env), () => loadWeather(env), (patch) => agentEditCommute(env, db, props.userId, caller.client ?? null, patch));
   },
 };

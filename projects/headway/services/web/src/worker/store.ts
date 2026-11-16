@@ -18,6 +18,9 @@ export interface Env {
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_PRICE_ANNUAL?: string;
   STRIPE_PRICE_LIFETIME?: string;
+  /** Google Play (play.ts): a service account that can read this app's orders; its key is a secret. */
+  PLAY_SA_EMAIL?: string;
+  PLAY_SA_KEY?: string;
   /** Secrets for the App Review demo account (review.ts): its email and SHA-256 of its password. */
   REVIEW_EMAIL?: string;
   REVIEW_PASSWORD_SHA256?: string;

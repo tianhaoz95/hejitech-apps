@@ -387,3 +387,24 @@ object Day {
     /** mon … sun for a date. */
     fun weekday(s: String): String = date(s)?.let { Plan.WEEKDAYS[it.dayOfWeek.value - 1] } ?: "mon"
 }
+
+/** GET /api/pro: the account's FitLoop Pro from any store (App Store, Google Play, the web) or a grant. */
+@Serializable
+data class ProStatus(
+    val pro: Boolean = false,
+    /** app_store, play, stripe, grant, or null without Pro. */
+    val source: String? = null,
+    /** annual or lifetime. */
+    val plan: String? = null,
+    /** When it renews or ends (ISO 8601); null for lifetime. */
+    val until: String? = null,
+    /** Where it's managed: app_store, play, stripe. */
+    val manage: String? = null,
+    @SerialName("had_purchase") val hadPurchase: Boolean = false,
+    val email: String? = null,
+)
+
+/** A Play Billing purchase handed to the account (POST /api/play/purchases). */
+@Serializable
+data class PlayPurchaseUpload(val product: String, val token: String)
+

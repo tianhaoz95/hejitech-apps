@@ -361,7 +361,13 @@ purchases" (only the iPhone app was gated, checked on the phone).
   working: the web, the glasses (device tokens) and assistants (MCP) are what it gates.
 - **Glasses and assistants.** A paired account without Pro gets 402; the plugin shows what it shows
   unpaired with a note to get Pro in the app.
-- **Google Play** is the owner's open call: making the Android app free to sell Pro with Play Billing
-  can't be undone on Play. Until then Android stays a one-time purchase on Play and isn't counted here.
+- **Google Play** (the owner said go, the same day): the Android app becomes free on Play and sells Pro
+  with Play Billing (`ProStore.kt`, the Peek `ProScreen.kt`, after sign-in): `pro_annual` (a yearly base
+  plan with a free-week offer) and `pro_lifetime`, the App Store's US prices. The app buys with the
+  account id as obfuscatedAccountId and hands each purchase token to POST /api/play/purchases, where the
+  Worker asks Google (`worker/play.ts`, a service account) and acknowledges it; owned purchases are sent
+  again at every launch and an expired Play row is asked about again when Pro is next checked, so no
+  Pub/Sub push is needed. The app was on internal testing only and never published, so nobody had bought
+  the paid version. Kotlin went to 2.2 for Play Billing 8.
 - Purchase rows are kept when someone deletes their Headway data: they are the account's purchase records.
 

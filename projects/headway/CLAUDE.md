@@ -83,9 +83,9 @@ stack), `-reviewSignIn` (the App Review sign-in path), `-screen trains|commute|f
 
 **Pro on every platform** (`docs/decisions.md`, 2026-11-16): `worker/billing.ts` (purchases from every store +
 `pro_grants` → `proStatus()`, GET /api/pro, Stripe Checkout/portal/webhook, the 402 gate for the web, glasses and
-MCP), `worker/appstore.ts` (App Store JWS + Server Notifications), `worker/pro-config.ts` (names, products, the
+MCP), `worker/appstore.ts` (App Store JWS + Server Notifications), `worker/play.ts` (Google Play purchases), `worker/pro-config.ts` (names, products, the
 web's Pro page), web `src/pro.ts` (the Peek paywall over Stripe). The iPhone app's `ProStore` hands its
-transactions to the account. Tests: `services/web/test/billing.test.ts`. Setup: `docs/DEPLOY.md`.
+transactions to the account; the Android app sells Pro with Play Billing (`ProStore.kt`, `ProScreen.kt`). Tests: `services/web/test/billing.test.ts`. Setup: `docs/DEPLOY.md`.
 
 ## Pitfalls
 

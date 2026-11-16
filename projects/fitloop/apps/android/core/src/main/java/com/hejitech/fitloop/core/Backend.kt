@@ -197,6 +197,12 @@ class Backend(
         }
     }
 
+    /** The account's FitLoop Pro, from any store or a grant. */
+    suspend fun pro(): ProStatus = call("GET", "/api/pro")
+    /** Hands Play Billing purchases to the account; the Worker checks them with Google. */
+    suspend fun uploadPlayPurchases(purchases: List<PlayPurchaseUpload>): ProStatus =
+        call("POST", "/api/play/purchases", json.encodeToString(mapOf("purchases" to purchases)))
+
     suspend fun today(date: String): TodayResponse = call("GET", "/api/today?date=$date")
     suspend fun plan(): PlanResponse = call("GET", "/api/plan")
     suspend fun checkin(c: List<NewCheckin>) { raw("POST", "/api/checkins", json.encodeToString(c)) }

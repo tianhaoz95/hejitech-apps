@@ -172,3 +172,45 @@ describe("Stripe", () => {
     expect(bad.status).toBe(400);
   });
 });
+
+describe("Google Play", async () => {
+  const { vi, afterEach } = await import("vitest");
+  const { verifyPlayPurchase, recordPlayPurchases, freshProStatus } = await import("../src/worker/play.ts");
+  const pair = await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
+  const der = new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey));
+  const pem = `-----BEGIN PRIVATE KEY-----\n${btoa(String.fromCharCode(...der))}\n-----END PRIVATE KEY-----`;
+  const env = { PLAY_SA_EMAIL: "sa@example.iam.gserviceaccount.com", PLAY_SA_KEY: pem };
+  const TOKEN = "t".repeat(40);
+  function google(answers: Record<string, unknown>) {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+      const u = String(url);
+      if (u.startsWith("https://oauth2.googleapis.com/token")) return Response.json({ access_token: "at", expires_in: 3600 });
+      calls.push(`${init?.method ?? "GET"} ${u.replace(/^.*\/applications\/[^/]+\//, "")}`);
+      const hit = Object.entries(answers).find(([k]) => u.includes(k));
+      return hit ? Response.json(hit[1]) : new Response("", { status: 404 });
+    });
+    return calls;
+  }
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("verifies a yearly subscription, acknowledges it, and refuses another account's", async () => {
+    const calls = google({ "subscriptionsv2/tokens": { subscriptionState: "SUBSCRIPTION_STATE_ACTIVE", acknowledgementState: "ACKNOWLEDGEMENT_STATE_PENDING", testPurchase: {}, lineItems: [{ expiryTime: new Date(NOW + 7 * DAY).toISOString() }], externalAccountIdentifiers: { obfuscatedExternalAccountId: USER } }, ":acknowledge": {} });
+    const row = await verifyPlayPurchase(env, USER, PRO.playProducts.annual, TOKEN, NOW);
+    expect(row).toMatchObject({ id: `play:${TOKEN}`, tier: "annual", environment: "sandbox", expires_at: new Date(NOW + 7 * DAY).toISOString() });
+    expect(calls.some((c) => c.startsWith("POST") && c.includes(":acknowledge"))).toBe(true);
+    await expect(verifyPlayPurchase(env, OTHER, PRO.playProducts.annual, TOKEN, NOW)).rejects.toThrow("another account");
+  });
+
+  it("records a lifetime purchase; an expired subscription is asked about again", async () => {
+    const { db } = fake();
+    google({ [`products/${PRO.playProducts.lifetime}/tokens`]: { purchaseState: 0, acknowledgementState: 1, purchaseType: 0 } });
+    expect(await recordPlayPurchases(env, db, USER, { purchases: [{ product: PRO.playProducts.lifetime, token: TOKEN }, { product: "nope", token: TOKEN }] })).toEqual({ saved: 1, rejected: ["unknown product nope"] });
+    expect(await proStatus(db, USER, undefined)).toMatchObject({ pro: true, source: "play", plan: "lifetime" });
+
+    const { f: g, db: db2 } = fake();
+    g.tables.purchases = [{ id: `play:${TOKEN}`, user_id: USER, source: "play", product: PRO.playProducts.annual, tier: "annual", expires_at: new Date(Date.now() - DAY).toISOString(), revoked_at: null, signed_at: new Date(Date.now() - 2 * DAY).toISOString(), updated_at: new Date(Date.now() - DAY).toISOString() }];
+    google({ "subscriptionsv2/tokens": { subscriptionState: "SUBSCRIPTION_STATE_ACTIVE", acknowledgementState: "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED", lineItems: [{ expiryTime: new Date(Date.now() + 300 * DAY).toISOString() }] } });
+    expect(await freshProStatus(env, db2, USER, undefined)).toMatchObject({ pro: true, source: "play" });
+  });
+});

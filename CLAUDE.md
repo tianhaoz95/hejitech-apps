@@ -183,7 +183,8 @@ are the `heji-app-store-iap` skill. What worked:
   `pro-config.ts`; the same files in each project). The web sells Pro with Stripe Checkout (`node
   scripts/stripe_pro.mjs <project> [--live]` makes the product, prices and webhook) and the web, glasses
   and MCP get 402 without it; the iPhone apps gate on the phone and hand their transactions to the
-  account. Google Play Billing is still the owner's call (Android stays paid upfront until then).
+  account. Headway's and FitLoop's Android apps sell Pro with Play Billing, verified by the Worker
+  (`worker/play.ts`); both apps are free on Play.
 - Owner's prices and model: memory, and each project's `docs/DEPLOY.md` price note.
 
 ## Common pitfalls

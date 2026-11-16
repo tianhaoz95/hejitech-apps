@@ -15,10 +15,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.hejitech.fitloop.ui.FitLoopTheme
 import com.hejitech.fitloop.ui.MainTabs
+import com.hejitech.fitloop.ui.ProScreen
 import com.hejitech.fitloop.ui.SignInScreen
 import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
@@ -32,6 +35,8 @@ import androidx.lifecycle.lifecycleScope
  */
 class MainActivity : ComponentActivity() {
     private val model: AppModel by viewModels()
+    /** FitLoop Pro: Play Billing and the account's answer (ProStore.kt). */
+    private val pro by lazy { ProStore(this) { model.backend } }
     private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) model.scheduleReminders()
     }
@@ -55,8 +60,18 @@ class MainActivity : ComponentActivity() {
                         Phase.LAUNCHING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                         Phase.SIGNED_OUT -> SignInScreen(model)
                         Phase.READY -> {
-                            LaunchedEffect(Unit) { askForNotificationsOnce() }
-                            MainTabs(model)
+                            // FitLoop Pro is the account's (any store): checked after sign-in (ProStore.kt).
+                            LaunchedEffect(Unit) { pro.refresh() }
+                            val proChecked by pro.checked.collectAsState()
+                            val proStatus by pro.status.collectAsState()
+                            when {
+                                proStatus?.pro == true || (proStatus == null && pro.cachedPro) -> {
+                                    LaunchedEffect(Unit) { askForNotificationsOnce() }
+                                    MainTabs(model)
+                                }
+                                !proChecked -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                                else -> ProScreen(pro, model.backend.config.site, proStatus?.email, onSignOut = { pro.forget(); model.signOut() })
+                            }
                         }
                     }
                 }
@@ -72,6 +87,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         model.resumed()
+        // Back in the app: a purchase or renewal made elsewhere (another phone, the web) shows up.
+        if (model.phase == Phase.READY) lifecycleScope.launch { pro.refresh() }
     }
 
     /** `fitloop://login-callback?code=…`: the browser coming back from Google sign-in. */

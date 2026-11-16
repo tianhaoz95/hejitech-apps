@@ -15,6 +15,7 @@ import {
 } from "./store.ts";
 import { checkout, fromBrowser, offers, portal, proRequired, proStatus, StripeError } from "./billing.ts";
 import { recordTransactions } from "./appstore.ts";
+import { freshProStatus, PlayError, recordPlayPurchases } from "./play.ts";
 
 /** What a signed-in account can still do without Pro on the web: delete its data. */
 const OPEN_WITHOUT_PRO = new Set(["/api/account"]);
@@ -159,7 +160,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   // ------------------------------------------------------------ Pro (billing.ts, appstore.ts)
   // One answer for every platform: App Store, Stripe and Google Play purchases and grants by email.
   if (path === "/api/pro" && req.method === "GET") {
-    const status = await proStatus(db, who.userId, who.email);
+    const status = await freshProStatus(env, db, who.userId, who.email);
     const onSale = who.via === "session" ? await offers(env).catch(() => []) : [];
     return reply({ ...status, email: who.email ?? null, offers: onSale });
   }
@@ -168,6 +169,16 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     const body = (await req.json().catch(() => null)) as { transactions?: unknown } | null;
     const r = await recordTransactions(db, who.userId, body?.transactions);
     return reply({ ...r, ...(await proStatus(db, who.userId, who.email)) });
+  }
+  if (path === "/api/play/purchases" && req.method === "POST") {
+    if (who.via !== "session") return reply({ error: "sign in" }, 403);
+    try {
+      const r = await recordPlayPurchases(env, db, who.userId, await req.json().catch(() => null));
+      return reply({ ...r, ...(await proStatus(db, who.userId, who.email)) });
+    } catch (e) {
+      if (e instanceof PlayError) return reply({ error: e.message }, e.status);
+      throw e;
+    }
   }
   if ((path === "/api/billing/checkout" || path === "/api/billing/portal") && req.method === "POST") {
     if (who.via !== "session") return reply({ error: "sign in" }, 403);
@@ -181,7 +192,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     }
   }
   // The web pages and the glasses need Pro; the native apps gate on the phone (billing.ts).
-  if ((who.via === "device" || fromBrowser(req)) && !OPEN_WITHOUT_PRO.has(path) && !(await proStatus(db, who.userId, who.email)).pro) {
+  if ((who.via === "device" || fromBrowser(req)) && !OPEN_WITHOUT_PRO.has(path) && !(await freshProStatus(env, db, who.userId, who.email)).pro) {
     return reply(proRequired(env), 402);
   }
   const source = who.via === "device" ? "glasses" : (req.headers.get("X-FitLoop-Client") ?? "web").slice(0, 10);
