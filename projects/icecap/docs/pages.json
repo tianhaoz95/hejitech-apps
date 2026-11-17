@@ -1,0 +1,13 @@
+{
+  "name": "Icecap",
+  "sidebar": [
+    {
+      "text": "Icecap",
+      "items": [
+        { "text": "Overview", "link": "" },
+        { "text": "Decisions", "link": "decisions" },
+        { "text": "Deployment", "link": "DEPLOY" }
+      ]
+    }
+  ]
+}

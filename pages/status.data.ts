@@ -58,6 +58,7 @@ const DEPLOYMENTS: Deployment[] = [
   { name: "Waypack site, API + MCP", project: "waypack", url: "https://waypack.hejitech.workers.dev", via: "Cloudflare Workers Builds" },
   { name: "Wee Hours site + MCP", project: "weehours", url: "https://weehours.hejitech.workers.dev", via: "Cloudflare Workers Builds" },
   { name: "Contempo web app + API", project: "contempo", url: "https://contempo.hejitech.workers.dev", via: "Cloudflare Workers" },
+  { name: "Icecap site, web app + API", project: "icecap", url: "https://icecap.hejitech.workers.dev", via: "Cloudflare Workers Builds" },
   { name: "HQ portal, API + MCP", project: "hq", url: "https://hq.hejitech.workers.dev", via: "Cloudflare Workers" },
   { name: "FeedbackKit dashboard", project: "feedbackkit", url: "https://feedback-kit.hejitech.workers.dev", via: "Cloudflare Workers Builds" },
   { name: "FeedbackKit Edge Functions", project: "feedbackkit", url: "https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-feedback", via: "GitHub Actions → Supabase", workflow: "feedbackkit-deploy-functions.yml", health: false },

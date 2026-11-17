@@ -1,6 +1,6 @@
 # HEJI projects monorepo
 
-Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`, `g2digest`, `headway`, `fitloop`, `tether`, `tradeboard`, `hq`), sharing one
+Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`, `g2digest`, `headway`, `fitloop`, `tether`, `tradeboard`, `icecap`, `hq`), sharing one
 Supabase project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief, Meowtrix, ToddlerCam and TinyTouch have none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
 something at the root only when it is genuinely shared. Each project has its own `CLAUDE.md`
@@ -137,6 +137,11 @@ cron) deploys on push. It handles real-money trading: never place a live order y
 For Polymath it releases `projects/polymath/apps/desktop/package.json`'s version as `polymath-v<version>`,
 which runs `polymath-mac-release.yml` (signed & notarized Tauri macOS DMGs). Its Worker (site, docs, MCP)
 deploys on push. See `projects/polymath/CLAUDE.md`.
+
+For Icecap it bumps the Chrome extension's version in `projects/icecap/apps/extension/package.json` and
+publishes `icecap-v<version>`, which runs `icecap-extension-release.yml` (attaches
+`icecap-extension-<version>.zip` for the Chrome Web Store, uploaded by hand, and the `-sideload.zip`).
+Its Worker (every page, API, Stripe webhook) deploys on push. See `projects/icecap/CLAUDE.md`.
 
 For HQ it bumps `MARKETING_VERSION` in `projects/hq/apps/ios/project.yml` (refusing until the in-app
 What's New describes the version) and publishes `hq-v<version>`, which runs `hq-testflight.yml`

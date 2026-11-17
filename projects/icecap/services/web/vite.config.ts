@@ -17,6 +17,9 @@ const pages = {
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Other projects keep React 18 at the repo root, where hoisted libraries (react-router, lucide…)
+  // would otherwise pick it up next to this app's React 19.
+  resolve: { dedupe: ["react", "react-dom"] },
   server: { fs: { allow: ["../.."] } },
   build: {
     target: "es2022",

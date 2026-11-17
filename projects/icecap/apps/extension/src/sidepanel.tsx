@@ -780,7 +780,7 @@ export default function SidePanel() {
           )}
         </div>
         <footer className="mt-12 text-[10px] text-gray-400 uppercase tracking-widest">
-          Icecap Platform v0.1
+          Icecap v{chrome.runtime.getManifest().version}
         </footer>
       </div>
     )
@@ -1347,7 +1347,7 @@ export default function SidePanel() {
         )}
       </div>
 
-      <footer className="py-2 text-center text-[10px] text-gray-300">Icecap v0.1</footer>
+      <footer className="py-2 text-center text-[10px] text-gray-300">Icecap v{chrome.runtime.getManifest().version}</footer>
     </div>
   )
 }

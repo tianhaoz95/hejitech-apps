@@ -165,7 +165,7 @@ additional_redirect_urls = [
   "http://127.0.0.1:3001/**", "http://127.0.0.1:8790/**",  # G2 Digest web app (vite, worker)
   "http://127.0.0.1:3004/**", "http://127.0.0.1:8796/**", "tether://login-callback", "com.hejitech.tether://login-callback",  # Tether site, iOS & Android apps
   "http://127.0.0.1:3007/**", "http://127.0.0.1:8799/**", "hq://login-callback",  # HQ portal (vite, worker), iOS app
-  "http://127.0.0.1:3008/**", "http://127.0.0.1:8800/**", "https://gbjiibgccfkpodffchmnokflclbnbfpl.chromiumapp.org/**",  # Icecap web app (vite, worker), Chrome extension
+  "http://127.0.0.1:3008/**", "http://127.0.0.1:8800/**", "https://gbjiibgccfkpodffchmnokflclbnbfpl.chromiumapp.org/**", "https://cljkjphaofjfagcekpbnkonpepdcciba.chromiumapp.org/**",  # Icecap web app (vite, worker), Chrome extension (store, unpacked/sideload)
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600

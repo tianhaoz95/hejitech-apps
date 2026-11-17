@@ -3,7 +3,7 @@
 // price and a one-time lifetime price (same as the App Store), and, in live mode, the webhook
 // endpoint for its Worker. Prints the ids for the Worker (STRIPE_PRICE_* vars, STRIPE_WEBHOOK_SECRET).
 //
-//   node scripts/stripe_pro.mjs <headway|fitloop|g2digest> [--live]     # sandbox unless --live
+//   node scripts/stripe_pro.mjs <headway|fitloop|g2digest|icecap> [--live]     # sandbox unless --live
 //
 // Keys: ~/Credentials/stripe.env (HEJI_TECHNOLOGY_SANDBOX_SECRET_KEY / HEJI_TECHNOLOGY_LIVE_SECRET_KEY).
 // Everything it creates carries metadata app=<project>, which is how each Worker's webhook tells
@@ -15,6 +15,7 @@ const PROJECTS = {
   headway: { name: "Headway Pro", annual: 499, lifetime: 999, url: "https://headway.hejitech.workers.dev" },
   fitloop: { name: "FitLoop Pro", annual: 1999, lifetime: 3999, url: "https://fitloop.hejitech.workers.dev" },
   g2digest: { name: "G2 Digest Pro", annual: 1499, lifetime: 2999, url: "https://g2digest.hejitech.workers.dev" },
+  icecap: { name: "Icecap Pro", annual: 9999, lifetime: 19999, url: "https://icecap.hejitech.workers.dev" },
 };
 const EVENTS = ["checkout.session.completed", "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted", "charge.refunded"];
 

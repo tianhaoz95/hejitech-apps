@@ -1,0 +1,83 @@
+name: Icecap CI
+
+# Checks pushes and PRs that touch Icecap or what it shares with other projects (root workspace
+# files, supabase/, CI plumbing). Keep `paths` in sync with CI_PATHS in projects/icecap/release.env:
+# cut_release.sh requires this workflow to be green on the newest commit that touched them. Deploys
+# are separate: Cloudflare Workers Builds deploys the Worker on push to main;
+# icecap-extension-release.yml attaches the extension to an icecap-v<version> release.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/icecap/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/icecap-ci.yml"
+  pull_request:
+    paths:
+      - "projects/icecap/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/icecap-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: icecap-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Packages, web + Worker, extension (typecheck, tests, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck:icecap
+      - run: npm run test:icecap
+      - run: npm run build:icecap
+      - run: npm run package -w @icecap/extension
+
+  backend:
+    name: Shared Supabase schema + Worker + extension against the local stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          # pinned: "latest" asks the GitHub API, which rate-limits shared runners
+          version: 2.121.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Applies every project's migrations and seeds: the whole shared history must replay.
+      - run: supabase start -x studio,imgproxy,vector,logflare,supavisor,mailpit,edge-runtime
+      - name: Worker against the local stack
+        working-directory: projects/icecap/services/web
+        run: |
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > .dev.vars
+          npm run dev:worker > /tmp/worker.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8800/ && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:8800/ || { cat /tmp/worker.log; exit 1; }
+      - run: node projects/icecap/scripts/test-api.mjs
+      - name: Extension in Chromium
+        run: |
+          npx playwright install --with-deps chromium
+          npm run build:dev -w @icecap/extension
+          xvfb-run -a node projects/icecap/apps/extension/test/smoke.mjs
+      - if: failure()
+        run: cat /tmp/worker.log || true
+      - if: always()
+        run: supabase stop

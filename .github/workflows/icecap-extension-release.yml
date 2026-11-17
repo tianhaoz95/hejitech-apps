@@ -1,0 +1,62 @@
+name: Icecap → extension release
+
+# On a published GitHub Release tagged icecap-v<version> (scripts/cut_release.sh icecap; other
+# projects' releases are skipped): builds the Chrome extension and attaches
+# icecap-extension-<version>.zip (the Chrome Web Store upload, by hand in the developer dashboard) and
+# icecap-extension-<version>-sideload.zip (load unpacked). workflow_dispatch rebuilds an existing tag.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag (e.g. icecap-v0.2.0)
+        required: true
+
+concurrency:
+  group: icecap-extension-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+jobs:
+  extension:
+    name: Build and attach the extension
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'icecap-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Version matches the tag
+        run: |
+          V="$(node -p "require('./projects/icecap/apps/extension/package.json').version")"
+          [ "icecap-v$V" = "$TAG" ] || { echo "::error::package.json says $V but the release is $TAG"; exit 1; }
+      - run: npm run test:icecap
+      - run: npm run package -w @icecap/extension
+      - name: The store zip has no key, the sideload zip keeps it
+        working-directory: projects/icecap/apps/extension
+        run: |
+          V="$(node -p "require('./package.json').version")"
+          unzip -p "icecap-extension-$V.zip" manifest.json | jq -e '(.key == null) and (.version == "'"$V"'")'
+          unzip -p "icecap-extension-$V-sideload.zip" manifest.json | jq -e '.key != null'
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd projects/icecap/apps/extension
+          V="$(node -p "require('./package.json').version")"
+          for i in 1 2 3 4 5; do
+            gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" "icecap-extension-$V.zip" "icecap-extension-$V-sideload.zip" --clobber && break
+            [ "$i" -eq 5 ] && exit 1; sleep 5
+          done

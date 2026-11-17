@@ -20,6 +20,7 @@ one npm workspace and the CI plumbing.
 | Tether | Phone-to-monitor tiling split-pane desktop workspace with Browser (`web`), SSH-only Terminal (`ssh`), and Local + SFTP Files (`files`) for iOS (Swift/UIKit), Android (Kotlin/Compose), and Web + MCP Worker (TypeScript) | [`projects/tether`](projects/tether/README.md) |
 | Trading Plan Board | Dated, collaborative trade plans: hosted agents debate over MCP, only the owner approves (portal, Google/Apple + TOTP), a local executor validates, re-quotes, sanity-checks with a local model and places through the official Robinhood MCP. One Worker + a Node executor (TypeScript) | [`projects/tradeboard`](projects/tradeboard/README.md) |
 | Polymath | Agent-native interactive course player & extensible learning runtime: desktop app (Tauri v2), course component SDK, managed agent workspace authoring, and MCP server | [`projects/polymath`](projects/polymath/README.md) |
+| Icecap | Real estate deal analysis as you browse: Chrome extension (Redfin, Zillow, Realtor.com) with on-device AI, web dashboard for saved deals, Pro through Stripe. One Worker (TypeScript, React). Moved off Firebase onto the shared Supabase project (schema `icecap`) | [`projects/icecap`](projects/icecap/README.md) |
 | HQ | The repo's autopilot "CEO": scheduled agents propose maintenance, reliability and performance work as evidence-backed cards; the owner approves in a web portal or iPhone app; executors build, a second agent reviews. Portable to any repo with `.hq/` folders. One Worker (D1) + the `hq` CLI/runner (TypeScript) + SwiftUI app | [`projects/hq`](projects/hq/README.md) |
 
 ## Layout
@@ -46,7 +47,7 @@ tsconfig.base.json      shared TypeScript settings
 ```sh
 npm install                 # every project's workspaces
 supabase start              # shared local stack (ports 554xx)
-npm run build:waypack       # per-project scripts: build:<name>, test:<name>, typecheck:<name> (waypack, weehours, g2digest, headway, fitloop, tether, tradeboard, hq)
+npm run build:waypack       # per-project scripts: build:<name>, test:<name>, typecheck:<name> (waypack, weehours, g2digest, headway, fitloop, tether, tradeboard, hq, icecap)
 ```
 
 ## Adding a project

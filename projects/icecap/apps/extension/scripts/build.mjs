@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Builds the Chrome extension into dist/ (load it unpacked from there) and, with --zip, packs
-// dist/icecap-extension-<version>.zip for the Chrome Web Store and sideloading.
+// icecap-extension-<version>.zip (the Chrome Web Store upload: no `key`, the store assigns the id) and
+// icecap-extension-<version>-sideload.zip (with the key: the same id as unpacked builds).
 //
 //   node scripts/build.mjs                     production build
 //   node scripts/build.mjs --dev [--watch]     the local stack (supabase start + the Worker on :8800)
@@ -25,7 +26,9 @@ const mode = dev ? "development" : "production";
 const { version } = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 
 rmSync(dist, { recursive: true, force: true });
-const common = { configFile: false, mode, logLevel: "warn", define: { "process.env.NODE_ENV": JSON.stringify(mode) } };
+// dedupe: other projects keep React 18 at the repo root, where hoisted libraries (lucide, zustand,
+// react-markdown) would otherwise pick it up next to the extension's React 19.
+const common = { configFile: false, mode, logLevel: "warn", resolve: { dedupe: ["react", "react-dom"] }, define: { "process.env.NODE_ENV": JSON.stringify(mode) } };
 
 await build({
   ...common,
@@ -72,8 +75,15 @@ writeFileSync(resolve(dist, "manifest.json"), JSON.stringify(manifest({ version,
 console.log(`icecap extension ${version} (${mode}) → ${dist}`);
 
 if (process.argv.includes("--zip")) {
-  const zip = resolve(dist, `../icecap-extension-${version}.zip`);
-  rmSync(zip, { force: true });
-  execFileSync("zip", ["-qr", "-X", zip, "."], { cwd: dist });
-  console.log(`packed ${zip}`);
+  const pack = (name) => {
+    const zip = resolve(root, name);
+    rmSync(zip, { force: true });
+    execFileSync("zip", ["-qr", "-X", zip, "."], { cwd: dist });
+    console.log(`packed ${zip}`);
+  };
+  pack(`icecap-extension-${version}-sideload.zip`);
+  writeFileSync(resolve(dist, "manifest.json"), JSON.stringify(manifest({ version, dev, store: true }), null, 2) + "\n");
+  pack(`icecap-extension-${version}.zip`);
+  // Leave dist/ loadable unpacked, with the pinned id.
+  writeFileSync(resolve(dist, "manifest.json"), JSON.stringify(manifest({ version, dev }), null, 2) + "\n");
 }
