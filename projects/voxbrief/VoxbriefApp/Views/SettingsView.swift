@@ -9,13 +9,21 @@ public struct SettingsView: View {
     @AppStorage(LLMCopywriterService.localLLMModelNameKey) private var localLLMModel: String = LLMCopywriterService.defaultLocalLLMModelName
     @AppStorage(ASRService.languageStorageKey) private var asrLanguage: String = "auto"
     @AppStorage("app_appearance") private var appearance: String = "system"
-    @AppStorage(NoteProcessingPipeline.lightCleanupEnabledKey) private var lightCleanupEnabled: Bool = true
+    @AppStorage(NoteProcessingPipeline.defaultTemplateChoiceKey) private var defaultTemplateChoice: TemplateChoice = .none
     @AppStorage(LiveTranscriber.enabledKey) private var liveTranscriptEnabled: Bool = true
     @AppStorage(FeedbackSettings.shakeEnabledKey) private var feedbackShakeEnabled: Bool = true
     @AppStorage("playback_trim_silence") private var trimSilence: Bool = false
     @StateObject private var llmService = OnDeviceLLMService.shared
     @StateObject private var dictionaryStore = PersonalDictionaryStore.shared
     @StateObject private var templateStore = TemplateStore.shared
+
+    /// Settings' Default Format choices: cleaned text, auto-detect, then each enabled template
+    /// (plus the current default if that template has since been disabled).
+    private var defaultFormatOptions: [TemplateChoice] {
+        var options: [TemplateChoice] = [.none, .auto] + templateStore.enabledTemplates.map { .template($0.id) }
+        if !options.contains(defaultTemplateChoice) { options.append(defaultTemplateChoice) }
+        return options
+    }
     @StateObject private var watchSync = WatchSyncService.shared
     @State private var showingSimulationAlert = false
     @State private var simulatedTitle = ""
@@ -212,10 +220,14 @@ public struct SettingsView: View {
                 }
 
                 Section(
-                    header: Text("Light Cleanup"),
-                    footer: Text("The Light Cleanup tab shows a lightly-proofread, near-verbatim version of the transcript alongside the fully restructured note. It's generated on demand the first time you open that tab, not automatically for every note -- turn it off here to skip it entirely.")
+                    header: Text("Note Format"),
+                    footer: Text("Every note is cleaned up on-device: typos, grammar and filler words fixed, your wording kept. Pick a default format to also sort new notes into a template; you can pick one before each recording, or format any note later from its Format chip.")
                 ) {
-                    Toggle("Enable Light Cleanup", isOn: $lightCleanupEnabled)
+                    Picker("Default Format", selection: $defaultTemplateChoice) {
+                        ForEach(defaultFormatOptions, id: \.self) { choice in
+                            Text(choice.displayName(in: templateStore.allTemplates)).tag(choice)
+                        }
+                    }
                 }
 
                 Section(

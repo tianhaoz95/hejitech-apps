@@ -84,6 +84,34 @@ public struct TemplateSectionContent: Codable, Sendable, Hashable {
     }
 }
 
+/// What Stage 2 formats a note into on top of the light cleanup every note gets. `.none` (the
+/// default) is the cleaned text alone; `.auto` picks one of the enabled templates; `.template`
+/// uses that one. Stored as a string (`"none"`, `"auto"` or the template's UUID) in Settings and
+/// on a note waiting to be processed (`VoiceNote.templateChoice`).
+public enum TemplateChoice: Hashable, Sendable, RawRepresentable, Codable {
+    case none
+    case auto
+    case template(UUID)
+
+    public init?(rawValue: String) {
+        switch rawValue {
+        case "none": self = .none
+        case "auto": self = .auto
+        default:
+            guard let id = UUID(uuidString: rawValue) else { return nil }
+            self = .template(id)
+        }
+    }
+
+    public var rawValue: String {
+        switch self {
+        case .none: return "none"
+        case .auto: return "auto"
+        case .template(let id): return id.uuidString
+        }
+    }
+}
+
 // MARK: - Built-in templates
 
 extension NoteTemplate {

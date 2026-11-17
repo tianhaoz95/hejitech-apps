@@ -9,7 +9,7 @@ public struct NoteListView: View {
     @StateObject private var syncService = WatchSyncService.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedDetailNote: VoiceNote? = nil
-    @State private var selectedDetailTab: NoteDetailViewModel.DetailTab = .cleanedNote
+    @State private var selectedDetailTab: NoteDetailViewModel.DetailTab?
     @State private var keyboardRecordTrigger: KeyboardRecordTrigger?
     @State private var isSearchExpanded: Bool = false
     @State private var showingWhatsNew: Bool = WhatsNewView.shouldShowAutomatically
@@ -245,7 +245,8 @@ public struct NoteListView: View {
                 case "raw": selectedDetailTab = .rawTranscript
                 case "pipeline": selectedDetailTab = .pipeline
                 case "light": selectedDetailTab = .lightCleanup
-                default: selectedDetailTab = .cleanedNote
+                case "full", "structured": selectedDetailTab = .cleanedNote
+                default: selectedDetailTab = nil
                 }
                 selectedDetailNote = note
             }

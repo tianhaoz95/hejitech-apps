@@ -6,7 +6,8 @@ public struct QuickRecordSheet: View {
     @ObservedObject private var pipeline = NoteProcessingPipeline.shared
     @ObservedObject private var repository = NoteRepository.shared
     @ObservedObject private var liveTranscriber = LiveTranscriber.shared
-    private let coordinator = RecordingCoordinator.shared
+    @ObservedObject private var coordinator = RecordingCoordinator.shared
+    @ObservedObject private var templateStore = TemplateStore.shared
 
     @State private var hasStarted = false
     @State private var errorMessage: String? = nil
@@ -79,6 +80,8 @@ public struct QuickRecordSheet: View {
                 Label("Adding to existing note", systemImage: "arrow.triangle.merge")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
+            } else {
+                formatMenu
             }
 
             Text(recordingService.recordingDuration.formattedDuration)
@@ -127,6 +130,33 @@ public struct QuickRecordSheet: View {
                     .padding(.horizontal)
             }
         }
+    }
+
+    /// What this recording becomes on top of its light cleanup; starts at the Settings default.
+    private var formatMenu: some View {
+        let choice = coordinator.templateChoice ?? NoteProcessingPipeline.defaultTemplateChoice
+        let templates = templateStore.enabledTemplates
+        return Menu {
+            Section("Format As") {
+                TemplateChoiceMenuItems(templates: templates, selection: choice) { picked in
+                    coordinator.templateChoice = picked
+                }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: choice.iconName)
+                Text(choice.displayName(in: templateStore.allTemplates))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+            }
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color.accentColor.opacity(0.12), in: Capsule())
+            .foregroundStyle(Color.accentColor)
+        }
+        .menuIndicator(.hidden)
+        .accessibilityLabel("Format: \(choice.displayName(in: templateStore.allTemplates))")
     }
 
     /// The words so far (`LiveTranscriber`): confirmed text solid, the still-changing tail grey.

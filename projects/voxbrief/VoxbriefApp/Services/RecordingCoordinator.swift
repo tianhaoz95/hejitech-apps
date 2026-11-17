@@ -15,6 +15,11 @@ public final class RecordingCoordinator: ObservableObject {
 
     @Published public private(set) var activeNoteId: UUID?
 
+    /// The format picked for the recording in progress (the record sheet's menu), so every way of
+    /// finishing it -- the sheet or the Live Activity's Stop & Save -- applies it. Cleared when a
+    /// recording begins; `nil` means the Settings default.
+    @Published public var templateChoice: TemplateChoice?
+
     /// Set by `beginRecording(appendingTo:)`; consumed and cleared by `finishRecording()`, which
     /// branches into `NoteProcessingPipeline.appendRecording` instead of creating a standalone note.
     private var appendTargetNoteId: UUID?
@@ -51,6 +56,7 @@ public final class RecordingCoordinator: ObservableObject {
         LiveTranscriber.shared.start(vocabulary: PersonalDictionaryStore.shared.entries.map(\.term))
         activeNoteId = noteId
         appendTargetNoteId = targetNoteId
+        templateChoice = nil
         liveActivity.start(noteId: noteId, source: "iPhone")
         pipeline.warmUp()
     }
@@ -69,8 +75,10 @@ public final class RecordingCoordinator: ObservableObject {
     /// assertion across Stage 1/2, rather than ending the Activity and leaving processing
     /// unprotected the instant recording stops -- the caller doesn't need to keep the app
     /// foregrounded/on-screen for the pipeline to actually finish.
+    /// `templateChoice` is the format the new note gets on top of its light cleanup (`nil`: the
+    /// Settings default); it doesn't apply when appending, which keeps the note's own format.
     @discardableResult
-    public func finishRecording() -> VoiceNote? {
+    public func finishRecording(templateChoice: TemplateChoice? = nil) -> VoiceNote? {
         guard let result = recordingService.stopRecording() else { return nil }
         let audioFileName = "\(result.noteId.uuidString).\(AudioConstants.fileExtension)"
 
@@ -108,13 +116,13 @@ public final class RecordingCoordinator: ObservableObject {
             return repository.note(withId: targetNoteId)
         }
 
-        let note = VoiceNote(
+        var note = VoiceNote(
             id: result.noteId,
             createdAt: Date(),
             duration: result.duration,
             audioFileName: audioFileName,
             title: "Processing Voice Note...",
-            summary: "Extracting transcript and structuring requirements...",
+            summary: "Transcribing and cleaning up...",
             rawTranscript: "",
             cleanedNote: "",
             requirements: [],
@@ -124,6 +132,8 @@ public final class RecordingCoordinator: ObservableObject {
             status: .transcribingASR,
             source: .phoneApp
         )
+        note.templateChoice = templateChoice ?? self.templateChoice ?? NoteProcessingPipeline.defaultTemplateChoice
+        self.templateChoice = nil
         repository.save(note)
         Task {
             defer { self.endActiveBackgroundTask() }

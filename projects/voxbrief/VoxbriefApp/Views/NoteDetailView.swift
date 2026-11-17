@@ -32,7 +32,7 @@ public struct NoteDetailView: View {
     /// separate from those singletons' default locations.
     public init(
         note: VoiceNote,
-        initialTab: NoteDetailViewModel.DetailTab = .cleanedNote,
+        initialTab: NoteDetailViewModel.DetailTab? = nil,
         repository: NoteRepository = .shared,
         pipeline: NoteProcessingPipeline = .shared,
         playbackService: AudioPlaybackService = .shared
@@ -569,27 +569,13 @@ public struct NoteDetailView: View {
         }
     }
 
-    /// The note's template, as a chip: picking another (or Auto-detect) regenerates the note
-    /// from its transcript.
+    /// The note's format, as a chip: cleaned text only, or the template it is structured with.
+    /// Picking another formats the note from its transcript (or drops the structured rewrite).
     private var templateMenu: some View {
         Menu {
-            Section("Regenerate As") {
-                Button {
-                    viewModel.changeTemplate(to: nil)
-                } label: {
-                    Label("Auto-detect", systemImage: "sparkles")
-                }
-
-                ForEach(viewModel.templateChoices) { template in
-                    Button {
-                        viewModel.changeTemplate(to: template)
-                    } label: {
-                        if template.id == viewModel.note.templateId {
-                            Label(template.name, systemImage: "checkmark")
-                        } else {
-                            Text(template.name)
-                        }
-                    }
+            Section("Format As") {
+                TemplateChoiceMenuItems(templates: viewModel.templateChoices, selection: viewModel.currentFormat) { choice in
+                    viewModel.changeFormat(to: choice)
                 }
             }
         } label: {
@@ -598,9 +584,9 @@ public struct NoteDetailView: View {
                     ProgressView()
                         .controlSize(.mini)
                 } else {
-                    Image(systemName: "rectangle.3.group")
+                    Image(systemName: viewModel.currentFormat.iconName)
                 }
-                Text(viewModel.isReprocessing ? "Regenerating…" : viewModel.templateLabel)
+                Text(viewModel.isReprocessing ? "Formatting…" : viewModel.templateLabel)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .bold))
             }
@@ -615,7 +601,7 @@ public struct NoteDetailView: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .disabled(!viewModel.canChangeTemplate)
-        .accessibilityLabel("Template: \(viewModel.templateLabel)")
+        .accessibilityLabel("Format: \(viewModel.templateLabel)")
     }
 
     private func colorForName(_ name: String) -> Color? {
@@ -931,7 +917,58 @@ public struct NoteDetailView: View {
 
     // MARK: - Cleaned Note Section
 
+    @ViewBuilder
     private var cleanedNoteSection: some View {
+        if viewModel.note.hasStructuredRewrite {
+            structuredNoteSection
+        } else {
+            structuredEmptyState
+        }
+    }
+
+    /// The Structured tab of a note that has only its cleaned text: offers to format it, or says
+    /// that a format asked for before recording didn't finish.
+    private var structuredEmptyState: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(icon: "rectangle.3.group", tint: .accentColor, title: "Structured")
+
+            if let pending = viewModel.pendingFormatName {
+                Text("Formatting as \(pending) didn't finish. The cleaned text is ready on the first tab.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("This note is cleaned text only. Format it with a template to sort it into sections, like action items, an email or a task list.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            }
+
+            Menu {
+                TemplateChoiceMenuItems(templates: viewModel.templateChoices, selection: nil, includesNone: false) { choice in
+                    viewModel.changeFormat(to: choice)
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    if viewModel.isReprocessing {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Formatting…")
+                    } else {
+                        Image(systemName: "rectangle.3.group")
+                        Text(viewModel.pendingFormatName == nil ? "Format As…" : "Try Again…")
+                    }
+                }
+                .font(.subheadline.weight(.semibold))
+            }
+            .menuStyle(.button)
+            .fixedSize()
+            .disabled(!viewModel.canChangeTemplate)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.appSecondaryBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var structuredNoteSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             if !viewModel.note.longMemoParts.isEmpty {
                 longMemoPartsCard
@@ -1018,43 +1055,44 @@ public struct NoteDetailView: View {
     private var lightCleanupSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                sectionHeader(icon: "wand.and.stars", tint: .blue, title: "Light Cleanup")
+                sectionHeader(icon: "wand.and.stars", tint: .blue, title: "Cleaned Text")
                 Spacer()
-                if let engine = viewModel.note.lightCleanupEngine, engine != CleanupEngineLabel.notApplicable {
+                if let engine = viewModel.note.lightCleanupEngine ?? (viewModel.note.hasStructuredRewrite ? nil : viewModel.note.cleanupEngine),
+                   engine != CleanupEngineLabel.notApplicable {
                     Text(CleanupEngineLabel.displayName(for: engine))
                         .font(.caption2.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
-                copyButton(text: viewModel.note.lightCleanedNote ?? "", field: .lightCleanup)
+                copyButton(text: viewModel.note.cleanedText ?? "", field: .lightCleanup)
             }
 
-            Text("Typos, grammar, and filler words fixed -- original wording and order kept, nothing restructured.")
+            Text("Typos, grammar and filler words fixed. Your wording and order are kept; nothing is restructured.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            if let lightNote = viewModel.note.lightCleanedNote, !lightNote.isEmpty {
+            if let lightNote = viewModel.note.cleanedText {
                 MarkdownLiteText(lightNote)
                     .foregroundStyle(.primary)
             } else if viewModel.isGeneratingLightCleanup {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Generating light cleanup…")
+                    Text("Cleaning up the transcript…")
                         .font(.body)
                         .foregroundStyle(.secondary)
                 }
             } else if viewModel.note.status == .ready {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Light cleanup hasn't been generated for this note yet.")
+                    Text("This note was made before cleaned text was the default.")
                         .font(.body)
                         .foregroundStyle(.secondary)
-                    Button("Generate Light Cleanup") {
+                    Button("Clean Up Transcript") {
                         viewModel.ensureLightCleanupGenerated()
                     }
                     .font(.subheadline.weight(.semibold))
                 }
             } else {
-                Text("Light cleanup will be available once this note finishes processing.")
+                Text("The cleaned text will be ready once this note finishes processing.")
                     .font(.body)
                     .foregroundStyle(.secondary)
             }

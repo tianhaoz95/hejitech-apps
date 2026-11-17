@@ -258,7 +258,8 @@ public struct KeyboardRecordSheet: View {
     }
 
     private func stopAndProcess() {
-        guard let note = coordinator.finishRecording() else { return }
+        // Dictation pastes the cleaned text, so no structured rewrite is worth waiting for.
+        guard let note = coordinator.finishRecording(templateChoice: TemplateChoice.none) else { return }
         processingNoteId = note.id
         phase = .processing
         Task {

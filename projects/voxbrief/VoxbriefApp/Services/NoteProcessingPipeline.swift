@@ -23,15 +23,13 @@ public final class NoteProcessingPipeline: ObservableObject {
     /// retry, a pull-to-refresh, and the original sync-triggered run could otherwise overlap.
     private var inFlightNoteIds: Set<UUID> = []
 
-    /// User-facing opt-out (Settings / Preferences) for the Stage 2 "light" rewrite. Even when
-    /// this is on, the light pass is never run eagerly -- see `generateLightCleanup`, which is
-    /// the only thing that ever generates it, called lazily when something actually needs to
-    /// display it. Defaults to on (matches this feature's behavior before the setting existed).
-    public static let lightCleanupEnabledKey = "light_cleanup_enabled"
-    /// `nonisolated` since it only touches `UserDefaults` (thread-safe) -- referenced from
-    /// `NoteDetailViewModel.DetailTab`, a nested but non-actor-isolated type.
-    public nonisolated static var isLightCleanupEnabled: Bool {
-        (UserDefaults.standard.object(forKey: lightCleanupEnabledKey) as? Bool) ?? true
+    /// Settings / Preferences: the format a new note gets on top of its light cleanup when
+    /// nothing was picked before recording (a `TemplateChoice` raw value). Defaults to none: the
+    /// light cleanup alone, which a small on-device model does well; a structured rewrite is
+    /// asked for per note, or made the default here.
+    public nonisolated static let defaultTemplateChoiceKey = "default_template_choice"
+    public nonisolated static var defaultTemplateChoice: TemplateChoice {
+        UserDefaults.standard.string(forKey: defaultTemplateChoiceKey).flatMap(TemplateChoice.init(rawValue:)) ?? .none
     }
 
     /// Whether the app is in the background right now. The iOS app points this at
@@ -160,39 +158,19 @@ public final class NoteProcessingPipeline: ObservableObject {
             ]
             transcribedNote = transcribed
 
-            // Stage 2: On-device LLM cleanup / copywriting. Only the "full" structured rewrite
-            // runs here -- the "light" rewrite is never generated eagerly (it used to run
-            // concurrently with this one on every single capture, which on a bundled on-device
-            // model quietly doubled the Stage 2 GPU work behind every note). See
-            // `generateLightCleanup`, called lazily the first time something actually needs to
-            // display it.
+            // Stage 2: the light cleanup, then a structured rewrite only if one was asked for.
             repository.updateStatus(for: note.id, status: .cleaningLLM)
-            let llmResult = try await llmService.processTranscript(rawTranscript, mode: .full, dictionary: dictionaryEntries, templates: templateStore.enabledTemplates)
-
-            // Build completed note
             var updatedNote = transcribed
-            updatedNote.title = llmResult.title
-            updatedNote.summary = llmResult.summary
-            updatedNote.cleanedNote = llmResult.cleanedMarkdown
-            updatedNote.requirements = llmResult.requirements
-            updatedNote.conditions = llmResult.conditions
-            updatedNote.actionItems = llmResult.actionItems
-            updatedNote.tags = llmResult.tags
+            let choice = note.templateChoice ?? Self.defaultTemplateChoice
+            updatedNote.templateChoice = choice == .none ? nil : choice
+            let stage2Timings = try await runStage2(on: &updatedNote, transcript: rawTranscript, choice: choice, dictionary: dictionaryEntries)
             updatedNote.status = .ready
             updatedNote.errorMessage = nil
-            updatedNote.cleanupEngine = llmResult.engine
-            updatedNote.templateSections = llmResult.sections
-            updatedNote.templateId = llmResult.templateId
-            updatedNote.templateName = llmResult.templateName.isEmpty ? nil : llmResult.templateName
-            updatedNote.longMemoParts = llmResult.parts
-            updatedNote.processingTimings = [transcribeTiming] + llmResult.timings
-            // Deliberately left nil -- see generateLightCleanup, called lazily on demand.
-            updatedNote.lightCleanedNote = nil
-            updatedNote.lightCleanupEngine = nil
+            updatedNote.processingTimings = [transcribeTiming] + stage2Timings
 
             repository.save(updatedNote)
-            
-            print("[NoteProcessingPipeline] Successfully processed note: \(note.id) -> '\(llmResult.title)'")
+
+            print("[NoteProcessingPipeline] Successfully processed note: \(note.id) -> '\(updatedNote.title)'")
         } catch {
             if var pending = transcribedNote, Self.isAppInBackground() {
                 // Transcribed, but Stage 2 couldn't run in the background: keep it pending so
@@ -268,11 +246,17 @@ public final class NoteProcessingPipeline: ObservableObject {
         await reprocessStage2MarkingFailure(for: noteId)
     }
 
-    /// Regenerates a note's Stage 2 rewrite from its existing transcript with `template`, or with
-    /// auto-detection among the enabled templates (as on first processing) when `nil`. The choice
-    /// isn't sticky: appending, merging and re-running detect the template again. On failure a
-    /// ready note keeps its content and status, and the error is rethrown for the caller to show.
+    /// Formats a note from its existing transcript with `template`, or with auto-detection among
+    /// the enabled templates when `nil` (see `changeFormat`).
     public func changeTemplate(noteId: UUID, to template: NoteTemplate?) async throws {
+        try await changeFormat(noteId: noteId, to: template.map { .template($0.id) } ?? .auto)
+    }
+
+    /// Changes what a note is formatted into on top of its light cleanup: a template, auto-
+    /// detection, or `.none` to keep only the cleaned text. The light cleanup is reused when the
+    /// note has one. Appending, merging and re-running keep the template this lands on. On
+    /// failure a ready note keeps its content and status, and the error is rethrown to show.
+    public func changeFormat(noteId: UUID, to choice: TemplateChoice) async throws {
         guard let note = repository.note(withId: noteId),
               !note.rawTranscript.isEmpty,
               !inFlightNoteIds.contains(noteId) else { return }
@@ -285,7 +269,7 @@ public final class NoteProcessingPipeline: ObservableObject {
         }
 
         do {
-            try await reprocessStage2(for: noteId, templates: template.map { [$0] } ?? templateStore.enabledTemplates)
+            try await reprocessStage2(for: noteId, choice: choice, reuseLightCleanup: true)
         } catch {
             if note.status == .ready {
                 repository.updateStatus(for: noteId, status: .ready)
@@ -388,19 +372,106 @@ public final class NoteProcessingPipeline: ObservableObject {
 
     // MARK: - Stage 2 Reprocessing (shared by reprocessWithLLM / changeTemplate / appendRecording / mergeNote)
 
+    /// Stage 2 on `note`: the light cleanup (title, summary, tags and the cleaned text), then --
+    /// unless `choice` is `.none` -- a structured rewrite with that template or auto-detection.
+    /// A note without a structured rewrite keeps the cleaned text in `cleanedNote` too, for
+    /// exports, search and sharing. `reuseLightCleanup` skips the light call when the note
+    /// already has one (a format change on an unchanged transcript).
+    ///
+    /// The light cleanup failing fails Stage 2. The structured rewrite failing leaves the note
+    /// with its light cleanup and `templateChoice` still set, so the note can offer to try again
+    /// -- unless `structuredFailureThrows` (an explicit format change, shown as an alert) or the
+    /// app is in the background (the GPU was withheld; the note is finished later in full).
+    /// Returns the Stage 2 timings.
+    private func runStage2(
+        on note: inout VoiceNote,
+        transcript: String,
+        choice: TemplateChoice,
+        dictionary: [DictionaryEntry],
+        reuseLightCleanup: Bool = false,
+        structuredFailureThrows: Bool = false
+    ) async throws -> [ProcessingTiming] {
+        var timings: [ProcessingTiming] = []
+
+        if reuseLightCleanup, let existing = note.cleanedText {
+            note.lightCleanedNote = existing
+        } else {
+            let start = ContinuousClock.now
+            let light = try await llmService.processTranscript(transcript, mode: .light, dictionary: dictionary, templates: [])
+            timings.append(ProcessingTiming(name: "Clean up", seconds: Self.seconds(since: start)))
+            note.title = light.title
+            note.summary = light.summary
+            note.tags = light.tags
+            note.lightCleanedNote = light.cleanedMarkdown
+            note.lightCleanupEngine = light.engine
+        }
+
+        func clearStructuredRewrite() {
+            note.cleanedNote = note.lightCleanedNote ?? ""
+            note.cleanupEngine = note.lightCleanupEngine
+            note.requirements = []
+            note.conditions = []
+            note.actionItems = []
+            note.templateSections = []
+            note.templateId = nil
+            note.templateName = nil
+            note.longMemoParts = []
+        }
+
+        guard let templates = templatesToTry(for: choice) else {
+            clearStructuredRewrite()
+            note.templateChoice = nil
+            return timings
+        }
+
+        do {
+            let full = try await llmService.processTranscript(transcript, mode: .full, dictionary: dictionary, templates: templates)
+            note.title = full.title
+            note.summary = full.summary
+            note.tags = full.tags
+            note.cleanedNote = full.cleanedMarkdown
+            note.requirements = full.requirements
+            note.conditions = full.conditions
+            note.actionItems = full.actionItems
+            note.cleanupEngine = full.engine
+            note.templateSections = full.sections
+            note.templateId = full.templateId
+            note.templateName = full.templateName.isEmpty ? nil : full.templateName
+            note.longMemoParts = full.parts
+            note.templateChoice = nil
+            timings += full.timings
+        } catch {
+            if structuredFailureThrows || Self.isAppInBackground() { throw error }
+            print("[NoteProcessingPipeline] Structured rewrite failed for note \(note.id); kept the light cleanup: \(error)")
+            clearStructuredRewrite()
+            note.templateChoice = choice
+        }
+        return timings
+    }
+
+    /// The templates a structured rewrite chooses from, or nil for the light cleanup alone. A
+    /// template that has since been deleted falls back to auto-detection.
+    private func templatesToTry(for choice: TemplateChoice) -> [NoteTemplate]? {
+        switch choice {
+        case .none:
+            return nil
+        case .auto:
+            return templateStore.enabledTemplates
+        case .template(let id):
+            if let template = templateStore.allTemplates.first(where: { $0.id == id }) { return [template] }
+            return templateStore.enabledTemplates
+        }
+    }
+
     /// Rebuilds `rawTranscript` as the concatenation of every segment (re-applying dictionary
     /// correction to each, so a newly-added dictionary alias retroactively fixes older segments
-    /// too), then re-runs the "full" Stage 2 rewrite over that combined text and saves the
-    /// result. Does not touch `activeProcessingCount`/`inFlightNoteIds` -- callers own that.
+    /// too), then re-runs Stage 2 over that combined text and saves the result. Does not touch
+    /// `activeProcessingCount`/`inFlightNoteIds` -- callers own that.
     ///
-    /// Any previously-generated light rewrite is invalidated (set back to nil) rather than
-    /// regenerated here -- the transcript just changed underneath it, so the old light text would
-    /// be stale, and regenerating it eagerly would defeat the point of it being lazy. It
-    /// regenerates the next time something actually displays it (see `generateLightCleanup`).
-    ///
-    /// `templates` defaults to the enabled templates (auto-detect); a single one is applied as-is.
-    /// Throws without touching the note's status -- callers decide what a failure means.
-    private func reprocessStage2(for noteId: UUID, templates: [NoteTemplate]? = nil) async throws {
+    /// `choice` defaults to the note's own (`VoiceNote.regenerationChoice`): the template it was
+    /// structured with, or the light cleanup alone. Throws without touching the note's status --
+    /// callers decide what a failure means.
+    private func reprocessStage2(for noteId: UUID, choice: TemplateChoice? = nil, reuseLightCleanup: Bool = false) async throws {
         guard var note = repository.note(withId: noteId) else { return }
         let dictionaryEntries = dictionaryStore.entries
 
@@ -411,33 +482,27 @@ public final class NoteProcessingPipeline: ObservableObject {
         note.segments = segments
 
         let mergedTranscript = Self.concatenatedTranscript(for: segments)
+        let transcriptChanged = mergedTranscript != note.rawTranscript
         note.rawTranscript = mergedTranscript
 
         repository.updateStatus(for: noteId, status: .cleaningLLM)
-        let llmResult = try await llmService.processTranscript(mergedTranscript, mode: .full, dictionary: dictionaryEntries, templates: templates ?? templateStore.enabledTemplates)
-        note.title = llmResult.title
-        note.summary = llmResult.summary
-        note.cleanedNote = llmResult.cleanedMarkdown
-        note.requirements = llmResult.requirements
-        note.conditions = llmResult.conditions
-        note.actionItems = llmResult.actionItems
-        note.tags = llmResult.tags
+        let timings = try await runStage2(
+            on: &note,
+            transcript: mergedTranscript,
+            choice: choice ?? note.regenerationChoice,
+            dictionary: dictionaryEntries,
+            reuseLightCleanup: reuseLightCleanup && !transcriptChanged,
+            structuredFailureThrows: choice != nil
+        )
         note.status = .ready
         note.errorMessage = nil
-        note.cleanupEngine = llmResult.engine
-        note.templateSections = llmResult.sections
-        note.templateId = llmResult.templateId
-        note.templateName = llmResult.templateName.isEmpty ? nil : llmResult.templateName
-        note.longMemoParts = llmResult.parts
         // Keep the note's last transcription time; Stage 2's are replaced.
-        note.processingTimings = note.processingTimings.filter { $0.name.hasPrefix("Transcribe") } + llmResult.timings
-        note.lightCleanedNote = nil
-        note.lightCleanupEngine = nil
+        note.processingTimings = note.processingTimings.filter { $0.name.hasPrefix("Transcribe") } + timings
         repository.save(note)
     }
 
-    /// `reprocessStage2` with auto-detection, marking the note failed (content kept) on error --
-    /// or leaving it pending when the app is in the background (see `isAppInBackground`).
+    /// `reprocessStage2` with the note's own format, marking the note failed (content kept) on
+    /// error -- or leaving it pending when the app is in the background (see `isAppInBackground`).
     private func reprocessStage2MarkingFailure(for noteId: UUID) async {
         do {
             try await reprocessStage2(for: noteId)
@@ -491,19 +556,14 @@ public final class NoteProcessingPipeline: ObservableObject {
         return words.count > maxWords ? title + "…" : title
     }
 
-    /// Generates Stage 2's "light" rewrite on demand. Unlike the full rewrite, this is never run
-    /// eagerly by `process`/`appendRecording`/`mergeNote`/`reprocessWithLLM` -- it's deferred
-    /// until something actually needs to display it (see `NoteDetailViewModel.
-    /// ensureLightCleanupGenerated`), since a note's full structured rewrite is what gets read far
-    /// more often, and the on-device model only has one GPU command queue to share: running both
-    /// eagerly on every capture paid for two full generations even for notes whose light tab a
-    /// user might never open. A no-op if the setting is off, the note isn't ready yet, or a light
-    /// rewrite already exists (call `reprocessWithLLM`/edit the note to invalidate it first).
+    /// Generates the light cleanup for a note that has none: every note processed since light
+    /// cleanup became the default already has it, so this is for older notes, which had only a
+    /// structured rewrite (see `NoteDetailViewModel.ensureLightCleanupGenerated`). A no-op if the
+    /// note isn't ready yet or already has one.
     public func generateLightCleanup(noteId: UUID) async {
-        guard Self.isLightCleanupEnabled,
-              let note = repository.note(withId: noteId),
+        guard let note = repository.note(withId: noteId),
               note.status == .ready,
-              note.lightCleanedNote == nil,
+              note.cleanedText == nil,
               !inFlightNoteIds.contains(noteId) else { return }
 
         inFlightNoteIds.insert(noteId)

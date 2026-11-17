@@ -154,7 +154,7 @@ public final class CaptureCoordinator: ObservableObject {
         isCleaningLLM = false
 
         processingTask = Task { [pipeline, repository, pasteInjector] in
-            let draft = VoiceNote(
+            var draft = VoiceNote(
                 id: result.noteId,
                 createdAt: Date(),
                 duration: result.duration,
@@ -164,6 +164,8 @@ public final class CaptureCoordinator: ObservableObject {
                 status: .transcribingASR,
                 source: .macApp
             )
+            // A capture is pasted as cleaned text, so no structured rewrite is worth waiting for.
+            draft.templateChoice = TemplateChoice.none
             repository.save(draft)
 
             await pipeline.process(note: draft)

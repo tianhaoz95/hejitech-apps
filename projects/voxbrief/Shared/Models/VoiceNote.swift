@@ -311,6 +311,12 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     /// was actually used even if that template is later renamed or deleted.
     public var templateName: String?
 
+    /// The format asked for on top of the light cleanup (picked before recording, or the
+    /// Settings default when the note was made), kept until a structured rewrite succeeds so an
+    /// interrupted or failed one can be finished. `nil` once done, and for notes that asked for
+    /// none or were made before this existed.
+    public var templateChoice: TemplateChoice?
+
     /// Time-indexed segments produced during speech-to-text, enabling interactive audio-transcript sync.
     public var transcriptSegments: [TranscriptTimingSegment] = []
 
@@ -422,6 +428,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         templateSections = try container.decodeIfPresent([TemplateSectionContent].self, forKey: .templateSections) ?? []
         templateId = try container.decodeIfPresent(UUID.self, forKey: .templateId)
         templateName = try container.decodeIfPresent(String.self, forKey: .templateName)
+        templateChoice = try container.decodeIfPresent(TemplateChoice.self, forKey: .templateChoice)
         transcriptSegments = try container.decodeIfPresent([TranscriptTimingSegment].self, forKey: .transcriptSegments) ?? []
         longMemoParts = try container.decodeIfPresent([LongMemoPart].self, forKey: .longMemoParts) ?? []
         processingTimings = try container.decodeIfPresent([ProcessingTiming].self, forKey: .processingTimings) ?? []
@@ -445,6 +452,33 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
             synthesized.append(TemplateSectionContent(title: "✅ Action Items", style: .checklist, items: actionItems))
         }
         return synthesized
+    }
+
+    /// Whether this note has a structured (template) rewrite. Since light cleanup became the
+    /// default, a note without one keeps its cleaned text in both `lightCleanedNote` and
+    /// `cleanedNote` (which exports, search and sharing read). Notes made before that always had
+    /// a structured rewrite, and their `lightCleanedNote` is nil until it is generated on demand.
+    public var hasStructuredRewrite: Bool {
+        guard !cleanedNote.isEmpty else { return false }
+        return templateId != nil || !effectiveTemplateSections.isEmpty || lightCleanedNote == nil
+    }
+
+    /// The light cleanup's text: its own field, or `cleanedNote` for a note that has no
+    /// structured rewrite (where the two are the same text, and an edit lands in `cleanedNote`).
+    public var cleanedText: String? {
+        if !hasStructuredRewrite, !cleanedNote.isEmpty { return cleanedNote }
+        guard let light = lightCleanedNote, !light.isEmpty else { return nil }
+        return light
+    }
+
+    /// The format a re-run, append or merge should regenerate: a pending choice, else the
+    /// template the note was structured with (Design Doc for notes from before templates), else
+    /// the light cleanup alone.
+    public var regenerationChoice: TemplateChoice {
+        if let templateChoice { return templateChoice }
+        if let templateId { return .template(templateId) }
+        if hasStructuredRewrite { return .template(NoteTemplate.designDoc.id) }
+        return .none
     }
 
     /// Word count calculated from whichever text is the primary output: cleanedNote or rawTranscript.

@@ -928,8 +928,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     // MARK: - Personal Dictionary Prompt Injection
 
     /// Smaller than `ASRService.maxVocabularyTerms` since this string enters a small on-device
-    /// model's limited context window on every Stage-2 call (the .full pass eagerly, the .light
-    /// pass whenever `NoteProcessingPipeline.generateLightCleanup` runs it on demand).
+    /// model's limited context window on every Stage-2 call (the .light pass every note gets, and
+    /// the .full pass when a template is asked for).
     static let maxDictionaryTermsInPrompt = 50
 
     /// Aliases shown per term, as examples of how speech recognition mishears it.

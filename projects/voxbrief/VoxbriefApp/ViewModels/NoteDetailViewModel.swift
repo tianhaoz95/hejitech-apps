@@ -4,7 +4,7 @@ import Combine
 @MainActor
 public final class NoteDetailViewModel: ObservableObject {
     @Published public var note: VoiceNote
-    @Published public var selectedTab: DetailTab = .cleanedNote
+    @Published public var selectedTab: DetailTab = .lightCleanup
     @Published public var isReprocessing: Bool = false
     @Published public var isEditing: Bool = false
     @Published public var editedTitle: String = ""
@@ -13,19 +13,17 @@ public final class NoteDetailViewModel: ObservableObject {
     /// Set when a template change couldn't run (e.g. no AI engine); shown as an alert.
     @Published public var templateChangeError: String?
     
+    /// In tab-bar order: the light cleanup every note gets comes first, the structured
+    /// (template) rewrite a note gets only when one is asked for second.
     public enum DetailTab: String, CaseIterable, Identifiable {
-        case cleanedNote = "Full Rewrite"
-        case lightCleanup = "Light Cleanup"
+        case lightCleanup = "Cleaned Text"
+        case cleanedNote = "Structured"
         case rawTranscript = "Raw Transcript"
         case pipeline = "2-Stage Pipeline"
 
         public var id: String { rawValue }
 
-        /// Every tab except `.lightCleanup` when the light-rewrite feature is turned off in
-        /// Settings/Preferences -- see `NoteProcessingPipeline.isLightCleanupEnabled`.
-        public static var visible: [DetailTab] {
-            NoteProcessingPipeline.isLightCleanupEnabled ? allCases : allCases.filter { $0 != .lightCleanup }
-        }
+        public static var visible: [DetailTab] { allCases }
 
         /// SF Symbol shown in the segmented tab bar; `rawValue` is used as its accessibility
         /// label instead.
@@ -48,19 +46,14 @@ public final class NoteDetailViewModel: ObservableObject {
     
     public init(
         note: VoiceNote,
-        initialTab: DetailTab = .cleanedNote,
+        initialTab: DetailTab? = nil,
         repository: NoteRepository = .shared,
         pipeline: NoteProcessingPipeline = .shared,
         templateStore: TemplateStore = .shared,
         playbackService: AudioPlaybackService = .shared
     ) {
         self.note = note
-        // A note whose AI step failed has no formatted note to show, only its transcript.
-        if initialTab == .cleanedNote, note.status == .failed, !note.rawTranscript.isEmpty {
-            self.selectedTab = .rawTranscript
-        } else {
-            self.selectedTab = initialTab
-        }
+        self.selectedTab = initialTab ?? Self.defaultTab(for: note)
         self.repository = repository
         self.pipeline = pipeline
         self.templateStore = templateStore
@@ -76,6 +69,19 @@ public final class NoteDetailViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
+    /// The tab a note opens on: its cleaned text; the transcript when its AI step failed; the
+    /// structured rewrite for a note made before light cleanup was the default (it has no
+    /// cleaned text until one is generated).
+    static func defaultTab(for note: VoiceNote) -> DetailTab {
+        if note.status == .failed, !note.rawTranscript.isEmpty, note.cleanedText == nil {
+            return .rawTranscript
+        }
+        if note.hasStructuredRewrite, note.cleanedText == nil {
+            return .cleanedNote
+        }
+        return .lightCleanup
+    }
+
     public var hasAudio: Bool {
         guard let fileName = note.audioFileName else { return false }
         return AudioFileManager.shared.fileExists(fileName: fileName)
@@ -221,13 +227,12 @@ public final class NoteDetailViewModel: ObservableObject {
         repository.save(updated)
     }
     
-    /// Triggers Stage 2's "light" rewrite the first time something actually needs to display it
-    /// (see `NoteDetailView`'s light cleanup tab) -- a no-op if it's off in Settings, already
-    /// generated, not yet generatable (note isn't `.ready`), or already in flight.
+    /// Generates the cleaned text for a note made before light cleanup was the default, the first
+    /// time its Cleaned Text tab is shown -- a no-op if it has one, isn't `.ready`, or one is
+    /// already in flight.
     public func ensureLightCleanupGenerated() {
-        guard NoteProcessingPipeline.isLightCleanupEnabled,
-              note.status == .ready,
-              note.lightCleanedNote == nil,
+        guard note.status == .ready,
+              note.cleanedText == nil,
               !isGeneratingLightCleanup else { return }
         isGeneratingLightCleanup = true
         Task {
@@ -268,8 +273,22 @@ public final class NoteDetailViewModel: ObservableObject {
         return choices
     }
 
+    /// The format chip's label: the template the note is structured with, else "Cleaned Text".
     public var templateLabel: String {
-        note.templateName ?? "Choose Template"
+        if note.hasStructuredRewrite { return note.templateName ?? NoteTemplate.designDoc.name }
+        return "Cleaned Text"
+    }
+
+    /// The format the note has now, for the chip's checkmark.
+    public var currentFormat: TemplateChoice {
+        guard note.hasStructuredRewrite else { return .none }
+        return .template(note.templateId ?? NoteTemplate.designDoc.id)
+    }
+
+    /// A structured rewrite was asked for (before recording or by default) but didn't finish.
+    public var pendingFormatName: String? {
+        guard let choice = note.templateChoice, !note.hasStructuredRewrite, !note.status.isProcessing else { return nil }
+        return choice.displayName(in: templateStore.allTemplates)
     }
 
     public var canChangeTemplate: Bool {
@@ -279,11 +298,18 @@ public final class NoteDetailViewModel: ObservableObject {
     /// Regenerates the note with `template`, or auto-detects one when `nil`, from its existing
     /// transcript (see `NoteProcessingPipeline.changeTemplate`).
     public func changeTemplate(to template: NoteTemplate?) {
+        changeFormat(to: template.map { .template($0.id) } ?? .auto)
+    }
+
+    /// Formats the note as `choice` on top of its cleaned text, or (`.none`) drops its structured
+    /// rewrite; opens the tab that shows the result (see `NoteProcessingPipeline.changeFormat`).
+    public func changeFormat(to choice: TemplateChoice) {
         guard canChangeTemplate else { return }
         isReprocessing = true
         Task {
             do {
-                try await pipeline.changeTemplate(noteId: note.id, to: template)
+                try await pipeline.changeFormat(noteId: note.id, to: choice)
+                selectedTab = choice == .none ? .lightCleanup : .cleanedNote
             } catch {
                 templateChangeError = error.localizedDescription
             }
@@ -306,9 +332,14 @@ public final class NoteDetailViewModel: ObservableObject {
         repository.toggleFavorite(id: note.id)
     }
 
+    /// Set by `beginEditing` when the edit is of a structured note's cleaned text (the tab
+    /// shown), not its structured rewrite.
+    private var isEditingCleanedTextOnly = false
+
     public func beginEditing() {
         editedTitle = note.title
-        editedCleanedNote = note.cleanedNote
+        isEditingCleanedTextOnly = note.hasStructuredRewrite && selectedTab == .lightCleanup && note.cleanedText != nil
+        editedCleanedNote = isEditingCleanedTextOnly ? (note.cleanedText ?? "") : note.cleanedNote
         isEditing = true
     }
 
@@ -316,7 +347,20 @@ public final class NoteDetailViewModel: ObservableObject {
         var updated = note
         let trimmedTitle = editedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         updated.title = trimmedTitle.isEmpty ? note.title : trimmedTitle
+        if isEditingCleanedTextOnly {
+            updated.lightCleanedNote = editedCleanedNote
+            repository.save(updated)
+            isEditing = false
+            return
+        }
         updated.cleanedNote = editedCleanedNote
+        guard note.hasStructuredRewrite else {
+            // A note with only cleaned text keeps it in both fields (see `VoiceNote.cleanedText`).
+            updated.lightCleanedNote = editedCleanedNote
+            repository.save(updated)
+            isEditing = false
+            return
+        }
 
         // Re-synchronize templateSections and legacy fields from the edited markdown so
         // the structured info cards above stay in lockstep with the markdown text below.

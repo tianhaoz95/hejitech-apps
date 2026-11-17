@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.30.0"
+    public static let currentVersion = "1.31.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,45 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.31.0",
+            date: "November 2026",
+            tagline: "Cleaned Text First",
+            features: [
+                WhatsNewItem(
+                    icon: "wand.and.stars",
+                    tint: .blue,
+                    title: "Every Note Starts as Cleaned Text",
+                    description: "New notes come back as your own words with typos, grammar and filler words fixed, and nothing reordered or left out. It's what the on-device model does best, and it's ready sooner.",
+                    detailedDescription: "Sorting a memo into sections asks a lot of a small on-device model: it has to guess the kind of note and then decide where every sentence goes. A light cleanup is a much easier job, so every note now gets one first, and the Cleaned Text tab comes first in each note. Notes you already have keep their structured versions as they are.",
+                    highlights: [
+                        "One pass on the model instead of two for most notes",
+                        "Nothing summarized away: every sentence you said stays",
+                        "Copy, share and export use the cleaned text when a note has no template"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "rectangle.3.group",
+                    tint: .purple,
+                    title: "Pick a Template When You Want One",
+                    description: "Choose a format before you record (the chip on the record screen), as a default in Settings, or later from a note's Format chip: a template, or Auto-detect. The structured version gets its own tab next to the cleaned text.",
+                    highlights: [
+                        "Action items, the Daily Brief and Reminders come from notes with a template",
+                        "Adding a recording, merging or re-running keeps the note's template",
+                        "Pick Cleaned Text in the Format chip to drop a structured version"
+                    ]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "keyboard",
+                    tint: .teal,
+                    title: "Faster Dictation",
+                    description: "The keyboard and the Mac's dictation now wait only for the cleaned text they paste, not a structured rewrite on top.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.30.0",
             date: "November 2026",

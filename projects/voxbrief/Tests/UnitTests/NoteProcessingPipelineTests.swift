@@ -37,6 +37,7 @@ fileprivate final class MockLLMCopywriterService: LLMCopywriterServiceProtocol, 
     private(set) var receivedDictionaries: [[DictionaryEntry]] = []
     private(set) var receivedTranscripts: [String] = []
     private(set) var receivedTemplates: [[NoteTemplate]] = []
+    private(set) var receivedModes: [RewriteMode] = []
     private(set) var warmUpCallCount = 0
     /// Set by a test to make `process(note:)`/`reprocessStage2` copy specific template fields
     /// onto the resulting note, for asserting the pipeline threads them through correctly.
@@ -45,12 +46,28 @@ fileprivate final class MockLLMCopywriterService: LLMCopywriterServiceProtocol, 
     var stubTemplateName: String = ""
     /// Set by a test to make every call fail, like when no AI engine can run.
     var stubError: Error?
+    /// Set by a test to make only the structured (`.full`) call fail.
+    var stubFullError: Error?
 
     func processTranscript(_ rawTranscript: String, mode: RewriteMode, dictionary: [DictionaryEntry], templates: [NoteTemplate]) async throws -> LLMProcessingResult {
         receivedDictionaries.append(dictionary)
         receivedTranscripts.append(rawTranscript)
         receivedTemplates.append(templates)
+        receivedModes.append(mode)
         if let stubError { throw stubError }
+        if mode == .light {
+            return LLMProcessingResult(
+                title: "Light Title",
+                summary: "Light Summary",
+                requirements: [],
+                conditions: [],
+                actionItems: [],
+                cleanedMarkdown: "mock light",
+                tags: ["#light"],
+                engine: "mock-light"
+            )
+        }
+        if let stubFullError { throw stubFullError }
         return LLMProcessingResult(
             title: "Mock Title",
             summary: "Mock Summary",
@@ -126,34 +143,90 @@ final class NoteProcessingPipelineTests: XCTestCase {
         XCTAssertEqual(Set(mockASR.receivedVocabulary), Set(["Voxbrief", "Kubernetes"]))
     }
 
-    func testProcessCopiesTemplateFieldsFromLLMResultOntoTheNote() async {
-        let templateId = UUID()
+    func testProcessByDefaultRunsOnlyTheLightCleanup() async {
+        let note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
+        repository.save(note)
+
+        await pipeline.process(note: note)
+
+        XCTAssertEqual(mockLLM.receivedModes, [.light])
+        XCTAssertEqual(Set(mockLLM.receivedDictionaries[0].map(\.term)), Set(["Voxbrief", "Kubernetes"]))
+        let saved = try? XCTUnwrap(repository.note(withId: note.id))
+        XCTAssertEqual(saved?.status, .ready)
+        XCTAssertEqual(saved?.title, "Light Title")
+        XCTAssertEqual(saved?.lightCleanedNote, "mock light")
+        XCTAssertEqual(saved?.cleanedNote, "mock light", "A cleaned-only note keeps its text in cleanedNote for exports and search")
+        XCTAssertEqual(saved?.cleanedText, "mock light")
+        XCTAssertEqual(saved?.hasStructuredRewrite, false)
+        XCTAssertNil(saved?.templateId)
+        XCTAssertNil(saved?.templateChoice)
+        XCTAssertEqual(saved?.processingTimings.map(\.name), ["Transcribe", "Clean up"])
+    }
+
+    func testProcessWithAChosenTemplateAddsTheStructuredRewrite() async {
+        let templateId = NoteTemplate.email.id
         mockLLM.stubSections = [TemplateSectionContent(title: "Subject", style: .paragraph, items: ["Team sync notes"])]
         mockLLM.stubTemplateId = templateId
         mockLLM.stubTemplateName = "Email"
 
+        var note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
+        note.templateChoice = .template(templateId)
+        repository.save(note)
+
+        await pipeline.process(note: note)
+
+        XCTAssertEqual(mockLLM.receivedModes, [.light, .full])
+        XCTAssertEqual(mockLLM.receivedTemplates.last?.map(\.id), [templateId])
+        let saved = repository.note(withId: note.id)
+        XCTAssertEqual(saved?.templateSections, mockLLM.stubSections)
+        XCTAssertEqual(saved?.templateId, templateId)
+        XCTAssertEqual(saved?.templateName, "Email")
+        XCTAssertEqual(saved?.cleanedNote, "mock markdown")
+        XCTAssertEqual(saved?.lightCleanedNote, "mock light")
+        XCTAssertEqual(saved?.hasStructuredRewrite, true)
+        XCTAssertNil(saved?.templateChoice, "A finished structured rewrite clears the request")
+    }
+
+    func testProcessWithAutoDetectPassesTheEnabledTemplates() async {
+        var note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
+        note.templateChoice = .auto
+        repository.save(note)
+
+        await pipeline.process(note: note)
+
+        XCTAssertEqual(mockLLM.receivedModes, [.light, .full])
+        XCTAssertEqual(mockLLM.receivedTemplates.last?.map(\.id), templateStore.enabledTemplates.map(\.id))
+    }
+
+    func testProcessUsesTheDefaultFormatFromSettings() async {
+        let key = NoteProcessingPipeline.defaultTemplateChoiceKey
+        let previous = UserDefaults.standard.object(forKey: key)
+        UserDefaults.standard.set(TemplateChoice.auto.rawValue, forKey: key)
+        defer {
+            if let previous { UserDefaults.standard.set(previous, forKey: key) }
+            else { UserDefaults.standard.removeObject(forKey: key) }
+        }
         let note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
+        repository.save(note)
+
+        await pipeline.process(note: note)
+
+        XCTAssertEqual(mockLLM.receivedModes, [.light, .full])
+    }
+
+    func testProcessKeepsTheCleanedTextWhenTheStructuredRewriteFails() async {
+        mockLLM.stubFullError = LLMCopywriterError.unparsableResponse
+        var note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
+        note.templateChoice = .auto
         repository.save(note)
 
         await pipeline.process(note: note)
 
         let saved = repository.note(withId: note.id)
-        XCTAssertEqual(saved?.templateSections, mockLLM.stubSections)
-        XCTAssertEqual(saved?.templateId, templateId)
-        XCTAssertEqual(saved?.templateName, "Email")
-        XCTAssertEqual(mockLLM.receivedTemplates.last?.count, templateStore.allTemplates.count, "process() should pass the full available template set")
-    }
-
-    func testProcessOnlyRunsTheFullRewriteNotLight() async {
-        let note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
-        repository.save(note)
-
-        await pipeline.process(note: note)
-
-        // The light rewrite is never generated eagerly -- see generateLightCleanup.
-        XCTAssertEqual(mockLLM.receivedDictionaries.count, 1, "process() should only run the .full Stage 2 pass")
-        XCTAssertEqual(Set(mockLLM.receivedDictionaries[0].map(\.term)), Set(["Voxbrief", "Kubernetes"]))
-        XCTAssertNil(repository.note(withId: note.id)?.lightCleanedNote)
+        XCTAssertEqual(saved?.status, .ready)
+        XCTAssertEqual(saved?.cleanedText, "mock light")
+        XCTAssertEqual(saved?.hasStructuredRewrite, false)
+        XCTAssertEqual(saved?.templateChoice, .auto, "The request stays so the note can offer to try again")
     }
 
     func testProcessAppliesDeterministicCorrectionBeforeStage2() async {
@@ -174,19 +247,38 @@ final class NoteProcessingPipelineTests: XCTestCase {
         await pipeline.reprocessWithLLM(noteId: note.id)
 
         XCTAssertTrue(mockASR.receivedVocabulary.isEmpty, "reprocessWithLLM should never call ASR")
-        XCTAssertEqual(mockLLM.receivedDictionaries.count, 1, "reprocessWithLLM should only run the .full Stage 2 pass")
+        XCTAssertEqual(mockLLM.receivedModes, [.light], "A cleaned-only note is re-run as cleaned text only")
         XCTAssertEqual(mockLLM.receivedTranscripts.first, "Voxbrief needs a fix.", "Dictionary correction should retroactively apply to the stored transcript")
     }
 
-    func testReprocessWithLLMInvalidatesAStaleLightCleanup() async {
-        let note = VoiceNote(id: UUID(), rawTranscript: "fox brief needs a fix.", status: .ready, lightCleanedNote: "stale text", lightCleanupEngine: "mock")
+    func testReprocessWithLLMRegeneratesTheLightCleanup() async {
+        let note = VoiceNote(id: UUID(), rawTranscript: "fox brief needs a fix.", cleanedNote: "stale text", status: .ready, lightCleanedNote: "stale text", lightCleanupEngine: "mock")
         repository.save(note)
 
         await pipeline.reprocessWithLLM(noteId: note.id)
 
         let updated = repository.note(withId: note.id)
-        XCTAssertNil(updated?.lightCleanedNote, "A transcript change should invalidate the old light rewrite rather than leave stale text")
-        XCTAssertNil(updated?.lightCleanupEngine)
+        XCTAssertEqual(updated?.lightCleanedNote, "mock light")
+        XCTAssertEqual(updated?.lightCleanupEngine, "mock-light")
+    }
+
+    func testReprocessKeepsAStructuredNotesTemplate() async {
+        let note = VoiceNote(id: UUID(), rawTranscript: "Send the launch update.", cleanedNote: "old", status: .ready, templateId: NoteTemplate.email.id, templateName: "Email")
+        repository.save(note)
+
+        await pipeline.reprocessWithLLM(noteId: note.id)
+
+        XCTAssertEqual(mockLLM.receivedModes, [.light, .full])
+        XCTAssertEqual(mockLLM.receivedTemplates.last?.map(\.id), [NoteTemplate.email.id])
+    }
+
+    func testReprocessOfANoteFromBeforeTemplatesUsesDesignDoc() async {
+        let note = VoiceNote(id: UUID(), rawTranscript: "Ship the login fix.", cleanedNote: "### Action Items", actionItems: ["Ship the login fix"], status: .ready)
+        repository.save(note)
+
+        await pipeline.reprocessWithLLM(noteId: note.id)
+
+        XCTAssertEqual(mockLLM.receivedTemplates.last?.map(\.id), [NoteTemplate.designDoc.id])
     }
 
     // MARK: - AI engine unavailable
@@ -215,31 +307,47 @@ final class NoteProcessingPipelineTests: XCTestCase {
 
     // MARK: - Template change
 
-    func testChangeTemplatePassesOnlyTheChosenTemplate() async throws {
-        let email = try XCTUnwrap(templateStore.allTemplates.first { $0.id != NoteTemplate.designDoc.id })
+    func testChangeTemplatePassesOnlyTheChosenTemplateAndReusesTheCleanedText() async throws {
+        let email = NoteTemplate.email
         mockLLM.stubTemplateId = email.id
         mockLLM.stubTemplateName = email.name
-        let note = VoiceNote(id: UUID(), rawTranscript: "Send the launch update to the team.", status: .ready, lightCleanedNote: "old light", lightCleanupEngine: "mock")
+        let note = VoiceNote(id: UUID(), rawTranscript: "Send the launch update to the team.", cleanedNote: "cleaned", status: .ready, lightCleanedNote: "cleaned", lightCleanupEngine: "mock")
         repository.save(note)
 
         try await pipeline.changeTemplate(noteId: note.id, to: email)
 
         XCTAssertTrue(mockASR.receivedVocabulary.isEmpty, "A template change never re-runs ASR")
+        XCTAssertEqual(mockLLM.receivedModes, [.full], "The note's cleaned text is reused")
         XCTAssertEqual(mockLLM.receivedTemplates.last?.map(\.id), [email.id])
         let updated = repository.note(withId: note.id)
         XCTAssertEqual(updated?.templateId, email.id)
         XCTAssertEqual(updated?.templateName, email.name)
         XCTAssertEqual(updated?.status, .ready)
-        XCTAssertNil(updated?.lightCleanedNote, "Light cleanup regenerates lazily after a template change")
+        XCTAssertEqual(updated?.cleanedNote, "mock markdown")
+        XCTAssertEqual(updated?.cleanedText, "cleaned")
     }
 
     func testChangeTemplateToAutoDetectPassesTheEnabledTemplates() async throws {
-        let note = VoiceNote(id: UUID(), rawTranscript: "Send the launch update to the team.", status: .ready)
+        let note = VoiceNote(id: UUID(), rawTranscript: "Send the launch update to the team.", cleanedNote: "cleaned", status: .ready, lightCleanedNote: "cleaned")
         repository.save(note)
 
         try await pipeline.changeTemplate(noteId: note.id, to: nil)
 
         XCTAssertEqual(mockLLM.receivedTemplates.last?.map(\.id), templateStore.enabledTemplates.map(\.id))
+    }
+
+    func testChangeFormatToCleanedTextDropsTheStructuredRewriteWithoutAnLLMCall() async throws {
+        let note = VoiceNote(id: UUID(), rawTranscript: "Send the launch update.", cleanedNote: "### Subject", actionItems: ["Send it"], status: .ready, lightCleanedNote: "Send the launch update.", lightCleanupEngine: "mock", templateId: NoteTemplate.email.id, templateName: "Email")
+        repository.save(note)
+
+        try await pipeline.changeFormat(noteId: note.id, to: .none)
+
+        XCTAssertTrue(mockLLM.receivedModes.isEmpty)
+        let updated = repository.note(withId: note.id)
+        XCTAssertEqual(updated?.hasStructuredRewrite, false)
+        XCTAssertEqual(updated?.cleanedNote, "Send the launch update.")
+        XCTAssertEqual(updated?.actionItems, [])
+        XCTAssertNil(updated?.templateId)
     }
 
     func testChangeTemplateFailureKeepsAReadyNoteAsItWas() async throws {
@@ -261,30 +369,45 @@ final class NoteProcessingPipelineTests: XCTestCase {
         XCTAssertEqual(saved?.templateName, "Design Doc")
     }
 
-    func testReprocessAfterATemplateChangeDetectsTheTemplateAgain() async throws {
-        let note = VoiceNote(id: UUID(), rawTranscript: "Send the launch update to the team.", status: .ready)
+    func testStructuredFailureOnAFormatChangeKeepsTheNote() async throws {
+        let original = VoiceNote(id: UUID(), rawTranscript: "Send the launch update.", cleanedNote: "cleaned", status: .ready, lightCleanedNote: "cleaned")
+        repository.save(original)
+        mockLLM.stubFullError = LLMCopywriterError.unparsableResponse
+
+        do {
+            try await pipeline.changeFormat(noteId: original.id, to: .auto)
+            XCTFail("A format change should rethrow the structured rewrite's error")
+        } catch {}
+
+        let saved = repository.note(withId: original.id)
+        XCTAssertEqual(saved?.status, .ready)
+        XCTAssertEqual(saved?.cleanedText, "cleaned")
+        XCTAssertEqual(saved?.hasStructuredRewrite, false)
+    }
+
+    func testReprocessAfterATemplateChangeKeepsThatTemplate() async throws {
+        let note = VoiceNote(id: UUID(), rawTranscript: "Send the launch update to the team.", cleanedNote: "cleaned", status: .ready, lightCleanedNote: "cleaned")
         repository.save(note)
+        mockLLM.stubTemplateId = NoteTemplate.designDoc.id
         try await pipeline.changeTemplate(noteId: note.id, to: NoteTemplate.designDoc)
 
         await pipeline.reprocessWithLLM(noteId: note.id)
 
-        XCTAssertEqual(mockLLM.receivedTemplates.last?.count, templateStore.enabledTemplates.count, "A user's template pick isn't sticky")
+        XCTAssertEqual(mockLLM.receivedTemplates.last?.map(\.id), [NoteTemplate.designDoc.id])
     }
 
-    // MARK: - Lazy light cleanup
+    // MARK: - Cleaned text for older notes
 
-    func testGenerateLightCleanupIsANoOpUntilCalledExplicitly() async {
-        let note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
+    func testGenerateLightCleanupFillsInANoteFromBeforeTheDefault() async {
+        let note = VoiceNote(id: UUID(), rawTranscript: "an older note.", cleanedNote: "### Notes", status: .ready, templateId: NoteTemplate.generalNotes.id, templateName: "General Notes")
         repository.save(note)
-        await pipeline.process(note: note)
-        XCTAssertNil(repository.note(withId: note.id)?.lightCleanedNote)
 
         await pipeline.generateLightCleanup(noteId: note.id)
 
         let updated = repository.note(withId: note.id)
-        XCTAssertNotNil(updated?.lightCleanedNote)
-        XCTAssertEqual(updated?.lightCleanupEngine, "mock")
-        XCTAssertEqual(mockLLM.receivedDictionaries.count, 2, "the process() full pass, then this explicit .light call")
+        XCTAssertEqual(updated?.lightCleanedNote, "mock light")
+        XCTAssertEqual(updated?.cleanedNote, "### Notes", "The structured rewrite is left as it was")
+        XCTAssertEqual(mockLLM.receivedModes, [.light])
     }
 
     func testGenerateLightCleanupDoesNothingWhenNoteIsNotReady() async {
@@ -307,21 +430,15 @@ final class NoteProcessingPipelineTests: XCTestCase {
         XCTAssertTrue(mockLLM.receivedDictionaries.isEmpty, "should not re-generate an already-present light rewrite")
     }
 
-    func testGenerateLightCleanupRespectsTheDisabledSetting() async {
-        let previous = UserDefaults.standard.object(forKey: NoteProcessingPipeline.lightCleanupEnabledKey)
-        UserDefaults.standard.set(false, forKey: NoteProcessingPipeline.lightCleanupEnabledKey)
-        defer {
-            if let previous { UserDefaults.standard.set(previous, forKey: NoteProcessingPipeline.lightCleanupEnabledKey) }
-            else { UserDefaults.standard.removeObject(forKey: NoteProcessingPipeline.lightCleanupEnabledKey) }
+    func testTemplateChoiceRoundTripsAsAString() throws {
+        for choice in [TemplateChoice.none, .auto, .template(NoteTemplate.email.id)] {
+            XCTAssertEqual(TemplateChoice(rawValue: choice.rawValue), choice)
+            var note = VoiceNote(id: UUID())
+            note.templateChoice = choice
+            let decoded = try JSONDecoder().decode(VoiceNote.self, from: JSONEncoder().encode(note))
+            XCTAssertEqual(decoded.templateChoice, choice)
         }
-
-        let note = VoiceNote(id: UUID(), rawTranscript: "some transcript.", status: .ready)
-        repository.save(note)
-
-        await pipeline.generateLightCleanup(noteId: note.id)
-
-        XCTAssertNil(repository.note(withId: note.id)?.lightCleanedNote)
-        XCTAssertTrue(mockLLM.receivedDictionaries.isEmpty, "should not call the LLM at all when the setting is off")
+        XCTAssertNil(TemplateChoice(rawValue: "bogus"))
     }
 
     // MARK: - Append / Merge (multi-segment notes)

@@ -10,7 +10,16 @@ struct PreferencesView: View {
     @AppStorage(LLMCopywriterService.localLLMModelNameKey) private var localLLMModel: String = LLMCopywriterService.defaultLocalLLMModelName
     @AppStorage("launch_at_login") private var launchAtLoginStored: Bool = false
     @AppStorage("auto_check_for_updates") private var autoCheckForUpdates: Bool = true
-    @AppStorage(NoteProcessingPipeline.lightCleanupEnabledKey) private var lightCleanupEnabled: Bool = true
+    @AppStorage(NoteProcessingPipeline.defaultTemplateChoiceKey) private var defaultTemplateChoice: TemplateChoice = .none
+    @ObservedObject private var templateStore = TemplateStore.shared
+
+    /// Default Format choices: cleaned text, auto-detect, then each enabled template (plus the
+    /// current default if that template has since been disabled).
+    private var defaultFormatOptions: [TemplateChoice] {
+        var options: [TemplateChoice] = [.none, .auto] + templateStore.enabledTemplates.map { .template($0.id) }
+        if !options.contains(defaultTemplateChoice) { options.append(defaultTemplateChoice) }
+        return options
+    }
 
     @ObservedObject var accessibility: AccessibilityPermissionManager
     @StateObject private var microphone = MicrophonePermissionManager.shared
@@ -124,11 +133,15 @@ struct PreferencesView: View {
             }
 
             Section {
-                Toggle("Enable Light Cleanup", isOn: $lightCleanupEnabled)
+                Picker("Default Format", selection: $defaultTemplateChoice) {
+                    ForEach(defaultFormatOptions, id: \.self) { choice in
+                        Text(choice.displayName(in: templateStore.allTemplates)).tag(choice)
+                    }
+                }
             } header: {
-                Text("Light Cleanup")
+                Text("Note Format")
             } footer: {
-                Text("The Light Cleanup tab shows a lightly-proofread, near-verbatim version of the transcript alongside the fully restructured note. It's generated on demand the first time you open that tab, not automatically for every note -- turn it off to skip it entirely.")
+                Text("Every note is cleaned up on this Mac: typos, grammar and filler words fixed, your wording kept. Pick a default format to also sort notes into a template; captures you dictate into other apps are always pasted as cleaned text. Format any note later from its Format chip.")
             }
 
             Section {

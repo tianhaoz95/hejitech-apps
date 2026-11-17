@@ -348,6 +348,7 @@ targets:
       - path: VoxbriefApp/Views/TemplateEditView.swift
       - path: VoxbriefApp/Views/WhatsNewView.swift
       - path: VoxbriefApp/Views/TemplateDetailView.swift
+      - path: VoxbriefApp/Views/TemplateChoiceMenu.swift
       - path: VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit
         type: folder
         buildPhase: resources
