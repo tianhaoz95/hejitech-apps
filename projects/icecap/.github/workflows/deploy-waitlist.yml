@@ -1,0 +1,45 @@
+name: Deploy Waitlist
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/waitlist/**'
+      - 'firebase.json'
+      - 'firebase/firestore.rules'
+      - '.github/workflows/deploy-waitlist.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build waitlist
+        run: pnpm --filter @icecap/waitlist run build
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy to Firebase
+        run: pnpm exec firebase deploy --only hosting:icecap-preview-list,firestore:rules --project production --non-interactive
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

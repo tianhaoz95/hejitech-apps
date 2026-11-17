@@ -1,0 +1,24 @@
+{
+  "projects": {
+    "default": "demo-icecap",
+    "production": "icecap-platform"
+  },
+  "targets": {
+    "demo-icecap": {
+      "hosting": {
+        "hub": ["icecap-hub"],
+        "admin": ["icecap-admin"],
+        "landing": ["icecap-landing"],
+        "legal": ["icecap-legal"]
+      }
+    },
+    "icecap-platform": {
+      "hosting": {
+        "hub": ["icecap-hub"],
+        "admin": ["icecap-admin"],
+        "landing": ["icecap-home"],
+        "legal": ["icecap-platform"]
+      }
+    }
+  }
+}

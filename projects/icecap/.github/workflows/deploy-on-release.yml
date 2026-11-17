@@ -1,0 +1,92 @@
+name: Deploy on Release
+
+on:
+  workflow_run:
+    workflows: ["Create Release"]
+    types: [completed]
+  release:
+    types: [published, created]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          # This will set GOOGLE_APPLICATION_CREDENTIALS for the next steps
+
+      - name: Verify Build Artifacts
+        env:
+          PLASMO_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.PLASMO_PUBLIC_GOOGLE_CLIENT_ID }}
+          PLASMO_PUBLIC_CHROME_AI_TRIAL_TOKEN: ${{ secrets.CHROME_EXTENSION_AI_TRIAL_TOKEN }}
+          VITE_CHROME_AI_TRIAL_TOKEN: ${{ secrets.HUB_AI_TRIAL_TOKEN }}
+        run: |
+          # Setup extension env
+          echo "PLASMO_PUBLIC_USE_EMULATOR=false" > apps/extension/.env
+          echo "PLASMO_PUBLIC_GOOGLE_CLIENT_ID=$PLASMO_PUBLIC_GOOGLE_CLIENT_ID" >> apps/extension/.env
+          echo "PLASMO_PUBLIC_CHROME_AI_TRIAL_TOKEN=$PLASMO_PUBLIC_CHROME_AI_TRIAL_TOKEN" >> apps/extension/.env
+          
+          # Setup hub env
+          echo "VITE_CHROME_AI_TRIAL_TOKEN=$VITE_CHROME_AI_TRIAL_TOKEN" > apps/hub/.env
+          
+          pnpm turbo run build
+          pnpm --filter @icecap/extension package:sideload
+          echo "✨ Checking build artifacts..."
+          
+          echo "Checking Hub..."
+          ls -la apps/hub/dist/index.html || (echo "❌ Hub build failed" && exit 1)
+          
+          echo "Checking Admin..."
+          ls -la apps/admin/dist/index.html || (echo "❌ Admin build failed" && exit 1)
+          
+          echo "Checking Landing..."
+          ls -la apps/landing/dist/index.html || (echo "❌ Landing build failed" && exit 1)
+          
+          echo "Checking Legal..."
+          ls -la apps/legal/dist/index.html || (echo "❌ Legal build failed" && exit 1)
+          
+          echo "Checking Functions..."
+          ls -la firebase/functions/lib/index.js || (echo "❌ Functions build failed" && exit 1)
+          
+          echo "Checking Extension Sideload..."
+          ls -la apps/extension/build/*.zip || (echo "❌ Extension package failed" && exit 1)
+          
+          echo "✅ All artifacts verified!"
+
+      - name: Build and Deploy
+        run: ./scripts/deploy-all.sh
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Upload Sideload Extension
+        run: pnpm exec node scripts/upload-sideload.mjs
+        # The 'auth' step above sets GOOGLE_APPLICATION_CREDENTIALS automatically
+
+      - name: Debug on Failure
+        if: failure()
+        run: |
+          echo "🔍 Inspecting Firebase debug logs..."
+          [ -f firebase-debug.log ] && tail -n 500 firebase-debug.log || echo "No firebase-debug.log found"
+          [ -f firebase/functions/firebase-debug.log ] && tail -n 500 firebase/functions/firebase-debug.log || echo "No functions debug log found"

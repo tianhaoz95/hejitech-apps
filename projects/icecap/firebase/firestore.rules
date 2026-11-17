@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+
+    // Requires the "admin: true" custom claim set via Admin SDK.
+    function isAdmin() {
+      return isAuth() && request.auth.token.admin == true;
+    }
+
+    // ─── User profiles ─────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /properties/{propertyId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /settings/{settingId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // ─── Subscriptions ─────────────────────────────────────────────────────
+    // All lifecycle writes (create, tier changes, status, Stripe IDs) come from
+    // Cloud Functions via the Admin SDK and bypass these rules entirely.
+    // The only client-side write allowed is the optimistic AI-usage bump that the
+    // extension and hub perform after a successful analyzeProperty call; the Cloud
+    // Function itself enforces the real quota check, so restricting the field here
+    // prevents clients from touching tier/status/stripeCustomerId etc.
+    match /subscriptions/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow update: if isOwner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['aiUsageCurrentMonth', 'updatedAt']);
+    }
+
+    // ─── Promo codes ───────────────────────────────────────────────────────
+    // Any authenticated user can read to validate a code at checkout.
+    // Writes are admin-tooling only (or Admin SDK from Functions).
+    match /promo_codes/{codeId} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // ─── Promo redemptions ─────────────────────────────────────────────────
+    // Created exclusively by Cloud Functions (Admin SDK).
+    match /promo_redemptions/{redemptionId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── Admin-only collections ────────────────────────────────────────────
+    match /scraper_reports/{reportId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /system_health/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── Waitlist ──────────────────────────────────────────────────────────
+    // Anyone can submit their email — no auth required.
+    // Only admins can read or modify entries.
+    match /waitlist/{entryId} {
+      allow create: if request.resource.data.email is string
+        && request.resource.data.email.size() > 5
+        && request.resource.data.email.size() < 256;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ─── Public stats ──────────────────────────────────────────────────────
+    // Publicly readable so the waitlist counter can be shown to visitors.
+    // Clients may only touch the signupCount field and only ever increment
+    // it by exactly 1 — enforced so the counter can't be artificially inflated.
+    match /public_stats/waitlist {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['signupCount'])
+        && request.resource.data.signupCount == 1;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['signupCount'])
+                       && request.resource.data.signupCount
+                            == resource.data.signupCount + 1;
+    }
+  }
+}

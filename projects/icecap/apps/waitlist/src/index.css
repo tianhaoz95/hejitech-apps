@@ -1,0 +1,234 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    font-family: "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    @apply bg-slate-50 text-slate-900 dark:bg-[#050b1a] dark:text-white transition-colors duration-300;
+  }
+}
+
+@layer components {
+  .form-input {
+    @apply px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400
+           focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
+           dark:bg-white/5 dark:border-white/10 dark:text-white dark:placeholder-gray-500
+           transition-all duration-200 text-sm w-full;
+  }
+
+  .cta-button {
+    @apply px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700
+           text-white font-semibold text-sm transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           shadow-lg shadow-blue-500/10 dark:shadow-blue-500/20 hover:shadow-blue-500/20 dark:hover:shadow-blue-500/30;
+  }
+
+  .feature-card {
+    @apply p-6 rounded-2xl bg-white border border-slate-200/80
+           hover:bg-slate-50/50 hover:border-slate-300
+           dark:bg-white/[0.03] dark:border-white/[0.08]
+           dark:hover:bg-white/[0.06] dark:hover:border-white/[0.15]
+           shadow-sm shadow-slate-100/50 dark:shadow-none
+           transition-all duration-300;
+  }
+
+  .success-card {
+    @apply p-5 rounded-2xl bg-green-50 border border-green-200 text-slate-800
+           dark:bg-green-500/10 dark:border-green-500/20 dark:text-white;
+  }
+
+  .gradient-text {
+    background-image: linear-gradient(135deg, #2563eb 0%, #06b6d4 50%, #2563eb 100%);
+    .dark & {
+      background-image: linear-gradient(135deg, #60a5fa 0%, #22d3ee 50%, #60a5fa 100%);
+    }
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 4s linear infinite;
+  }
+
+  .gradient-text-purple {
+    background-image: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #7c3aed 100%);
+    .dark & {
+      background-image: linear-gradient(135deg, #a78bfa 0%, #c084fc 50%, #a78bfa 100%);
+    }
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 4s linear infinite;
+  }
+
+  .stat-item {
+    @apply text-center px-6;
+  }
+}
+
+/* Animated background orbs */
+.orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(120px);
+  pointer-events: none;
+  transition: all 0.5s ease;
+}
+
+.orb-blue {
+  width: 700px;
+  height: 700px;
+  background: #60a5fa;
+  opacity: 0.08;
+  top: -300px;
+  left: -200px;
+  animation: float-slow 10s ease-in-out infinite;
+}
+
+.dark .orb-blue {
+  background: #1d4ed8;
+  opacity: 0.2;
+}
+
+.orb-purple {
+  width: 500px;
+  height: 500px;
+  background: #c084fc;
+  opacity: 0.08;
+  top: 50px;
+  right: -200px;
+  animation: float-slow 12s ease-in-out infinite reverse;
+}
+
+.dark .orb-purple {
+  background: #7c3aed;
+  opacity: 0.2;
+}
+
+.orb-cyan {
+  width: 400px;
+  height: 400px;
+  background: #22d3ee;
+  opacity: 0.05;
+  bottom: -100px;
+  left: 40%;
+  animation: float-slow 9s ease-in-out infinite;
+}
+
+.dark .orb-cyan {
+  background: #0891b2;
+  opacity: 0.12;
+}
+
+/* Dot grid overlay */
+.dot-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+  transition: background 0.5s ease;
+}
+
+.dark .dot-grid {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+}
+
+/* Product mockup */
+.mockup-card {
+  width: 320px;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  padding: 24px;
+  box-shadow: 0 32px 64px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  animation: float-slow 7s ease-in-out infinite;
+  transition: background 0.5s ease, border 0.5s ease, box-shadow 0.5s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.dark .mockup-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 20, 45, 0.9);
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Loading spinner */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: white;
+  animation: spin 0.65s linear infinite;
+}
+
+/* Keyframes */
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 1;
+  }
+}
+
+.fade-up {
+  animation: fade-up 0.7s ease-out both;
+}
+
+.fade-up-delay {
+  animation: fade-up 0.7s ease-out 0.15s both;
+}
+
+.bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}

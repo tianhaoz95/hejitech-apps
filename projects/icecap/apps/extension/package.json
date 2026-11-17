@@ -1,0 +1,68 @@
+{
+  "name": "@icecap/extension",
+  "displayName": "Icecap — Real Estate Investment Analyzer",
+  "version": "0.1.4",
+  "private": true,
+  "description": "Analyze real estate deals on your favorite sites",
+  "scripts": {
+    "dev": "plasmo dev",
+    "build": "plasmo build",
+    "build:prod": "plasmo build --no-source-maps",
+    "package": "plasmo package",
+    "build:chrome": "plasmo build --target=chrome-mv3 --no-source-maps",
+    "build:edge": "plasmo build --target=edge-mv3 --no-source-maps",
+    "build:safari": "plasmo build --target=safari-mv3 --no-source-maps",
+    "build:sideload": "plasmo build --target=chrome-mv3 --tag=sideload --no-source-maps",
+    "package:chrome": "plasmo package --target=chrome-mv3",
+    "package:edge": "plasmo package --target=edge-mv3",
+    "package:safari": "plasmo package --target=safari-mv3",
+    "package:sideload": "plasmo package --target=chrome-mv3 --tag=sideload"
+  },
+  "dependencies": {
+    "@icecap/math": "workspace:*",
+    "@icecap/types": "workspace:*",
+    "@icecap/ui": "workspace:*",
+    "firebase": "^12.12.1",
+    "lucide-react": "^0.468.0",
+    "plasmo": "0.90.5",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-markdown": "8.0.7",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "4.1.1",
+    "@types/chrome": "0.0.258",
+    "@types/node": "^20.0.0",
+    "@types/react": "18.2.48",
+    "@types/react-dom": "18.2.18",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "prettier": "3.2.4",
+    "tailwindcss": "^3.4.16",
+    "typescript": "5.3.3"
+  },
+  "manifest": {
+    "trial_tokens": [
+      "A13LxbVEpSAm2rNiXS23jHQLQ0cb6dH/PGeeWWaPmLVL+LQm/CbcIit8f1GyYk1CKrCXda2JVtg08bl0R0ON2g0AAACPeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vZ2JqaWliZ2NjZmtwb2RmZmNobW5va2ZsY2xibmJmcGwiLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElNdWx0aW1vZGFsSW5wdXQiLCJleHBpcnkiOjE3ODE1NjgwMDAsImlzVGhpcmRQYXJ0eSI6dHJ1ZX0="
+    ],
+    "host_permissions": [
+      "https://www.redfin.com/*",
+      "https://www.zillow.com/*",
+      "https://www.realtor.com/*",
+      "http://localhost/*",
+      "http://127.0.0.1/*"
+    ],
+    "permissions": [
+      "sidePanel",
+      "tabs",
+      "activeTab",
+      "storage",
+      "identity"
+    ],
+    "content_security_policy": {
+      "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* wss://localhost:* https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com"
+    },
+    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA04YTCSHdsQRiHr7hCNZ1M6EoFes2Qpl0xc2BtIKclzCeocA8wprcjbpYWgTl1AwCv6xuk4G9FMFyqrZwhzBV7URegBYVT5fb4b4zJ1HUDpCUV+c8UMiYDZPSIfWin+00k+Jq30IEiXjhNFhyv3WsUJpJJGUd4vqM1RECx00EqhQoFa00OoSLc/Lj2I5lR6cb+LoqZVfQtXuxgccid5cSRNaPah1HgTXNcsXNFZZPRVFo3GrpXPqaXXYhSSU5xESGTdT0RVqYzGMT8tYDX/mB+TL9IECj03seS0AepyDImrHUD585yn04ZzHEm73oys64XY9xacpW0UH1KuneSnoHNQIDAQAB"
+  }
+}

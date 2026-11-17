@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors duration-200;
+  }
+}
+
+.prose h1 { @apply text-3xl font-black mb-6 mt-8 dark:text-white; }
+.prose h2 { @apply text-2xl font-bold mb-4 mt-8 dark:text-white; }
+.prose h3 { @apply text-xl font-bold mb-3 mt-6 dark:text-white; }
+.prose p { @apply mb-4 leading-relaxed text-gray-700 dark:text-gray-300; }
+.prose ul { @apply list-disc list-inside mb-4 ml-4 text-gray-700 dark:text-gray-300; }
+.prose ol { @apply list-decimal list-inside mb-4 ml-4 text-gray-700 dark:text-gray-300; }
+.prose li { @apply mb-2; }
+.prose code.inline-code { @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono text-blue-600 dark:text-blue-400; }
+.prose a { @apply text-blue-600 dark:text-blue-400 hover:underline; }
+.prose blockquote { @apply border-l-4 border-gray-200 dark:border-gray-700 pl-4 italic text-gray-600 dark:text-gray-400 mb-4; }
