@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.31.0"
+    public static let currentVersion = "1.31.1"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,28 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.31.1",
+            date: "November 2026",
+            tagline: "Titles That Stay Put",
+            features: [
+                WhatsNewItem(
+                    icon: "textformat",
+                    tint: .blue,
+                    title: "One Title, Whatever the Template",
+                    description: "A note's title now always comes from its cleaned text. Formatting it with a template, or switching templates, leaves the title as it is."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "pencil",
+                    tint: .orange,
+                    title: "Edited Titles Survive a Template Change",
+                    description: "A title you edited by hand used to be replaced when you picked a template for the note. It now stays.",
+                    kind: .fix
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.31.0",
             date: "November 2026",

@@ -184,6 +184,7 @@ final class NoteProcessingPipelineTests: XCTestCase {
         XCTAssertEqual(saved?.cleanedNote, "mock markdown")
         XCTAssertEqual(saved?.lightCleanedNote, "mock light")
         XCTAssertEqual(saved?.hasStructuredRewrite, true)
+        XCTAssertEqual(saved?.title, "Light Title", "The title always comes from the light cleanup")
         XCTAssertNil(saved?.templateChoice, "A finished structured rewrite clears the request")
     }
 
@@ -311,7 +312,7 @@ final class NoteProcessingPipelineTests: XCTestCase {
         let email = NoteTemplate.email
         mockLLM.stubTemplateId = email.id
         mockLLM.stubTemplateName = email.name
-        let note = VoiceNote(id: UUID(), rawTranscript: "Send the launch update to the team.", cleanedNote: "cleaned", status: .ready, lightCleanedNote: "cleaned", lightCleanupEngine: "mock")
+        let note = VoiceNote(id: UUID(), title: "Launch Update", rawTranscript: "Send the launch update to the team.", cleanedNote: "cleaned", status: .ready, lightCleanedNote: "cleaned", lightCleanupEngine: "mock")
         repository.save(note)
 
         try await pipeline.changeTemplate(noteId: note.id, to: email)
@@ -325,6 +326,7 @@ final class NoteProcessingPipelineTests: XCTestCase {
         XCTAssertEqual(updated?.status, .ready)
         XCTAssertEqual(updated?.cleanedNote, "mock markdown")
         XCTAssertEqual(updated?.cleanedText, "cleaned")
+        XCTAssertEqual(updated?.title, "Launch Update", "A template never renames the note")
     }
 
     func testChangeTemplateToAutoDetectPassesTheEnabledTemplates() async throws {

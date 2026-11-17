@@ -373,7 +373,8 @@ public final class NoteProcessingPipeline: ObservableObject {
     // MARK: - Stage 2 Reprocessing (shared by reprocessWithLLM / changeTemplate / appendRecording / mergeNote)
 
     /// Stage 2 on `note`: the light cleanup (title, summary, tags and the cleaned text), then --
-    /// unless `choice` is `.none` -- a structured rewrite with that template or auto-detection.
+    /// unless `choice` is `.none` -- a structured rewrite with that template or auto-detection,
+    /// which replaces the summary and tags but never the title.
     /// A note without a structured rewrite keeps the cleaned text in `cleanedNote` too, for
     /// exports, search and sharing. `reuseLightCleanup` skips the light call when the note
     /// already has one (a format change on an unchanged transcript).
@@ -426,7 +427,7 @@ public final class NoteProcessingPipeline: ObservableObject {
 
         do {
             let full = try await llmService.processTranscript(transcript, mode: .full, dictionary: dictionary, templates: templates)
-            note.title = full.title
+            // The title always comes from the light cleanup, so a template never renames a note.
             note.summary = full.summary
             note.tags = full.tags
             note.cleanedNote = full.cleanedMarkdown
