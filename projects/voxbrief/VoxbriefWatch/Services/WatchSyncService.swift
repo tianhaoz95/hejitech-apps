@@ -30,9 +30,60 @@ public final class WatchSyncService: NSObject, ObservableObject {
         session.activate()
     }
     
+    private static let sentManifestsKey = "watch_sent_session_manifests"
+
+    /// Tells the iPhone which pieces make up each recording that is over, so it can join them
+    /// into one note. Sent once per recording; user info transfers are queued and delivered even
+    /// if the iPhone is away right now.
+    private func sendManifestsForFinishedSessions() {
+        let defaults = UserDefaults.standard
+        var sent = defaults.stringArray(forKey: Self.sentManifestsKey) ?? []
+        let active = WatchAudioRecorder.shared.activeSessionId
+        let manifests = Self.manifests(for: storage.notes, activeSessionId: active, alreadySent: Set(sent))
+        guard !manifests.isEmpty else { return }
+        for manifest in manifests {
+            WCSession.default.transferUserInfo(manifest.dictionaryRepresentation)
+            sent.append(manifest.sessionId.uuidString)
+        }
+        defaults.set(Array(sent.suffix(100)), forKey: Self.sentManifestsKey)
+    }
+
+    /// The recordings that are over (not the one in progress, nothing still being written) and
+    /// have not been announced yet, each with its pieces in order.
+    nonisolated static func manifests(for notes: [WatchLocalNote], activeSessionId: UUID?, alreadySent: Set<String>) -> [WatchSessionManifest] {
+        var bySession: [UUID: [WatchLocalNote]] = [:]
+        for note in notes {
+            if let sessionId = note.sessionId { bySession[sessionId, default: []].append(note) }
+        }
+        return bySession.compactMap { sessionId, pieces in
+            guard sessionId != activeSessionId,
+                  !alreadySent.contains(sessionId.uuidString),
+                  !pieces.contains(where: { $0.syncState == .recording }) else { return nil }
+            let ordered = pieces.sorted { ($0.segmentIndex ?? 0, $0.createdAt) < ($1.segmentIndex ?? 0, $1.createdAt) }
+            return WatchSessionManifest(sessionId: sessionId, pieceIds: ordered.map(\.id))
+        }
+        .sorted { $0.sessionId.uuidString < $1.sessionId.uuidString }
+    }
+
+    nonisolated static func shouldHoldTransfers(isRecording: Bool, policy: WatchTransferPolicy, charging: Bool) -> Bool {
+        isRecording && policy == .afterRecording && !charging
+    }
+
     /// Syncs all pending notes to iOS app via WCSession file transfers
     public func syncPendingNotes() {
         guard WCSession.isSupported() else { return }
+
+        // Sending is the radio's work. While a recording runs, its finished pieces wait on the
+        // watch until it stops, unless the watch is on its charger or the owner chose Right Away.
+        if Self.shouldHoldTransfers(
+            isRecording: WatchAudioRecorder.shared.isRecording,
+            policy: WatchRecordingConfig.load().transferPolicy,
+            charging: WatchBatteryLog.reading(event: "sync").charging
+        ) {
+            let waiting = storage.pendingNotes().count
+            lastSyncMessage = waiting == 0 ? "Recording" : "Holding \(waiting) until recording stops"
+            return
+        }
 
         // Reconcile any in-flight transfers that were interrupted or ended without callback
         let activeTransfers = WCSession.default.outstandingFileTransfers
@@ -46,6 +97,8 @@ public final class WatchSyncService: NSObject, ObservableObject {
         storage.reconcileInFlightTransfers(activeTransferNoteIds: activeNoteIds)
         storage.purgeOldSyncedRecordings()
         
+        sendManifestsForFinishedSessions()
+
         let pending = storage.pendingNotes()
         guard !pending.isEmpty else {
             lastSyncMessage = "No pending notes to sync"
@@ -66,7 +119,9 @@ public final class WatchSyncService: NSObject, ObservableObject {
                 createdAt: note.createdAt,
                 duration: note.duration,
                 source: note.source,
-                audioFileName: note.localFileName
+                audioFileName: note.localFileName,
+                sessionId: note.sessionId,
+                segmentIndex: note.segmentIndex
             )
             
             // Initiate background file transfer

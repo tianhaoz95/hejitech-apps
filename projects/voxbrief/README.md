@@ -26,7 +26,7 @@ Once synced, the iOS companion app processes each memo through a **two-stage pip
 ```mermaid
 flowchart TD
     subgraph Apple Watch
-        WC["Watch Face Complications\n(Circular, Corner, Rectangular, Inline)"] -->|One-Tap Record| REC["WatchAudioRecorder\n(AAC .m4a @ 32kHz Mono)"]
+        WC["Watch Face Complications\n(Circular, Corner, Rectangular, Inline)"] -->|One-Tap Record| REC["WatchAudioRecorder\n(AAC .m4a @ 16kHz Mono)"]
         LA["Smart Stack Live Activity\n(Timer & Waveform)"] -->|Stop & Save| REC
         REC -->|Save Audio Immediately| WSTORE["Watch Local Storage\n(Documents/WatchRecordings)"]
         WSTORE -->|Background Fetch /\nPeriodic Refresh| WSYNC["WatchSyncService\n(WCSession.transferFile)"]
@@ -57,7 +57,7 @@ flowchart TD
 - **Live Activities**: Configured via `ActivityKit` (`VoiceNoteActivityAttributes`). Ongoing recordings display a real-time elapsed timer, pulsing audio waveform meter, and a one-tap **Stop & Save** button in the Smart Stack.
 
 ### 2. Instant Local Capture (No Immediate Conversion)
-- Recording uses `AVAudioRecorder` configured with high-efficiency AAC (`.m4a`) at 32kHz mono.
+- Recording uses `AVAudioRecorder` configured with high-efficiency AAC (`.m4a`) at 16 kHz mono by default (32 kHz is a choice in Watch Settings), in the background, saved in 15-minute pieces.
 - Audio is saved directly to local flash storage (`Documents/WatchRecordings/<UUID>.m4a`).
 - Metadata is tracked in `WatchStorage` (`noteId`, `createdAt`, `duration`, `source`, `syncState = .pending`).
 - **Zero heavy processing on watch**: Preserves battery and guarantees instant, friction-free voice capture even when completely offline or away from the iPhone.

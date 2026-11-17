@@ -10,6 +10,9 @@ public final class NoteProcessingPipeline: ObservableObject {
     private let audioFileManager: AudioFileManager
     private let dictionaryStore: PersonalDictionaryStore
     private let templateStore: TemplateStore
+    /// Pieces of a watch recording still waiting on this device (see `WatchSessionStore`). A note
+    /// whose id has pieces there is a watch recording that arrived in pieces.
+    var sessionStore: WatchSessionStore = .shared
 
     @Published public private(set) var activeProcessingCount: Int = 0
     /// Holds the live, progressive transcript for any notes actively undergoing Stage 1 ASR transcription.
@@ -82,6 +85,10 @@ public final class NoteProcessingPipeline: ObservableObject {
         }
 
         let audioURL = audioFileManager.url(for: audioFileName)
+        // A watch recording that arrived in pieces: they are joined into the note's one audio
+        // file and transcribed piece by piece, so a recording of hours never has to be held in
+        // memory whole. The pieces are dropped once the transcript is saved.
+        let sessionPieces = sessionStore.pieces(for: note.id)
         // Set once Stage 1 succeeds, so a Stage 2 failure still saves the transcript.
         var transcribedNote: VoiceNote?
         inFlightNoteIds.insert(note.id)
@@ -90,6 +97,11 @@ public final class NoteProcessingPipeline: ObservableObject {
             inFlightNoteIds.remove(note.id)
             activeProcessingCount -= 1
             streamingTranscripts.removeValue(forKey: note.id)
+            if !sessionPieces.isEmpty,
+               let saved = repository.note(withId: note.id), !saved.rawTranscript.isEmpty,
+               FileManager.default.fileExists(atPath: audioURL.path) {
+                sessionStore.remove(pieces: sessionPieces, sessionId: note.id)
+            }
         }
         
         do {
@@ -98,12 +110,25 @@ public final class NoteProcessingPipeline: ObservableObject {
             // and tells the LLM which terms to preserve verbatim.
             let dictionaryEntries = dictionaryStore.entries
 
+            if !sessionPieces.isEmpty, !FileManager.default.fileExists(atPath: audioURL.path) {
+                try await WatchSessionStore.combineAudio(
+                    urls: sessionPieces.map { sessionStore.url(for: $0, sessionId: note.id) },
+                    to: audioURL
+                )
+            }
+
             // Stage 1: ASR Speech-to-Text
             repository.updateStatus(for: note.id, status: .transcribingASR)
             let asrStart = ContinuousClock.now
             let (asrTranscript, timingSegments): (String, [TranscriptTimingSegment])
             if let liveTranscript {
                 (asrTranscript, timingSegments) = liveTranscript
+            } else if sessionPieces.count > 1 {
+                (asrTranscript, timingSegments) = try await transcribe(
+                    pieces: sessionPieces,
+                    sessionId: note.id,
+                    vocabulary: dictionaryEntries.map(\.term)
+                )
             } else {
                 (asrTranscript, timingSegments) = try await asrService.transcribeAudioWithTimings(
                     at: audioURL,
@@ -198,6 +223,40 @@ public final class NoteProcessingPipeline: ObservableObject {
         }
     }
     
+    /// Stage 1 for a watch recording that arrived in pieces: each piece is transcribed on its
+    /// own and its timings moved to where the piece sits in the whole recording. A piece with no
+    /// speech in it (common over a day) is skipped; only a recording with no speech at all fails.
+    private func transcribe(
+        pieces: [WatchSessionPiece],
+        sessionId: UUID,
+        vocabulary: [String]
+    ) async throws -> (String, [TranscriptTimingSegment]) {
+        var texts: [String] = []
+        var timings: [TranscriptTimingSegment] = []
+        var offset: TimeInterval = 0
+        for piece in pieces {
+            let soFar = texts.joined(separator: " ")
+            do {
+                let result = try await asrService.transcribeAudioWithTimings(
+                    at: sessionStore.url(for: piece, sessionId: sessionId),
+                    vocabulary: vocabulary,
+                    onProgress: { [weak self] partialText in
+                        Task { @MainActor [weak self] in
+                            self?.streamingTranscripts[sessionId] = soFar.isEmpty ? partialText : soFar + " " + partialText
+                        }
+                    }
+                )
+                texts.append(result.transcript)
+                timings += WatchSessionStore.offset(result.segments, by: offset)
+            } catch ASRError.emptyAudio {
+                // Nothing was said in this piece.
+            }
+            offset += piece.duration
+        }
+        guard !texts.isEmpty else { throw ASRError.emptyAudio }
+        return (texts.joined(separator: " "), timings)
+    }
+
     /// Re-runs Stage 2 (LLM copywriting) on an existing note's raw transcript. For a multi-segment
     /// note this reprocesses the full accumulated transcript, not just the newest segment.
     public func reprocessWithLLM(noteId: UUID) async {

@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.29.0"
+    public static let currentVersion = "1.30.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,46 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.30.0",
+            date: "November 2026",
+            tagline: "All-Day Watch Recorder",
+            features: [
+                WhatsNewItem(
+                    icon: "applewatch.radiowaves.left.and.right",
+                    tint: .red,
+                    title: "Record All Day on Your Watch",
+                    description: "Start a recording on your watch, lower your wrist and carry on. It keeps recording with the screen off and arrives on your iPhone as one note, with one recording to play back, once you stop.",
+                    highlights: [
+                        "Saved on the watch in pieces (every 15 minutes by default), so a flat battery costs one piece at most; your iPhone joins them back together",
+                        "Picks up again after a call or Siri, with a reminder if it needs you to open the app",
+                        "Stops and saves by itself when the watch battery reaches 5%"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "battery.75percent",
+                    tint: .green,
+                    title: "Battery Log",
+                    description: "Watch Settings now shows what each recording cost: percent an hour and how long a full charge would last at that rate."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "leaf",
+                    tint: .green,
+                    title: "A Lighter Watch Recorder",
+                    description: "The watch draws nothing and measures nothing while your wrist is down, records smaller audio (16 kHz by default), and waits until you stop before sending to iPhone. Quality, piece length and sending are choices in Watch Settings.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "phone.arrow.down.left",
+                    tint: .orange,
+                    title: "Calls No Longer End a Watch Recording",
+                    description: "A call or Siri used to stop a watch recording for good. It now pauses and continues.",
+                    kind: .fix
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.29.0",
             date: "October 2026",

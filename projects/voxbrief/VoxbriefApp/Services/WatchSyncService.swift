@@ -18,6 +18,12 @@ public final class WatchSyncService: NSObject, ObservableObject {
     private let repository: NoteRepository
     private let audioFileManager: AudioFileManager
     private let pipeline: NoteProcessingPipeline
+    private let sessionStore = WatchSessionStore.shared
+    private var activeObserver: NSObjectProtocol?
+
+    /// How long a recording's pieces wait for the watch's list of them before the note is built
+    /// from whatever has arrived.
+    static let incompleteSessionWait: TimeInterval = 6 * 3600
 
     /// Tracks the currently-running "ingest + process an incoming file" background task, if any,
     /// so its expiration handler and the normal completion path can't both try to end it.
@@ -42,6 +48,141 @@ public final class WatchSyncService: NSObject, ObservableObject {
         super.init()
         
         setupSession()
+        activeObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in await self?.assembleWaitingSessions() }
+        }
+    }
+
+    // MARK: - Watch recordings that arrive in pieces
+
+    /// What to do with the pieces waiting for one recording.
+    enum SessionStep: Equatable {
+        /// Not everything is here yet.
+        case wait
+        /// Build the note for the recording.
+        case assemble
+        /// The note was already built and has its transcript: these pieces came too late to be
+        /// part of it, so each becomes a note of its own rather than being lost.
+        case adoptLatePieces
+        /// Nothing left to do with this folder.
+        case discard
+    }
+
+    nonisolated static func step(
+        hasPieces: Bool,
+        isComplete: Bool,
+        hasManifest: Bool,
+        alreadyAssembled: Bool,
+        noteExists: Bool,
+        noteHasTranscript: Bool,
+        waited: TimeInterval
+    ) -> SessionStep {
+        if alreadyAssembled {
+            guard noteExists else { return .discard }
+            guard noteHasTranscript else { return .wait }
+            return hasPieces ? .adoptLatePieces : .discard
+        }
+        guard hasPieces else { return hasManifest && isComplete ? .discard : .wait }
+        if isComplete { return .assemble }
+        return !hasManifest && waited >= incompleteSessionWait ? .assemble : .wait
+    }
+
+    /// Looks at every recording with pieces waiting and builds the notes that are ready. Runs
+    /// when a piece or a list arrives and whenever the app comes to the front.
+    public func assembleWaitingSessions() async {
+        for sessionId in sessionStore.sessionIds() {
+            await assembleIfReady(sessionId)
+        }
+    }
+
+    private func assembleIfReady(_ sessionId: UUID) async {
+        let pieces = sessionStore.pieces(for: sessionId)
+        let note = repository.note(withId: sessionId)
+        let waited = sessionStore.newestArrival(for: sessionId).map { Date().timeIntervalSince($0) } ?? 0
+        let step = Self.step(
+            hasPieces: !pieces.isEmpty,
+            isComplete: sessionStore.isComplete(sessionId),
+            hasManifest: sessionStore.manifest(for: sessionId) != nil,
+            alreadyAssembled: sessionStore.isAssembled(sessionId),
+            noteExists: note != nil,
+            noteHasTranscript: !(note?.rawTranscript.isEmpty ?? true),
+            waited: waited
+        )
+
+        switch step {
+        case .wait:
+            return
+        case .discard:
+            sessionStore.removeSession(sessionId)
+        case .adoptLatePieces:
+            let late = sessionStore.stagedPieces(for: sessionId)
+            for piece in late {
+                guard let fileName = try? audioFileManager.copyIncomingAudioFile(
+                    from: sessionStore.url(for: piece, sessionId: sessionId),
+                    noteId: piece.id
+                ) else { continue }
+                await ingest(noteId: piece.id, createdAt: piece.createdAt, duration: piece.duration, source: piece.source, audioFileName: fileName)
+            }
+            sessionStore.remove(pieces: late, sessionId: sessionId)
+        case .assemble:
+            guard let first = pieces.first else { return }
+            sessionStore.markAssembled(sessionId)
+            // The note takes the recording's id. Its audio file is written by the pipeline, which
+            // joins the pieces before transcribing them.
+            await ingest(
+                noteId: sessionId,
+                createdAt: first.createdAt,
+                duration: pieces.reduce(0) { $0 + $1.duration },
+                source: first.source,
+                audioFileName: "\(sessionId.uuidString).\(AudioConstants.fileExtension)"
+            )
+        }
+    }
+
+    /// Saves the incoming note and runs it through the pipeline, holding a background task so a
+    /// delivery that launched the app in the background has a real chance to finish.
+    private func ingest(noteId: UUID, createdAt: Date, duration: TimeInterval, source: NoteSource, audioFileName: String) async {
+        // The app may be launched into the background just to receive this file, with only
+        // a short OS-granted execution window before suspension. Without this assertion,
+        // Stage 1/2 processing (model load + inference) can easily exceed that window and
+        // get killed mid-flight, leaving the note stuck at a non-terminal status forever --
+        // this extends the window and gives processing a real chance to reach .ready/.failed.
+        self.activeBackgroundTaskId = UIApplication.shared.beginBackgroundTask(withName: "IngestAndProcessVoiceNote") { [weak self] in
+            guard let self = self else { return }
+            if let currentNote = self.repository.note(withId: noteId), currentNote.status.isProcessing {
+                self.repository.updateStatus(for: noteId, status: .failed, errorMessage: "Processing timed out while backgrounded. Tap Retry to process.")
+            }
+            self.endActiveBackgroundTask()
+        }
+        defer { self.endActiveBackgroundTask() }
+
+        let note = VoiceNote(
+            id: noteId,
+            createdAt: createdAt,
+            duration: duration,
+            audioFileName: audioFileName,
+            title: "Incoming Note...",
+            summary: "Processing audio from \(source.displayName)...",
+            rawTranscript: "",
+            cleanedNote: "",
+            requirements: [],
+            conditions: [],
+            actionItems: [],
+            tags: [],
+            status: .syncing,
+            source: source
+        )
+        self.repository.save(note)
+        self.receivedFilesCount += 1
+        self.lastSyncDate = Date()
+        self.latestSyncMessage = "Received voice note from \(source.displayName)"
+
+        // Trigger the 2-Stage Pipeline (ASR + LLM)
+        await self.pipeline.process(note: note)
     }
     
     public func setupSession() {
@@ -123,49 +264,24 @@ extension WatchSyncService: WCSessionDelegate {
         let source = payload?.source ?? .watchApp
 
         do {
+            // A piece of a longer recording waits with the others until the recording is whole.
+            if let payload, let sessionId = payload.sessionId {
+                try sessionStore.stagePiece(from: file.fileURL, payload: payload, sessionId: sessionId)
+                Task { @MainActor in
+                    self.lastSyncDate = Date()
+                    self.latestSyncMessage = "Received part of a recording from \(source.displayName)"
+                    await self.assembleIfReady(sessionId)
+                }
+                return
+            }
+
             let persistentFileName = try self.audioFileManager.copyIncomingAudioFile(
                 from: file.fileURL,
                 noteId: noteId
             )
 
             Task { @MainActor in
-                // The app may be launched into the background just to receive this file, with only
-                // a short OS-granted execution window before suspension. Without this assertion,
-                // Stage 1/2 processing (model load + inference) can easily exceed that window and
-                // get killed mid-flight, leaving the note stuck at a non-terminal status forever --
-                // this extends the window and gives processing a real chance to reach .ready/.failed.
-                self.activeBackgroundTaskId = UIApplication.shared.beginBackgroundTask(withName: "IngestAndProcessVoiceNote") { [weak self] in
-                    guard let self = self else { return }
-                    if let currentNote = self.repository.note(withId: noteId), currentNote.status.isProcessing {
-                        self.repository.updateStatus(for: noteId, status: .failed, errorMessage: "Processing timed out while backgrounded. Tap Retry to process.")
-                    }
-                    self.endActiveBackgroundTask()
-                }
-                defer { self.endActiveBackgroundTask() }
-
-                let note = VoiceNote(
-                    id: noteId,
-                    createdAt: createdAt,
-                    duration: duration,
-                    audioFileName: persistentFileName,
-                    title: "Incoming Note...",
-                    summary: "Processing audio from \(source.displayName)...",
-                    rawTranscript: "",
-                    cleanedNote: "",
-                    requirements: [],
-                    conditions: [],
-                    actionItems: [],
-                    tags: [],
-                    status: .syncing,
-                    source: source
-                )
-                self.repository.save(note)
-                self.receivedFilesCount += 1
-                self.lastSyncDate = Date()
-                self.latestSyncMessage = "Received voice note from \(source.displayName)"
-
-                // Trigger the 2-Stage Pipeline (ASR + LLM)
-                await self.pipeline.process(note: note)
+                await self.ingest(noteId: noteId, createdAt: createdAt, duration: duration, source: source, audioFileName: persistentFileName)
             }
         } catch {
             print("[WatchSyncService] Error handling incoming file: \(error)")
@@ -177,6 +293,14 @@ extension WatchSyncService: WCSessionDelegate {
     
     /// Handles user info dictionary sync
     public nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String : Any] = [:]) {
+        // The watch's list of the pieces in a finished recording.
+        if let manifest = WatchSessionManifest.from(dictionary: userInfo) {
+            try? sessionStore.saveManifest(manifest)
+            Task { @MainActor in
+                await self.assembleIfReady(manifest.sessionId)
+            }
+            return
+        }
         Task { @MainActor in
             self.latestSyncMessage = "Received userInfo: \(userInfo.keys.joined(separator: ", "))"
         }

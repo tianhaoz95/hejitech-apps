@@ -12,6 +12,8 @@ public final class ExtensionDelegate: NSObject, WKExtensionDelegate {
     public func applicationDidBecomeActive() {
         // Trigger sync check whenever app becomes active
         WatchSyncService.shared.syncPendingNotes()
+        // A recording paused by a call or Siri can take the microphone back now.
+        WatchAudioRecorder.shared.appBecameActive()
     }
     
     public func handle(_ backgroundTasks: Set<WKRefreshBackgroundTask>) {

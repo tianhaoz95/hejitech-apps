@@ -143,6 +143,10 @@ targets:
         WKApplication: true
         WKCompanionAppBundleIdentifier: com.jacksonzhou666.voxbrief.app
         WKRunsIndependentlyOfCompanionApp: true
+        # Keeps a recording going after the wrist drops and the app leaves the screen. The
+        # recording still has to start while the app is in front.
+        UIBackgroundModes:
+          - audio
         CFBundleURLTypes:
           - CFBundleURLName: com.jacksonzhou666.voxbrief.app.watchkitapp
             CFBundleURLSchemes:
@@ -312,6 +316,7 @@ targets:
       - path: VoxbriefApp/Services/AppleFoundationModelService.swift
       - path: VoxbriefApp/Services/OnDeviceLLMService.swift
       - path: VoxbriefApp/Services/NoteProcessingPipeline.swift
+      - path: VoxbriefApp/Services/WatchSessionStore.swift
       - path: VoxbriefApp/Services/NoteRepository.swift
       - path: VoxbriefApp/Services/AudioFileManager.swift
       - path: VoxbriefApp/Services/DictionaryCorrector.swift

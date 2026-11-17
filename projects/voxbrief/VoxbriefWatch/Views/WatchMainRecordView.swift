@@ -21,6 +21,12 @@ public struct WatchMainRecordView: View {
     @State private var showingSavedToast = false
     @State private var savedNoteDuration: String = ""
 
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+
+    /// Someone is looking: the app is in front and the screen is not dimmed.
+    private var isScreenLive: Bool { scenePhase == .active && !isLuminanceReduced }
+
     public init() {}
 
     public var body: some View {
@@ -43,17 +49,94 @@ public struct WatchMainRecordView: View {
                 recorder.setSimulatedRecording(active: true, duration: 18.0, level: 0.7)
             } else if args.contains("-voxbriefWatchNotes") {
                 selectedPage = 1
+            } else if args.contains("-voxbriefWatchAutoRecord") {
+                // Scripted runs: start a real recording without a tap.
+                selectedPage = 0
+                startRecording(source: .watchApp)
             }
         }
         .onOpenURL { url in
             handleDeepLink(url: url)
         }
+        .onAppear { recorder.setLiveUI(isScreenLive) }
+        .onChange(of: isScreenLive) { _, live in
+            recorder.setLiveUI(live)
+        }
+    }
+
+    // MARK: - Dimmed recording screen (wrist down): nothing here changes, so nothing redraws
+    private var dimmedRecordingView: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(recorder.isInterrupted || recorder.isPaused ? Color.yellow : Color.red)
+                    .frame(width: 6, height: 6)
+                Text(recorder.isInterrupted || recorder.isPaused ? "PAUSED" : "RECORDING")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .tracking(0.8)
+                    .foregroundColor(recorder.isInterrupted || recorder.isPaused ? .yellow : .red)
+            }
+            if let started = recorder.sessionStartedAt {
+                Text("since \(started.formatted(date: .omitted, time: .shortened))")
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+            Text("Raise to stop")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Interrupted (a call or Siri took the microphone)
+    private var interruptedRecordingView: some View {
+        VStack(spacing: 6) {
+            Text("PAUSED")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .tracking(0.8)
+                .foregroundColor(.yellow)
+            Text("A call or Siri took the microphone.")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            HStack(spacing: 16) {
+                Button {
+                    recorder.resumeAfterInterruption()
+                } label: {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.green)
+                        .frame(width: 44, height: 44)
+                        .background(Color.white.opacity(0.14), in: Circle())
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    stopAndSave()
+                } label: {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 50, height: 50)
+                        .background(Color.red, in: Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            Text("Tap play to keep recording")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Capture Page View (Page 0)
     private var capturePageView: some View {
         VStack(spacing: 0) {
-            if recorder.isRecording {
+            if recorder.isRecording && !isScreenLive {
+                dimmedRecordingView
+            } else if recorder.isRecording && recorder.isInterrupted {
+                interruptedRecordingView
+            } else if recorder.isRecording {
                 // MARK: Active Recording State
                 VStack(spacing: 4) {
                     HStack(spacing: 5) {
@@ -244,9 +327,6 @@ public struct WatchMainRecordView: View {
             WKInterfaceDevice.current().play(.success)
             savedNoteDuration = savedNote.duration.formattedDuration
             showingSavedToast = true
-
-            // Queue sync immediately
-            syncService.syncPendingNotes()
 
             // Hide toast after 2 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {

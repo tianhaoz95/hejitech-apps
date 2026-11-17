@@ -5,11 +5,48 @@ public struct WatchSettingsView: View {
     @ObservedObject private var storage = WatchStorage.shared
     @State private var showingPurgeConfirmation = false
     @State private var purgeFeedbackText: String? = nil
+    @State private var config = WatchRecordingConfig.load()
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
 
     public init() {}
 
     public var body: some View {
         List {
+            // MARK: - Recording
+            Section {
+                Picker("Quality", selection: $config.quality) {
+                    ForEach(WatchRecordingQuality.allCases) { quality in
+                        Text("\(quality.displayName) (\(quality.detail))").tag(quality)
+                    }
+                }
+                Picker("Save a piece every", selection: $config.segmentMinutes) {
+                    ForEach(WatchRecordingConfig.segmentChoices, id: \.self) { minutes in
+                        Text("\(minutes) min").tag(minutes)
+                    }
+                }
+                Picker("Send to iPhone", selection: $config.transferPolicy) {
+                    ForEach(WatchTransferPolicy.allCases) { policy in
+                        Text(policy.displayName).tag(policy)
+                    }
+                }
+                NavigationLink(destination: WatchBatteryLogView()) {
+                    Label("Battery Log", systemImage: "battery.75percent")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+            } header: {
+                Text("Recording")
+                    .font(.system(size: 11, weight: .bold))
+            } footer: {
+                Text("About \(Int(config.quality.megabytesPerHour.rounded())) MB an hour. Changes apply to the next recording.")
+                    .font(.system(size: 10))
+            }
+            .onChange(of: config) { _, new in
+                new.save()
+            }
+
             // MARK: - Sync Status
             Section {
                 VStack(alignment: .leading, spacing: 6) {
@@ -23,7 +60,7 @@ public struct WatchSettingsView: View {
                     }
 
                     Text(syncService.isReachable
-                         ? "Recordings transfer immediately to iPhone for AI processing."
+                         ? "Recordings go to iPhone for AI processing once you stop."
                          : "Saved locally. Transfers automatically once iPhone is nearby.")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
@@ -141,7 +178,7 @@ public struct WatchSettingsView: View {
                 HStack(spacing: 8) {
                     VoxbriefLogoView(size: .watch)
                     Spacer()
-                    Text("v1.25.2")
+                    Text("v\(appVersion)")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.secondary)
                 }

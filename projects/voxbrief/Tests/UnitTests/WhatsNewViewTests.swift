@@ -6,7 +6,7 @@ import SwiftUI
 final class WhatsNewViewTests: XCTestCase {
 
     func testCurrentVersionMatchesReleases() {
-        XCTAssertEqual(WhatsNewView.currentVersion, "1.29.0")
+        XCTAssertEqual(WhatsNewView.currentVersion, "1.30.0")
         let latest = WhatsNewView.releases.first
         XCTAssertNotNil(latest)
         XCTAssertEqual(latest?.version, WhatsNewView.currentVersion)
@@ -15,8 +15,12 @@ final class WhatsNewViewTests: XCTestCase {
     func testCurrentReleaseContent() {
         let current = WhatsNewView.releases.first
         XCTAssertEqual(current?.features.count, 2)
-        XCTAssertEqual(current?.improvementsAndFixes.count, 1)
-        XCTAssertEqual(current?.improvementsAndFixes.filter { $0.kind == .fix }.count, 0)
+        XCTAssertEqual(current?.improvementsAndFixes.count, 2)
+        XCTAssertEqual(current?.improvementsAndFixes.filter { $0.kind == .fix }.count, 1)
+
+        let lockAndPause = WhatsNewView.releases.first { $0.version == "1.29.0" }
+        XCTAssertEqual(lockAndPause?.features.count, 2)
+        XCTAssertEqual(lockAndPause?.improvementsAndFixes.count, 1)
 
         let previous = WhatsNewView.releases.first { $0.version == "1.28.0" }
         XCTAssertEqual(previous?.features.count, 4)
@@ -41,7 +45,7 @@ final class WhatsNewViewTests: XCTestCase {
     }
 
     func testHistoricalVersionsContainBothFeaturesAndImprovements() {
-        let expectedVersions = ["1.29.0", "1.28.0", "1.27.1", "1.27.0", "1.26.7", "1.26.6", "1.26.5", "1.26.4", "1.26.3", "1.26.2", "1.26.1", "1.26.0", "1.25.2", "1.25.1", "1.25.0", "1.24.0", "1.23.0", "1.22.0", "1.21.0", "1.20.0", "1.19.0", "1.18.0", "1.17.0", "1.16.0"]
+        let expectedVersions = ["1.30.0", "1.29.0", "1.28.0", "1.27.1", "1.27.0", "1.26.7", "1.26.6", "1.26.5", "1.26.4", "1.26.3", "1.26.2", "1.26.1", "1.26.0", "1.25.2", "1.25.1", "1.25.0", "1.24.0", "1.23.0", "1.22.0", "1.21.0", "1.20.0", "1.19.0", "1.18.0", "1.17.0", "1.16.0"]
         for version in expectedVersions {
             guard let release = WhatsNewView.releases.first(where: { $0.version == version }) else {
                 XCTFail("Missing historical version \(version)")

@@ -102,6 +102,7 @@ public struct WatchNotesListView: View {
                     .onDelete { indexSet in
                         for index in indexSet {
                             let note = storage.notes[index]
+                            guard note.syncState != .recording else { continue }
                             storage.delete(id: note.id)
                         }
                     }
@@ -158,6 +159,16 @@ public struct WatchNotesListView: View {
             Image(systemName: "exclamationmark.circle.fill")
                 .font(.system(size: 12))
                 .foregroundColor(.red)
+        case .recording:
+            HStack(spacing: 3) {
+                Circle().fill(Color.red).frame(width: 5, height: 5)
+                Text("Recording")
+                    .font(.system(size: 9, weight: .medium))
+            }
+            .foregroundColor(.red)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(Color.red.opacity(0.18), in: Capsule())
         }
     }
 }
