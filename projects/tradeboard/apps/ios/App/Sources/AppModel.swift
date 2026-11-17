@@ -46,8 +46,13 @@ public final class AppModel {
     public init(config: BackendConfig = .production) {
         SessionStore.clearIfFreshInstall()
         #if DEBUG
-        // Default to local stack in debug unless specified
+        // Debug: the simulator uses the local stack (127.0.0.1) unless `-production`; a physical iPhone
+        // can't reach 127.0.0.1 on the Mac, so it uses production unless `-local`.
+        #if targetEnvironment(simulator)
         let defaultConf: BackendConfig = ProcessInfo.processInfo.arguments.contains("-production") ? .production : .local
+        #else
+        let defaultConf: BackendConfig = ProcessInfo.processInfo.arguments.contains("-local") ? .local : .production
+        #endif
         #else
         let defaultConf: BackendConfig = .production
         #endif
