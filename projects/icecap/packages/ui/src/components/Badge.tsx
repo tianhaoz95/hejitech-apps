@@ -14,7 +14,7 @@ export function Badge({ value, prefix = "$", suffix = "", className = "" }: Badg
 
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-black text-white shadow-sm border border-white ${colorClass} ${className}`}
+      className={`inline-flex items-center px-1.5 py-0.5 rounded-xs text-xs font-black text-white shadow-2xs border border-white ${colorClass} ${className}`}
     >
       {sign}{prefix}{Math.abs(Math.round(value)).toLocaleString()}{suffix}
     </span>

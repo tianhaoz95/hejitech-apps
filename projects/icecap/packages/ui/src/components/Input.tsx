@@ -18,7 +18,7 @@ export function Input({ label, prefix, suffix, error, className = "", ...props }
           <span className="absolute left-0 text-gray-400 text-sm">{prefix}</span>
         )}
         <input
-          className={`w-full font-medium border-b-2 border-gray-200 focus:border-blue-600 outline-none bg-transparent py-1 transition-colors
+          className={`w-full font-medium border-b-2 border-gray-200 focus:border-blue-600 outline-hidden bg-transparent py-1 transition-colors
             ${prefix ? "pl-4" : ""}
             ${suffix ? "pr-8" : ""}
             ${error ? "border-red-400" : ""}

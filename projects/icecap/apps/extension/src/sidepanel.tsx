@@ -59,8 +59,8 @@ function StrategyToggle({ value, onChange }: { value: ViewMode; onChange: (m: Vi
           className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
             value === id
               ? id === "ai"
-                ? "bg-white shadow-sm text-purple-600"
-                : "bg-white shadow-sm text-blue-600"
+                ? "bg-white shadow-xs text-purple-600"
+                : "bg-white shadow-xs text-blue-600"
               : "text-gray-500 hover:text-gray-700"
           }`}
         >
@@ -108,7 +108,7 @@ function NumInput({
       <input
         type="number" value={value || ""} placeholder="0"
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full font-semibold border-b-2 border-gray-200 focus:border-blue-600 outline-none py-0.5 bg-transparent text-sm"
+        className="w-full font-semibold border-b-2 border-gray-200 focus:border-blue-600 outline-hidden py-0.5 bg-transparent text-sm"
       />
     </div>
   )
@@ -226,7 +226,7 @@ function StrategyComparisonCard({
   comparison: import("./core/math").StrategyComparison;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-xs overflow-hidden mb-4">
       <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center justify-between">
         <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Strategy Comparison</span>
         <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
@@ -859,7 +859,7 @@ export default function SidePanel() {
           <button
             onClick={handleLogin}
             disabled={isLoggingIn}
-            className="w-full flex items-center justify-center gap-3 bg-white text-gray-700 border-2 border-gray-100 py-3.5 rounded-xl font-bold hover:bg-gray-50 transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-3 bg-white text-gray-700 border-2 border-gray-100 py-3.5 rounded-xl font-bold hover:bg-gray-50 transition-all shadow-xs active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoggingIn ? (
               <RefreshCw size={20} className="animate-spin text-blue-600" />
@@ -924,7 +924,7 @@ export default function SidePanel() {
           <button
             onClick={handleRefreshStatus}
             disabled={isRefreshing}
-            className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-xl border border-gray-200 shadow-sm transition-all disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-xl border border-gray-200 shadow-xs transition-all disabled:opacity-50"
           >
             <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
             {isRefreshing ? "Checking..." : "Refresh Status"}
@@ -967,7 +967,7 @@ export default function SidePanel() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 text-gray-900 text-sm">
       {/* Header */}
-      <header className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 shadow-sm">
+      <header className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 shadow-xs">
         <div className="flex items-center gap-2">
           <img src={logoUrl} alt="Icecap" className="h-6 w-auto" />
         </div>
@@ -1022,7 +1022,7 @@ export default function SidePanel() {
             <select
               value={store.mapPinMetric}
               onChange={(e) => store.setMapPinMetric(e.target.value as any)}
-              className="bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-[11px] font-bold outline-none focus:bg-white/20 transition-all cursor-pointer text-white"
+              className="bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-[11px] font-bold outline-hidden focus:bg-white/20 transition-all cursor-pointer text-white"
             >
               <option value="ltr" className="text-gray-900">LTR Cash Flow</option>
               <option value="str" className="text-gray-900">STR Cash Flow</option>
@@ -1063,7 +1063,7 @@ export default function SidePanel() {
         <StrategyToggle value={activeView} onChange={handleViewChange} />
 
         {store.address && activeView !== "ai" && (
-          <div className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+          <div className="p-3 bg-white rounded-xl border border-gray-100 shadow-xs">
             <p className="text-[10px] text-gray-400 uppercase font-semibold mb-0.5">Active Listing</p>
             <p className="text-xs font-medium line-clamp-2">{store.address}</p>
           </div>
@@ -1094,7 +1094,7 @@ export default function SidePanel() {
         {activeView === "ai" ? (
           <div className="flex flex-col gap-2">
             <div
-              className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex flex-col gap-2 overflow-y-auto"
+              className="bg-white rounded-xl border border-gray-100 shadow-xs p-3 flex flex-col gap-2 overflow-y-auto"
               style={{ height: "calc(100vh - 260px)" }}
             >
               {chatMessages.length === 0 && (
@@ -1180,7 +1180,7 @@ export default function SidePanel() {
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleChatSend() } }}
                 placeholder={store.price > 0 ? "Ask about this property…" : "Scrape a listing first, then ask…"}
-                className="flex-1 text-xs border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400 bg-white"
+                className="flex-1 text-xs border border-gray-200 rounded-xl px-3 py-2.5 outline-hidden focus:border-purple-400 bg-white"
               />
               <button
                 onClick={handleChatSend}
@@ -1195,7 +1195,7 @@ export default function SidePanel() {
         <>
 
         {/* Assumptions */}
-        <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+        <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-xs space-y-3">
           <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">
             {activeView === "str" ? "STR Assumptions" : "General Assumptions"}
           </p>
@@ -1336,7 +1336,7 @@ export default function SidePanel() {
 
         {/* Calculation Breakdown */}
         {store.price > 0 && activeView !== "both" && (
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-xs overflow-hidden">
             <button
               onClick={() => setShowBreakdown((v) => !v)}
               className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
@@ -1389,7 +1389,7 @@ export default function SidePanel() {
 
         {/* Property inputs */}
         {(store.price > 0 || store.address || isManual) && (
-          <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+          <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-xs space-y-3">
             <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Property Data</p>
             <div className="grid grid-cols-2 gap-3">
               <NumInput label="Price" value={store.price} onChange={store.setPrice} />
@@ -1412,7 +1412,7 @@ export default function SidePanel() {
                             <Zap size={9} fill="currentColor" />
                             {isFetchingRent ? "…" : "Fetch"}
                           </button>
-                          <div className="absolute bottom-full right-0 mb-1.5 w-44 bg-gray-800 text-white text-[10px] rounded px-2 py-1.5 leading-snug pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                          <div className="absolute bottom-full right-0 mb-1.5 w-44 bg-gray-800 text-white text-[10px] rounded-sm px-2 py-1.5 leading-snug pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50">
                             AI-estimates the monthly rent for this property based on its price and address.
                           </div>
                         </div>
@@ -1458,7 +1458,7 @@ export default function SidePanel() {
             {isAnalyzing ? (
               <div className="space-y-1.5">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className={`h-3 bg-purple-200 rounded animate-pulse`} style={{ width: `${100 - i * 15}%` }} />
+                  <div key={i} className={`h-3 bg-purple-200 rounded-sm animate-pulse`} style={{ width: `${100 - i * 15}%` }} />
                 ))}
               </div>
             ) : aiSummary ? (

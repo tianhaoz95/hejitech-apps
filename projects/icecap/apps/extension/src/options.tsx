@@ -94,7 +94,7 @@ export default function OptionsPage() {
             <button
               onClick={handleLogin}
               disabled={isLoggingIn}
-              className="w-full flex items-center justify-center gap-4 bg-white hover:bg-gray-50 text-gray-700 font-bold py-4 px-8 rounded-2xl border-2 border-gray-100 shadow-sm transition-all disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-4 bg-white hover:bg-gray-50 text-gray-700 font-bold py-4 px-8 rounded-2xl border-2 border-gray-100 shadow-xs transition-all disabled:opacity-50"
             >
               {isLoggingIn ? (
                 <RefreshCw size={24} className="animate-spin text-blue-600" />

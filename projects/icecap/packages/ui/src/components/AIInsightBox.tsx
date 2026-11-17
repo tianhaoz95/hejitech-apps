@@ -33,9 +33,9 @@ export function AIInsightBox({ summary, loading, quotaRemaining, onAnalyze, disa
       </div>
       {loading ? (
         <div className="space-y-1.5">
-          <div className="h-3 bg-purple-200 rounded animate-pulse w-full" />
-          <div className="h-3 bg-purple-200 rounded animate-pulse w-4/5" />
-          <div className="h-3 bg-purple-200 rounded animate-pulse w-3/5" />
+          <div className="h-3 bg-purple-200 rounded-xs animate-pulse w-full" />
+          <div className="h-3 bg-purple-200 rounded-xs animate-pulse w-4/5" />
+          <div className="h-3 bg-purple-200 rounded-xs animate-pulse w-3/5" />
         </div>
       ) : summary ? (
         <div className="text-xs text-purple-800 bg-white/50 p-2 rounded-lg">

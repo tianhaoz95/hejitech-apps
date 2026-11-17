@@ -23,7 +23,7 @@ export function StrategyToggle({ value, onChange, showBrrrr = false }: StrategyT
           key={id}
           onClick={() => onChange(id)}
           className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-sm font-semibold transition-all
-            ${value === id ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+            ${value === id ? "bg-white shadow-2xs text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
         >
           <Icon size={15} />
           {label}

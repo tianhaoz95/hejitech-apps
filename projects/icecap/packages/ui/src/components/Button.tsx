@@ -18,7 +18,7 @@ export function Button({
   const base = "inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
 
   const variants = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-sm",
+    primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-2xs",
     secondary: "bg-white text-gray-900 border border-gray-200 hover:bg-gray-50",
     danger: "bg-red-600 text-white hover:bg-red-700",
     ghost: "text-gray-600 hover:bg-gray-100",
