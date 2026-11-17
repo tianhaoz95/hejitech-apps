@@ -130,6 +130,22 @@ board stores or who it's shared with changes.
 | §6.1 | Ticker format | 1–5 uppercase letters with an optional class suffix (`BRK.B`); never a company name. |
 | §15 | "Pending decisions surfaced in the portal" | The Executor page's checklist lists each (account, funding, policy, approvals mode, hosting, model) as Pending/Done. |
 
+## Robinhood on the iPhone (preview, 2026-11-17)
+
+The owner wants the iPhone app to execute approved plans itself while it's open (foreground only:
+iOS won't keep an executor running in the background), with no model: the order ticket is already
+structured, so plain code turns it into Robinhood calls. Step one, in 0.1.8, only proves the phone
+can connect: Settings → Robinhood on This iPhone runs Robinhood's OAuth (discovery, dynamic client
+registration, PKCE, written by hand in `TradeboardKit/Robinhood.swift`) with a choice of three
+return addresses (loopback `127.0.0.1:8765` caught by a listener in the app, the
+`tradeboard.hejitech.workers.dev` app link, the `tradeboard://` scheme) because nobody knows yet
+which ones Robinhood accepts, then a read-only check. `RobinhoodMCP.call` refuses every tool outside
+`get_accounts`, `get_trade_approval_setting` and `get_equity_quotes` before any request; tokens stay
+in this iPhone's Keychain (this device only) and nothing reaches the board. A phone executor (claim,
+policy, drift, place with the plan-version `ref_id`, receipt) comes only after the sign-in works and
+must keep every gate the Node executor has; App Review guideline 5.1.1(ix) is the open risk for
+shipping order placement in an App Store app.
+
 ## Market calendar
 
 `core/src/time.ts` holds NYSE full holidays and 1 p.m. closes for 2026–2027 (`CALENDAR_THROUGH`).

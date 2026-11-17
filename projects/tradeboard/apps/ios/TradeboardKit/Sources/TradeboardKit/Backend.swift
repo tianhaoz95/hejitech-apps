@@ -430,6 +430,36 @@ public final class TradeboardBackend: @unchecked Sendable {
         try await apiGet("api/executors")
     }
 
+    // MARK: - Agents (the same /api/agents the portal's Agents page uses)
+
+    /// The Board MCP endpoint agents connect to.
+    public var mcpURL: URL { config.site.appendingPathComponent("mcp") }
+
+    public func getAgents() async throws -> AgentsResponse {
+        try await apiGet("api/agents")
+    }
+
+    public func registerAgent(id: String, displayName: String) async throws {
+        let _: [String: AnyCodable] = try await apiPost("api/agents", body: ["agent_id": id, "display_name": displayName.isEmpty ? id : displayName])
+    }
+
+    /// A new bearer token for the agent; the board shows it only in this reply.
+    public func newAgentToken(agentId: String, label: String = "iPhone") async throws -> NewAgentToken {
+        try await apiPost("api/agents/\(agentId)/tokens", body: ["label": label])
+    }
+
+    public func revokeAgent(agentId: String) async throws {
+        let _: [String: AnyCodable] = try await apiPost("api/agents/\(agentId)/revoke", body: [:])
+    }
+
+    public func revokeAgentToken(id: String) async throws {
+        let _: [String: AnyCodable] = try await apiRequest("api/agent-tokens/\(id)", method: "DELETE", body: nil)
+    }
+
+    public func disconnectGrant(id: String) async throws {
+        let _: [String: AnyCodable] = try await apiRequest("api/grants/\(id)", method: "DELETE", body: nil)
+    }
+
     // MARK: - HTTP Helpers
 
     private func cookieHeader(for value: String) -> String {

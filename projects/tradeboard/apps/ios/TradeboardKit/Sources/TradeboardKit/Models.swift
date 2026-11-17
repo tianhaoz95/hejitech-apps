@@ -521,3 +521,51 @@ public struct MeResponse: Codable, Hashable, Sendable {
     public var now: String?
     public var suggested_valid_until: String?
 }
+
+// MARK: - Agents (GET /api/agents)
+
+public struct AgentItem: Codable, Hashable, Sendable, Identifiable {
+    public var id: String { agent_id }
+    public var agent_id: String
+    public var display_name: String?
+    public var revoked_at: String?
+    public var created_at: String?
+}
+
+public struct AgentTokenItem: Codable, Hashable, Sendable, Identifiable {
+    public var id: String
+    public var agent_id: String
+    public var label: String?
+    public var created_at: String?
+    public var last_used_at: String?
+}
+
+public struct AgentGrantItem: Codable, Hashable, Sendable, Identifiable {
+    public var id: String
+    public var agent_id: String?
+    public var client_name: String?
+    public var created_at: String?
+}
+
+public struct AgentsResponse: Codable, Hashable, Sendable {
+    public var agents: [AgentItem]
+    public var tokens: [AgentTokenItem]
+    public var grants: [AgentGrantItem]
+
+    public init(agents: [AgentItem] = [], tokens: [AgentTokenItem] = [], grants: [AgentGrantItem] = []) {
+        self.agents = agents
+        self.tokens = tokens
+        self.grants = grants
+    }
+}
+
+public struct NewAgentToken: Codable, Hashable, Sendable {
+    public var id: String
+    public var agent_id: String
+    public var token: String
+}
+
+/// Agent ids as the board accepts them (`checkAgentId` in @tradeboard/core): lowercase letter first, 2–32 of [a-z0-9_-].
+public func isValidAgentId(_ s: String) -> Bool {
+    s.range(of: "^[a-z][a-z0-9_-]{1,31}$", options: .regularExpression) != nil
+}

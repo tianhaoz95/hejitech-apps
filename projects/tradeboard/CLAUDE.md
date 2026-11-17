@@ -86,6 +86,11 @@ enrolls again), signs up a second user to check boards stay private, then delete
   CLI on launch (never downgrades). Its version is the executor's (`tauri.conf.json` reads
   `apps/executor/package.json`). Updater key: `~/Credentials/tradeboard-updater.key`, secret
   `TRADEBOARD_TAURI_SIGNING_PRIVATE_KEY`; installed apps poll `tradeboard-latest/latest.json`.
+- **iPhone app** (`apps/ios`): the board, approvals and Settings → Connect an Agent (the portal's
+  Agents page: MCP URL, register, tokens, OAuth disconnect). Settings → Robinhood on This iPhone is a
+  read-only sign-in preview (`TradeboardKit/Robinhood.swift`, decisions.md "Robinhood on the iPhone"):
+  its MCP client refuses every tool outside its read-only list. Keep it that way until a phone
+  executor with every executor gate is designed.
 - **Strategy document** (`core/src/strategy.ts`, `strategy_versions`/`strategy_proposals`): guidance,
   never a gate. Users write versions; agents only `propose_strategy`; the interview guide and the
   "offer an interview when there's none" rule live in `INTERVIEW_GUIDE` and the MCP `initialize`

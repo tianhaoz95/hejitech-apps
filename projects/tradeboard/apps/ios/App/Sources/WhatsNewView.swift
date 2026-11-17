@@ -29,10 +29,14 @@ public struct ReleaseNotes: Identifiable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.1.7"
+    public static let currentVersion = "0.1.8"
     public static let lastSeenVersionKey = "last_seen_whats_new_version_tradeboard"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.8", date: "November 2026", items: [
+            WhatsNewItem(icon: "link", title: "Connect an Agent from Your iPhone", description: "Settings → Connect an Agent shows your Board MCP address with a Copy button, registers agents, and makes tokens you can copy as-is or as a ready Claude Code command or MCP config. Revoke tokens and disconnect apps there too."),
+            WhatsNewItem(icon: "iphone.and.arrow.forward", title: "Robinhood on This iPhone (Preview)", description: "Try signing in to Robinhood's official MCP straight from the phone and run a read-only check of your accounts, trade approvals and a quote. It never places or changes anything; orders still go through your executor.")
+        ]),
         ReleaseNotes(version: "0.1.7", date: "November 2026", items: [
             WhatsNewItem(icon: "desktopcomputer", title: "Tradeboard Executor for Mac", description: "Run your executor from a Mac app instead of the terminal: it installs the executor, walks you through setup and Robinhood sign-in, shows its status in a window and the menu bar, and keeps itself up to date. Download it from the Executor page on the web.")
         ]),

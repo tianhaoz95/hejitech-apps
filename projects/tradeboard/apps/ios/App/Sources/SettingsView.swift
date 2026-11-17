@@ -59,6 +59,22 @@ public struct SettingsView: View {
                     }
                 }
 
+                Section("Connections") {
+                    NavigationLink {
+                        AgentsView()
+                    } label: {
+                        Label("Connect an Agent", systemImage: "link")
+                    }
+                    .accessibilityIdentifier("connect-agent")
+
+                    NavigationLink {
+                        RobinhoodView()
+                    } label: {
+                        Label("Robinhood on This iPhone (Preview)", systemImage: "iphone.and.arrow.forward")
+                    }
+                    .accessibilityIdentifier("robinhood-iphone")
+                }
+
                 #if DEBUG
                 Section("Environment") {
                     Picker("Server", selection: Binding(

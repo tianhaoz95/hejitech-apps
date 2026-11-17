@@ -271,6 +271,7 @@ public final class AppModel {
     public func deleteAccount() async -> Bool {
         do {
             try await backend.deleteAccount()
+            await MainActor.run { RobinhoodLink.shared.signOut() }
             authPhase = .unauthenticated
             board = nil
             selectedPlan = nil
@@ -286,6 +287,7 @@ public final class AppModel {
     @MainActor
     public func signOut() async {
         await backend.logout()
+        await MainActor.run { RobinhoodLink.shared.signOut() }
         authPhase = .unauthenticated
         board = nil
         selectedPlan = nil
