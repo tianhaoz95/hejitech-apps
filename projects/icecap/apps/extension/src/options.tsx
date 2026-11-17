@@ -1,13 +1,12 @@
 import { useEffect, useState, useCallback, useMemo } from "react"
-import { auth, useEmulator, signInWithGoogle } from "./core/firebase"
-import { HUB_URL } from "./core/constants"
-import { onAuthStateChanged, type User as FirebaseUser, signOut, GoogleAuthProvider, signInWithCredential } from "firebase/auth/web-extension"
+import type { User } from "@supabase/supabase-js"
+import { icecap, HUB_URL, signInWithGoogle, signOut } from "./core/icecap"
 import { ExternalLink, LogOut, RefreshCw, AlertCircle } from "lucide-react"
 import { Logo } from "./core/components/Logo"
 import "./style.css"
 
 export default function OptionsPage() {
-  const [user, setUser] = useState<FirebaseUser | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
@@ -17,16 +16,14 @@ export default function OptionsPage() {
   }, [])
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
+    const onUser = (u: User | null) => {
       setUser(u)
       setAuthLoading(false)
-      
-      if (u && isLoginView) {
-        console.log(`[Extension Auth] Logged in as ${u.email} (${u.uid})`)
-        window.close()
-      }
-    })
-    return () => unsubscribeAuth()
+      if (u && isLoginView) window.close()
+    }
+    icecap.auth.getSession().then(({ data }) => onUser(data.session?.user ?? null))
+    const { data } = icecap.auth.onAuthStateChange((_e, s) => onUser(s?.user ?? null))
+    return () => data.subscription.unsubscribe()
   }, [isLoginView])
 
   const handleLogin = useCallback(async () => {
@@ -34,15 +31,7 @@ export default function OptionsPage() {
     setLoginError(null)
 
     try {
-      if (useEmulator) {
-        const credential = GoogleAuthProvider.credential(
-          JSON.stringify({ sub: "google-raw-id-icecap-main-user-2026", email: "hi@icecap.com", email_verified: true }),
-          "mock-google-token"
-        )
-        await signInWithCredential(auth, credential)
-      } else {
-        await signInWithGoogle()
-      }
+      await signInWithGoogle()
     } catch (e: any) {
       console.error("Login failed", e)
       setLoginError(e.message || "Authentication failed.")
@@ -53,7 +42,7 @@ export default function OptionsPage() {
 
   const handleLogout = useCallback(async () => {
     try {
-      await signOut(auth)
+      await signOut()
     } catch (e) {
       console.error("Logout failed", e)
     }

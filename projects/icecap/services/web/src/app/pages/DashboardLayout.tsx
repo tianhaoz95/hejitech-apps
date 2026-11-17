@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { NavLink, Outlet } from "react-router-dom"
-import { signOut } from "firebase/auth"
 import {
   LayoutDashboard, Home, GitCompare, Settings, LogOut, User, Crown, Sparkles, CreditCard
 } from "lucide-react"
-import { auth } from "../core/firebase"
+import { signOut } from "../../lib/icecap"
 import { useAuth } from "../hooks/useAuth"
 import { CopilotSidebar } from "../components/CopilotSidebar"
 
@@ -17,14 +16,9 @@ const navItems = [
 ]
 
 export function DashboardLayout() {
-  const { user, subscription, isSubscribed } = useAuth()
+  const { user, pro, isPro } = useAuth()
   const [isCopilotOpen, setIsCopilotOpen] = useState(false)
-
-  useEffect(() => {
-    if (user) {
-      console.log(`[Hub] Logged in as: ${user.email}, UID: ${user.uid}, Project ID: ${auth.app.options.projectId}`)
-    }
-  }, [user])
+  const meta = (user?.user_metadata ?? {}) as { avatar_url?: string; full_name?: string; name?: string }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -68,39 +62,14 @@ export function DashboardLayout() {
 
         {/* Subscription status */}
         <div className="mb-4">
-          {subscription ? (
+          {isPro ? (
             <div className="p-3 rounded-xl bg-linear-to-r from-blue-50 to-purple-50 border border-blue-100">
-              <div className="flex items-center gap-2 mb-0.5">
+              <div className="flex items-center gap-2">
                 <Crown size={12} className="text-yellow-500" />
-                <span className="text-xs font-bold text-gray-700 capitalize">
-                  {subscription.tier?.replace("_", " ") ?? "Free"}
-                </span>
-                <span
-                  className={`ml-auto text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                    isSubscribed ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                  }`}
-                >
-                  {subscription.status}
-                </span>
+                <span className="text-xs font-bold text-gray-700">Icecap Pro{pro?.plan === "lifetime" ? " · Lifetime" : ""}</span>
+                <span className="ml-auto text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-green-100 text-green-700">Active</span>
               </div>
-              {subscription.tier === "pro" && (
-                <div className="mt-2">
-                  <p className="text-[10px] text-gray-400 mb-2">
-                    {subscription.aiUsageCurrentMonth}/{subscription.aiQuotaLimit} AI uses this month
-                  </p>
-                  <NavLink
-                    to="/subscribe"
-                    className="block w-full py-1.5 bg-blue-600 text-white text-[10px] font-bold rounded-lg text-center hover:bg-blue-700 transition-colors"
-                  >
-                    Upgrade to Pro Max
-                  </NavLink>
-                </div>
-              )}
-              {subscription.tier === "pro_max" && (
-                <p className="text-[10px] text-gray-400 mt-1">
-                  Unlimited AI Analysis enabled
-                </p>
-              )}
+              <p className="text-[10px] text-gray-400 mt-1">AI runs on your device: no limits</p>
             </div>
           ) : (
             <NavLink
@@ -121,18 +90,18 @@ export function DashboardLayout() {
         {/* User profile */}
         <div className="p-3 bg-gray-50 rounded-2xl flex items-center gap-3 border border-gray-100">
           <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 shrink-0">
-            {user?.photoURL ? (
-              <img src={user.photoURL} alt="" className="w-9 h-9 rounded-full" />
+            {meta.avatar_url ? (
+              <img src={meta.avatar_url} alt="" className="w-9 h-9 rounded-full" />
             ) : (
               <User size={18} />
             )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-gray-900 truncate">
-              {user?.displayName ?? user?.email}
+              {meta.full_name ?? meta.name ?? user?.email}
             </p>
             <button
-              onClick={() => signOut(auth)}
+              onClick={() => signOut()}
               className="text-[10px] text-red-500 font-bold hover:underline"
             >
               Sign Out

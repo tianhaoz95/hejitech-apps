@@ -1,34 +1,29 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { collection, query, onSnapshot, orderBy, deleteDoc, doc } from "firebase/firestore"
 import { Home, TrendingUp, ExternalLink, Trash2, Crown } from "lucide-react"
-import { db } from "../core/firebase"
+import { icecap, useProperties } from "../../lib/icecap"
 import { useAuth } from "../hooks/useAuth"
 import type { SavedProperty } from "@icecap/types"
 
 export function PortfolioPage() {
-  const { user, isSubscribed } = useAuth()
+  const { user, isPro: isSubscribed } = useAuth()
   const [properties, setProperties] = useState<SavedProperty[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
 
+  const live = useProperties(user)
   useEffect(() => {
-    if (!user) return
-    const q = query(
-      collection(db, "users", user.uid, "properties"),
-      orderBy("createdAt", "desc")
-    )
-    return onSnapshot(q, (snap) => {
-      setProperties(snap.docs.map((d) => ({ id: d.id, ...d.data() } as SavedProperty)))
-      setLoading(false)
-    })
-  }, [user])
+    if (!live) return
+    setProperties(live)
+    setLoading(false)
+  }, [live])
 
   const handleDelete = async (id: string) => {
     if (!user || !confirm("Delete this analysis?")) return
     setDeleting(id)
     try {
-      await deleteDoc(doc(db, "users", user.uid, "properties", id))
+      await icecap.properties.remove(id)
+      setProperties((l) => l.filter((p) => p.id !== id))
     } finally {
       setDeleting(null)
     }

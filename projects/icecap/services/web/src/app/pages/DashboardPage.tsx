@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { collection, query, onSnapshot, orderBy } from "firebase/firestore"
 import { TrendingUp, Home, Plus, Download, Crown } from "lucide-react"
-import { db } from "../core/firebase"
+import { useProperties } from "../../lib/icecap"
 import { useAuth } from "../hooks/useAuth"
 import type { SavedProperty } from "@icecap/types"
 
@@ -19,21 +18,16 @@ function StatCard({ label, value, color = "text-gray-900" }: { label: string; va
 }
 
 export function DashboardPage() {
-  const { user, isSubscribed } = useAuth()
+  const { user, isPro: isSubscribed } = useAuth()
   const [properties, setProperties] = useState<SavedProperty[]>([])
   const [loading, setLoading] = useState(true)
 
+  const live = useProperties(user)
   useEffect(() => {
-    if (!user) return
-    const q = query(
-      collection(db, "users", user.uid, "properties"),
-      orderBy("createdAt", "desc")
-    )
-    return onSnapshot(q, (snap) => {
-      setProperties(snap.docs.map((d) => ({ id: d.id, ...d.data() } as SavedProperty)))
-      setLoading(false)
-    })
-  }, [user])
+    if (!live) return
+    setProperties(live)
+    setLoading(false)
+  }, [live])
 
   const stats = {
     totalValue: properties.reduce((a, p) => a + (p.price || 0), 0),

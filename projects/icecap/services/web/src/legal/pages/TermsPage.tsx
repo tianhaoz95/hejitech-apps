@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 
-const EFFECTIVE_DATE = "April 23, 2026"
+const EFFECTIVE_DATE = "November 17, 2026"
 
 export function TermsPage() {
   return (
@@ -20,9 +20,9 @@ export function TermsPage() {
 
       <Section title="3. Subscriptions">
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Pro ($19/month):</strong> Billed monthly via Stripe.</li>
-          <li><strong>Pro Max ($49/month):</strong> No trial period.</li>
-          <li>Subscriptions renew automatically. Cancel any time in your Stripe billing portal.</li>
+          <li><strong>Icecap Pro, yearly:</strong> billed once a year via Stripe, with a free trial week on your first purchase.</li>
+          <li><strong>Icecap Pro, lifetime:</strong> a one-time payment via Stripe.</li>
+          <li>Yearly plans renew automatically. Cancel any time in your Stripe billing portal (Billing in the dashboard).</li>
           <li>No refunds for partial billing periods.</li>
         </ul>
       </Section>

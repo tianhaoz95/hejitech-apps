@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 
-const EFFECTIVE_DATE = "April 23, 2026"
+const EFFECTIVE_DATE = "November 17, 2026"
 
 export function PrivacyPage() {
   return (
@@ -18,11 +18,11 @@ export function PrivacyPage() {
         <ul className="list-disc pl-5 space-y-2">
           <li>
             <strong>Account Data:</strong> When you sign in with Google, we receive your name, email address,
-            and profile photo via Firebase Authentication.
+            and profile photo. Sign-in is a HEJI TECH account (Supabase Auth) shared with other HEJI TECH apps you use.
           </li>
           <li>
             <strong>Property Analyses:</strong> Financial calculations and property data you create are stored
-            in your personal Firestore document, isolated by your user ID.
+            in our database (Supabase), where row-level security lets only your account read or change them.
           </li>
           <li>
             <strong>Scraped Listing Data:</strong> The Chrome extension scrapes property data (price, address,
@@ -34,8 +34,12 @@ export function PrivacyPage() {
             We receive subscription status events via Stripe webhooks.
           </li>
           <li>
-            <strong>Usage Analytics:</strong> We may collect aggregate, anonymized usage data (e.g., how many
-            analyses users run per month) via PostHog in future versions.
+            <strong>AI Analysis:</strong> Deal summaries and the co-pilot run on Chrome's built-in on-device model.
+            Your listings, deals and questions are processed on your computer and are never sent to us or to an AI provider.
+          </li>
+          <li>
+            <strong>Waitlist:</strong> If you join the waitlist, we keep your email address (and name, if given) to tell
+            you when your spot is ready.
           </li>
         </ul>
       </Section>
@@ -43,26 +47,25 @@ export function PrivacyPage() {
       <Section title="3. How We Use Your Data">
         <ul className="list-disc pl-5 space-y-2">
           <li>To provide and improve the Service.</li>
-          <li>To enforce subscription tiers and AI usage quotas.</li>
+          <li>To check whether your account has Icecap Pro.</li>
           <li>To send in-app notifications about trial expiry and billing.</li>
-          <li>To detect and fix scraper issues via anonymized error reports.</li>
         </ul>
       </Section>
 
       <Section title="4. Data Sharing">
         We do not sell your personal data. We share data only with:
         <ul className="list-disc pl-5 mt-2 space-y-2">
-          <li><strong>Firebase (Google):</strong> Auth, Firestore database, and Cloud Functions hosting.</li>
+          <li><strong>Supabase:</strong> Sign-in and the database that stores your account's deals and settings.</li>
+          <li><strong>Cloudflare:</strong> Hosting of this website and its API.</li>
           <li><strong>Stripe:</strong> Payment processing.</li>
-          <li><strong>RentCast:</strong> Rental estimate lookups (property address only, no PII).</li>
-          <li><strong>Google Gemini/Vertex AI:</strong> AI analysis when you explicitly trigger it.</li>
+          <li><strong>Google:</strong> Sign in with Google, and the waitlist page's ad conversion measurement.</li>
         </ul>
       </Section>
 
       <Section title="5. Data Retention & Deletion">
-        You may delete your account and all associated data at any time via the Settings page in the Hub
-        dashboard. Upon deletion, your Firestore data is removed within 30 days. We retain billing records
-        as required by law.
+        You can delete all of your Icecap data (saved deals and settings) at any time from Settings in the
+        Icecap dashboard; it is removed immediately. Your HEJI TECH sign-in is shared with our other apps, so it
+        stays; email us to delete it too. We retain billing records as required by law.
       </Section>
 
       <Section title="6. Chrome Extension Permissions">
@@ -71,15 +74,15 @@ export function PrivacyPage() {
           <li><strong>activeTab:</strong> To read the current listing page when you click "Analyze."</li>
           <li><strong>sidePanel:</strong> To display the Icecap side panel UI.</li>
           <li><strong>storage:</strong> To persist your default loan assumptions locally.</li>
-          <li><strong>host permissions (https://*/*):</strong> To inject map badges on listing search pages.</li>
+          <li><strong>identity:</strong> To sign in with Google.</li>
+          <li><strong>host permissions (redfin.com, zillow.com, realtor.com):</strong> To read listings and show map badges on those sites only.</li>
         </ul>
         No browsing history or personal data is transmitted without your explicit action.
       </Section>
 
       <Section title="7. Security">
-        All data is encrypted in transit (TLS) and at rest (Firebase defaults). Firestore Security Rules
-        ensure each user can only read and write their own data. Admin access is protected by Firebase
-        Custom Claims (RBAC).
+        All data is encrypted in transit (TLS) and at rest. Row-level security ensures each user can only
+        read and write their own data, and admin pages are limited to a short list of HEJI TECH accounts.
       </Section>
 
       <Section title="8. Children">

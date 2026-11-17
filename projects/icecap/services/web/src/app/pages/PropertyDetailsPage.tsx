@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { doc, onSnapshot } from "firebase/firestore"
 import { ArrowLeft, Home, Zap, Calculator, TrendingUp, Info } from "lucide-react"
-import { db } from "../core/firebase"
+import { useProperties } from "../../lib/icecap"
 import { useAuth } from "../hooks/useAuth"
 import { calcRentalMetrics, calcStrMetrics, compareRentalStrategies } from "@icecap/math"
 import type { SavedProperty } from "@icecap/types"
@@ -14,16 +13,12 @@ export function PropertyDetailsPage() {
   const [property, setProperty] = useState<SavedProperty | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const live = useProperties(user)
   useEffect(() => {
-    if (!user || !id) return
-    const ref = doc(db, "users", user.uid, "properties", id)
-    return onSnapshot(ref, (snap) => {
-      if (snap.exists()) {
-        setProperty({ id: snap.id, ...snap.data() } as SavedProperty)
-      }
-      setLoading(false)
-    })
-  }, [user, id])
+    if (!live) return
+    setProperty(live.find((p) => p.id === id) ?? null)
+    setLoading(false)
+  }, [live, id])
 
   if (loading) return <div className="p-10 flex justify-center"><div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full" /></div>
   if (!property) return <div className="p-10 text-center">Property not found.</div>

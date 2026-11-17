@@ -1,0 +1,33 @@
+/* Icecap's brand tokens (Tailwind CSS 4). Each page's stylesheet: @import "tailwindcss"; @import "@icecap/theme/theme.css"; */
+@theme {
+  --color-brand-primary: #2563eb;
+  --color-brand-success: #16a34a;
+  --color-brand-alert: #dc2626;
+  --color-brand-ai: #9333ea;
+  --color-brand-ai-light: #f5f3ff;
+  --color-brand-ai-border: #ede9fe;
+
+  --font-sans: Inter, system-ui, sans-serif;
+
+  --radius-2xl: 16px;
+  --radius-xl: 12px;
+  --radius-3xl: 24px;
+  --radius-4xl: 32px;
+
+  --shadow-brand: 0 4px 24px rgba(37, 99, 235, 0.15);
+  --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/*
+  Tailwind 4 made the default border color `currentcolor`; keep v3's gray-200 so the pages look as
+  they did (added by the upgrade tool).
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}

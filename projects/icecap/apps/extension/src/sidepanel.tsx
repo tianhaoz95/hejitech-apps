@@ -4,22 +4,16 @@ import {
   User, Zap, AlertTriangle, Crown, RefreshCw, Home, TrendingUp, Sparkles, Calculator, ChevronDown,
   Bot, Send, Bug, MapPin,
 } from "lucide-react"
-import {
-  onAuthStateChanged, signOut, GoogleAuthProvider, signInWithCredential, type User as FBUser,
-  signInWithEmailAndPassword,
-} from "firebase/auth/web-extension"
-import { collection, addDoc, serverTimestamp, doc, onSnapshot, getDoc, updateDoc } from "firebase/firestore"
-import { httpsCallable } from "firebase/functions"
-import { getGenerativeModel, InferenceMode } from "firebase/ai"
-import { getString } from "firebase/remote-config"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
 import ReactMarkdown from "react-markdown"
-import { auth, db, functions, useEmulator, signInWithGoogle, ai, remoteConfig } from "./core/firebase"
-import { LOCAL_TEMPLATES, PROMPT_RC_KEYS, resolveTemplate } from "./core/aiTemplates"
-import { IS_DEV, HUB_URL } from "./core/constants"
+import { ask, CHAT_ASSISTANT, DEAL_SUMMARY, fill, historyBlock, onDeviceStatus, type OnDeviceStatus } from "@icecap/ai"
+import { estimateRent } from "@icecap/math"
+import type { ProStatus } from "@icecap/types"
+import { icecap, IS_DEV, HUB_URL, signInAsTestUser, signInWithGoogle, signOut } from "./core/icecap"
 import { usePropertyStore, type AnalysisMode } from "./core/store"
 import { compareRentalStrategies } from "./core/math"
 import { Logo } from "./core/components/Logo"
-import logoUrl from "url:~assets/logo.svg"
+import logoUrl from "../assets/logo.svg"
 import "./style.css"
 
 const fmt = (n: number) =>
@@ -30,13 +24,6 @@ const fmt = (n: number) =>
   }).format(n)
 
 const fmtPct = (n: number) => `${n.toFixed(1)}%`
-
-interface Subscription {
-  tier: string | null
-  status?: string
-  aiUsageCurrentMonth: number
-  aiQuotaLimit: number
-}
 
 // ── Shared sub-components ──────────────────────────────────────────────────
 
@@ -446,16 +433,15 @@ export default function SidePanel() {
   const metrics = store.getMetrics()
 
   useEffect(() => {
-    if (useEmulator) {
-      (window as any).store = store
-      ;(window as any).signInWithEmailAndPassword = signInWithEmailAndPassword
-    }
+    if (IS_DEV) (window as any).store = store
   }, [store])
 
-  const [user, setUser] = useState<FBUser | null>(null)
+  const [user, setUser] = useState<SupabaseUser | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [subLoading, setSubLoading] = useState(false)
-  const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [pro, setPro] = useState<ProStatus | null>(null)
+  const [model, setModel] = useState<OnDeviceStatus | null>(null)
+  const [download, setDownload] = useState<number | null>(null)
   const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -526,11 +512,24 @@ export default function SidePanel() {
   }, [])
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
-      setUser(u)
+    onDeviceStatus().then(setModel)
+    icecap.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null)
       setAuthLoading(false)
-      if (!u) setSubscription(null)
     })
+    const { data } = icecap.auth.onAuthStateChange((_e, s) => {
+      setUser(s?.user ?? null)
+      if (!s) setPro(null)
+    })
+    return () => data.subscription.unsubscribe()
+  }, [])
+
+  const loadPro = useCallback(async () => {
+    try {
+      setPro(await icecap.pro.status())
+    } catch (e) {
+      console.error("[Icecap] Pro status failed", e)
+    }
   }, [])
 
   useEffect(() => {
@@ -539,48 +538,17 @@ export default function SidePanel() {
       return
     }
     setSubLoading(true)
-    const ref = doc(db, "subscriptions", user.uid)
-    console.log(`[Extension] Logged in as: ${user.email}, UID: ${user.uid}, Project ID: ${db.app.options.projectId}`)
-    return onSnapshot(ref, (snap) => {
-      console.log(`[Extension] Subscription update received:`, snap.exists() ? snap.data() : "No document")
-      setSubscription(snap.exists() ? (snap.data() as Subscription) : null)
-      setSubLoading(false)
-    }, (err) => {
-      console.error("[Extension] Subscription listener failed:", err)
-      setSubLoading(false)
-    })
-  }, [user])
+    loadPro().finally(() => setSubLoading(false))
+  }, [user?.id, loadPro])
 
-  const isSubscribed =
-    subscription?.status === "active" ||
-    subscription?.status === "trialling" ||
-    (!subscription?.status && !!subscription?.tier)
-  const isPastDue = subscription?.status === "past_due" || subscription?.status === "unpaid"
-
-  const checkConnection = useCallback(async () => {
-    if (!useEmulator) return true
-    try {
-      await fetch("http://127.0.0.1:9099/", { mode: "no-cors" })
-      return true
-    } catch (e) {
-      return false
-    }
-  }, [])
+  const isSubscribed = !!pro?.pro
 
   const handleLogin = useCallback(async () => {
     if (isLoggingIn) return
     setIsLoggingIn(true)
     setLoginError(null)
     try {
-      if (useEmulator) {
-        const credential = GoogleAuthProvider.credential(
-          JSON.stringify({ sub: "google-raw-id-icecap-main-user-2026", email: "hi@icecap.com", email_verified: true }),
-          "mock-google-token"
-        )
-        await signInWithCredential(auth, credential)
-      } else {
-        await signInWithGoogle()
-      }
+      await signInWithGoogle()
     } catch (e: any) {
       console.error("Google Sign-In failed", e)
       setLoginError(e.message ?? "Sign-in failed. Please try again.")
@@ -590,37 +558,25 @@ export default function SidePanel() {
   }, [isLoggingIn])
 
   const handleLogout = useCallback(async () => {
-    try { await signOut(auth) } catch (e) { console.error(e) }
+    try { await signOut() } catch (e) { console.error(e) }
   }, [])
 
   const handleRefreshStatus = useCallback(async () => {
     if (!user || isRefreshing) return
     setIsRefreshing(true)
     try {
-      const ref = doc(db, "subscriptions", user.uid)
-      const snap = await getDoc(ref)
-      console.log(`[Extension] Refresh: subscription doc`, snap.exists() ? snap.data() : "not found")
-      setSubscription(snap.exists() ? (snap.data() as Subscription) : null)
+      await loadPro()
     } catch (e) {
-      console.error("[Extension] Refresh subscription failed:", e)
+      console.error("[Extension] Refresh Pro failed:", e)
     } finally {
       setIsRefreshing(false)
     }
-  }, [user, isRefreshing])
+  }, [user, isRefreshing, loadPro])
 
-  const handleMockSubscribe = useCallback(async () => {
-    if (!user) return
-    setIsSaving(true)
-    try {
-      const fn = httpsCallable(functions, "debugCreateSubscription")
-      await fn({ tier: "pro_max" })
-      // Local snapshot will update automatically
-    } catch (e) {
-      console.error("Mock subscribe failed", e)
-    } finally {
-      setIsSaving(false)
-    }
-  }, [user])
+  const handleTestLogin = useCallback(async () => {
+    setLoginError(null)
+    try { await signInAsTestUser() } catch (e: any) { setLoginError(e.message) }
+  }, [])
 
   const handleScrape = useCallback(async () => {
     setIsScraping(true)
@@ -643,7 +599,7 @@ export default function SidePanel() {
     setIsSaving(true)
     try {
       const input = store.getPropertyInput()
-      await addDoc(collection(db, "users", user.uid, "properties"), {
+      await icecap.properties.add({
         mode: store.mode,
         price: input.price,
         address: store.address,
@@ -654,12 +610,11 @@ export default function SidePanel() {
         rehabCost: input.rehabCost,
         arv: input.arv,
         holdingCosts: input.holdingCosts,
-        userId: user.uid,
+        description: store.description || undefined,
+        assumptions: input.assumptions,
         rentalMetrics: metrics.rental,
         strMetrics: metrics.str,
         flipMetrics: metrics.flip,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
         strAssumptions: input.strAssumptions,
       })
       setSaveStatus("saved")
@@ -677,10 +632,8 @@ export default function SidePanel() {
     if (!store.price) return
     setIsFetchingRent(true)
     try {
-      const fn = httpsCallable(functions, "getRentEstimate")
-      const result = await fn({ price: store.price, address: store.address })
-      const data = result.data as { estimate: number }
-      if (data.estimate) store.setEstimatedRent(data.estimate)
+      const { estimate } = estimateRent(store.price)
+      if (estimate) store.setEstimatedRent(estimate)
     } catch (e) {
       console.error("Rent fetch failed", e)
     } finally {
@@ -692,51 +645,23 @@ export default function SidePanel() {
     if (!user || !store.description || !isSubscribed) return
     setIsAnalyzing(true)
     try {
-      let text: string;
-
-      if (useEmulator) {
-        const model = getGenerativeModel(ai, { mode: InferenceMode.PREFER_ON_DEVICE })
-        const prompt = resolveTemplate(LOCAL_TEMPLATES.dealSummary, {
-          address: store.address,
-          price: String(store.price),
-          estimatedRent: String(store.estimatedRent),
-          description: store.description,
-        })
-        const result = await model.generateContent(prompt)
-        text = result.response.text()
-      } else {
-        const modelId = remoteConfig ? getString(remoteConfig, "gemini_model_id") : "gemini-3.1-flash-lite-preview"
-        const model = getGenerativeModel(ai, { model: modelId })
-
-        const templateText = getString(remoteConfig, PROMPT_RC_KEYS.dealSummary) || LOCAL_TEMPLATES.dealSummary
-
-        const prompt = resolveTemplate(templateText, {
-          address: store.address,
-          price: String(store.price),
-          estimatedRent: String(store.estimatedRent),
-          description: store.description,
-        })
-
-        const result = await model.generateContent(prompt)
-        text = result.response.text()
-      }
+      const text = await ask(fill(DEAL_SUMMARY, {
+        address: store.address,
+        price: store.price,
+        estimatedRent: store.estimatedRent,
+        description: store.description,
+      }), { temperature: 0.5, onDownload: (f) => setDownload(f < 1 ? f : null) })
+      setDownload(null)
 
       setAiSummary(text)
-
-      // Increment quota counter
-      if (user && isSubscribed) {
-        updateDoc(doc(db, "subscriptions", user.uid), {
-          aiUsageCurrentMonth: (subscription?.aiUsageCurrentMonth ?? 0) + 1,
-          updatedAt: Date.now(),
-        }).catch(console.error)
-      }
     } catch (e) {
       console.error("AI failed", e)
-      setAiSummary("AI analysis unavailable. Please try again.")
+      setDownload(null)
+      setAiSummary(e instanceof Error && e.message.startsWith("On-device AI") ? e.message : "AI analysis unavailable. Please try again.")
     } finally {
       setIsAnalyzing(false)
     }
-  }, [user, store, isSubscribed, subscription])
+  }, [user, store, isSubscribed])
 
   const handleViewChange = useCallback((v: ViewMode) => {
     setActiveView(v)
@@ -750,90 +675,44 @@ export default function SidePanel() {
     setChatMessages((prev) => [...prev, { role: "user", content: msg }])
     setIsChatLoading(true)
     try {
-      let reply: string;
-
-      if (useEmulator) {
-        const model = getGenerativeModel(ai, { mode: InferenceMode.PREFER_ON_DEVICE })
-        const historyText = chatMessages.length > 0
-          ? "\nPREVIOUS CONVERSATION:\n" + chatMessages.slice(-6)
-              .map(m => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
-              .join("\n") + "\n"
-          : ""
-        const prompt = resolveTemplate(LOCAL_TEMPLATES.chatAssistant, {
-          address: store.address || "Unknown",
-          price: String(store.price),
-          estimatedRent: String(store.estimatedRent),
-          taxes: String(store.taxes),
-          hoa: String(store.hoa),
-          strategy: store.mode,
-          monthlyCashFlow: String(metrics.rental.monthlyCashFlow),
-          capRate: String(metrics.rental.capRate),
-          cocReturn: String(metrics.rental.cocReturn),
-          history: historyText,
-          question: msg,
-        })
-        const result = await model.generateContent(prompt)
-        reply = result.response.text()
-      } else {
-        const modelId = remoteConfig ? getString(remoteConfig, "gemini_model_id") : "gemini-3.1-flash-lite-preview"
-        const model = getGenerativeModel(ai, { model: modelId })
-
-        const historyText = chatMessages.length > 0
-          ? "\nPREVIOUS CONVERSATION:\n" + chatMessages.slice(-6)
-              .map(m => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
-              .join("\n") + "\n"
-          : ""
-
-        const templateText = getString(remoteConfig, PROMPT_RC_KEYS.chatAssistant) || LOCAL_TEMPLATES.chatAssistant
-
-        const prompt = resolveTemplate(templateText, {
-          address: store.address || "Unknown",
-          price: String(store.price),
-          estimatedRent: String(store.estimatedRent),
-          taxes: String(store.taxes),
-          hoa: String(store.hoa),
-          strategy: store.mode,
-          monthlyCashFlow: String(metrics.rental.monthlyCashFlow),
-          capRate: String(metrics.rental.capRate),
-          cocReturn: String(metrics.rental.cocReturn),
-          history: historyText,
-          question: msg,
-        })
-
-        const result = await model.generateContent(prompt)
-        reply = result.response.text()
-      }
+      const reply = await ask(fill(CHAT_ASSISTANT, {
+        address: store.address || "Unknown",
+        price: store.price,
+        estimatedRent: store.estimatedRent,
+        taxes: store.taxes,
+        hoa: store.hoa,
+        strategy: store.mode,
+        monthlyCashFlow: metrics.rental.monthlyCashFlow,
+        capRate: metrics.rental.capRate,
+        cocReturn: metrics.rental.cocReturn,
+        history: historyBlock(chatMessages),
+        question: msg,
+      }), { temperature: 0.7, onDownload: (f) => setDownload(f < 1 ? f : null) })
+      setDownload(null)
 
       setChatMessages((prev) => [...prev, { role: "assistant", content: reply }])
-
-      // Increment quota counter optimistically in Firestore
-      if (user && isSubscribed) {
-        updateDoc(doc(db, "subscriptions", user.uid), {
-          aiUsageCurrentMonth: (subscription?.aiUsageCurrentMonth ?? 0) + 1,
-          updatedAt: Date.now(),
-        }).catch(console.error)
-      }
     } catch (e) {
       console.error("Chat failed", e)
-      setChatMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I couldn't process that. Please try again." }])
+      setDownload(null)
+      const content = e instanceof Error && e.message.startsWith("On-device AI") ? e.message : "Sorry, I couldn't process that. Please try again."
+      setChatMessages((prev) => [...prev, { role: "assistant", content }])
     } finally {
       setIsChatLoading(false)
     }
-  }, [chatInput, isChatLoading, store, metrics, chatMessages, user, isSubscribed, subscription])
+  }, [chatInput, isChatLoading, store, metrics, chatMessages])
 
-  const aiQuotaRemaining =
-    subscription?.tier === "pro_max"
-      ? null
-      : subscription
-        ? Math.max(0, (subscription.aiQuotaLimit ?? 50) - (subscription.aiUsageCurrentMonth ?? 0))
-        : 0
+  const aiStatus =
+    download !== null ? `Downloading model… ${Math.round(download * 100)}%`
+    : model === "unavailable" ? "Needs Chrome's on-device model"
+    : model === "downloadable" ? "One-time model download"
+    : "On your device"
 
   if (authLoading || subLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6 text-center">
         <RefreshCw className="text-blue-600 animate-spin mb-4" size={32} />
         <p className="text-gray-500 font-medium">
-          {authLoading ? "Initializing Icecap..." : "Verifying Subscription..."}
+          {authLoading ? "Initializing Icecap..." : "Checking Icecap Pro..."}
         </p>
       </div>
     )
@@ -887,7 +766,10 @@ export default function SidePanel() {
           </div>
 
           {IS_DEV && (
-            <div className="pt-4 border-t border-dashed border-gray-100">
+            <div className="pt-4 border-t border-dashed border-gray-100 space-y-2">
+              <button onClick={handleTestLogin} className="block w-full text-[11px] text-blue-600 font-bold hover:underline">
+                Sign in as the local test user
+              </button>
               <button 
                 onClick={handleCopyDebugInfo}
                 className="text-[10px] text-amber-600 font-bold hover:underline"
@@ -904,22 +786,22 @@ export default function SidePanel() {
     )
   }
 
-  if (!isSubscribed && !isPastDue) {
+  if (!isSubscribed) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-8 text-center">
         <div className="bg-purple-600 p-3 rounded-2xl text-white mb-6 shadow-lg shadow-purple-200">
           <Crown size={48} />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Subscription Required</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Icecap Pro Required</h1>
         <p className="text-gray-500 mb-8">
-          You need an active subscription to use the Icecap extension.
+          The extension is part of Icecap Pro. Start your free week on the web, then come back here.
         </p>
         <div className="space-y-3 w-full">
           <button
-            onClick={handleOpenHub}
+            onClick={() => chrome.tabs.create({ url: `${HUB_URL}subscribe` })}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition-all"
           >
-            Upgrade in Hub
+            Get Icecap Pro
           </button>
           <button
             onClick={handleRefreshStatus}
@@ -933,10 +815,10 @@ export default function SidePanel() {
           {IS_DEV && (
             <div className="pt-4 border-t border-dashed border-gray-200 space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[10px] text-gray-400 font-mono truncate">UID: {user?.uid}</p>
+                <p className="text-[10px] text-gray-400 font-mono truncate">UID: {user?.id}</p>
                 <button 
                   onClick={() => {
-                    navigator.clipboard.writeText(user?.uid || "")
+                    navigator.clipboard.writeText(user?.id || "")
                     alert("UID copied to clipboard")
                   }}
                   className="text-[10px] text-blue-600 font-bold hover:underline shrink-0"
@@ -1036,24 +918,15 @@ export default function SidePanel() {
           <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-600">
             <User size={11} />
             <span className="truncate flex-1">{user.email ?? "Signed in"}</span>
-            {subscription && (
-              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
-                isSubscribed ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-              }`}>
-                {subscription.status === "trialling" ? "Trial" : subscription.status}
+            {isSubscribed && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-green-100 text-green-700">
+                Pro{pro?.plan === "lifetime" ? " · Lifetime" : ""}
               </span>
             )}
           </div>
         )}
 
-        {isPastDue && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
-            <AlertTriangle size={13} />
-            Subscription past due. Update billing in Hub.
-          </div>
-        )}
-
-        {user && !isSubscribed && !isPastDue && (
+        {user && !isSubscribed && (
           <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
             <Crown size={13} />
             Upgrade to Pro to save &amp; sync analyses.
@@ -1443,12 +1316,10 @@ export default function SidePanel() {
                 <span className="text-sm font-semibold text-purple-900">AI Deal Summary</span>
               </div>
               <div className="flex items-center gap-2">
-                {aiQuotaRemaining !== null && (
-                  <span className="text-[10px] text-purple-400">{aiQuotaRemaining} left</span>
-                )}
+                <span className="text-[10px] text-purple-400">{aiStatus}</span>
                 <button
                   onClick={handleAnalyze}
-                  disabled={!store.description || isAnalyzing}
+                  disabled={!store.description || isAnalyzing || model === "unavailable"}
                   className="text-xs bg-purple-600 text-white px-2.5 py-1 rounded-lg hover:bg-purple-700 disabled:opacity-40 transition-colors"
                 >
                   {isAnalyzing ? "Analyzing…" : aiSummary ? "Regenerate" : "Analyze"}

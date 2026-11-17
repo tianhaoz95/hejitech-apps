@@ -1,49 +1,38 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { signInWithPopup, signInWithCredential } from "firebase/auth"
-import { PieChart, LogIn, Beaker } from "lucide-react"
-import { auth, googleProvider, useEmulator } from "../core/firebase"
+import { PieChart } from "lucide-react"
+import { icecap, signInWithGoogle } from "../../lib/icecap"
 import { useAuth } from "../hooks/useAuth"
+
+// Development builds can sign in as the seeded test user (supabase/seeds/icecap.sql); the hosted
+// project only has Google.
+const DEV = import.meta.env.MODE === "development"
 
 export function LoginPage() {
   const { user, loadingAuth } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     if (!loadingAuth && user) navigate("/", { replace: true })
   }, [user, loadingAuth, navigate])
 
   const handleLogin = async () => {
-    if (useEmulator) {
-      setLoading(true)
-      try {
-        console.log("Emulator detected: Performing deterministic Google login...")
-        const { GoogleAuthProvider, signInWithCredential } = await import("firebase/auth")
-        const credential = GoogleAuthProvider.credential(
-          JSON.stringify({
-            sub: "google-raw-id-icecap-main-user-2026",
-            email: "hi@icecap.com",
-            email_verified: true
-          }),
-          "mock-google-token"
-        )
-        await signInWithCredential(auth, credential)
-        return
-      } catch (e) {
-        console.error("Local mock login failed", e)
-      } finally {
-        setLoading(false)
-      }
-    }
-    try {
-      await signInWithPopup(auth, googleProvider)
-    } catch (e) {
-      console.error("Login failed", e)
+    setLoading(true)
+    setError("")
+    const { error } = await signInWithGoogle("/app/")
+    if (error) {
+      setError(error.message)
+      setLoading(false)
     }
   }
 
-
+  const handleTestLogin = async () => {
+    setError("")
+    const { error } = await icecap.auth.signInWithPassword({ email: "pro@icecap.test", password: "icecap-dev-123" })
+    if (error) setError(error.message)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -74,7 +63,13 @@ export function LoginPage() {
           </button>
         </div>
 
-        <p className="mt-6 text-xs text-gray-400">Secure auth via Firebase</p>
+        {DEV && (
+          <button onClick={handleTestLogin} className="mt-3 w-full py-3 rounded-2xl border border-dashed border-gray-300 text-sm font-semibold text-gray-500" data-testid="test-signin-btn">
+            Sign in as the local test user
+          </button>
+        )}
+        {error && <p className="mt-4 text-sm text-red-500">{error}</p>}
+        <p className="mt-6 text-xs text-gray-400">Your Google account signs you in; Icecap never sees your password.</p>
       </div>
     </div>
   )

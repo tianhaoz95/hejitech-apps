@@ -255,7 +255,7 @@ export function SplitImage() {
           {/* Real Redfin screenshot — wrapper is relative so overlay anchors to visible area */}
           <div className="flex-1 relative overflow-hidden">
             <div className="absolute inset-0 overflow-y-auto">
-              <img src="/listing-redfin.png" alt="Redfin listing" className="w-full block" />
+              <img src="/promo/listing-redfin.png" alt="Redfin listing" className="w-full block" />
             </div>
 
             {/* Bottom overlay — After callout (right-aligned so it's visible past the divider) */}

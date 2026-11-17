@@ -41,14 +41,14 @@ export function AIInsightBox({ summary, loading, quotaRemaining, onAnalyze, disa
         <div className="text-xs text-purple-800 bg-white/50 p-2 rounded-lg">
           <ReactMarkdown
             components={{
-              p: ({ ...props }) => <p className="mb-2 last:mb-0" {...props} />,
-              ul: ({ ...props }) => <ul className="mb-2 list-disc pl-4" {...props} />,
-              ol: ({ ...props }) => <ol className="mb-2 list-decimal pl-4" {...props} />,
-              li: ({ ...props }) => <li className="mb-1" {...props} />,
-              strong: ({ ...props }) => <strong className="font-bold" {...props} />,
-              h1: ({ ...props }) => <h1 className="font-black uppercase text-[10px] mt-3 mb-1 tracking-wider" {...props} />,
-              h2: ({ ...props }) => <h2 className="font-black uppercase text-[10px] mt-3 mb-1 tracking-wider" {...props} />,
-              h3: ({ ...props }) => <h3 className="font-black uppercase text-[10px] mt-3 mb-1 tracking-wider" {...props} />,
+              p: ({ node: _node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+              ul: ({ node: _node, ...props }) => <ul className="mb-2 list-disc pl-4" {...props} />,
+              ol: ({ node: _node, ...props }) => <ol className="mb-2 list-decimal pl-4" {...props} />,
+              li: ({ node: _node, ...props }) => <li className="mb-1" {...props} />,
+              strong: ({ node: _node, ...props }) => <strong className="font-bold" {...props} />,
+              h1: ({ node: _node, ...props }) => <h1 className="font-black uppercase text-[10px] mt-3 mb-1 tracking-wider" {...props} />,
+              h2: ({ node: _node, ...props }) => <h2 className="font-black uppercase text-[10px] mt-3 mb-1 tracking-wider" {...props} />,
+              h3: ({ node: _node, ...props }) => <h3 className="font-black uppercase text-[10px] mt-3 mb-1 tracking-wider" {...props} />,
             }}
           >
             {summary}

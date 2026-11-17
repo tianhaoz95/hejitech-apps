@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
-import { collection, getDocs, query, orderBy } from "firebase/firestore"
 import { RefreshCw, Search } from "lucide-react"
-import { db } from "../core/firebase"
+import type { WaitlistEntry as Row } from "@icecap/types"
+import { icecap } from "../../lib/icecap"
 
 interface WaitlistEntry {
   id: string
@@ -37,20 +37,15 @@ export function WaitlistPage() {
   const fetchEntries = async () => {
     setLoading(true)
     try {
-      const snap = await getDocs(
-        query(collection(db, "waitlist"), orderBy("createdAt", "desc"))
-      )
+      const { entries } = await icecap.api<{ entries: Row[] }>("/api/admin/waitlist")
       setEntries(
-        snap.docs.map((d) => {
-          const data = d.data()
-          return {
-            id: d.id,
-            email: data.email ?? "",
-            name: data.name ?? "",
-            createdAt: data.createdAt?.toDate() ?? null,
-            source: data.source ?? "unknown",
-          }
-        })
+        entries.map((r) => ({
+          id: r.id,
+          email: r.email,
+          name: r.name ?? "",
+          createdAt: new Date(r.created_at),
+          source: r.source ?? "unknown",
+        }))
       )
     } finally {
       setLoading(false)

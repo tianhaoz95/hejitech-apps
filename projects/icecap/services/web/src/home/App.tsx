@@ -1,14 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  addDoc,
-  collection,
-  serverTimestamp,
-  doc,
-  getDoc,
-  setDoc,
-  increment,
-} from "firebase/firestore";
-import { db } from "./core/firebase";
+import { icecap } from "../lib/icecap";
 import type { LucideIcon } from "lucide-react";
 import {
   Building2,
@@ -74,13 +65,9 @@ function useWaitlistCount() {
   const [extra, setExtra] = useState(0);
 
   useEffect(() => {
-    getDoc(doc(db, "public_stats", "waitlist"))
-      .then((snap) => {
-        if (snap.exists()) {
-          const data = snap.data() as { signupCount?: number };
-          setExtra(data.signupCount ?? 0);
-        }
-      })
+    icecap.waitlist
+      .count()
+      .then(setExtra)
       .catch(() => {}); // display seed number on any error
   }, []);
 
@@ -979,21 +966,12 @@ export default function App() {
     setSubmitting(true);
     setError(null);
     try {
-      await addDoc(collection(db, "waitlist"), {
-        email: trimmedEmail,
-        name: name.trim(),
-        createdAt: serverTimestamp(),
-        source: "waitlist-page",
-      });
-      // Increment public counter — best-effort, non-blocking
-      setDoc(doc(db, "public_stats", "waitlist"), { signupCount: increment(1) }, { merge: true }).catch(
-        () => {}
-      );
+      await icecap.api("/api/waitlist", { body: { email: trimmedEmail, name: name.trim(), source: "waitlist-page" }, auth: false });
       gtag_report_conversion();
       setSubmitted(true);
       window.history.pushState(null, '', '/joined');
     } catch (err) {
-      console.error("[waitlist] Firestore write failed:", err);
+      console.error("[waitlist] sign-up failed:", err);
       setError("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);

@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { doc, setDoc, getDoc } from "firebase/firestore"
 import { Settings, Save, Crown, ExternalLink } from "lucide-react"
-import { db } from "../core/firebase"
+import { icecap } from "../../lib/icecap"
 import { useAuth } from "../hooks/useAuth"
 import { DEFAULT_ASSUMPTIONS } from "@icecap/math"
-import type { UserSettings, PropertyAssumptions } from "@icecap/types"
+import type { PropertyAssumptions } from "@icecap/types"
 
 export function SettingsPage() {
-  const { user, subscription, isSubscribed } = useAuth()
+  const { user, pro, isPro: isSubscribed } = useAuth()
   const navigate = useNavigate()
   const [assumptions, setAssumptions] = useState<PropertyAssumptions>({ ...DEFAULT_ASSUMPTIONS })
   const [saving, setSaving] = useState(false)
@@ -16,13 +15,21 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (!user) return
-    getDoc(doc(db, "users", user.uid, "settings", "defaults")).then((snap) => {
-      if (snap.exists()) {
-        const data = snap.data() as UserSettings
-        setAssumptions({ ...DEFAULT_ASSUMPTIONS, ...data.defaultAssumptions })
-      }
+    icecap.settings.get().then((s) => {
+      if (s) setAssumptions({ ...DEFAULT_ASSUMPTIONS, ...s.defaultAssumptions })
     })
   }, [user])
+
+  const deleteData = async () => {
+    if (!confirm("Delete all of your saved deals and settings? This can't be undone.")) return
+    try {
+      await icecap.api("/api/account", { method: "DELETE" })
+      setAssumptions({ ...DEFAULT_ASSUMPTIONS })
+      alert("Your Icecap data was deleted.")
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Couldn't delete your data.")
+    }
+  }
 
   const update = <K extends keyof PropertyAssumptions>(key: K, value: PropertyAssumptions[K]) => {
     setAssumptions((prev) => ({ ...prev, [key]: value }))
@@ -32,11 +39,7 @@ export function SettingsPage() {
     if (!user) return
     setSaving(true)
     try {
-      await setDoc(doc(db, "users", user.uid, "settings", "defaults"), {
-        uid: user.uid,
-        defaultAssumptions: assumptions,
-        updatedAt: Date.now(),
-      })
+      await icecap.settings.save(assumptions)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } finally {
@@ -133,11 +136,11 @@ export function SettingsPage() {
           <div>
             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Current Plan</p>
             <h4 className="text-xl font-black text-gray-900 capitalize">
-              {subscription?.tier?.replace("_", " ") ?? "Free"} Plan
+              {isSubscribed ? "Icecap Pro" : "No plan"}
             </h4>
             <p className="text-sm text-gray-500 mt-1 text-balance">
               {isSubscribed 
-                ? `Your subscription is ${subscription?.status}.`
+                ? (pro?.until ? `Active until ${new Date(pro.until).toLocaleDateString()}.` : "Active for good.")
                 : "Unlock full features with a pro plan."}
             </p>
           </div>
@@ -146,6 +149,22 @@ export function SettingsPage() {
             className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl font-bold text-sm hover:bg-gray-50 transition-all shadow-xs"
           >
             {isSubscribed ? "Manage" : "Upgrade"}
+          </button>
+        </div>
+
+        <div className="mt-6 rounded-2xl p-6 border border-red-100 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">Your data</p>
+            <p className="text-sm text-gray-500 text-balance">
+              Delete every deal and setting Icecap keeps for this account. Your plan and your HEJI TECH sign-in stay.
+            </p>
+          </div>
+          <button
+            onClick={deleteData}
+            className="px-5 py-2.5 bg-white border border-red-200 text-red-600 rounded-xl font-bold text-sm hover:bg-red-50 transition-all shrink-0"
+            data-testid="delete-data"
+          >
+            Delete my data
           </button>
         </div>
       </div>

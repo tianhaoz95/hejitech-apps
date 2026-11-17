@@ -6,6 +6,7 @@ import type {
   StrMetrics,
   FlipMetrics,
   BrrrrMetrics,
+  RentEstimate,
 } from "@icecap/types"
 
 export const DEFAULT_ASSUMPTIONS: PropertyAssumptions = {
@@ -297,6 +298,14 @@ export function calcMAO(arv: number, rehabCost: number, wholesaleFee = 0): numbe
 }
 
 // ─── Quick estimate (for map badges, no mortgage) ─────────────────────────────
+
+/**
+ * A first guess at monthly rent: ~0.7% of the price (low confidence; the user edits it). Icecap has no
+ * rent data source, so every surface uses this.
+ */
+export function estimateRent(price: number): RentEstimate {
+  return { estimate: Math.round(Math.max(0, price) * 0.007), source: "heuristic", confidence: "low" }
+}
 
 export function quickCashFlowEstimate(price: number): number {
   const estimatedRent = price * 0.007

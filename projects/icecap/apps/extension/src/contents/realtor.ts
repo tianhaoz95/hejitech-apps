@@ -1,10 +1,6 @@
-import type { PlasmoCSConfig } from "plasmo"
 import { quickEstimateBest, DEFAULT_ASSUMPTIONS, DEFAULT_STR_ASSUMPTIONS, type PropertyAssumptions, type StrAssumptions } from "../core/math"
 
-export const config: PlasmoCSConfig = {
-  matches: ["https://www.realtor.com/*"],
-  run_at: "document_idle",
-}
+// Runs on the pages manifest.config.ts lists for it (content_scripts), at document_idle.
 
 function scrapeRealtor() {
   const priceEl =
@@ -204,7 +200,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
 // ─── Assumptions sync via storage ─────────────────────────────────────────
 
-chrome.storage.local.get(["icecap-assumptions", "icecap-str-assumptions", "icecap-map-pin-metric"], (result) => {
+chrome.storage.local.get(["icecap-assumptions", "icecap-str-assumptions", "icecap-map-pin-metric"], (result: Record<string, any>) => {
   if (result["icecap-assumptions"]) {
     currentAssumptions = { ...DEFAULT_ASSUMPTIONS, ...result["icecap-assumptions"] }
   }
@@ -217,7 +213,7 @@ chrome.storage.local.get(["icecap-assumptions", "icecap-str-assumptions", "iceca
   refreshBadges()
 })
 
-chrome.storage.onChanged.addListener((changes, area) => {
+chrome.storage.onChanged.addListener((changes: Record<string, chrome.storage.StorageChange & { newValue?: any }>, area) => {
   if (area !== "local") return
   let changed = false
   if (changes["icecap-assumptions"]) {

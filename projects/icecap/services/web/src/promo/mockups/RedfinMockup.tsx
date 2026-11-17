@@ -8,8 +8,8 @@ export function RedfinMockup() {
         name: 'Redfin',
         navBg: '#cc1818',
         logo: 'redfin',
-        // Drop manually: screenshot the listing page, save as apps/promo/public/listing-redfin.png
-        screenshotSrc: '/listing-redfin.png',
+        // Drop manually: screenshot the listing page, save as services/web/public/promo/listing-redfin.png
+        screenshotSrc: '/promo/listing-redfin.png',
       }}
     />
   )

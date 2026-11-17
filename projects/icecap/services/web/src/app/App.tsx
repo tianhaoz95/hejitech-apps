@@ -9,11 +9,9 @@ import { ComparePage } from "./pages/ComparePage"
 import { SettingsPage } from "./pages/SettingsPage"
 import { BillingPage } from "./pages/BillingPage"
 import { SubscribePage } from "./pages/SubscribePage"
-import { SubscribeSuccessPage } from "./pages/SubscribeSuccessPage"
-import { SubscribeCancelPage } from "./pages/SubscribeCancelPage"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loadingAuth, isPastDue } = useAuth()
+  const { user, loadingAuth } = useAuth()
 
   if (loadingAuth) {
     return (
@@ -24,7 +22,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <Navigate to="/login" replace />
-  if (isPastDue) return <Navigate to="/subscribe?reason=past_due" replace />
 
   return <>{children}</>
 }
@@ -34,8 +31,6 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/subscribe" element={<SubscribePage />} />
-      <Route path="/subscribe/success" element={<SubscribeSuccessPage />} />
-      <Route path="/subscribe/cancel" element={<SubscribeCancelPage />} />
       <Route
         path="/"
         element={

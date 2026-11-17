@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
-import { collection, query, onSnapshot, orderBy } from "firebase/firestore"
 import { GitCompare, Home, TrendingUp, Crown } from "lucide-react"
-import { db } from "../core/firebase"
+import { useProperties } from "../../lib/icecap"
 import { useAuth } from "../hooks/useAuth"
 import type { SavedProperty } from "@icecap/types"
 
@@ -17,22 +16,22 @@ const METRICS = [
 ]
 
 export function ComparePage() {
-  const { user, isSubscribed } = useAuth()
+  const { user, isPro: isSubscribed } = useAuth()
   const [properties, setProperties] = useState<SavedProperty[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
+  const live = useProperties(user)
   useEffect(() => {
-    if (!user) return
-    const q = query(collection(db, "users", user.uid, "properties"), orderBy("createdAt", "desc"))
-    return onSnapshot(q, (snap) => {
-      const props = snap.docs.map((d) => ({ id: d.id, ...d.data() } as SavedProperty))
+    if (!live) return
+    {
+      const props = live
       setProperties(props)
       // Auto-select first 3
       if (props.length > 0 && selected.size === 0) {
         setSelected(new Set(props.slice(0, 3).map((p) => p.id)))
       }
-    })
-  }, [user])
+    }
+  }, [live])
 
   const toggle = (id: string) => {
     setSelected((prev) => {

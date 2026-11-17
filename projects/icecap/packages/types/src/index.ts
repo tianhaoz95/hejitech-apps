@@ -86,119 +86,48 @@ export interface SavedProperty extends PropertyData {
   updatedAt: number
 }
 
-// ─── Users & Auth ─────────────────────────────────────────────────────────────
+// ─── Pro ─────────────────────────────────────────────────────────────────────
+// Icecap Pro is sold on the web through the shared HEJI Stripe account (a yearly plan with a free week,
+// or lifetime) or given by email; the Worker answers GET /api/pro for every surface.
 
-export type SubscriptionTier = "pro" | "pro_max"
-export type SubscriptionStatus =
-  | "trialling"
-  | "active"
-  | "past_due"
-  | "unpaid"
-  | "cancelled"
-  | "none"
+export type ProPlan = "annual" | "lifetime"
 
-export interface Subscription {
-  uid: string
-  stripeCustomerId?: string
-  stripeSubscriptionId?: string
-  tier: SubscriptionTier | null
-  status?: SubscriptionStatus
-  currentPeriodEnd?: number
-  aiUsageCurrentMonth: number
-  aiQuotaLimit: number
-  trialEnd?: number
-  createdAt: number
-  updatedAt: number
+export interface ProOffer {
+  plan: ProPlan
+  /** Formatted, e.g. "$49.99". */
+  price: string
+  interval: "year" | null
+  trial_days: number
+}
+
+export interface ProStatus {
+  pro: boolean
+  /** Where Pro comes from; null without it. */
+  source: "stripe" | "grant" | null
+  plan: ProPlan | null
+  /** When it renews or ends; null for lifetime (and without Pro). */
+  until: string | null
+  /** "stripe" when the plan is managed in Stripe's billing portal. */
+  manage: "stripe" | null
+  /** Whether the account ever bought or tried Pro (no second free week). */
+  had_purchase: boolean
+  email: string | null
+  /** Plans on sale, with prices from Stripe. */
+  offers: ProOffer[]
 }
 
 export interface UserSettings {
-  uid: string
   defaultAssumptions: PropertyAssumptions
   updatedAt: number
 }
 
-export interface UserProfile {
-  uid: string
-  email: string | null
-  displayName: string | null
-  photoURL: string | null
-  role: "user" | "admin"
-  createdAt: number
-}
-
-// ─── Promo Codes ──────────────────────────────────────────────────────────────
-
-export interface PromoCode {
-  id: string
-  code: string
-  type: "stripe_linked" | "internal_free"
-  stripeCouponId?: string
-  usageLimit: number | null
-  usageCount: number
-  isActive: boolean
-  createdBy: string
-  createdAt: number
-}
-
-export interface PromoCodeRedemption {
-  id: string
-  promoCodeId: string
-  uid: string
-  redeemedAt: number
-}
-
 // ─── API Contracts ────────────────────────────────────────────────────────────
 
-export interface RentEstimateRequest {
-  address?: string
-  zipCode?: string
-  bedrooms?: number
-  bathrooms?: number
-  sqft?: number
-  price: number
-}
-
-export interface RentEstimateResponse {
+export interface RentEstimate {
   estimate: number
-  source: "rentcast" | "heuristic"
-  confidence: "high" | "medium" | "low"
+  source: "heuristic"
+  confidence: "low"
 }
-
-export interface CreateCheckoutSessionRequest {
-  tier: SubscriptionTier
-  promoCode?: string
-  successUrl: string
-  cancelUrl: string
-}
-
-export interface CreateCheckoutSessionResponse {
-  sessionId: string
-  url: string
-}
-
-export interface ValidatePromoCodeRequest {
-  code: string
-}
-
-export interface ValidatePromoCodeResponse {
-  valid: boolean
-  type?: "stripe_linked" | "internal_free"
-  stripeCouponId?: string
-  discountDescription?: string
-}
-
-export interface AnalyzePropertyRequest {
-  propertyData: PropertyData
-  listingDescription: string
-}
-
-export interface AnalyzePropertyResponse {
-  summary: string
-  redFlags: string[]
-  rehabEstimate: "low" | "medium" | "high"
-  recommendation: string
-}
-
 // ─── AI Co-Pilot ─────────────────────────────────────────────────────────────
 
 export type AdjustableField =
@@ -234,30 +163,29 @@ export interface CopilotMessage {
   timestamp: number
 }
 
-export interface CopilotChatRequest {
-  messages: Array<{ role: "user" | "assistant"; content: string }>
-}
-
-export interface CopilotChatResponse {
-  content: string
-  actionProposal?: CopilotActionProposal
-}
-
 // ─── Admin ────────────────────────────────────────────────────────────────────
 
-export interface ScraperReport {
-  id: string
-  site: "redfin" | "zillow" | "realtor"
-  url: string
-  issue: string
-  uid: string
-  createdAt: number
+export interface AdminStats {
+  accounts: number
+  properties: number
+  waitlist: number
+  pro: { stripe: number; grants: number }
 }
 
-export interface SystemHealth {
-  functions: "healthy" | "degraded" | "down"
-  firestore: "healthy" | "degraded" | "down"
-  stripe: "healthy" | "degraded" | "down"
-  rentcast: "healthy" | "degraded" | "down"
-  lastChecked: number
+export interface AdminProAccount {
+  email: string | null
+  user_id: string | null
+  source: "stripe" | "grant"
+  plan: ProPlan
+  until: string | null
+  environment: string | null
+  note: string | null
+}
+
+export interface WaitlistEntry {
+  id: string
+  email: string
+  name: string | null
+  source: string | null
+  created_at: string
 }
