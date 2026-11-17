@@ -16,6 +16,7 @@ struct AgentsView: View {
     @State private var revealed: NewAgentToken?
     @State private var confirmRevokeAgent: AgentItem?
     @State private var copiedURL = false
+    @State private var creating = false
 
     private var mcp: String { model.backend.mcpURL.absoluteString }
 
@@ -38,25 +39,43 @@ struct AgentsView: View {
                     .accessibilityIdentifier("copy-mcp-url")
                 }
                 .padding(.vertical, 4)
+            } header: {
+                Text("Option 1 · Apps with OAuth")
             } footer: {
-                Text("Apps with OAuth (Claude, ChatGPT, Gemini…): add a custom connector with this URL; you'll sign in and pick which agent it speaks as. Everything else: register the agent below, make a token and send it as Authorization: Bearer tba_…. Agents can draft and debate plans but can't approve, change the policy, control the executor or reach Robinhood.")
+                Text("Claude, ChatGPT, Gemini and other apps that support OAuth: add a custom connector with this URL. You'll sign in and pick which agent it speaks as; no token needed.")
             }
 
-            Section("Register an agent") {
-                TextField("Agent id (e.g. claude)", text: $newId)
+            Section {
+                TextField("Agent name (e.g. claude-code)", text: $newId)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .font(.body.monospaced())
+                    .accessibilityIdentifier("token-agent-id")
+                    .submitLabel(.go)
+                    .onSubmit {
+                        if isValidAgentId(newId.trimmingCharacters(in: .whitespaces)) { Task { await createToken() } }
+                    }
                 TextField("Display name (optional)", text: $newName)
-                Button("Register Agent") {
-                    Task { await register() }
+                Button {
+                    Task { await createToken() }
+                } label: {
+                    HStack {
+                        Label("Create Token", systemImage: "key.horizontal.fill")
+                        Spacer()
+                        if creating { ProgressView() }
+                    }
                 }
-                .disabled(!isValidAgentId(newId.trimmingCharacters(in: .whitespaces)))
+                .disabled(creating || !isValidAgentId(newId.trimmingCharacters(in: .whitespaces)))
+                .accessibilityIdentifier("create-token")
                 if !newId.isEmpty && !isValidAgentId(newId.trimmingCharacters(in: .whitespaces)) {
                     Text("2–32 lowercase letters, digits, - or _, starting with a letter.")
                         .font(.footnote)
                         .foregroundStyle(.orange)
                 }
+            } header: {
+                Text("Option 2 · Token, for agents without OAuth")
+            } footer: {
+                Text("For Claude Code, scripts and other MCP clients that take a header: name the agent and tap Create Token. You get the token once, plus a ready Claude Code command and MCP config, sent as Authorization: Bearer tba_…. Agents can draft and debate plans but can't approve, change the policy, control the executor or reach Robinhood.")
             }
 
             if let error {
@@ -176,13 +195,23 @@ struct AgentsView: View {
         await load()
     }
 
-    private func register() async {
+    /// Registers the agent if it's new (or was revoked) and makes its first token in one step.
+    private func createToken() async {
         let id = newId.trimmingCharacters(in: .whitespaces)
-        await act {
-            try await model.backend.registerAgent(id: id, displayName: newName.trimmingCharacters(in: .whitespaces))
+        creating = true
+        defer { creating = false }
+        do {
+            if !data.agents.contains(where: { $0.agent_id == id && $0.revoked_at == nil }) {
+                try await model.backend.registerAgent(id: id, displayName: newName.trimmingCharacters(in: .whitespaces))
+            }
+            revealed = try await model.backend.newAgentToken(agentId: id)
             newId = ""
             newName = ""
+            error = nil
+        } catch {
+            self.error = "Couldn't create the token: \(error.localizedDescription)"
         }
+        await load()
     }
 
     private func newToken(_ agentId: String) async {

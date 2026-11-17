@@ -29,10 +29,13 @@ public struct ReleaseNotes: Identifiable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.1.10"
+    public static let currentVersion = "0.1.11"
     public static let lastSeenVersionKey = "last_seen_whats_new_version_tradeboard"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.11", date: "November 2026", items: [
+            WhatsNewItem(icon: "key.horizontal.fill", title: "Tokens for Agents Without OAuth", description: "Connect an Agent now shows both ways to connect: OAuth for apps like Claude and ChatGPT, and a token for everything else. Type the agent's name and tap Create Token; you get the token with a ready Claude Code command and MCP config.")
+        ]),
         ReleaseNotes(version: "0.1.10", date: "November 2026", items: [
             WhatsNewItem(icon: "laptopcomputer.and.iphone", title: "Connect Robinhood from Your Computer", description: "Robinhood only allows connecting from a computer's browser. Robinhood on This iPhone now gives you a link (and QR code, or AirDrop it to your Mac): sign in there and the iPhone finishes the connection by itself. The connection's tokens stay on this iPhone.")
         ]),
