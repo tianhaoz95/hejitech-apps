@@ -18,8 +18,8 @@ supabase db push
 ```
 
 Then expose `icecap` (Management API `/v1/projects/<ref>/postgrest`, append to `db_schema`; or
-Settings → API → Exposed schemas), after the push: an exposed schema that doesn't exist breaks
-PostgREST.
+Integrations → Data API → Settings → Exposed schemas), after the push: an exposed schema that
+doesn't exist breaks PostgREST. Done 2026-11-17 (pushed, exposed).
 
 ## 2. Auth (shared settings: read, then extend; the Site URL belongs to Waypack)
 
@@ -29,6 +29,7 @@ PostgREST.
   `https://cljkjphaofjfagcekpbnkonpepdcciba.chromiumapp.org/**` (unpacked and sideloaded builds,
   pinned by the manifest `key`).
 - Email sign-in stays off; local development uses the seed accounts (`supabase/seeds/icecap.sql`).
+- All three added 2026-11-17 in the dashboard (URL Configuration), the other projects' URLs kept.
 
 ## 3. Worker
 
@@ -39,7 +40,7 @@ npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production -c projects/i
 
 Cloudflare Workers Builds (dashboard): repo root, build `npm ci`, deploy
 `npm run deploy -w @icecap/web`, non-production `npm run upload-version -w @icecap/web`, watch path
-`projects/icecap/*`.
+`projects/icecap/*` (linked 2026-11-17, with the account's existing build token).
 
 Smoke test: `/`, `/app/`, `/privacy/`, `GET /api/waitlist` (a count), `GET /api/pro` without a
 session (401).
