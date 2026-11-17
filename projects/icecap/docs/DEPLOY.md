@@ -69,6 +69,11 @@ Admins: `projects/icecap/scripts/make_admin.sh <email>`.
 
 ## Before the move
 
-The Firebase project `icecap-platform` (Hosting sites `icecap-hub`, `-admin`, `-home`, `-platform`,
-`-docs`, `-preview-list`, `-promo`) and the old repo's Stripe keys belong to the old version; nothing
-here uses them.
+The old repo `tianhaoz95/icecap` has a moved notice and every workflow disabled. Its
+`moved.yml` (disabled after it ran on 2026-11-17) deployed `moved/firebase.json`: each old Firebase
+Hosting site of the project `icecap-platform` answers with a 301 to the matching page here
+(`icecap-hub` → `/app/…`, `icecap-admin` → `/admin/…`, `icecap-home` and `icecap-preview-list` → `/`,
+`icecap-platform` → `/privacy/` or `/terms/`, `icecap-promo` → `/promo/`, `icecap-docs` → the docs
+site). Its Stripe secrets were deleted; its Firebase secrets stay only for those redirects. Its Cloud
+Functions and the old Stripe account's products and webhook belong to the old version: nothing here
+uses them.
