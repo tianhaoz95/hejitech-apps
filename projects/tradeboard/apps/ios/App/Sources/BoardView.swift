@@ -6,7 +6,9 @@ public struct BoardView: View {
     @State private var showCreateSheet = false
     @State private var showSettingsSheet = false
     @State private var showEmergencyKillConfirm = false
-    @State private var showDryRunToggleConfirm = false
+    @State private var showGoLiveConfirm = false
+    @State private var modeBusy = false
+    @State private var modeError: String?
     @State private var openPlanId: String?
 
     public init() {}
@@ -123,20 +125,13 @@ public struct BoardView: View {
             } message: {
                 Text("This will immediately cancel all pending orders and stop the executor from placing any new trades.")
             }
-            .confirmationDialog(
-                model.board?.control.dry_run == true ? "Switch to LIVE Trading?" : "Switch to Dry-Run Mode?",
-                isPresented: $showDryRunToggleConfirm,
-                titleVisibility: .visible
-            ) {
-                Button(model.board?.control.dry_run == true ? "Enable LIVE Mode" : "Enable Dry-Run") {
-                    let next = !(model.board?.control.dry_run ?? true)
-                    Task { await model.toggleDryRun(enabled: next) }
+            .alert("Go live?", isPresented: $showGoLiveConfirm) {
+                Button("Go Live", role: .destructive) {
+                    Task { await setMode(dryRun: false, confirmed: true) }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text(model.board?.control.dry_run == true
-                     ? "LIVE orders place real money trades with Robinhood. Ensure your dedicated MCP account has appropriate funds and policy limits."
-                     : "Dry-run simulates order validation without routing orders to Robinhood.")
+                Text("Approved plans will place real orders with Robinhood, within your policy limits. Switch back to dry-run any time with the same toggle.")
             }
         }
     }
@@ -181,27 +176,9 @@ public struct BoardView: View {
                 .background(Color.orange)
             }
 
-            HStack(spacing: 12) {
-                // Mode Pill
-                Button {
-                    showDryRunToggleConfirm = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(isDryRun ? Color.blue : Color.green)
-                            .frame(width: 8, height: 8)
-                        Text(isDryRun ? "DRY-RUN" : "LIVE")
-                            .font(.caption.bold())
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 9, weight: .bold))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(isDryRun ? Color.blue.opacity(0.12) : Color.green.opacity(0.15))
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
+            modeToggle(isDryRun: isDryRun, gateComplete: control?.live_gate_complete ?? false, isKilled: isKilled)
 
+            HStack(spacing: 12) {
                 // Executor Status
                 HStack(spacing: 4) {
                     Image(systemName: onlineCount > 0 ? "bolt.horizontal.circle.fill" : "bolt.horizontal.circle")
@@ -233,6 +210,65 @@ public struct BoardView: View {
             .padding(.vertical, 6)
             .background(Color.secondary.opacity(0.06))
         }
+    }
+
+    // MARK: - Dry-run / live toggle
+
+    /// Dry-run is yellow, live is green. Back to dry-run is one tap; going live asks once (PRD §8.2:
+    /// two taps at most; the Worker refuses dry_run_off without that confirmation) and needs the
+    /// live-mode checklist, which the Worker enforces too.
+    private func modeToggle(isDryRun: Bool, gateComplete: Bool, isKilled: Bool) -> some View {
+        let tint: Color = isDryRun ? .yellow : .green
+        let canGoLive = gateComplete && !isKilled
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 10) {
+                Image(systemName: isDryRun ? "testtube.2" : "dot.radiowaves.left.and.right")
+                    .font(.headline)
+                    .foregroundStyle(isDryRun ? Color.orange : Color.green)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(isDryRun ? "DRY-RUN" : "LIVE")
+                        .font(.subheadline.weight(.heavy))
+                    Text(isDryRun ? "Simulated: no orders reach Robinhood" : "Approved plans place real orders")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if modeBusy { ProgressView().controlSize(.small) }
+                Toggle("Live trading", isOn: Binding(
+                    get: { !isDryRun },
+                    set: { live in
+                        modeError = nil
+                        if live {
+                            if canGoLive { showGoLiveConfirm = true }
+                            else { modeError = isKilled ? "The executor is killed: resume it first." : "Finish the live-mode checklist on the web (Executor page) to go live." }
+                        } else {
+                            Task { await setMode(dryRun: true, confirmed: false) }
+                        }
+                    }
+                ))
+                .labelsHidden()
+                .tint(.green)
+                .disabled(modeBusy)
+                .accessibilityIdentifier("live-toggle")
+            }
+            if let modeError {
+                Text(modeError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(tint.opacity(isDryRun ? 0.22 : 0.18))
+        .overlay(alignment: .bottom) { Rectangle().fill(tint).frame(height: 2) }
+    }
+
+    private func setMode(dryRun: Bool, confirmed: Bool) async {
+        modeBusy = true
+        defer { modeBusy = false }
+        model.error = nil
+        await model.toggleDryRun(enabled: dryRun, confirmed: confirmed)
+        if let e = model.error { modeError = e }
     }
 
     // MARK: - Filter Picker

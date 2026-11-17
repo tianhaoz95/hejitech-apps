@@ -385,9 +385,10 @@ public final class AppModel {
     // MARK: - Board Controls
 
     @MainActor
-    public func toggleDryRun(enabled: Bool) async {
+    /// `confirmed`: the owner tapped the go-live confirmation (going back to dry-run needs none).
+    public func toggleDryRun(enabled: Bool, confirmed: Bool = false) async {
         do {
-            _ = try await backend.toggleDryRun(enabled: enabled)
+            _ = try await backend.toggleDryRun(enabled: enabled, confirmed: confirmed)
             await refresh()
         } catch {
             self.error = error.localizedDescription
@@ -407,7 +408,7 @@ public final class AppModel {
     @MainActor
     public func emergencyKill() async {
         do {
-            _ = try await backend.killBoard()
+            _ = try await backend.killBoard(confirmed: true) // only called from the kill confirmation
             await refresh()
         } catch {
             self.error = error.localizedDescription

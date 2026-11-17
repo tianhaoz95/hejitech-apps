@@ -406,16 +406,22 @@ public final class TradeboardBackend: @unchecked Sendable {
         try await apiPost("api/plans/\(planId)/comments", body: ["body": body, "is_question": isQuestion])
     }
 
-    public func toggleDryRun(enabled: Bool) async throws -> [String: AnyCodable] {
-        try await apiPost("api/control/dry-run", body: ["dry_run": enabled])
+    /// POST /api/control (portal.ts): pause, resume, kill, dry_run_on or dry_run_off. The Worker refuses
+    /// kill and dry_run_off without `confirm: true`, which only a confirmation the owner tapped may send.
+    public static func controlBody(action: String, confirm: Bool) -> [String: Any] {
+        ["action": action, "confirm": confirm]
+    }
+
+    public func toggleDryRun(enabled: Bool, confirmed: Bool = false) async throws -> [String: AnyCodable] {
+        try await apiPost("api/control", body: Self.controlBody(action: enabled ? "dry_run_on" : "dry_run_off", confirm: confirmed))
     }
 
     public func pauseBoard(paused: Bool) async throws -> [String: AnyCodable] {
-        try await apiPost("api/control/pause", body: ["paused": paused])
+        try await apiPost("api/control", body: Self.controlBody(action: paused ? "pause" : "resume", confirm: false))
     }
 
-    public func killBoard() async throws -> [String: AnyCodable] {
-        try await apiPost("api/control/kill", body: [:])
+    public func killBoard(confirmed: Bool) async throws -> [String: AnyCodable] {
+        try await apiPost("api/control", body: Self.controlBody(action: "kill", confirm: confirmed))
     }
 
     public func getStrategy() async throws -> StrategyResponse {

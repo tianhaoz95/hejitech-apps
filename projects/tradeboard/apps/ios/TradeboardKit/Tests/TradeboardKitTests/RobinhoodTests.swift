@@ -94,4 +94,12 @@ import Testing
         #expect(!isValidAgentId("c"))
         #expect(!isValidAgentId("1abc"))
     }
+
+    @Test func controlBodiesMatchTheWorker() {
+        // portal.ts: POST /api/control {action, confirm}; kill and dry_run_off need confirm: true.
+        let off = TradeboardBackend.controlBody(action: "dry_run_off", confirm: true)
+        #expect(off["action"] as? String == "dry_run_off" && off["confirm"] as? Bool == true)
+        let on = TradeboardBackend.controlBody(action: "dry_run_on", confirm: false)
+        #expect(on["action"] as? String == "dry_run_on" && on["confirm"] as? Bool == false)
+    }
 }

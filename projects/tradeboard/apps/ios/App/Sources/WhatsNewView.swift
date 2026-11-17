@@ -29,10 +29,14 @@ public struct ReleaseNotes: Identifiable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.1.8"
+    public static let currentVersion = "0.1.9"
     public static let lastSeenVersionKey = "last_seen_whats_new_version_tradeboard"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.9", date: "November 2026", items: [
+            WhatsNewItem(icon: "switch.2", title: "Dry-Run / Live Toggle", description: "The top of the board now has a toggle: yellow for dry-run, green for live. Switching back to dry-run is one tap; going live asks once and needs the live-mode checklist done."),
+            WhatsNewItem(icon: "wrench.and.screwdriver", title: "Pause, Resume and Kill Work Again", description: "The mode switch, Pause/Resume and the emergency kill switch on the iPhone failed with an error. They now reach your board.")
+        ]),
         ReleaseNotes(version: "0.1.8", date: "November 2026", items: [
             WhatsNewItem(icon: "link", title: "Connect an Agent from Your iPhone", description: "Settings → Connect an Agent shows your Board MCP address with a Copy button, registers agents, and makes tokens you can copy as-is or as a ready Claude Code command or MCP config. Revoke tokens and disconnect apps there too."),
             WhatsNewItem(icon: "iphone.and.arrow.forward", title: "Robinhood on This iPhone (Preview)", description: "Try signing in to Robinhood's official MCP straight from the phone and run a read-only check of your accounts, trade approvals and a quote. It never places or changes anything; orders still go through your executor.")
