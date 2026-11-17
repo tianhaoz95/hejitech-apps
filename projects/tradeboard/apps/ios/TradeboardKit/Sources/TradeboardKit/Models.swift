@@ -491,25 +491,62 @@ public struct PlanDetail: Codable, Hashable, Sendable, Identifiable {
 
 // MARK: - Strategy
 
-public struct StrategyItem: Codable, Hashable, Sendable {
-    public var version: Int
-    public var content: String
-    public var updated_at: String?
+/// GET /api/strategy (portal.ts): the user's versions, newest first, and agents' open drafts.
+public struct PolicyHint: Codable, Hashable, Sendable {
+    public var line: String
+    public var settings: [String]
+}
 
-    public init(version: Int, content: String, updated_at: String? = nil) {
+public struct StrategyVersion: Codable, Hashable, Sendable, Identifiable {
+    public var id: Int { version }
+    public var version: Int
+    public var body: String
+    public var note: String?
+    public var from_proposal: String?
+    public var created_at: String?
+    public var policy_hints: [PolicyHint]?
+
+    public init(version: Int, body: String, note: String? = nil, from_proposal: String? = nil, created_at: String? = nil, policy_hints: [PolicyHint]? = nil) {
         self.version = version
-        self.content = content
-        self.updated_at = updated_at
+        self.body = body
+        self.note = note
+        self.from_proposal = from_proposal
+        self.created_at = created_at
+        self.policy_hints = policy_hints
     }
 }
 
-public struct StrategyResponse: Codable, Hashable, Sendable {
-    public var strategy: StrategyItem?
-    public var interview_guide: String?
+/// A draft an agent saved with propose_strategy. It does nothing until the user adopts it.
+public struct StrategyProposal: Codable, Hashable, Sendable, Identifiable {
+    public var id: String { proposal_id }
+    public var proposal_id: String
+    public var agent_id: String
+    public var body: String
+    public var summary: String?
+    public var based_on_version: Int?
+    public var created_at: String?
+    public var policy_hints: [PolicyHint]?
+}
 
-    public init(strategy: StrategyItem? = nil, interview_guide: String? = nil) {
-        self.strategy = strategy
-        self.interview_guide = interview_guide
+public struct StrategyResponse: Codable, Hashable, Sendable {
+    public var current: StrategyVersion?
+    public var history: [StrategyVersion]
+    public var proposals: [StrategyProposal]
+    public var template: String?
+
+    public init(current: StrategyVersion? = nil, history: [StrategyVersion] = [], proposals: [StrategyProposal] = [], template: String? = nil) {
+        self.current = current
+        self.history = history
+        self.proposals = proposals
+        self.template = template
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        current = try c.decodeIfPresent(StrategyVersion.self, forKey: .current)
+        history = try c.decodeIfPresent([StrategyVersion].self, forKey: .history) ?? []
+        proposals = try c.decodeIfPresent([StrategyProposal].self, forKey: .proposals) ?? []
+        template = try c.decodeIfPresent(String.self, forKey: .template)
     }
 }
 

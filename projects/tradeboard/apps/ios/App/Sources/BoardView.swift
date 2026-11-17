@@ -10,6 +10,7 @@ public struct BoardView: View {
     @State private var modeBusy = false
     @State private var modeError: String?
     @State private var openPlanId: String?
+    @State private var openStrategy = false
 
     public init() {}
 
@@ -42,6 +43,33 @@ public struct BoardView: View {
             VStack(spacing: 0) {
                 // System Safety Header Banner
                 safetyStatusBanner
+
+                if let p = model.strategy?.proposals.first {
+                    NavigationLink {
+                        StrategyView()
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "tray.and.arrow.down.fill")
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(model.strategy!.proposals.count == 1 ? "Strategy draft from \(p.agent_id)" : "\(model.strategy!.proposals.count) strategy drafts from agents")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("Review and adopt it to put it in effect")
+                                    .font(.caption)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(.orange)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(Color.orange.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    .accessibilityIdentifier("strategy-draft-banner")
+                }
 
                 // Filter tabs
                 filterPicker
@@ -101,12 +129,16 @@ public struct BoardView: View {
             .navigationDestination(item: $openPlanId) { id in
                 PlanDetailView(planId: id)
             }
+            .navigationDestination(isPresented: $openStrategy) {
+                StrategyView()
+            }
             .task(id: model.board?.plans.count ?? 0) {
                 #if DEBUG
-                // Screenshots and checks without taps: `-openSettings`, or `-openPlan ready|debated`
-                // opens the first plan with that status once the board has loaded.
+                // Screenshots and checks without taps: `-openSettings`, `-openStrategy`, or
+                // `-openPlan ready|debated` opens the first plan with that status once the board has loaded.
                 let args = ProcessInfo.processInfo.arguments
                 if args.contains("-openSettings"), model.board != nil { showSettingsSheet = true }
+                if args.contains("-openStrategy"), model.board != nil { openStrategy = true }
                 if let i = args.firstIndex(of: "-openPlan"), i + 1 < args.count, openPlanId == nil,
                    let p = model.board?.plans.first(where: { $0.status.lowercased() == args[i + 1] }) {
                     openPlanId = p.plan_id

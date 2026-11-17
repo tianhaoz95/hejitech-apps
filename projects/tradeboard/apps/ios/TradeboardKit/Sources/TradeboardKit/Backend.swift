@@ -428,8 +428,19 @@ public final class TradeboardBackend: @unchecked Sendable {
         try await apiGet("api/strategy")
     }
 
-    public func updateStrategy(content: String) async throws -> [String: AnyCodable] {
-        try await apiRequest("api/strategy", method: "PUT", body: ["content": content])
+    /// POST /api/strategy: saves a new version. `fromProposal` adopts an agent's draft (possibly edited).
+    public static func strategyBody(text: String, note: String, fromProposal: String?) -> [String: Any] {
+        var b: [String: Any] = ["body": text, "note": note]
+        if let fromProposal { b["from_proposal"] = fromProposal }
+        return b
+    }
+
+    public func saveStrategy(text: String, note: String = "", fromProposal: String? = nil) async throws -> [String: AnyCodable] {
+        try await apiPost("api/strategy", body: Self.strategyBody(text: text, note: note, fromProposal: fromProposal))
+    }
+
+    public func dismissStrategyProposal(id: String) async throws -> [String: AnyCodable] {
+        try await apiPost("api/strategy/proposals/\(id)/dismiss", body: [:])
     }
 
     public func getExecutors() async throws -> [ExecutorItem] {

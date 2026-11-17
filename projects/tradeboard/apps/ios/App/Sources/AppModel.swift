@@ -137,6 +137,8 @@ public final class AppModel {
             do {
                 board = try await backend.getBoard()
                 error = nil
+                // Best effort: the board's banner for agents' strategy drafts waiting for the owner.
+                if let s = try? await backend.getStrategy() { strategy = s }
             } catch {
                 self.error = error.localizedDescription
                 if (error as? BackendError)?.isUnauthorized == true {
@@ -432,9 +434,21 @@ public final class AppModel {
     }
 
     @MainActor
-    public func updateStrategy(content: String) async -> Bool {
+    public func saveStrategy(text: String, note: String = "", fromProposal: String? = nil) async -> Bool {
         do {
-            _ = try await backend.updateStrategy(content: content)
+            _ = try await backend.saveStrategy(text: text, note: note, fromProposal: fromProposal)
+            await loadStrategy()
+            return true
+        } catch {
+            self.error = error.localizedDescription
+            return false
+        }
+    }
+
+    @MainActor
+    public func dismissStrategyProposal(id: String) async -> Bool {
+        do {
+            _ = try await backend.dismissStrategyProposal(id: id)
             await loadStrategy()
             return true
         } catch {

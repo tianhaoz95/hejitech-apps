@@ -109,3 +109,22 @@ import Testing
         #expect(RobinhoodRedirect.allCases.first == .computer)
     }
 }
+
+@Test func strategyResponseMatchesTheWorker() throws {
+    let json = """
+    {"current":{"version":2,"body":"# Goals\\nGrow slowly","note":"","from_proposal":null,"created_at":"2026-11-17T20:00:00.000Z","policy_hints":[]},
+     "history":[{"version":2,"body":"# Goals\\nGrow slowly","note":"","from_proposal":null,"created_at":"2026-11-17T20:00:00.000Z"},{"version":1,"body":"x","note":"first","from_proposal":"6b0c7b1e-5a1e-4c7e-9a52-1f0d2a3b4c5d","created_at":"2026-11-16T20:00:00.000Z"}],
+     "proposals":[{"proposal_id":"6b0c7b1e-5a1e-4c7e-9a52-1f0d2a3b4c5e","agent_id":"claude-code","body":"## Rules\\nNever more than 5% in one name","summary":"From our interview","based_on_version":null,"created_at":"2026-11-17T21:00:00.000Z","policy_hints":[{"line":"Never more than 5% in one name","settings":["max_position_pct"]}]}],
+     "template":"# Strategy"}
+    """
+    let r = try JSONDecoder().decode(StrategyResponse.self, from: Data(json.utf8))
+    #expect(r.current?.version == 2)
+    #expect(r.history.count == 2)
+    #expect(r.proposals.first?.agent_id == "claude-code")
+    #expect(r.proposals.first?.policy_hints?.first?.settings == ["max_position_pct"])
+    let empty = try JSONDecoder().decode(StrategyResponse.self, from: Data(#"{"current":null,"history":[],"proposals":[],"template":"t"}"#.utf8))
+    #expect(empty.current == nil && empty.proposals.isEmpty)
+    let b = TradeboardBackend.strategyBody(text: "x", note: "n", fromProposal: "id")
+    #expect(b["body"] as? String == "x" && b["from_proposal"] as? String == "id")
+    #expect(TradeboardBackend.strategyBody(text: "x", note: "", fromProposal: nil)["from_proposal"] == nil)
+}
