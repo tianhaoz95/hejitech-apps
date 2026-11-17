@@ -146,6 +146,16 @@ policy, drift, place with the plan-version `ref_id`, receipt) comes only after t
 must keep every gate the Node executor has; App Review guideline 5.1.1(ix) is the open risk for
 shipping order placement in an App Store app.
 
+**2026-11-17, first device test:** Robinhood's sign-in page refuses phones ("Use your desktop web
+browser"); the app's discovery and client registration worked. The app doesn't disguise itself as a
+desktop browser (that would work around a rule Robinhood chose). Instead 0.1.10 adds "Sign in on a
+computer": the phone registers `{state, authorize_url}` with the board, the owner opens a short link
+(`/rh/XXXX-XXXX`, QR or AirDrop) on a computer and signs in there, Robinhood redirects to
+`/oauth/robinhood/callback`, and the board keeps the one-time code in KV (≤ 10 minutes, one use,
+only for the user who started it) until the phone collects it and exchanges it with its PKCE
+verifier (`services/web/src/worker/rhhandoff.ts`). The board still never holds a Robinhood
+credential: the code is useless without the verifier, and the board never calls Robinhood.
+
 ## Market calendar
 
 `core/src/time.ts` holds NYSE full holidays and 1 p.m. closes for 2026–2027 (`CALENDAR_THROUGH`).

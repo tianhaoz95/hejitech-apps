@@ -22,7 +22,7 @@ import Testing
 
     @Test func authorizationURLCarriesPKCEStateResourceScope() throws {
         let meta = AuthServerMetadata(issuer: "https://agent.robinhood.com/mcp/trading", authorization_endpoint: "https://robinhood.com/oauth", token_endpoint: "https://api.robinhood.com/oauth2/token/", registration_endpoint: nil, scopes_supported: ["internal"], code_challenge_methods_supported: ["S256"])
-        let u = try #require(RobinhoodOAuth.authorizationURL(meta: meta, clientId: "c1", redirect: .loopback, challenge: "ch", state: "st"))
+        let u = try #require(RobinhoodOAuth.authorizationURL(meta: meta, clientId: "c1", redirectURI: RobinhoodRedirect.loopback.uri(site: URL(string: "https://x.example")!), challenge: "ch", state: "st"))
         let q = Dictionary(uniqueKeysWithValues: (URLComponents(url: u, resolvingAgainstBaseURL: false)?.queryItems ?? []).map { ($0.name, $0.value ?? "") })
         #expect(q["client_id"] == "c1")
         #expect(q["code_challenge_method"] == "S256")
@@ -101,5 +101,11 @@ import Testing
         #expect(off["action"] as? String == "dry_run_off" && off["confirm"] as? Bool == true)
         let on = TradeboardBackend.controlBody(action: "dry_run_on", confirm: false)
         #expect(on["action"] as? String == "dry_run_on" && on["confirm"] as? Bool == false)
+    }
+
+    @Test func computerRedirectFollowsTheBoard() {
+        #expect(RobinhoodRedirect.computer.uri(site: URL(string: "https://tradeboard.hejitech.workers.dev")!) == "https://tradeboard.hejitech.workers.dev/oauth/robinhood/callback")
+        #expect(RobinhoodRedirect.computer.uri(site: URL(string: "http://127.0.0.1:8798/")!) == "http://127.0.0.1:8798/oauth/robinhood/callback")
+        #expect(RobinhoodRedirect.allCases.first == .computer)
     }
 }

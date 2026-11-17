@@ -29,10 +29,13 @@ public struct ReleaseNotes: Identifiable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.1.9"
+    public static let currentVersion = "0.1.10"
     public static let lastSeenVersionKey = "last_seen_whats_new_version_tradeboard"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.10", date: "November 2026", items: [
+            WhatsNewItem(icon: "laptopcomputer.and.iphone", title: "Connect Robinhood from Your Computer", description: "Robinhood only allows connecting from a computer's browser. Robinhood on This iPhone now gives you a link (and QR code, or AirDrop it to your Mac): sign in there and the iPhone finishes the connection by itself. The connection's tokens stay on this iPhone.")
+        ]),
         ReleaseNotes(version: "0.1.9", date: "November 2026", items: [
             WhatsNewItem(icon: "switch.2", title: "Dry-Run / Live Toggle", description: "The top of the board now has a toggle: yellow for dry-run, green for live. Switching back to dry-run is one tap; going live asks once and needs the live-mode checklist done."),
             WhatsNewItem(icon: "wrench.and.screwdriver", title: "Pause, Resume and Kill Work Again", description: "The mode switch, Pause/Resume and the emergency kill switch on the iPhone failed with an error. They now reach your board.")

@@ -10,6 +10,7 @@
 //   /api/review-sign-in               App Review demo account only (review.ts; needs its secrets)
 //   /api/executor/*                   executor.ts, `tbx_…` credential only (its user's board)
 //   /api/*                            portal.ts, the user's session cookie only (their own board)
+//   /rh/<short>, /oauth/robinhood/callback  the iPhone's Robinhood sign-in handoff (rhhandoff.ts)
 //   /plans/<id>                       the plan page
 //   scheduled (every minute)          sweep: expiry, staleness, approval and claim expiry
 
@@ -20,6 +21,7 @@ import { reviewSignIn } from "./review.ts";
 import { handleExecutor } from "./executor.ts";
 import { handleMcp } from "./mcp.ts";
 import { handlePortal } from "./portal.ts";
+import { handleHandoffPublic } from "./rhhandoff.ts";
 import { admin, audit, bearer, ensureBoard, json, PREFIX, problem, rateLimit, sha256, sweep, type Env as BaseEnv } from "./store.ts";
 
 export interface Env extends BaseEnv {
@@ -144,6 +146,12 @@ const app = {
       );
     }
     if (path === "/authorize") return harden(await authorize(req, env));
+    // The iPhone's Robinhood sign-in handoff (short link + Robinhood's redirect); sets its own
+    // no-referrer headers because the redirect URL carries a one-time code.
+    if (path.startsWith("/rh/") || path === "/oauth/robinhood/callback") {
+      const r = await handleHandoffPublic(req, env, url);
+      if (r) return r;
+    }
 
     if (path.startsWith("/api/executor/")) {
       const token = bearer(req);

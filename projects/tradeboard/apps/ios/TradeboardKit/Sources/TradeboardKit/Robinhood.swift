@@ -17,11 +17,16 @@ public enum RobinhoodConstants {
     public static let clientName = "Tradeboard for iPhone"
 }
 
-/// Where Robinhood's sign-in sends the browser back. Which ones Robinhood accepts is what the preview finds out.
+/// Where Robinhood's sign-in sends the browser back. Robinhood's sign-in page refuses phones ("Use
+/// your desktop web browser"), so `.computer` is the one that works: the owner signs in on a computer
+/// and the board relays the one-time code back (services/web/src/worker/rhhandoff.ts). The others
+/// stay for diagnostics.
 public enum RobinhoodRedirect: String, CaseIterable, Codable, Sendable, Identifiable {
+    /// <board>/oauth/robinhood/callback, opened in a computer's browser; the board relays the code.
+    case computer
     /// http://127.0.0.1:8765/oauth/callback, answered by a listener in the app (what the executor uses).
     case loopback
-    /// https://tradeboard.hejitech.workers.dev/oauth/robinhood/callback (the app's associated domain).
+    /// https://tradeboard.hejitech.workers.dev/oauth/robinhood/callback caught on this iPhone.
     case appLink
     /// tradeboard://robinhood-callback
     case appScheme
@@ -30,14 +35,17 @@ public enum RobinhoodRedirect: String, CaseIterable, Codable, Sendable, Identifi
 
     public var title: String {
         switch self {
-        case .loopback: return "Loopback (like the executor)"
-        case .appLink: return "App link (https)"
-        case .appScheme: return "App scheme (tradeboard://)"
+        case .computer: return "Sign in on a computer"
+        case .loopback: return "This iPhone: loopback"
+        case .appLink: return "This iPhone: app link"
+        case .appScheme: return "This iPhone: app scheme"
         }
     }
 
-    public var uri: String {
+    /// `site` is the board (production or the local stack); only `.computer` depends on it.
+    public func uri(site: URL) -> String {
         switch self {
+        case .computer: return site.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + RobinhoodConstants.appLinkPath
         case .loopback: return "http://127.0.0.1:\(RobinhoodConstants.loopbackPort)/oauth/callback"
         case .appLink: return "https://\(RobinhoodConstants.appLinkHost)\(RobinhoodConstants.appLinkPath)"
         case .appScheme: return "\(RobinhoodConstants.appScheme)://robinhood-callback"
@@ -68,10 +76,12 @@ public struct RobinhoodTokens: Codable, Equatable, Sendable {
     public var expiresAt: Date?
 }
 
-/// Everything kept in the Keychain: one registered client per redirect (each registration names its redirect) and the tokens.
+/// Everything kept in the Keychain: one registered client per redirect URI (each registration names
+/// its redirect), the redirect URI the tokens were issued for, and the tokens.
 public struct RobinhoodStored: Codable, Equatable, Sendable {
     public var clients: [String: String] = [:]
     public var redirect: RobinhoodRedirect?
+    public var redirectURI: String?
     public var tokens: RobinhoodTokens?
     public var signedInAt: Date?
     public init() {}
@@ -113,17 +123,17 @@ public enum RobinhoodOAuth {
         return c.url!
     }
 
-    public static func registrationBody(redirect: RobinhoodRedirect) -> [String: Any] {
+    public static func registrationBody(redirectURI: String) -> [String: Any] {
         [
             "client_name": RobinhoodConstants.clientName,
-            "redirect_uris": [redirect.uri],
+            "redirect_uris": [redirectURI],
             "grant_types": ["authorization_code", "refresh_token"],
             "response_types": ["code"],
             "token_endpoint_auth_method": "none",
         ]
     }
 
-    public static func authorizationURL(meta: AuthServerMetadata, clientId: String, redirect: RobinhoodRedirect, challenge: String, state: String, resource: URL = RobinhoodConstants.mcpURL) -> URL? {
+    public static func authorizationURL(meta: AuthServerMetadata, clientId: String, redirectURI: String, challenge: String, state: String, resource: URL = RobinhoodConstants.mcpURL) -> URL? {
         guard var c = URLComponents(string: meta.authorization_endpoint) else { return nil }
         var items = c.queryItems ?? []
         items += [
@@ -131,7 +141,7 @@ public enum RobinhoodOAuth {
             URLQueryItem(name: "client_id", value: clientId),
             URLQueryItem(name: "code_challenge", value: challenge),
             URLQueryItem(name: "code_challenge_method", value: "S256"),
-            URLQueryItem(name: "redirect_uri", value: redirect.uri),
+            URLQueryItem(name: "redirect_uri", value: redirectURI),
             URLQueryItem(name: "state", value: state),
             URLQueryItem(name: "resource", value: resource.absoluteString),
         ]
@@ -215,26 +225,26 @@ public struct RobinhoodAuthClient: Sendable {
         return meta
     }
 
-    public func register(meta: AuthServerMetadata, redirect: RobinhoodRedirect) async throws -> String {
+    public func register(meta: AuthServerMetadata, redirectURI: String) async throws -> String {
         guard let endpoint = meta.registration_endpoint.flatMap(URL.init(string:)) else { throw RobinhoodError("Robinhood offers no client registration") }
         var req = URLRequest(url: endpoint)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try JSONSerialization.data(withJSONObject: RobinhoodOAuth.registrationBody(redirect: redirect))
+        req.httpBody = try JSONSerialization.data(withJSONObject: RobinhoodOAuth.registrationBody(redirectURI: redirectURI))
         let (data, resp) = try await session.data(for: req)
         let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
         let o = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         guard (200..<300).contains(status), let id = o?["client_id"] as? String, !id.isEmpty else {
             let why = (o?["error_description"] as? String) ?? (o?["error"] as? String) ?? String(data: data, encoding: .utf8)?.prefix(200).description ?? ""
-            throw RobinhoodError("Robinhood refused to register the \(redirect.title) redirect (HTTP \(status)): \(why)")
+            throw RobinhoodError("Robinhood refused to register the redirect \(redirectURI) (HTTP \(status)): \(why)")
         }
         return id
     }
 
-    public func exchange(meta: AuthServerMetadata, code: String, verifier: String, clientId: String, redirect: RobinhoodRedirect) async throws -> RobinhoodTokens {
+    public func exchange(meta: AuthServerMetadata, code: String, verifier: String, clientId: String, redirectURI: String) async throws -> RobinhoodTokens {
         try await token(meta: meta, fields: [
             ("grant_type", "authorization_code"), ("code", code), ("code_verifier", verifier),
-            ("redirect_uri", redirect.uri), ("client_id", clientId), ("resource", mcpURL.absoluteString),
+            ("redirect_uri", redirectURI), ("client_id", clientId), ("resource", mcpURL.absoluteString),
         ], keepingRefresh: nil)
     }
 
@@ -500,4 +510,21 @@ public enum RobinhoodParse {
         guard let p = useExt ? ext.0 : reg.0, p > 0 else { throw RobinhoodError("no price for \(symbol)") }
         return p
     }
+}
+
+// MARK: - Sign in on a computer (the board relays the code; rhhandoff.ts)
+
+public struct RobinhoodHandoffStart: Codable, Equatable, Sendable {
+    public var short: String
+    public var link: String
+    public var expires_at: String
+}
+
+public struct RobinhoodHandoffStatus: Codable, Equatable, Sendable {
+    /// pending | done | error
+    public var status: String
+    public var code: String?
+    public var iss: String?
+    public var error: String?
+    public var expires_at: String?
 }

@@ -19,23 +19,36 @@ struct RobinhoodCheck {
     var problems: [String] = []
 }
 
+/// What the "Sign in on a computer" screen shows while the computer signs in.
+struct RobinhoodHandoff: Equatable {
+    var link: String
+    var short: String
+    var expiresAt: Date
+}
+
 @Observable
 @MainActor
 final class RobinhoodLink {
     static let shared = RobinhoodLink()
 
-    var redirect: RobinhoodRedirect = .loopback
+    var redirect: RobinhoodRedirect = .computer
     var busy = false
     var log: [String] = []
     var error: String?
     var check: RobinhoodCheck?
+    /// Set while waiting for the computer's sign-in.
+    var handoff: RobinhoodHandoff?
     private(set) var stored = RobinhoodStore.load()
 
     private let auth = RobinhoodAuthClient()
     private var meta: AuthServerMetadata?
     private let web = WebAuthRunner()
+    private var cancelled = false
 
     var signedIn: Bool { stored.tokens != nil }
+    private var backend: TradeboardBackend { AppModel.shared.backend }
+
+    func redirectURI(_ r: RobinhoodRedirect) -> String { r.uri(site: backend.config.site) }
 
     init() {
         if let r = stored.redirect { redirect = r }
@@ -54,45 +67,62 @@ final class RobinhoodLink {
         return m
     }
 
+    private func clientId(meta m: AuthServerMetadata, uri: String) async throws -> String {
+        if let id = stored.clients[uri] {
+            note("Using the client already registered for \(uri).")
+            return id
+        }
+        note("Registering Tradeboard for iPhone with redirect \(uri)…")
+        let id = try await auth.register(meta: m, redirectURI: uri)
+        stored.clients[uri] = id
+        RobinhoodStore.save(stored)
+        note("Registered.")
+        return id
+    }
+
+    func cancelHandoff() {
+        cancelled = true
+        handoff = nil
+    }
+
     func signIn() async {
         guard !busy else { return }
         busy = true
+        cancelled = false
         error = nil
         check = nil
         log = []
-        defer { busy = false }
+        defer { busy = false; handoff = nil }
+        let redirect = self.redirect
+        let uri = redirectURI(redirect)
         do {
             let m = try await metadata()
-            let redirect = self.redirect
-            var clientId = stored.clients[redirect.rawValue]
-            if clientId == nil {
-                note("Registering Tradeboard for iPhone with redirect \(redirect.uri)…")
-                clientId = try await auth.register(meta: m, redirect: redirect)
-                stored.clients[redirect.rawValue] = clientId
-                RobinhoodStore.save(stored)
-                note("Registered.")
-            } else {
-                note("Using the client already registered for \(redirect.title).")
-            }
+            let id = try await clientId(meta: m, uri: uri)
             let verifier = PKCE.verifier()
             let state = PKCE.verifier()
-            guard let url = RobinhoodOAuth.authorizationURL(meta: m, clientId: clientId!, redirect: redirect, challenge: PKCE.challenge(for: verifier), state: state) else {
+            guard let url = RobinhoodOAuth.authorizationURL(meta: m, clientId: id, redirectURI: uri, challenge: PKCE.challenge(for: verifier), state: state) else {
                 throw RobinhoodError("couldn't build the sign-in address")
             }
-            note("Opening Robinhood's sign-in…")
-            let callback = try await web.authenticate(url: url, redirect: redirect)
-            switch RobinhoodOAuth.parseCallback(callback, expectedState: state, issuer: m.issuer) {
-            case .failure(let why):
-                throw RobinhoodError("Robinhood sent back an error: \(why)")
-            case .code(let code):
-                note("Robinhood sent back a sign-in code. Exchanging it for tokens…")
-                let tokens = try await auth.exchange(meta: m, code: code, verifier: verifier, clientId: clientId!, redirect: redirect)
-                stored.tokens = tokens
-                stored.redirect = redirect
-                stored.signedInAt = Date()
-                RobinhoodStore.save(stored)
-                note("Signed in\(tokens.refreshToken == nil ? " (no refresh token: sign-in won't renew)" : ""). Tokens are in this iPhone's Keychain.")
+            let code: String
+            if redirect == .computer {
+                guard let c = try await viaComputer(url: url, state: state, issuer: m.issuer) else { return }
+                code = c
+            } else {
+                note("Opening Robinhood's sign-in…")
+                let callback = try await web.authenticate(url: url, redirect: redirect)
+                switch RobinhoodOAuth.parseCallback(callback, expectedState: state, issuer: m.issuer) {
+                case .failure(let why): throw RobinhoodError("Robinhood sent back an error: \(why)")
+                case .code(let c): code = c
+                }
             }
+            note("Got the one-time code. Exchanging it for tokens on this iPhone…")
+            let tokens = try await auth.exchange(meta: m, code: code, verifier: verifier, clientId: id, redirectURI: uri)
+            stored.tokens = tokens
+            stored.redirect = redirect
+            stored.redirectURI = uri
+            stored.signedInAt = Date()
+            RobinhoodStore.save(stored)
+            note("Signed in\(tokens.refreshToken == nil ? " (no refresh token: sign-in won't renew)" : ""). Tokens are in this iPhone's Keychain.")
         } catch let e as ASWebAuthenticationSessionError where e.code == .canceledLogin {
             note("Sign-in cancelled.")
             return
@@ -101,14 +131,51 @@ final class RobinhoodLink {
             note("Failed: \(error.localizedDescription)")
             return
         }
+        handoff = nil
         await runCheck(clearLog: false)
+    }
+
+    /// Registers the sign-in with the board, shows the link for the computer, and waits for the
+    /// board to relay Robinhood's one-time code (useless without the verifier, which stays here).
+    private func viaComputer(url: URL, state: String, issuer: String) async throws -> String? {
+        note("Starting a sign-in for your computer…")
+        let start = try await backend.startRobinhoodHandoff(state: state, authorizeURL: url)
+        let expires = ISO8601DateFormatter.full.date(from: start.expires_at) ?? ISO8601DateFormatter().date(from: start.expires_at) ?? Date().addingTimeInterval(600)
+        handoff = RobinhoodHandoff(link: start.link, short: start.short, expiresAt: expires)
+        note("Open \(start.link) on your computer and sign in to Robinhood there.")
+        while !cancelled {
+            if Date() > expires { throw RobinhoodError("the sign-in link expired: start again") }
+            try await Task.sleep(for: .seconds(2))
+            if cancelled { break }
+            let st: RobinhoodHandoffStatus
+            do {
+                st = try await backend.robinhoodHandoffStatus(state: state)
+            } catch let e as BackendError {
+                if case .http(404, _) = e { throw RobinhoodError("this sign-in expired or was already used: start again") }
+                continue // a dropped request while waiting; keep waiting
+            } catch {
+                continue
+            }
+            switch st.status {
+            case "done":
+                if let iss = st.iss, iss != issuer { throw RobinhoodError("the reply came from an unexpected issuer (\(iss))") }
+                guard let code = st.code, !code.isEmpty else { throw RobinhoodError("the board relayed no code") }
+                return code
+            case "error":
+                throw RobinhoodError("Robinhood sent back an error: \(st.error ?? "unknown")")
+            default:
+                continue
+            }
+        }
+        note("Sign-in cancelled.")
+        return nil
     }
 
     /// A token that's valid for at least another minute, refreshing it when needed.
     private func freshToken(force: Bool = false) async throws -> String {
         guard var tokens = stored.tokens else { throw RobinhoodError("not signed in to Robinhood") }
         if force || (tokens.expiresAt.map { $0 < Date().addingTimeInterval(60) } ?? false) {
-            guard let r = stored.redirect, let clientId = stored.clients[r.rawValue] else { throw RobinhoodError("sign in to Robinhood again") }
+            guard let uri = stored.redirectURI ?? stored.redirect.map({ redirectURI($0) }), let clientId = stored.clients[uri] else { throw RobinhoodError("sign in to Robinhood again") }
             note("Refreshing the Robinhood token…")
             tokens = try await auth.refresh(meta: try await metadata(), tokens: tokens, clientId: clientId)
             stored.tokens = tokens
@@ -186,7 +253,7 @@ final class RobinhoodLink {
     var diagnostics: String {
         var lines = [
             "Tradeboard \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?")), iOS \(UIDevice.current.systemVersion)",
-            "Redirect: \(redirect.title) — \(redirect.uri)",
+            "Redirect: \(redirect.title) — \(redirectURI(redirect))",
             "Signed in: \(signedIn ? "yes" : "no")",
         ]
         lines += log.map { "· \($0)" }
@@ -220,6 +287,9 @@ final class WebAuthRunner: NSObject, ASWebAuthenticationPresentationContextProvi
             }
             let s: ASWebAuthenticationSession
             switch redirect {
+            case .computer:
+                once.resume(.failure(RobinhoodError("sign-in on a computer doesn't use this sheet")))
+                return
             case .appScheme:
                 s = ASWebAuthenticationSession(url: url, callbackURLScheme: RobinhoodConstants.appScheme, completionHandler: done)
             case .appLink:
@@ -298,4 +368,12 @@ final class LoopbackCatcher: @unchecked Sendable {
             }
         }
     }
+}
+
+extension ISO8601DateFormatter {
+    static let full: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
 }

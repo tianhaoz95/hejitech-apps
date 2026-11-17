@@ -1,3 +1,4 @@
+import CoreImage.CIFilterBuiltins
 import SwiftUI
 import TradeboardKit
 import UIKit
@@ -9,6 +10,7 @@ struct RobinhoodView: View {
 
     var body: some View {
         List {
+            if link.handoff == nil {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
                     Label("Preview: connection test only", systemImage: "testtube.2")
@@ -21,20 +23,75 @@ struct RobinhoodView: View {
             }
 
             Section {
-                Picker("Redirect", selection: $link.redirect) {
+                Picker("Sign in", selection: $link.redirect) {
                     ForEach(RobinhoodRedirect.allCases) { r in
                         Text(r.title).tag(r)
                     }
                 }
                 .disabled(link.busy)
-                Text(link.redirect.uri)
+                Text(link.redirectURI(link.redirect))
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
             } header: {
-                Text("Sign-in return address")
+                Text("Where to sign in")
             } footer: {
-                Text("Where Robinhood's sign-in sends you back. If one fails, try another and copy the diagnostics.")
+                Text(link.redirect == .computer
+                     ? "Robinhood only lets you connect from a computer's browser. You'll get a link to open on your Mac or PC; sign in there and this iPhone finishes by itself. The one-time code passes through your board for a few seconds and is useless without a secret that never leaves this iPhone."
+                     : "Robinhood's sign-in page refuses phones (\"Use your desktop web browser\"); these options are kept for diagnostics.")
+            }
+
+            }
+
+            if let h = link.handoff {
+                Section {
+                    VStack(spacing: 14) {
+                        Text("On your computer, open")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text(h.link)
+                            .font(.callout.monospaced().weight(.semibold))
+                            .multilineTextAlignment(.center)
+                            .textSelection(.enabled)
+                            .accessibilityIdentifier("handoff-link")
+                        if let qr = Self.qr(h.link) {
+                            Image(uiImage: qr)
+                                .interpolation(.none)
+                                .resizable()
+                                .frame(width: 180, height: 180)
+                                .accessibilityLabel("QR code for the sign-in link")
+                        }
+                        HStack(spacing: 12) {
+                            if let u = URL(string: h.link) {
+                                ShareLink(item: u) { Label("Share", systemImage: "square.and.arrow.up") }
+                                    .buttonStyle(.bordered)
+                            }
+                            Button {
+                                UIPasteboard.general.string = h.link
+                                copied = true
+                            } label: {
+                                Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("Waiting for you to sign in on the computer…")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text("Code \(h.short) · expires \(h.expiresAt.formatted(date: .omitted, time: .shortened))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button("Cancel", role: .cancel) { link.cancelHandoff() }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                } header: {
+                    Text("Sign in on your computer")
+                } footer: {
+                    Text("Share sends the link to your Mac with AirDrop. Keep Tradeboard open on this iPhone until it says you're signed in.")
+                }
             }
 
             Section {
@@ -67,7 +124,7 @@ struct RobinhoodView: View {
                 }
             } footer: {
                 if let at = link.stored.signedInAt {
-                    Text("Signed in \(at.formatted(date: .abbreviated, time: .shortened)) with \(link.stored.redirect?.title ?? "?").")
+                    Text("Signed in \(at.formatted(date: .abbreviated, time: .shortened)) (\(link.stored.redirect?.title ?? "?")).")
                 }
             }
 
@@ -120,8 +177,25 @@ struct RobinhoodView: View {
             }
         }
         .navigationTitle("Robinhood on This iPhone")
+        #if DEBUG
+        .task {
+            // Screenshots of the waiting screen without a real sign-in: `-robinhoodHandoffPreview`.
+            if ProcessInfo.processInfo.arguments.contains("-robinhoodHandoffPreview"), link.handoff == nil {
+                link.handoff = RobinhoodHandoff(link: "https://tradeboard.hejitech.workers.dev/rh/K7QM-2XDP", short: "K7QM-2XDP", expiresAt: Date().addingTimeInterval(600))
+            }
+        }
+        #endif
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: link.log.count) { _, _ in copied = false }
+    }
+
+    static func qr(_ text: String) -> UIImage? {
+        let f = CIFilter.qrCodeGenerator()
+        f.message = Data(text.utf8)
+        f.correctionLevel = "M"
+        guard let img = f.outputImage?.transformed(by: CGAffineTransform(scaleX: 8, y: 8)),
+              let cg = CIContext().createCGImage(img, from: img.extent) else { return nil }
+        return UIImage(cgImage: cg)
     }
 
     private func row(_ k: String, _ v: String) -> some View {
