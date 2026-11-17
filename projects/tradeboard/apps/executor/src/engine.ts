@@ -48,6 +48,8 @@ export class Engine {
   policy: { policy_version: number; policy: Policy } | null = null;
   control: BoardControl | null = null;
   lastError: string | null = null;
+  /** When the board last accepted a heartbeat (ms), for the local status file. */
+  boardOkAt: number | null = null;
   tradeApprovals: "on" | "off" | "unknown" = "unknown";
   accountMask: string | null = null;
   accountMatches: boolean | null = null;
@@ -115,6 +117,7 @@ export class Engine {
     try {
       const r = await this.d.board.heartbeat(this.heartbeatBody());
       this.control = r.control;
+      this.boardOkAt = Date.now();
     } catch (e) {
       this.d.log(`heartbeat failed: ${(e as Error).message}`);
     }

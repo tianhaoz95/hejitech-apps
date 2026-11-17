@@ -5,8 +5,9 @@
 # (systemd --user on Linux, launchd on macOS). Secrets stay in ~/.tradeboard (mode 700).
 #
 #   curl -fsSL https://github.com/tianhaoz95/hejitech-apps/releases/download/tradeboard-v0.1.0/install.sh | bash -s -- 0.1.0
+#   curl -fsSL https://github.com/tianhaoz95/hejitech-apps/releases/download/tradeboard-latest/install.sh | bash -s -- latest
 #   bash install.sh 0.1.0            # or from a checkout: bash install.sh --local
-#   bash install.sh --file ./tradeboard-executor.mjs   # a bundle you copied over
+#   bash install.sh --file ./tradeboard-executor.mjs   # a bundle you copied over (the Mac app does this)
 set -euo pipefail
 REPO="tianhaoz95/hejitech-apps"
 HOME_DIR="${TRADEBOARD_HOME:-$HOME/.tradeboard}"
@@ -33,8 +34,10 @@ elif [ "$VERSION" = "--local" ]; then
   here="$(cd "$(dirname "$0")/.." && pwd)"
   (cd "$here" && node scripts/build.mjs >/dev/null)
   cp "$here/dist/tradeboard-executor.mjs" "$BIN/tradeboard-executor.mjs"
+elif [ "$VERSION" = "latest" ]; then
+  curl -fsSL -o "$BIN/tradeboard-executor.mjs" "https://github.com/$REPO/releases/download/tradeboard-latest/tradeboard-executor.mjs"
 else
-  [ -n "$VERSION" ] || { echo "usage: install.sh <version> | --local | --file <bundle>" >&2; exit 2; }
+  [ -n "$VERSION" ] || { echo "usage: install.sh <version> | latest | --local | --file <bundle>" >&2; exit 2; }
   curl -fsSL -o "$BIN/tradeboard-executor.mjs" "https://github.com/$REPO/releases/download/tradeboard-v$VERSION/tradeboard-executor.mjs"
 fi
 cat > "$BIN/tradeboard-executor" <<SH

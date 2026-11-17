@@ -99,3 +99,23 @@ jobs:
       - run: xcodegen generate
       - name: Build for the simulator
         run: xcodebuild -project Tradeboard.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+
+  desktop:
+    name: Mac app (frontend + executor bundle, Rust check)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: projects/tradeboard/apps/desktop/src-tauri
+      - run: npm ci
+      - run: npm run build -w @tradeboard/desktop
+      - name: cargo check
+        working-directory: projects/tradeboard/apps/desktop/src-tauri
+        run: cargo check --locked

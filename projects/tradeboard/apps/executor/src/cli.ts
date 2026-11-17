@@ -51,15 +51,21 @@ async function setup() {
     board_url: flag("board-url") ?? (await ask("Board URL", prev.board_url ?? "https://tradeboard.hejitech.workers.dev")),
     executor_id: flag("executor-id") ?? (await ask("Executor id (as issued in the portal)", prev.executor_id ?? "spark")),
     executor_token: flag("token") ?? process.env.TRADEBOARD_EXECUTOR_TOKEN ?? (await ask("Executor credential (tbx_…, from the portal's Executor page)", prev.executor_token ?? "")),
-    robinhood: { ...DEFAULTS.robinhood, ...prev.robinhood, account_number: flag("account") ?? (await ask("Dedicated Robinhood account number (the agentic account; stays on this machine)", prev.robinhood?.account_number ?? "")) },
+    robinhood: { ...DEFAULTS.robinhood, ...prev.robinhood, account_number: flag("account") ?? process.env.TRADEBOARD_ACCOUNT ?? (await ask("Dedicated Robinhood account number (the agentic account; stays on this machine)", prev.robinhood?.account_number ?? "")) },
     model: { ...DEFAULTS.model, ...prev.model, base_url: flag("model-url") ?? (await ask("Model endpoint (OpenAI-compatible)", prev.model?.base_url ?? DEFAULTS.model.base_url)), model: flag("model") ?? (await ask("Model name", prev.model?.model ?? DEFAULTS.model.model)) },
     allow_live: prev.allow_live ?? false,
   } as Config;
   if (args.includes("--no-model")) c.model.enabled = false;
+  if (args.includes("--model-check")) c.model.enabled = true;
+  // The local live opt-in (§12.2). The board's switch and checklist still gate live; this is only the machine's half.
+  const live = flag("allow-live");
+  if (live === "yes" || live === "no") c.allow_live = live === "yes";
   const issues = checkConfig(c);
   if (!c.robinhood.account_number) issues.push("the dedicated account number is required");
   writeSecret(paths().config, JSON.stringify(c, null, 2));
-  console.log(`Wrote ${paths().config} (mode 600). Live stays off until you set "allow_live": true there AND pass the portal's live-mode checklist.`);
+  console.log(c.allow_live
+    ? `Wrote ${paths().config} (mode 600). Live is allowed on this machine; it still needs the portal's dry-run off and live-mode checklist complete.`
+    : `Wrote ${paths().config} (mode 600). Live stays off until you set "allow_live": true there (or setup --allow-live yes) AND pass the portal's live-mode checklist.`);
   if (issues.length) console.log(`Still to fix:\n  ${issues.join("\n  ")}`);
 }
 
@@ -91,12 +97,22 @@ async function connectRobinhood(rh: ReturnType<typeof robinhood>, engine: Engine
   }
 }
 
+/** The daemon's view for the desktop app on this machine (never leaves it; no secrets: the account is masked). */
+function writeStatus(engine: Engine, c: Config, state: "running" | "stopped") {
+  try {
+    writeSecret(paths().status, JSON.stringify({ ...engine.heartbeatBody(), state, pid: process.pid, at: new Date().toISOString(), board_url: c.board_url, board_ok_at: engine.boardOkAt ? new Date(engine.boardOkAt).toISOString() : null }, null, 2));
+  } catch {
+    /* the status file is a convenience; the board's heartbeat is the record */
+  }
+}
+
 async function run(once: boolean) {
   const c = loadConfig();
   const { rh, engine } = build(c);
   log(`tradeboard-executor ${EXECUTOR_VERSION} as ${c.executor_id} → ${c.board_url} (home ${home()}, live ${c.allow_live ? "allowed locally" : "off locally"})`);
   await connectRobinhood(rh, engine);
   await engine.heartbeat();
+  writeStatus(engine, c, "running");
   if (once) {
     const out = await engine.iterate();
     for (const o of out) log(`${o.plan_id.slice(0, 8)} ${o.result}: ${o.detail}`);
@@ -111,6 +127,7 @@ async function run(once: boolean) {
   const hb = setInterval(async () => {
     if (!rh.connected()) await connectRobinhood(rh, engine);
     await engine.heartbeat();
+    writeStatus(engine, c, "running");
   }, c.heartbeat_sec * 1000);
   while (!stopping) {
     try {
@@ -124,6 +141,7 @@ async function run(once: boolean) {
   }
   clearInterval(hb);
   await engine.heartbeat();
+  writeStatus(engine, c, "stopped");
   await rh.close();
 }
 

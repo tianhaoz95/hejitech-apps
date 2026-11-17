@@ -129,7 +129,9 @@ in-app What's New describes the version) and publishes `tether-v<version>`, whic
 For the Trading Plan Board it bumps `projects/tradeboard/apps/executor/package.json` and publishes
 `tradeboard-v<version>`, which runs `tradeboard-executor-release.yml` (tests, bundles the local
 executor and attaches `tradeboard-executor.mjs`, `install.sh` and `policy.example.json`; the owner's
-machine updates with `bash install.sh <version>`) and `tradeboard-testflight.yml` (the iPhone app, same
+machine updates with `bash install.sh <version>`), `tradeboard-mac-release.yml` (the Tradeboard Executor
+Mac app with that executor inside: notarized DMG + Tauri updater on the release and the rolling
+`tradeboard-latest`, which installed apps and `install.sh latest` read) and `tradeboard-testflight.yml` (the iPhone app, same
 version, refusing until its in-app What's New describes it). Its Worker (portal, Board MCP, executor API, minute
 cron) deploys on push. It handles real-money trading: never place a live order yourself. See
 `projects/tradeboard/CLAUDE.md`.

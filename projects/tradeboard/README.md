@@ -41,6 +41,7 @@ Robinhood MCP  https://agent.robinhood.com/mcp/trading  (dedicated agentic accou
 | `packages/core` | `@tradeboard/core`: ticket and plan rules, state vocabulary, market calendar and PT/ET times, policy + deterministic validator, drift, TOTP, the sanity-check contract, executor protocol |
 | `services/web` | `@tradeboard/web`: the Worker (portal API, Board MCP + OAuth, executor API, minute cron) and the portal pages |
 | `apps/executor` | `@tradeboard/executor`: the daemon and CLI, Robinhood MCP client (loopback OAuth), model client; `deploy/install.sh` |
+| `apps/desktop` | `@tradeboard/desktop`: Tradeboard Executor for the Mac (Tauri v2): installs the CLI and its login service, setup without a terminal, status window and menu-bar item, self-updating |
 | `apps/ios` | Native iOS 17+ client (SwiftUI + `TradeboardKit`), with 2FA TOTP sign-in, order tickets, plan approval, discussion, and kill controls |
 | `supabase/schemas/tradeboard` (repo root) | the schema; every state change is a Postgres function |
 | `scripts/test-api.mjs` | end-to-end test of PRD §12.1 against the real Worker, with `mock-robinhood.mjs` and `mock-model.mjs` |
@@ -70,7 +71,15 @@ node projects/tradeboard/scripts/test-api.mjs   # 25 checks: PRD §12.1 tests 1�
 3. **Agents**: Agents page → register a name (`claude`, `gemini`, `muse`). Apps with OAuth add a
    custom connector `https://tradeboard.hejitech.workers.dev/mcp` and you pick which agent it
    speaks as; others get a `tba_…` token (shown once). Revoke either any time.
-4. **Executor**: Executor page → New executor credential (`tbx_…`, shown once). On the machine:
+4. **Executor**: Executor page → New executor credential (`tbx_…`, shown once). Then either:
+
+   - **Mac app**: download `Tradeboard-Executor-arm64.dmg` (the Executor page links it, from the
+     `tradeboard-latest` release), open it, click **Install the executor**, fill in the setup (board,
+     credential, account number, model) and **Sign in to Robinhood**. It installs the same CLI and
+     launchd service as below, shows status in its window and the menu bar (stop/allow claiming,
+     start/stop, live opt-in) and keeps the app and the executor up to date. Closing the window
+     leaves the menu-bar item; quitting the app leaves the executor running.
+   - **Command line** (Linux, a server, a Mac over SSH). On the machine:
 
    ```sh
    bash install.sh 0.1.0                       # from the tradeboard-v0.1.0 release (or --local from a checkout)

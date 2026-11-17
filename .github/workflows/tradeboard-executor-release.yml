@@ -2,8 +2,10 @@ name: Trading Plan Board → executor release
 
 # On a published GitHub Release tagged tradeboard-v<version> (scripts/cut_release.sh tradeboard;
 # other projects' releases are skipped): tests and bundles the executor and attaches
-# tradeboard-executor.mjs, install.sh and policy.example.json to the release. The executor machine
-# updates with `bash install.sh <version>`. workflow_dispatch rebuilds an existing tag.
+# tradeboard-executor.mjs, install.sh and policy.example.json to the release, and (when it's the
+# newest tradeboard-v) the first two to tradeboard-latest for `install.sh latest`. The executor
+# machine updates with `bash install.sh <version>` (the Mac app updates it itself).
+# workflow_dispatch rebuilds an existing tag.
 on:
   release:
     types: [published]
@@ -58,3 +60,9 @@ jobs:
             gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" apps/executor/dist/tradeboard-executor.mjs /tmp/install.sh policy.example.json --clobber && break
             [ "$i" -eq 5 ] && exit 1; sleep 5
           done
+          NEWEST="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --exclude-drafts --exclude-pre-releases --json tagName -q '.[].tagName' | grep '^tradeboard-v[0-9]' | sort -V | tail -1)"
+          if [ "$NEWEST" = "$TAG" ]; then
+            ./scripts/publish_latest.sh apps/executor/dist/tradeboard-executor.mjs /tmp/install.sh
+          else
+            echo "$TAG isn't the newest ($NEWEST): tradeboard-latest left alone"
+          fi

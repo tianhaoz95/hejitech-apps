@@ -58,7 +58,7 @@ function switches(s: Status) {
 }
 
 function executors(s: Status) {
-  if (!s.executors.length) return el("section", { class: "panel" }, el("h2", {}, "Executor"), el("p", { class: "muted" }, "No executor has reported in yet. Set one up with a credential below (see the README)."));
+  if (!s.executors.length) return el("section", { class: "panel" }, el("h2", {}, "Executor"), el("p", { class: "muted" }, "No executor has reported in yet. Make a credential below, then install the Mac app or the command line."));
   return el("section", { class: "panel" }, el("h2", {}, "Executor"), ...s.executors.map((e) => el("div", { class: "stack", style: "margin-bottom: 10px" },
     el("div", { class: "row" }, el("strong", {}, e.executor_id), el("span", { class: `badge ${e.online ? "on" : "off"}` }, e.online ? "Online" : "Offline"), modeBadge(e.mode), e.paused ? el("span", { class: "badge off" }, "Paused") : null),
     !e.model_check_enabled && s.policy.allow_live_without_model_check ? el("div", { class: "banner block" }, el("strong", {}, "Live without the model check is allowed by policy (allow_live_without_model_check = true), and this executor's model check is off.")) : null,
@@ -115,7 +115,7 @@ function credentials(s: Status) {
     ev.preventDefault();
     const r = await api<{ token: string; executor_id: string }>("/api/executor-tokens", { body: { executor_id: id.value.trim(), label: id.value.trim() } });
     if (!r.ok) return toast(failure(r), true);
-    out.replaceChildren(el("div", { class: "banner note" }, el("p", {}, `Credential for ${r.body.executor_id}, shown once. Put it in the executor's config (`, el("code", {}, "tradeboard-executor setup"), ")."), el("pre", { class: "block" }, r.body.token), copyButton("Copy", () => r.body.token)));
+    out.replaceChildren(el("div", { class: "banner note" }, el("p", {}, `Credential for ${r.body.executor_id}, shown once. Paste it into the Mac app's setup, or give it to `, el("code", {}, "tradeboard-executor setup"), "."), el("pre", { class: "block" }, r.body.token), copyButton("Copy", () => r.body.token)));
     await load();
   });
   return el("section", { class: "panel" },
@@ -124,6 +124,25 @@ function credentials(s: Status) {
     s.tokens.length ? el("ul", { class: "log" }, ...s.tokens.map((t) => el("li", {}, el("div", { class: "spread" }, el("span", {}, el("strong", {}, t.executor_id), " · issued ", when(t.created_at), " · last used ", when(t.last_used_at)),
       el("button", { class: "btn small danger", type: "button", onclick: async () => { if (await confirmDialog({ title: `Revoke ${t.executor_id}'s credential?`, body: ["That executor can no longer poll or post receipts."], confirm: "Revoke", danger: true })) { const r = await api(`/api/executor-tokens/${t.id}`, { method: "DELETE" }); toast(r.ok ? "Revoked" : failure(r), !r.ok); await load(); } } }, "Revoke"))))) : null,
     form, out);
+}
+
+const LATEST = "https://github.com/tianhaoz95/hejitech-apps/releases/download/tradeboard-latest";
+const CLI_INSTALL = `curl -fsSL ${LATEST}/install.sh | bash -s -- latest`;
+
+/** Two ways to run the same executor: the Mac app installs and manages the command line for you. */
+function install() {
+  return el("section", { class: "panel" },
+    el("h2", {}, "Install the executor"),
+    el("p", { class: "muted small" }, "It runs on a machine you own and is the only part that reaches Robinhood. Pick one; both run the same executor."),
+    el("div", { class: "stack" },
+      el("div", { class: "banner note stack" },
+        el("strong", {}, "Mac app (recommended on a Mac)"),
+        el("span", { class: "small" }, "A window for setup and status, and a menu-bar item. It installs the command-line executor and its login service for you, signs in to Robinhood in your browser, and keeps both up to date. Apple silicon, macOS 12 or later."),
+        el("div", {}, el("a", { class: "btn primary", href: `${LATEST}/Tradeboard-Executor-arm64.dmg` }, "Download for Mac"))),
+      el("div", { class: "banner stack" },
+        el("strong", {}, "Command line (Linux, a server, or a Mac over SSH)"),
+        el("span", { class: "small" }, "Installs the executor in ~/.tradeboard with a systemd or launchd service. Then run ", el("code", {}, "~/.tradeboard/bin/tradeboard-executor setup"), ", ", el("code", {}, "auth"), " and ", el("code", {}, "check"), "."),
+        el("pre", { class: "block" }, CLI_INSTALL), el("div", {}, copyButton("Copy", () => CLI_INSTALL)))));
 }
 
 function events(s: Status) {
@@ -147,5 +166,5 @@ async function load() {
 }
 
 chrome();
-root.replaceChildren(el("h1", {}, "Executor"), statusHost, gateHost, credHost);
+root.replaceChildren(el("h1", {}, "Executor"), statusHost, gateHost, credHost, install());
 every(10_000, load);

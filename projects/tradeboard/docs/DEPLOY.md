@@ -64,7 +64,8 @@ OAuth get a token from the same page.
 ## 5. Executor (each user's own machine)
 
 1. Executor page → New executor credential (shown once).
-2. On the machine (the Spark: `ssh dgx`):
+2. On a Mac with a screen: the Tradeboard Executor app (README §Set up) does the rest. On a
+   server (the Spark: `ssh dgx`):
 
    ```sh
    curl -fsSLO https://github.com/tianhaoz95/hejitech-apps/releases/download/tradeboard-v0.1.0/install.sh

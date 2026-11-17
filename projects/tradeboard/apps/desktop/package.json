@@ -1,0 +1,25 @@
+{
+  "name": "@tradeboard/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Trading Plan Board executor for the Mac (Tauri v2): installs the command-line executor and its login service, sets it up without a terminal, and shows its status in the window and the menu bar. Its version is the executor's (apps/executor/package.json).",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run typecheck && vite build && node scripts/bundle-executor.mjs",
+    "typecheck": "tsc --noEmit",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-autostart": "^2.7.0",
+    "@tauri-apps/plugin-opener": "^2.7.3",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.4",
+    "typescript": "^5.6.3",
+    "vite": "^8.3.2"
+  }
+}

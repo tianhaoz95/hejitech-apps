@@ -25,6 +25,11 @@ node projects/tradeboard/scripts/test-api.mjs        # end to end: PRD ยง12.1 1โ
 node projects/tradeboard/scripts/scan-tokens.mjs   # no token patterns in the repo (CI)
 node projects/tradeboard/apps/executor/src/cli.ts help
 
+# Mac app (Tauri; bundles the executor + install.sh into src-tauri/resources first)
+npm run build -w @tradeboard/desktop
+(cd projects/tradeboard/apps/desktop && npm run tauri -- build --debug -b app --no-sign)
+TRADEBOARD_HOME=/tmp/tb "projects/tradeboard/apps/desktop/src-tauri/target/debug/bundle/macos/Tradeboard Executor.app/Contents/MacOS/tradeboard-executor-app"
+
 # iOS app (TradeboardKit tests + simulator build)
 swift test --package-path projects/tradeboard/apps/ios/TradeboardKit
 (cd projects/tradeboard/apps/ios && xcodegen generate)
@@ -72,6 +77,15 @@ enrolls again), signs up a second user to check boards stay private, then delete
   the confirmed account, and the model (or the policy's explicit waiver). Live switched on but
   blocked = a rejection naming why, never a silent simulation. The ref_id sent to Robinhood is the
   plan-version idempotency key, so retries can't double-order.
+- **Mac app** (`apps/desktop`, Tauri, `com.hejitech.tradeboard.executor`): a control panel, never
+  a second executor. It installs the bundled CLI with the bundled `install.sh --file`, runs the CLI's
+  own commands (`setup` with secrets in env vars, `auth`, `check`, `model-check`), starts/stops the
+  launchd service `com.hejitech.tradeboard-executor` (stop also disables it so it stays stopped),
+  writes/removes `KILL`, and reads `status.json` (written by the daemon every heartbeat) and
+  `executor.log`. It never approves, places or edits orders. A newer app updates an older installed
+  CLI on launch (never downgrades). Its version is the executor's (`tauri.conf.json` reads
+  `apps/executor/package.json`). Updater key: `~/Credentials/tradeboard-updater.key`, secret
+  `TRADEBOARD_TAURI_SIGNING_PRIVATE_KEY`; installed apps poll `tradeboard-latest/latest.json`.
 - **Strategy document** (`core/src/strategy.ts`, `strategy_versions`/`strategy_proposals`): guidance,
   never a gate. Users write versions; agents only `propose_strategy`; the interview guide and the
   "offer an interview when there's none" rule live in `INTERVIEW_GUIDE` and the MCP `initialize`
@@ -95,8 +109,11 @@ enrolls again), signs up a second user to check boards stay private, then delete
 
 `scripts/cut_release.sh tradeboard --dry-run`, then for real. It bumps
 `apps/executor/package.json` and publishes `tradeboard-v<version>`, whose workflow tests and bundles
-the executor and attaches `tradeboard-executor.mjs`, `install.sh` and `policy.example.json`, and
+the executor and attaches `tradeboard-executor.mjs`, `install.sh` and `policy.example.json`,
+`tradeboard-mac-release.yml` (`scripts/release_mac.sh`) builds, notarizes and attaches the Mac app
+(DMG + updater; both workflows refresh the rolling `tradeboard-latest` prerelease when the tag is the
+newest, `scripts/publish_latest.sh`), and
 `tradeboard-testflight.yml` uploads the iPhone app (`scripts/release_testflight.sh`) with the same
 version: it reads the executor's `package.json` and overrides `MARKETING_VERSION`, so `project.yml`'s
 value is only the local default. It refuses until the in-app What's New describes the version. Update
-the executor with `bash install.sh <version>` on its machine. The Worker deploys on push to `main`.
+the executor with `bash install.sh <version>` (or `latest`) on its machine; the Mac app updates itself and its executor. The Worker deploys on push to `main`.

@@ -7,6 +7,7 @@
 //   policy.json             the last policy version loaded from the board (cache)
 //   journal.jsonl           orders about to be placed, for recovery after a crash
 //   KILL                    if this file exists, the executor stops claiming (§11.8)
+//   status.json             the daemon's last heartbeat, for the desktop app on this machine (mode 0600)
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -55,7 +56,7 @@ export const DEFAULTS: Omit<Config, "board_url" | "executor_id" | "executor_toke
 export const home = () => process.env.TRADEBOARD_HOME || join(homedir(), ".tradeboard");
 export const paths = () => {
   const h = home();
-  return { home: h, config: join(h, "config.json"), oauth: join(h, "robinhood-oauth.json"), policy: join(h, "policy.json"), journal: join(h, "journal.jsonl"), kill: join(h, "KILL") };
+  return { home: h, config: join(h, "config.json"), oauth: join(h, "robinhood-oauth.json"), policy: join(h, "policy.json"), journal: join(h, "journal.jsonl"), kill: join(h, "KILL"), status: join(h, "status.json") };
 };
 
 export function ensureHome() {

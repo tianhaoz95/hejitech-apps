@@ -29,10 +29,13 @@ public struct ReleaseNotes: Identifiable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.1.6"
+    public static let currentVersion = "0.1.7"
     public static let lastSeenVersionKey = "last_seen_whats_new_version_tradeboard"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.7", date: "November 2026", items: [
+            WhatsNewItem(icon: "desktopcomputer", title: "Tradeboard Executor for Mac", description: "Run your executor from a Mac app instead of the terminal: it installs the executor, walks you through setup and Robinhood sign-in, shows its status in a window and the menu bar, and keeps itself up to date. Download it from the Executor page on the web.")
+        ]),
         ReleaseNotes(version: "0.1.6", date: "November 2026", items: [
             WhatsNewItem(icon: "key.fill", title: "Stay Signed In Across Launches", description: "Your verified Tradeboard session is now securely saved in the iOS Keychain so you stay signed in when you close and reopen the app."),
             WhatsNewItem(icon: "number.square", title: "Two-Factor Code AutoFill", description: "Tapping the 6-digit verification code field now triggers iOS Passwords and authenticator AutoFill and automatically verifies once 6 digits are entered.")
