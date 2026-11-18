@@ -27,6 +27,13 @@ final class WatchModel: NSObject, ObservableObject {
 
     override init() {
         super.init()
+        #if DEBUG
+        // Screenshots and checks without a phone: a story in progress.
+        if ProcessInfo.processInfo.arguments.contains("-demoState") {
+            state = WatchLink.State(listening: true, mode: .play, soundsOnWatch: false, ambients: ["rain"], suggestions: ["lion", "owl"], recent: ["tiger", "knock", "dog"], isPro: true)
+            reachable = true
+        }
+        #endif
         if WCSession.isSupported() {
             WCSession.default.delegate = self
             WCSession.default.activate()

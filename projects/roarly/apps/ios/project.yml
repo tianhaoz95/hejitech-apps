@@ -113,7 +113,7 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         WKApplication: true
         WKCompanionAppBundleIdentifier: com.hejitech.roarly
-        WKRunsIndependentlyOfCompanionApp: false
+        WKRunsIndependentlyOfCompanionApp: true
         # Keeps a loop (the rain) going on the watch speaker with the wrist down.
         UIBackgroundModes:
           - audio
