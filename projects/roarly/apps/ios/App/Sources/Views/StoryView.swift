@@ -267,6 +267,11 @@ private struct RecentStrip: View {
                                     }
                                     .frame(width: 76, height: 76)
                                     .background(Theme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                    .overlay(alignment: .topTrailing) {
+                                        if !model.isUnlocked(cue) {
+                                            Image(systemName: "lock.fill").font(.caption2).foregroundStyle(Theme.ink).padding(6)
+                                        }
+                                    }
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("again-\(id)")

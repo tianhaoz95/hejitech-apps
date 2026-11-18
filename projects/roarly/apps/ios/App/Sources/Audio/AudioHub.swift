@@ -103,6 +103,8 @@ final class AudioHub {
     }
 
     private func stopEngine() {
+        pendingResume?.cancel()
+        pendingResume = nil
         for task in fades.values { task.cancel() }
         fades = [:]
         if isRunning {
@@ -126,6 +128,7 @@ final class AudioHub {
         return { buffer, time in
             forward?(buffer, time)
             counter += 1
+            if counter == 50 { log("microphone audio is flowing (\(Int(buffer.format.sampleRate)) Hz)") }
             guard counter % 4 == 0, let ch = buffer.floatChannelData?[0] else { return }
             var sum: Float = 0
             let n = Int(buffer.frameLength)
@@ -151,10 +154,45 @@ final class AudioHub {
         }
     }
 
+    /// iOS reports a configuration change when the route or format changes, and also right after
+    /// voice processing switches on. Tearing everything down (as this used to) switched voice
+    /// processing on again, which reported another change: the story flipped between "Getting
+    /// ready" and "Listening" forever. Now: settle briefly, then restart the same engine in place
+    /// with the tap on the new format; only if that fails ask for a full restart.
     private func handleConfigurationChange() {
-        guard isListening, !engine.isRunning else { return }
-        log("audio route changed, restarting")
-        onRestartNeeded?()
+        guard isListening else { return }
+        pendingResume?.cancel()
+        pendingResume = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard let self, !Task.isCancelled, self.isListening, !self.engine.isRunning else { return }
+            do {
+                try self.resumeInPlace()
+                log("audio configuration changed; engine resumed in place")
+            } catch {
+                log("audio configuration changed; resume failed (\(error)), restarting")
+                self.onRestartNeeded?()
+            }
+        }
+    }
+
+    private var pendingResume: Task<Void, Never>?
+
+    private func resumeInPlace() throws {
+        let input = engine.inputNode
+        input.removeTap(onBus: 0)
+        let inFormat = input.outputFormat(forBus: 0)
+        guard inFormat.sampleRate > 0, inFormat.channelCount > 0 else {
+            throw NSError(domain: "Roarly", code: 1, userInfo: [NSLocalizedDescriptionKey: "No microphone is available."])
+        }
+        let tap = Self.makeTap(forward: onInput) { [weak self] level in
+            Task { @MainActor in
+                guard let self else { return }
+                self.inputLevel = self.inputLevel * 0.6 + level * 0.4
+            }
+        }
+        input.installTap(onBus: 0, bufferSize: 1024, format: inFormat, block: tap)
+        engine.prepare()
+        try engine.start()
     }
 
     // MARK: - Sounds
@@ -288,5 +326,6 @@ final class AudioHub {
 
 func log(_ message: String) {
     let t = Date().formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute().second().secondFraction(.fractional(2)))
-    print("[Roarly \(t)] \(message)")
+    // stderr: unbuffered, and what `devicectl … --console` reliably shows.
+    fputs("[Roarly \(t)] \(message)\n", stderr)
 }

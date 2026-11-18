@@ -50,7 +50,9 @@ struct SettingsView: View {
                         Label("The whole storybook is open. Thank you!", systemImage: "checkmark.seal.fill")
                             .foregroundStyle(Theme.lantern)
                     } else {
-                        Button("Open the whole storybook") { model.showPaywall = true }
+                        Text("You're on Roarly Free: \(SoundCatalog.freeCues.count) sounds and as many stories as you like, for good. Pro adds the other \(SoundCatalog.all.count - SoundCatalog.freeCues.count) sounds, your own words and the Apple Watch remote.")
+                            .font(Theme.body(14))
+                        Button("See what Pro adds") { model.openPaywall(.browse) }
                     }
                     Button("Restore purchases") { Task { await store.restore() } }
                     Link("Manage subscription", destination: URL(string: "https://apps.apple.com/account/subscriptions")!)

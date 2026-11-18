@@ -17,7 +17,7 @@ struct LibraryView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 26) {
                         if !model.isPro {
-                            Button { model.showPaywall = true } label: {
+                            Button { model.openPaywall(.browse) } label: {
                                 StoryCard {
                                     HStack(spacing: 12) {
                                         Image(systemName: "lock.open.fill").font(.title2).foregroundStyle(Theme.lantern)
@@ -57,7 +57,7 @@ struct LibraryView: View {
     private func tile(_ cue: Cue) -> some View {
         let open = model.isUnlocked(cue)
         return Button {
-            if open { AudioHub.shared.preview(cue, volume: 0.8) } else { model.showPaywall = true }
+            if open { AudioHub.shared.preview(cue, volume: 0.8) } else { model.openPaywall(.sound(cue.id)) }
         } label: {
             VStack(spacing: 4) {
                 Text(cue.emoji).font(.system(size: 34)).opacity(open ? 1 : 0.45)
@@ -81,7 +81,7 @@ struct LibraryView: View {
             if open {
                 Button("Play", systemImage: "play.fill") { AudioHub.shared.preview(cue, volume: 0.8) }
                 Button("Your words for it…", systemImage: "pencil") {
-                    if model.isPro { editing = cue } else { model.showPaywall = true }
+                    if model.isPro { editing = cue } else { model.openPaywall(.customWords) }
                 }
             }
         }

@@ -38,7 +38,18 @@ final class AppModel: ObservableObject {
     /// The sound that just played, for the big emoji on the story screen.
     @Published private(set) var lastPlayed: (id: String, at: Date)?
     @Published private(set) var level: Float = 0
-    @Published var showPaywall = false
+    /// Why the Pro screen is open (nil = closed). It opens only from something the user tapped that
+    /// is marked as Pro, never by itself.
+    enum PaywallReason: Equatable { case browse, sound(String), customWords, watch }
+    @Published var paywallReason: PaywallReason?
+    var showPaywall: Bool {
+        get { paywallReason != nil }
+        set { paywallReason = newValue ? (paywallReason ?? .browse) : nil }
+    }
+    func openPaywall(_ reason: PaywallReason) {
+        log("pro screen opened: \(reason)")
+        paywallReason = reason
+    }
 
     let engine = StoryEngine()
     let listener = SpeechListener()
@@ -49,6 +60,7 @@ final class AppModel: ObservableObject {
 
     private var ticker: Task<Void, Never>?
     private var reviewing: Set<UUID> = []
+    private var restarts: [Date] = []
     private var cancellables = Set<AnyCancellable>()
 
     init() {
@@ -57,12 +69,20 @@ final class AppModel: ObservableObject {
         listener.onPhase = { [weak self] phase in self?.listenerPhase(phase) }
         hub.onRestartNeeded = { [weak self] in
             Task { @MainActor in
-                guard let self, self.isListening else { return }
-                await self.stop(keepSounds: false)
+                guard let self, self.isListening, !self.isStarting else { return }
+                // At most 3 full restarts a minute: a loop shows one clear message instead of flicker.
+                let now = Date()
+                self.restarts = self.restarts.filter { now.timeIntervalSince($0) < 60 } + [now]
+                await self.stop(keepSounds: true)
+                if self.restarts.count > 3 {
+                    log("too many audio restarts; stopped")
+                    self.errorMessage = "The microphone keeps getting interrupted. Tap the lantern to start again."
+                    return
+                }
                 await self.start()
             }
         }
-        watch.onTap = { [weak self] id in self?.tap(id) }
+        watch.onTap = { [weak self] id in self?.tap(id, fromWatch: true) }
         watch.onToggleListening = { [weak self] in Task { await self?.toggle() } }
         watch.currentState = { [weak self] in self?.watchState ?? WatchLink.State() }
         watch.activate()
@@ -206,9 +226,13 @@ final class AppModel: ObservableObject {
         if isFinal { reviewPending() }
     }
 
-    func tap(_ cueID: String) {
+    func tap(_ cueID: String, fromWatch: Bool = false) {
         guard let cue = SoundCatalog.cue(cueID) else { return }
-        guard isUnlocked(cue) else { showPaywall = true; return }
+        guard isUnlocked(cue) else {
+            // A tap on the wrist must not pop a purchase screen on the phone across the room.
+            if !fromWatch { openPaywall(.sound(cue.id)) }
+            return
+        }
         if !isListening {
             hub.preview(cue, volume: engine.volume(for: cue))
             bump(cueID)

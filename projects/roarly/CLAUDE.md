@@ -86,6 +86,11 @@ real SpeechAnalyzer instead of the mic: tests on-device speech without the permi
 - **Sounds**: every catalog file must exist (RoarlyKit `SoundFileTests`). Add a sound in
   `tools/build_sounds.py` (with its credit) and the cue's `files`; keep the watch app under 75 MB
   (it bundles the same Sounds folder, ~4 MB now).
+- **Voice processing posts a configuration change ~0.4 s after the engine starts.** Rebuilding the
+  engine in response re-enables voice processing and loops ("Getting ready" ↔ "Listening", 0.1.0).
+  `AudioHub.handleConfigurationChange` resumes the same engine in place; full restarts are capped.
+  The log line "microphone audio is flowing" proves the mic reaches the analyzer after a (re)start.
+- **Logs go to stderr** (`log()`): `devicectl … --console` doesn't show the app's stdout.
 - **UI tests on the iPhone** need Settings › Developer › Enable UI Automation; otherwise
   "Timed out while enabling automation mode".
 - What's New (`Views/WhatsNewView.swift`) must describe a version before `cut_release.sh` will cut it.

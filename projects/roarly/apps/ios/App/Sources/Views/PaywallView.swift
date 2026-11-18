@@ -6,6 +6,7 @@ import SwiftUI
 /// words, the Apple Watch remote. Yearly (with a free week) or once for good.
 struct PaywallView: View {
     @EnvironmentObject var store: ProStore
+    @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @State private var choice: String = ProStore.yearlyID
 
@@ -22,19 +23,22 @@ struct PaywallView: View {
                         }
                         .accessibilityLabel("Close")
                     }
-                    Text("📖").font(.system(size: 72))
-                    Text("Open the whole storybook").font(Theme.title(30)).foregroundStyle(Theme.moon).multilineTextAlignment(.center)
-                    Text(SoundCatalog.all.prefix(24).map(\.emoji).joined(separator: " "))
-                        .font(.system(size: 26)).multilineTextAlignment(.center).lineSpacing(6)
+                    Text(reasonEmoji).font(.system(size: 64))
+                    Text(headline).font(Theme.title(28)).foregroundStyle(Theme.moon).multilineTextAlignment(.center)
+                    Text("Roarly is free to use for good. Pro is optional: buy it only if you want more sounds.")
+                        .font(Theme.body(15)).foregroundStyle(Theme.ink).multilineTextAlignment(.center)
 
-                    VStack(alignment: .leading, spacing: 14) {
-                        perk("All \(SoundCatalog.all.count) sounds", "Wolves, dragons, trains, the sea, the campfire and more")
-                        perk("Your own words", "Teach it \"Mister Whiskers\" or \"the Gruffalo\"")
-                        perk("Apple Watch remote", "Tap sounds from your wrist, or play them on the watch")
-                        perk("Every sound we add later", "New shelves as they arrive")
-                    }
-                    .padding(18)
-                    .background(Theme.moon.opacity(0.06), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    plan("Free, for good", already: true, lines: [
+                        "\(SoundCatalog.freeCues.count) sounds: " + SoundCatalog.freeCues.map(\.emoji).joined(separator: " "),
+                        "As many stories as you like, no time limit",
+                        "Listening, Bedtime and Playtime, tap-to-play cards",
+                    ])
+                    plan("Roarly Pro", already: false, lines: [
+                        "+\(SoundCatalog.all.count - SoundCatalog.freeCues.count) more sounds: " + SoundCatalog.all.filter { !$0.isFree }.prefix(14).map(\.emoji).joined(separator: " ") + " …",
+                        "Your own words (\"Mister Whiskers\" plays the cat)",
+                        "Apple Watch remote: tap sounds or play them on the watch",
+                        "Every sound we add later",
+                    ])
 
                     if store.products.isEmpty {
                         if store.loadFailed {
@@ -74,14 +78,51 @@ struct PaywallView: View {
         .preferredColorScheme(.dark)
     }
 
-    private func perk(_ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "star.fill").foregroundStyle(Theme.lantern).padding(.top, 3)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(Theme.label(16)).foregroundStyle(Theme.moon)
-                Text(detail).font(Theme.body(14)).foregroundStyle(Theme.ink)
+    private var reasonCue: Cue? {
+        if case .sound(let id) = model.paywallReason { return SoundCatalog.cue(id) }
+        return nil
+    }
+
+    private var reasonEmoji: String {
+        if let c = reasonCue { return c.emoji }
+        switch model.paywallReason {
+        case .customWords: return "✍️"
+        case .watch: return "⌚️"
+        default: return "📖"
+        }
+    }
+
+    private var headline: String {
+        if let c = reasonCue { return "\(c.name) is a Pro sound" }
+        switch model.paywallReason {
+        case .customWords: return "Your own words are part of Pro"
+        case .watch: return "The watch remote is part of Pro"
+        default: return "Open the whole storybook"
+        }
+    }
+
+    private func plan(_ title: String, already: Bool, lines: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(title).font(Theme.label(17)).foregroundStyle(Theme.moon)
+                Spacer()
+                if already {
+                    Text("You have this").font(Theme.label(12)).foregroundStyle(Theme.ink)
+                        .padding(.horizontal, 8).padding(.vertical, 3).background(Theme.card, in: Capsule())
+                }
+            }
+            ForEach(lines, id: \.self) { line in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: already ? "checkmark" : "star.fill").font(.caption)
+                        .foregroundStyle(already ? Theme.ink : Theme.lantern).padding(.top, 4)
+                    Text(line).font(Theme.body(14)).foregroundStyle(already ? Theme.ink : Theme.moon)
+                }
             }
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(already ? Theme.card : Theme.lantern.opacity(0.08), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(already ? Theme.cardStroke : Theme.lantern.opacity(0.5)))
     }
 
     private func option(_ product: Product, title: String, detail: String) -> some View {
