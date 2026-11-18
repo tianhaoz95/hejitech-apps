@@ -3,6 +3,7 @@ import FoundationModels
 import MLX
 import MLXLLM
 import MLXLMCommon
+import NaturalLanguage
 import RoarlyKit
 
 /// Settles the mentions the context rules aren't sure about ("the lion was quiet… the lion")
@@ -13,7 +14,10 @@ import RoarlyKit
 final class SmallModelDirector {
     enum Engine: String {
         case apple = "Apple Intelligence"
-        case builtIn = "Built-in"
+        /// Create ML text classifier trained on sentences written and labeled by Apple's model
+        /// (ml/). 1.3 MB, milliseconds, every iPhone.
+        case classifier = "Story sense"
+        case builtIn = "Built-in language model"
         case none = "Off"
     }
 
@@ -36,15 +40,23 @@ final class SmallModelDirector {
         #endif
     }
 
-    /// Apple's model when the iPhone has it. The bundled 0.6B model only when asked for: on the
-    /// story eval (evals/director_cases.json) it answered at chance (11/22) while Apple's model got
-    /// 18/22 and only ever erred on the quiet side, so by default an older iPhone relies on the
-    /// rules and the parent's taps.
+    /// Apple's model when the iPhone has it, else the story-sense classifier. The bundled 0.6B
+    /// language model only when asked for: on evals/director_cases.json it answered at chance
+    /// (11/22), Apple's model 18/22, the classifier 20/22 (and 96.9% on animals it never saw).
     func choose(useBuiltIn: Bool = false) {
         if useBuiltIn && Self.builtInAvailable { engine = .builtIn }
         else if Self.appleAvailable { engine = .apple }
+        else if classifier != nil { engine = .classifier }
         else { engine = .none }
     }
+
+    private lazy var classifier: NLModel? = {
+        guard let url = Bundle.main.url(forResource: "RoarlyDirector", withExtension: "mlmodelc") else { return nil }
+        return try? NLModel(contentsOf: url)
+    }()
+
+    /// Words the parent added for each sound (masked like the sound's own words).
+    var customWords: [String: [String]] = [:]
 
     /// Loads the model before the story starts so the first question isn't slow.
     func warmUp() {
@@ -53,9 +65,21 @@ final class SmallModelDirector {
             LanguageModelSession(instructions: DirectorPrompt.instructions).prewarm()
         case .builtIn:
             Task { _ = try? await loadContainer() }
+        case .classifier:
+            // The classifier's BERT embeddings are an OS asset; fetch it once if missing.
+            if let e = NLContextualEmbedding(language: .english), !e.hasAvailableAssets {
+                e.requestAssets { result, error in log("embedding assets: \(result.rawValue) \(error?.localizedDescription ?? "")") }
+            }
         case .none:
             break
         }
+    }
+
+    /// P(play) from the classifier, or nil.
+    func classifierScore(_ review: StoryEngine.Review) -> Double? {
+        guard let classifier else { return nil }
+        let text = DirectorPrompt.masked(review, customWords: customWords[review.cueID] ?? [])
+        return classifier.predictedLabelHypotheses(for: text, maximumCount: 2)["play"]
     }
 
     /// Unloads the bundled model (memory) when the story ends.
@@ -69,7 +93,17 @@ final class SmallModelDirector {
 
     /// `true` play, `false` don't, `nil` no answer in time (or busy).
     func decide(_ review: StoryEngine.Review) async -> Bool? {
-        guard engine != .none, !busy else { return nil }
+        guard engine != .none else { return nil }
+        if engine == .classifier {
+            let started = ContinuousClock.now
+            let p = classifierScore(review)
+            lastLatency = ContinuousClock.now - started
+            log("director (story sense, \(Self.milliseconds(lastLatency)) ms) \(review.cueID) P(play)=\(p.map { String(format: "%.2f", $0) } ?? "–")")
+            guard let p else { return nil }
+            // Between the two the parent decides: the card stays up.
+            return p >= 0.6 ? true : (p <= 0.4 ? false : nil)
+        }
+        guard !busy else { return nil }
         busy = true
         defer { busy = false }
         let question = DirectorPrompt.question(for: review)
@@ -81,7 +115,7 @@ final class SmallModelDirector {
                     switch engine {
                     case .apple: return try await Self.askApple(question)
                     case .builtIn: return try await self.askBuiltIn(question)
-                    case .none: return nil
+                    case .none, .classifier: return nil
                     }
                 } catch {
                     log("director error: \(error)")

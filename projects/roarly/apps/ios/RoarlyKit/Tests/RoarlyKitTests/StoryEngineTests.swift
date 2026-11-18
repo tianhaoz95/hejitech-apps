@@ -212,6 +212,13 @@ final class DirectorTests: XCTestCase {
         XCTAssertNil(DirectorPrompt.parse("maybe"))
     }
 
+    func testMaskedReplacesTheSoundsWords() {
+        let r = StoryEngine.Review(id: UUID(), cueID: "dog", utterance: "The puppies ran to the Dog house.", story: [], score: 0.5)
+        XCTAssertEqual(DirectorPrompt.masked(r), "The THING ran to the THING house.")
+        let l = StoryEngine.Review(id: UUID(), cueID: "lion", utterance: "The king of the jungle yawned.", story: [], score: 0.5)
+        XCTAssertEqual(DirectorPrompt.masked(l), "The THING yawned.")
+    }
+
     func testQuestionNamesTheSound() {
         let r = StoryEngine.Review(id: UUID(), cueID: "tiger", utterance: "The tiger is near.", story: ["Once upon a time."], score: 0.5)
         let q = DirectorPrompt.question(for: r)

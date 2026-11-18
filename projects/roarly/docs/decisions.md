@@ -15,11 +15,14 @@
 5. **Purely local (owner).** No account, backend or database (`BACKEND=none`). Everything ships in
    the app: sounds (~4 MB) and the Qwen3-0.6B-4bit model (~335 MB, fetched by
    `scripts/fetch_model.sh`, git-ignored, like Voxbrief).
-6. **Models.** Apple's on-device model where available. The bundled 0.6B model measured at chance on
-   `evals/director_cases.json` (11/22; best 15/22 with a tuned threshold) versus Apple's 18/22 with
-   only quiet-side misses, so on iPhones without Apple Intelligence it's opt-in ("experimental") and
-   unsure sounds wait for a tap. Next step for those phones: a distilled classifier trained on
-   labels from a large model.
+6. **Models (measured, `evals/director_cases.json`).** Apple's on-device model where available
+   (18/22, ~0.25 s, misses only on the quiet side). Everywhere else the **story-sense classifier**:
+   a Create ML text classifier (BERT embeddings, 1.3 MB, ~10 ms on an iPhone 13) trained on 2,560
+   story sentences that Apple's model wrote for 32 things × 10 situations, each situation giving the
+   label (`ml/generate.swift`, `ml/train.swift`); the sound's words are masked as THING so one model
+   covers every sound. 20/22 on the cases, 96.9% on animals held out of training, 8/10 on the iPhone
+   self-test. The bundled Qwen3-0.6B (owner's choice to ship it) answered at chance (11/22; on the
+   phone it said yes to everything), so it is an opt-in "experimental" switch.
 7. **Speech.** `SpeechAnalyzer` + `SpeechTranscriber` (falls back to `DictationTranscriber`), with
    the catalog's words as contextual strings. iOS 26+. Verified on an iPhone 13 (iOS 27.2).
 8. **Pricing (owner).** Free download; Roarly Pro = yearly subscription with a 1-week free trial, or
@@ -31,3 +34,6 @@
    were left out until a good free recording turns up.
 10. **App Review 4.3.** Own look (storybook night: indigo, lantern amber, serif), own paywall
     ("Open the whole storybook"), own store text.
+11. **Device testing without the mic prompt.** Stories read by Kokoro (mlx-audio, four voices) are
+    streamed through the real on-device SpeechAnalyzer (`-listenFile`) and scored against
+    `evals/stories/key.json` by `scripts/device_story_eval.sh`: 60/60 on 2026-11-17.

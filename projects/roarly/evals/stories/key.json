@@ -1,0 +1,4 @@
+{
+  "farm":   {"play": ["cow", "dog", "rain", "thunder", "knock", "cat"], "never": ["horse"], "stop": ["rain"]},
+  "jungle": {"play": ["monkey", "tiger", "dinosaur", "frog", "wolf"], "never": ["elephant", "dragon", "owl"]}
+}

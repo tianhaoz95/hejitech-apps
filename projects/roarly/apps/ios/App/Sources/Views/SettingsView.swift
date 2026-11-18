@@ -25,12 +25,12 @@ struct SettingsView: View {
                 Section {
                     Toggle("Smart listening", isOn: $model.smartListening)
                     if model.smartListening && SmallModelDirector.builtInAvailable {
-                        Toggle(SmallModelDirector.appleAvailable ? "Use the built-in model instead" : "Try the built-in model (experimental)", isOn: $model.preferBuiltIn)
+                        Toggle("Use the built-in language model instead (experimental)", isOn: $model.preferBuiltIn)
                     }
                 } header: {
                     Text("Understanding the story")
                 } footer: {
-                    Text("When Roarly isn't sure (\"the lion was quiet\"), a language model on your iPhone reads the sentence and decides; without one, the sound waits for your tap. Engine: \(engineName). Nothing leaves your iPhone.")
+                    Text("When Roarly isn't sure (\"the lion was quiet\"), it reads the whole sentence again on your iPhone and decides; when it still can't tell, the sound waits for your tap. Engine: \(engineName). Nothing leaves your iPhone.")
                 }
 
                 Section {
@@ -85,7 +85,7 @@ struct SettingsView: View {
 
     private var engineName: String {
         guard model.smartListening else { return "off" }
-        return model.director.engine == .none ? "Apple Intelligence isn't available on this iPhone, so unsure sounds are offered as taps" : model.director.engine.rawValue
+        return model.director.engine == .none ? "unavailable, so unsure sounds are offered as taps" : model.director.engine.rawValue
     }
 
     private var automationFooter: String {

@@ -20,8 +20,11 @@ apps/ios/App/Resources/     Sounds/*.m4a + CREDITS.txt (built by tools/build_sou
 apps/ios/Watch/Sources/     WatchModel (remote + speaker), WatchViews
 tools/                      build_sounds.py, classify_sound.swift (Apple's sound classifier as a
                             judge), make_icon.swift
-evals/                      director_cases.json + director_eval.py (mlx-lm, bundled model) and
-                            apple_director_eval.swift (Apple's model on a Mac)
+evals/                      director_cases.json + director_eval.py (mlx-lm, bundled model),
+                            apple_director_eval.swift (Apple's model on a Mac), stories/ (texts +
+                            key.json for scripts/device_story_eval.sh)
+ml/                         generate.swift (Apple's model writes labeled sentences), train.swift
+                            (Create ML → App/Resources/ML/RoarlyDirector.mlmodel)
 scripts/                    fetch_model.sh, release_testflight.sh, asc_build_status.swift
 docs/                       site pages (privacy, support, decisions) at /hejitech-apps/roarly/
 ```
@@ -58,8 +61,9 @@ real SpeechAnalyzer instead of the mic: tests on-device speech without the permi
    sound word itself → 0.95). Thresholds per `Automation`, a bit stricter in Bedtime.
 3. Sure → `.play` / `.startAmbient` at once, often from partial text (~1 s before the sentence
    ends). Unsure → `.suggest` (card on phone and watch, 9 s). Final unsure → `reviews` for
-   `SmallModelDirector` (Apple's model; the bundled 0.6B only when opted in), 2.5 s limit; no answer
-   leaves the card up. "The rain stopped", "the sun came out", "the end/good night" stop loops.
+   `SmallModelDirector`: Apple's model where available, else the story-sense classifier
+   (`RoarlyDirector.mlmodel`, P(play) ≥ 0.6 plays, ≤ 0.4 drops, between leaves the card up); the
+   bundled 0.6B LLM only when opted in. 2.5 s limit; no answer leaves the card up. "The rain stopped", "the sun came out", "the end/good night" stop loops.
 4. `AudioHub`: one `AVAudioEngine` with voice processing on the input (echo cancellation uses our
    own output as reference), a pool of one-shot player nodes, one looping node per bed with fades.
 
@@ -68,7 +72,15 @@ real SpeechAnalyzer instead of the mic: tests on-device speech without the permi
 - **MLX never runs in the Simulator** (Metal allocator abort): `SmallModelDirector.builtInAvailable`
   is false there. Test the bundled model on the device (`-selfTest`).
 - **The bundled 0.6B is weak at this task** (chance on the director eval). Don't make it the default
-  without re-running `evals/director_eval.py`; Apple's model scored 18/22.
+  without re-running `evals/director_eval.py`; Apple's model scored 18/22, the classifier 20/22.
+- **Retraining the classifier** (Mac with Apple Intelligence): `swiftc -O -o build/gen ml/generate.swift
+  && build/gen build/director_data.jsonl 8`, then `swift ml/train.swift build/director_data.jsonl
+  apps/ios/App/Resources/ML/RoarlyDirector.mlmodel bert`. Keep `DirectorPrompt.masked` and
+  `ml/train.swift`'s `mask` in step.
+- **Device story eval**: render stories with Kokoro: `uv venv --python 3.12 build/tts && uv pip
+  install --python build/tts/bin/python mlx-audio "misaki[en]" soundfile` plus the spaCy
+  `en_core_web_sm` wheel, then `VIRTUAL_ENV=build/tts build/tts/bin/python tools/tts_say.py af_heart
+  build/voices/farm_af_heart.wav evals/stories/farm.txt`; then `scripts/device_story_eval.sh <udid> build/voices/*.wav`.
 - **Audio tap blocks are built off the main actor** (`AudioHub.makeTap`, `SpeechListener.makeFeeder`):
   a closure formed in a `@MainActor` method and run on the audio thread trips isolation checks.
 - **Sounds**: every catalog file must exist (RoarlyKit `SoundFileTests`). Add a sound in

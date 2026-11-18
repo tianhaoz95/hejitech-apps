@@ -86,7 +86,7 @@ enum SelfTest {
 
     static func run(_ model: AppModel) async {
         let director = model.director
-        if director.engine == .none { director.choose(useBuiltIn: true) }
+        if DebugFlags.args.contains("-selfTestBuiltIn") { director.choose(useBuiltIn: true) }
         log("self-test: engine \(director.engine.rawValue)")
         director.warmUp()
         try? await Task.sleep(for: .seconds(4))

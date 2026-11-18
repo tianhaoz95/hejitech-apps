@@ -23,6 +23,23 @@ public enum DirectorPrompt {
         return lines.joined(separator: "\n")
     }
 
+    /// The utterance as the on-device classifier (ml/train.swift) sees it: the sound's own words
+    /// replaced by THING, so one model covers every sound ("THING is running away").
+    public static func masked(_ review: StoryEngine.Review, customWords: [String] = []) -> String {
+        guard let cue = SoundCatalog.cue(review.cueID) else { return review.utterance }
+        let phrases = (cue.triggers + customWords).sorted { $0.count > $1.count }
+        var text = review.utterance
+        for p in phrases {
+            let word: String
+            if p.hasSuffix("y") { word = NSRegularExpression.escapedPattern(for: String(p.dropLast())) + "(y|ies)" }
+            else if p.hasSuffix("f") { word = NSRegularExpression.escapedPattern(for: String(p.dropLast())) + "(f|ves)" }
+            else { word = NSRegularExpression.escapedPattern(for: p) + "(s|es)?" }
+            let pattern = "\\b" + word + "\\b"
+            text = text.replacingOccurrences(of: pattern, with: "THING", options: [.regularExpression, .caseInsensitive])
+        }
+        return text
+    }
+
     /// `true`/`false`, or `nil` when the reply says neither.
     public static func parse(_ reply: String) -> Bool? {
         var text = reply.lowercased()

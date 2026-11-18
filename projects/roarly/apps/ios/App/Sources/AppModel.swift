@@ -92,6 +92,7 @@ final class AppModel: ObservableObject {
     func isUnlocked(_ cue: Cue) -> Bool { cue.isFree || isPro }
 
     private func syncEngineSettings() {
+        director.customWords = isPro ? customWords : [:]
         let allowed = SoundCatalog.all.filter { isUnlocked($0) }.map(\.id)
         engine.update(settings: .init(mode: mode, automation: automation, allowedCueIDs: Set(allowed), customTriggers: isPro ? customWords : [:]))
     }
