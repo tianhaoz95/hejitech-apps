@@ -130,31 +130,16 @@ board stores or who it's shared with changes.
 | §6.1 | Ticker format | 1–5 uppercase letters with an optional class suffix (`BRK.B`); never a company name. |
 | §15 | "Pending decisions surfaced in the portal" | The Executor page's checklist lists each (account, funding, policy, approvals mode, hosting, model) as Pending/Done. |
 
-## Robinhood on the iPhone (preview, 2026-11-17)
+## Robinhood on the iPhone (tried and removed, 2026-11-17)
 
-The owner wants the iPhone app to execute approved plans itself while it's open (foreground only:
-iOS won't keep an executor running in the background), with no model: the order ticket is already
-structured, so plain code turns it into Robinhood calls. Step one, in 0.1.8, only proves the phone
-can connect: Settings → Robinhood on This iPhone runs Robinhood's OAuth (discovery, dynamic client
-registration, PKCE, written by hand in `TradeboardKit/Robinhood.swift`) with a choice of three
-return addresses (loopback `127.0.0.1:8765` caught by a listener in the app, the
-`tradeboard.hejitech.workers.dev` app link, the `tradeboard://` scheme) because nobody knows yet
-which ones Robinhood accepts, then a read-only check. `RobinhoodMCP.call` refuses every tool outside
-`get_accounts`, `get_trade_approval_setting` and `get_equity_quotes` before any request; tokens stay
-in this iPhone's Keychain (this device only) and nothing reaches the board. A phone executor (claim,
-policy, drift, place with the plan-version `ref_id`, receipt) comes only after the sign-in works and
-must keep every gate the Node executor has; App Review guideline 5.1.1(ix) is the open risk for
-shipping order placement in an App Store app.
-
-**2026-11-17, first device test:** Robinhood's sign-in page refuses phones ("Use your desktop web
-browser"); the app's discovery and client registration worked. The app doesn't disguise itself as a
-desktop browser (that would work around a rule Robinhood chose). Instead 0.1.10 adds "Sign in on a
-computer": the phone registers `{state, authorize_url}` with the board, the owner opens a short link
-(`/rh/XXXX-XXXX`, QR or AirDrop) on a computer and signs in there, Robinhood redirects to
-`/oauth/robinhood/callback`, and the board keeps the one-time code in KV (≤ 10 minutes, one use,
-only for the user who started it) until the phone collects it and exchanges it with its PKCE
-verifier (`services/web/src/worker/rhhandoff.ts`). The board still never holds a Robinhood
-credential: the code is useless without the verifier, and the board never calls Robinhood.
+0.1.8–0.1.12 had a read-only preview, Settings → Robinhood on This iPhone: Robinhood's OAuth written
+by hand in the app, a read-only MCP check, and, because Robinhood's sign-in page refuses phone
+browsers, a "sign in on a computer" relay through the Worker (`/rh/<short>`,
+`/oauth/robinhood/callback`, `/api/robinhood/handoff`). The owner judged it too hacky and removed it:
+Robinhood stays with the executor on a computer (the CLI or the Mac app), and the iPhone app only
+reads the board and approves. The app deletes any tokens those builds left in its Keychain on launch,
+and dropped the `applinks` association and local-network permission that existed only for it. A
+phone executor would need its own design with every executor gate; it's not planned.
 
 ## Market calendar
 

@@ -66,13 +66,6 @@ public struct SettingsView: View {
                         Label("Connect an Agent", systemImage: "link")
                     }
                     .accessibilityIdentifier("connect-agent")
-
-                    NavigationLink {
-                        RobinhoodView()
-                    } label: {
-                        Label("Robinhood on This iPhone (Preview)", systemImage: "iphone.and.arrow.forward")
-                    }
-                    .accessibilityIdentifier("robinhood-iphone")
                 }
 
                 #if DEBUG

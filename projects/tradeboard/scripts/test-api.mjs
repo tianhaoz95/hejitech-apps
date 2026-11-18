@@ -651,48 +651,6 @@ await step("review sign-in: only the demo account's password works; every sign-i
   cookie = mine;
 });
 
-await step("Robinhood sign-in handoff: only Robinhood's page for this state; the code goes back once, to the same user", async () => {
-  const state = randomBytes(32).toString("base64url");
-  const authorize = (over = {}) => {
-    const u = new URL("https://robinhood.com/oauth");
-    const q = { response_type: "code", client_id: "c", code_challenge: "x".repeat(43), code_challenge_method: "S256", redirect_uri: `${site}/oauth/robinhood/callback`, state, ...over };
-    for (const [k, v] of Object.entries(q)) if (v !== null) u.searchParams.set(k, v);
-    return u.toString();
-  };
-  // Only Robinhood's sign-in page, with PKCE, this state and this Worker's callback.
-  assert.equal((await portal("/api/robinhood/handoff", { body: { state, authorize_url: authorize().replace("robinhood.com", "evil.example") } })).status, 422);
-  assert.equal((await portal("/api/robinhood/handoff", { body: { state, authorize_url: authorize({ redirect_uri: "https://evil.example/cb" }) } })).status, 422);
-  assert.equal((await portal("/api/robinhood/handoff", { body: { state, authorize_url: authorize({ code_challenge_method: null }) } })).status, 422);
-  assert.equal((await portal("/api/robinhood/handoff", { body: { state: "short", authorize_url: authorize() } })).status, 422);
-  assert.equal((await portal("/api/robinhood/handoff", { body: { state, authorize_url: authorize() }, raw: true })).status, 401, "needs the owner's session");
-  const start = await portal("/api/robinhood/handoff", { body: { state, authorize_url: authorize() } });
-  assert.equal(start.status, 201, start.text);
-  assert.match(start.body.short, /^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/);
-  assert.equal((await portal("/api/robinhood/handoff", { body: { state, authorize_url: authorize() } })).status, 409, "a state is used once");
-  // The short link sends the computer's browser to Robinhood; the phone sees "pending" until the redirect.
-  const link = await fetch(start.body.link.replace(/^https?:\/\/[^/]+/, site), { redirect: "manual" });
-  assert.equal(link.status, 302);
-  assert.equal(link.headers.get("location"), authorize());
-  assert.equal((await portal(`/api/robinhood/handoff/${state}`)).body.status, "pending");
-  assert.equal((await fetch(`${site}/oauth/robinhood/callback?code=abc&state=${"z".repeat(43)}`)).status, 404, "an unknown state keeps nothing");
-  const cb = await fetch(`${site}/oauth/robinhood/callback?code=the-code&state=${state}&iss=${encodeURIComponent("https://agent.robinhood.com/mcp/trading")}`);
-  assert.equal(cb.status, 200);
-  assert.equal(cb.headers.get("referrer-policy"), "no-referrer");
-  assert.match(await cb.text(), /Robinhood connected/);
-  assert.equal((await fetch(`${site}/oauth/robinhood/callback?code=other&state=${state}`)).status, 410, "a second redirect can't replace the code");
-  // Another user can't collect it; the owner collects it once.
-  const mine = cookie;
-  const other = await portal("/api/review-sign-in", { body: { email: "review@example.com", password: "tradeboard-review-dev" }, raw: true });
-  cookie = other.headers.get("set-cookie").split(";")[0];
-  assert.equal((await portal(`/api/robinhood/handoff/${state}`)).status, 404, "another user's sign-in is invisible");
-  cookie = mine;
-  const got = await portal(`/api/robinhood/handoff/${state}`);
-  assert.deepEqual(got.body, { status: "done", code: "the-code", iss: "https://agent.robinhood.com/mcp/trading" });
-  assert.equal((await portal(`/api/robinhood/handoff/${state}`)).status, 404, "collected once, then gone");
-  assert.equal(link.status, 302);
-  assert.equal((await fetch(start.body.link.replace(/^https?:\/\/[^/]+/, site), { redirect: "manual" })).status, 404, "the short link is gone too");
-});
-
 console.log(`tradeboard integration: ${steps.length} checks passed`);
 mocks.forEach((m) => m.kill());
 process.exit(0);

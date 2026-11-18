@@ -45,7 +45,6 @@ targets:
         com.apple.developer.applesignin: [Default]
         com.apple.developer.associated-domains:
           - webcredentials:tradeboard.hejitech.workers.dev
-          - applinks:tradeboard.hejitech.workers.dev
     info:
       path: App/Info.plist
       properties:
@@ -54,7 +53,6 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
-        NSLocalNetworkUsageDescription: Tradeboard listens on this iPhone's own loopback address (127.0.0.1) to finish a Robinhood sign-in. It doesn't look for or connect to other devices.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UISupportedInterfaceOrientations~ipad:

@@ -9,7 +9,6 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>webcredentials:tradeboard.hejitech.workers.dev</string>
-		<string>applinks:tradeboard.hejitech.workers.dev</string>
 	</array>
 </dict>
 </plist>

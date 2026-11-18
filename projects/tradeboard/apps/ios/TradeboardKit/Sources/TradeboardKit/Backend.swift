@@ -477,19 +477,6 @@ public final class TradeboardBackend: @unchecked Sendable {
         let _: [String: AnyCodable] = try await apiRequest("api/grants/\(id)", method: "DELETE", body: nil)
     }
 
-    // MARK: - Robinhood sign-in on a computer (the board relays the one-time code back to this phone)
-
-    /// Where Robinhood sends the computer's browser back for `.computer` sign-ins.
-    public var robinhoodHandoffRedirect: String { RobinhoodRedirect.computer.uri(site: config.site) }
-
-    public func startRobinhoodHandoff(state: String, authorizeURL: URL) async throws -> RobinhoodHandoffStart {
-        try await apiPost("api/robinhood/handoff", body: ["state": state, "authorize_url": authorizeURL.absoluteString])
-    }
-
-    public func robinhoodHandoffStatus(state: String) async throws -> RobinhoodHandoffStatus {
-        try await apiGet("api/robinhood/handoff/\(state)")
-    }
-
     // MARK: - HTTP Helpers
 
     private func cookieHeader(for value: String) -> String {

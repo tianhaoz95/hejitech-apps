@@ -29,10 +29,14 @@ public struct ReleaseNotes: Identifiable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.1.12"
+    public static let currentVersion = "0.1.13"
     public static let lastSeenVersionKey = "last_seen_whats_new_version_tradeboard"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.13", date: "November 2026", items: [
+            WhatsNewItem(icon: "square.grid.2x2", title: "Cleaner Plan Tabs", description: "A plan's Thesis, Discussion, Receipts and Audit tabs are now icons, so they fit on any iPhone."),
+            WhatsNewItem(icon: "laptopcomputer", title: "Robinhood Stays on Your Computer", description: "Robinhood on This iPhone is gone. Your executor on a computer (the Mac app or the command line) connects to Robinhood; the iPhone app is for your board and approvals. Any Robinhood sign-in the preview left on this iPhone is deleted.")
+        ]),
         ReleaseNotes(version: "0.1.12", date: "November 2026", items: [
             WhatsNewItem(icon: "tray.and.arrow.down.fill", title: "Strategy Drafts from Your Agents", description: "When an agent interviews you and drafts a trading strategy, it now shows on the board and in Trading Strategy. Adopt it as is, edit it first, or dismiss it; agents can't change your strategy without you."),
             WhatsNewItem(icon: "sparkles", title: "Trading Strategy Fixed", description: "The Trading Strategy screen now shows your saved strategy and its earlier versions, and saving works.")

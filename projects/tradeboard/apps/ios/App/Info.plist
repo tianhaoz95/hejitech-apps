@@ -22,8 +22,6 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>Tradeboard listens on this iPhone's own loopback address (127.0.0.1) to finish a Robinhood sign-in. It doesn't look for or connect to other devices.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

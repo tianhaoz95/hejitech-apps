@@ -1,5 +1,6 @@
 import AuthenticationServices
 import Foundation
+import Security
 import SwiftUI
 import TradeboardKit
 
@@ -45,6 +46,9 @@ public final class AppModel {
 
     public init(config: BackendConfig = .production) {
         SessionStore.clearIfFreshInstall()
+        // 0.1.8–0.1.12 could sign in to Robinhood on the phone (removed: the executor on a computer
+        // does it). Drop any tokens those builds left in the Keychain.
+        SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.hejitech.tradeboard", kSecAttrAccount as String: "robinhood.oauth"] as CFDictionary)
         #if DEBUG
         // Debug: the simulator uses the local stack (127.0.0.1) unless `-production`; a physical iPhone
         // can't reach 127.0.0.1 on the Mac, so it uses production unless `-local`.
@@ -278,7 +282,6 @@ public final class AppModel {
     public func deleteAccount() async -> Bool {
         do {
             try await backend.deleteAccount()
-            await MainActor.run { RobinhoodLink.shared.signOut() }
             authPhase = .unauthenticated
             board = nil
             selectedPlan = nil
@@ -294,7 +297,6 @@ public final class AppModel {
     @MainActor
     public func signOut() async {
         await backend.logout()
-        await MainActor.run { RobinhoodLink.shared.signOut() }
         authPhase = .unauthenticated
         board = nil
         selectedPlan = nil

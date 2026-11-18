@@ -89,10 +89,18 @@ public struct PlanDetailView: View {
 
                     // Tab Selector
                     Picker("Section", selection: $selectedTab) {
-                        Text("Thesis").tag(0)
-                        Text("Discussion (\(plan.comments?.count ?? 0))").tag(1)
-                        Text("Receipts (\(plan.receipts?.count ?? 0))").tag(2)
-                        Text("Audit").tag(3)
+                        Image(systemName: "lightbulb")
+                            .accessibilityLabel("Thesis")
+                            .tag(0)
+                        Image(systemName: "bubble.left.and.bubble.right")
+                            .accessibilityLabel("Discussion, \(plan.comments?.count ?? 0)")
+                            .tag(1)
+                        Image(systemName: "receipt")
+                            .accessibilityLabel("Receipts, \(plan.receipts?.count ?? 0)")
+                            .tag(2)
+                        Image(systemName: "list.bullet.clipboard")
+                            .accessibilityLabel("Audit")
+                            .tag(3)
                     }
                     .pickerStyle(.segmented)
                     .padding(.horizontal)

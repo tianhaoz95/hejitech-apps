@@ -2,7 +2,6 @@
 // that user's own board. Human-only actions (approve, reject, resolve, manual fill, pause/kill,
 // dry-run, policy, tokens, account deletion) exist only here; an agent token or executor credential
 // sent here is refused with 403 by index.ts.
-import { handleHandoffApi } from "./rhhandoff.ts";
 import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import {
   approvalExpiry, checkAgentId, checkPolicy, checkStrategy, policyHints, STRATEGY_TEMPLATE, marketDate, ptEt, suggestedValidUntil, type Policy,
@@ -29,11 +28,6 @@ export async function handlePortal(req: Request, env: Env, db: Db, url: URL, oau
   const path = url.pathname;
   const m = req.method;
   const body = m === "POST" || m === "PUT" ? ((await req.json().catch(() => ({}))) as Record<string, unknown>) : {};
-
-  if (path.startsWith("/api/robinhood/")) {
-    const r = await handleHandoffApi(req, env, url, userId, body, (action, details) => audit(action, null, details));
-    if (r) return r;
-  }
 
   if (path === "/api/me" && m === "GET") {
     const { data: o } = await db.from("accounts").select("email, totp_enrolled_at").eq("user_id", userId).maybeSingle();

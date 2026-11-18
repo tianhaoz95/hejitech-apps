@@ -87,11 +87,8 @@ enrolls again), signs up a second user to check boards stay private, then delete
   `apps/executor/package.json`). Updater key: `~/Credentials/tradeboard-updater.key`, secret
   `TRADEBOARD_TAURI_SIGNING_PRIVATE_KEY`; installed apps poll `tradeboard-latest/latest.json`.
 - **iPhone app** (`apps/ios`): the board, approvals and Settings → Connect an Agent (the portal's
-  Agents page: MCP URL, register, tokens, OAuth disconnect). Settings → Robinhood on This iPhone is a
-  read-only sign-in preview (`TradeboardKit/Robinhood.swift`, decisions.md "Robinhood on the iPhone"):
-  its MCP client refuses every tool outside its read-only list. Robinhood refuses phone browsers, so
-  it signs in on a computer and the Worker relays the one-time code (`worker/rhhandoff.ts`). Keep it that way until a phone
-  executor with every executor gate is designed.
+  Agents page: MCP URL, register, tokens, OAuth disconnect). It never talks to Robinhood: only the
+  executor on a computer does (decisions.md "Robinhood on the iPhone", tried and removed).
 - **Strategy document** (`core/src/strategy.ts`, `strategy_versions`/`strategy_proposals`): guidance,
   never a gate. Users write versions; agents only `propose_strategy`; the interview guide and the
   "offer an interview when there's none" rule live in `INTERVIEW_GUIDE` and the MCP `initialize`
