@@ -11,7 +11,7 @@ struct OnboardingView: View {
                 TabView(selection: $page) {
                     pageView(emoji: "🦁", title: "Stories that roar back", text: "Tell any story out loud: one you know, one you're making up. When the lion roars, Roarly roars. When it starts to rain, the rain begins.").tag(0)
                     pageView(emoji: "🐯", title: "It follows the story", text: "\"A tiger is chasing you!\" gets a growl. \"The tiger ran away\" doesn't. When Roarly isn't sure, it shows the sound and you tap it, right on time.").tag(1)
-                    pageView(emoji: "🌙", title: "Made for bedtime", text: "Bedtime mode keeps big sounds soft and fades everything out at \"good night\". Roarly listens only while the lantern is lit, and nothing you say leaves your iPhone.").tag(2)
+                    pageView(emoji: "🌙", title: "Made for bedtime", text: "Bedtime mode keeps big sounds soft and waits for your tap when it isn't sure. Say \"good night\" or \"the end\" and the rain and other loops fade out. Roarly listens only while the lantern is lit, and nothing you say leaves your iPhone.").tag(2)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .always))
 

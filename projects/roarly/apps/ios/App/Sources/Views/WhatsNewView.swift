@@ -21,7 +21,7 @@ struct WhatsNewView: View {
         Release(version: "0.1.0", items: [
             ("🦁", "Stories that roar back", "Tell any story out loud and Roarly adds the sounds: animals, weather, doors, trains and magic."),
             ("🐯", "It follows the story", "A tiger chasing you growls; a tiger running away stays quiet. Unsure moments become a sound to tap."),
-            ("🌙", "Bedtime and Playtime", "Soft sounds at bedtime that fade out at \"good night\"; full volume for playtime."),
+            ("🌙", "Bedtime and Playtime", "Bedtime keeps big sounds soft and asks before surprises; Playtime is full volume. \"Good night\" fades the loops out in both."),
             ("⌚️", "Apple Watch remote", "Tap suggested sounds from your wrist, or play them on the watch."),
         ]),
     ]
