@@ -1,0 +1,150 @@
+# XcodeGen spec. `xcodegen generate` creates Roarly.xcodeproj (git-ignored).
+name: Roarly
+options:
+  bundleIdPrefix: com.hejitech
+  deploymentTarget:
+    iOS: "26.0"
+    watchOS: "26.0"
+  createIntermediateGroups: true
+  defaultConfig: Debug
+
+settings:
+  base:
+    APP_DISPLAY_NAME: Roarly
+    PRODUCT_SLUG: roarly
+    DEVELOPMENT_TEAM: 68CTFST8W2
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    # The app and the watch app share one version. scripts/cut_release.sh roarly bumps
+    # MARKETING_VERSION; CI sets CURRENT_PROJECT_VERSION (UTC timestamp build numbers).
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    "CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]": NO
+    "CODE_SIGNING_ALLOWED[sdk=watchsimulator*]": NO
+
+packages:
+  RoarlyKit:
+    path: RoarlyKit
+  # The bundled small model runs through MLX (pinned to a tagged release: main's model registry
+  # has dropped products before).
+  MLXSwiftExamples:
+    url: https://github.com/ml-explore/mlx-swift-examples
+    exactVersion: 2.29.1
+
+targets:
+  Roarly:
+    type: application
+    platform: iOS
+    sources:
+      - path: App/Sources
+      - path: App/Resources
+        excludes:
+          - "Models/**"
+          - "Sounds/**"
+      # Folder references: copied as folders, looked up by name at run time.
+      - path: App/Resources/Sounds
+        type: folder
+        buildPhase: resources
+      - path: App/Resources/Models/Qwen3-0.6B-4bit
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: RoarlyKit
+      - package: MLXSwiftExamples
+        product: MLXLLM
+      - package: MLXSwiftExamples
+        product: MLXLMCommon
+      - target: RoarlyWatch
+        embed: true
+    settings:
+      base:
+        PRODUCT_NAME: Roarly
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG)
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: $(APP_DISPLAY_NAME)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        ITSAppUsesNonExemptEncryption: false
+        NSMicrophoneUsageDescription: "Roarly listens while you tell a story so it can add the lion's roar or the rain at the right moment. Nothing you say leaves your iPhone."
+        NSSpeechRecognitionUsageDescription: "Roarly turns your story into words on your iPhone to know which sound fits. Nothing you say leaves your iPhone."
+        # Keeps listening (and the rain playing) with the screen off.
+        UIBackgroundModes:
+          - audio
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        UIUserInterfaceStyle: Dark
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        CFBundleURLTypes:
+          - CFBundleURLName: com.hejitech.roarly
+            CFBundleURLSchemes: [roarly]
+
+  RoarlyWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: Watch/Sources
+      - path: Watch/Resources
+      - path: App/Resources/Sounds
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: RoarlyKit
+    settings:
+      base:
+        PRODUCT_NAME: RoarlyWatch
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG).watchkitapp
+        TARGETED_DEVICE_FAMILY: "4"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    info:
+      path: Watch/Info.plist
+      properties:
+        CFBundleDisplayName: $(APP_DISPLAY_NAME)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.hejitech.roarly
+        WKRunsIndependentlyOfCompanionApp: false
+        # Keeps a loop (the rain) going on the watch speaker with the wrist down.
+        UIBackgroundModes:
+          - audio
+
+  RoarlyUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: Roarly
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG).uitests
+        TEST_TARGET_NAME: Roarly
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Roarly:
+    build:
+      targets:
+        Roarly: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - RoarlyUITests
+    archive:
+      config: Release
+  RoarlyWatch:
+    build:
+      targets:
+        RoarlyWatch: all

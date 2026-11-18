@@ -1,0 +1,51 @@
+name: Roarly CI
+
+# RoarlyKit's tests (the story eval, matcher, engine, catalog ↔ bundled sounds) and a build of the
+# iPhone app with its watch app. scripts/cut_release.sh roarly requires it green. Keep `paths` in
+# sync with CI_PATHS in projects/roarly/release.env.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/roarly/**"
+      - ".github/workflows/roarly-ci.yml"
+  pull_request:
+    paths:
+      - "projects/roarly/**"
+      - ".github/workflows/roarly-ci.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: roarly-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: RoarlyKit tests + app build
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26"
+
+      - name: RoarlyKit tests
+        working-directory: projects/roarly/apps/ios/RoarlyKit
+        run: swift test
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # The bundled model is git-ignored and not needed to compile; the folder must exist.
+      - name: Build the iPhone app with the watch app
+        working-directory: projects/roarly/apps/ios
+        run: |
+          mkdir -p App/Resources/Models/Qwen3-0.6B-4bit
+          xcodegen generate
+          xcodebuild -project Roarly.xcodeproj -scheme Roarly -destination "generic/platform=iOS Simulator" CODE_SIGNING_ALLOWED=NO build

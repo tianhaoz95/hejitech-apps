@@ -1,0 +1,65 @@
+import SwiftUI
+
+/// What changed in each version. `scripts/cut_release.sh roarly` refuses a release until
+/// `currentVersion` and the top entry describe it.
+struct WhatsNewView: View {
+    static let currentVersion = "0.1.0"
+    static let seenKey = "whatsNewSeen"
+
+    struct Release: Identifiable {
+        let version: String
+        let items: [(String, String, String)]
+        var id: String { version }
+    }
+
+    static let releases: [Release] = [
+        Release(version: "0.1.0", items: [
+            ("🦁", "Stories that roar back", "Tell any story out loud and Roarly adds the sounds: animals, weather, doors, trains and magic."),
+            ("🐯", "It follows the story", "A tiger chasing you growls; a tiger running away stays quiet. Unsure moments become a sound to tap."),
+            ("🌙", "Bedtime and Playtime", "Soft sounds at bedtime that fade out at \"good night\"; full volume for playtime."),
+            ("⌚️", "Apple Watch remote", "Tap suggested sounds from your wrist, or play them on the watch."),
+        ]),
+    ]
+
+    static var shouldShowAutomatically: Bool {
+        let seen = UserDefaults.standard.string(forKey: seenKey)
+        if seen == nil {
+            UserDefaults.standard.set(currentVersion, forKey: seenKey)
+            return false
+        }
+        return seen != currentVersion
+    }
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                NightSky()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        ForEach(Self.releases) { release in
+                            VStack(alignment: .leading, spacing: 14) {
+                                Text("Version \(release.version)").font(Theme.title(22)).foregroundStyle(Theme.moon)
+                                ForEach(release.items, id: \.1) { emoji, title, text in
+                                    HStack(alignment: .top, spacing: 14) {
+                                        Text(emoji).font(.system(size: 30))
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text(title).font(Theme.label(16)).foregroundStyle(Theme.moon)
+                                            Text(text).font(Theme.body(15)).foregroundStyle(Theme.ink)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding(22)
+                }
+            }
+            .navigationTitle("What's new")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .onAppear { UserDefaults.standard.set(Self.currentVersion, forKey: Self.seenKey) }
+        }
+    }
+}

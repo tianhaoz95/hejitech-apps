@@ -1,0 +1,14 @@
+{
+  "name": "Roarly",
+  "sidebar": [
+    {
+      "text": "Roarly",
+      "items": [
+        { "text": "Overview", "link": "" },
+        { "text": "Privacy policy", "link": "privacy" },
+        { "text": "Support", "link": "support" },
+        { "text": "Decisions", "link": "decisions" }
+      ]
+    }
+  ]
+}

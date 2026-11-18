@@ -1,0 +1,45 @@
+Roarly's sounds come from people who share their recordings freely. Thank you!
+
+Public domain and CC0 recordings need no credit; we list them anyway. CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+Some sounds were changed (trimmed, pitched, looped, mixed). A few are synthesized for Roarly.
+
+bear: "Grizzly bear sound effect" by Zagz (Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Grizzly_bear_sound_effect.wav
+bell: "Bell dings/chimes" by PWL (OpenGameArt). CC0 1.0. https://opengameart.org/content/bell-dingschimes
+bird: "Bird chirping sounds" by syncopika (OpenGameArt). CC0 1.0. https://opengameart.org/content/bird-chirping-sounds
+boing: "Boing" by Aeva (OpenGameArt). CC0 1.0. https://opengameart.org/content/boing
+car: "Car sound effects pack" by GGBotNet (OpenGameArt). CC0 1.0. https://opengameart.org/content/car-sound-effects-pack-low-quality
+cat: "Meow of a Siamese cat" by freemaster2 (via Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Meow_of_a_Siamese_cat_-_freemaster2.wav
+cat: "Cat purr & meow" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/cat-purr-meow
+clock: "Ticking clock" by bart (OpenGameArt). CC0 1.0. https://opengameart.org/content/ticking-clock
+dog: "Dog barking (mono)" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/dog-barking-mono
+dog: "Dog sounds" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/dog-sounds
+doorbell: "Doorbell" by frosty ham (OpenGameArt). CC0 1.0. https://opengameart.org/content/doorbell
+fire: "Fireplace sound loop" by PagDev (OpenGameArt). CC0 1.0. https://opengameart.org/content/fireplace-sound-loop
+footsteps: "Footsteps" by GboxMikeFozzy (OpenGameArt). CC0 1.0. https://opengameart.org/content/footsteps-0
+forest: "Forest bird sounds" by pauliuw (OpenGameArt). CC0 1.0. https://opengameart.org/content/forest-bird-sounds
+frog: "Frog croaks" by EZduzziteh (OpenGameArt). CC0 1.0. https://opengameart.org/content/frog-croaks
+giggle: "Group giggling" by Nocturnal_Vanguard (OpenGameArt). CC0 1.0. https://opengameart.org/content/group-giggling
+horse: "Horse trotting" by EZduzziteh (OpenGameArt). CC0 1.0. https://opengameart.org/content/horse-trotting
+knock: "Knock on door" by Wikimedia Commons contributor. CC0 1.0. https://commons.wikimedia.org/wiki/File:Knock_on_door.wav
+lion: "Lion sound effect" by Zagz (Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Lion_sound_effect.wav
+magic: "Magic spell SFX" by JaggedStone (OpenGameArt). CC0 1.0. https://opengameart.org/content/magic-spell-sfx
+magic: "Fantasy magic spell" by Almitory (OpenGameArt). CC0 1.0. https://opengameart.org/content/fantasy-magic-spell
+monkey: "Gorilla Sounds" by AntumDeluge (OpenGameArt). CC0 1.0. https://opengameart.org/content/gorilla-sounds
+night: "Crickets ambient noise (loopable)" by Wolfgang_ (OpenGameArt). CC0 1.0. https://opengameart.org/content/crickets-ambient-noise-loopable
+ocean: "Beach ocean waves (from jasinski's alkaibeach, freesound CC0)" by qubodup (OpenGameArt). CC0 1.0. https://opengameart.org/content/beach-ocean-waves
+pop: "Balloon sounds" by AntumDeluge (OpenGameArt). CC0 1.0. https://opengameart.org/content/balloon-sounds
+rain: "Ambient rain loop" by Kresiek The Furry (OpenGameArt). CC0 1.0. https://opengameart.org/content/amb-rain-loop-1
+river: "Water trickle" by fractalstudios (freesound, via Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:363120_fractalstudios_water-trickle.wav
+rocket: "Rocket launch" by qubodup (OpenGameArt). CC0 1.0. https://opengameart.org/content/rocket-launch
+seagull: "European Herring Gull (XC707075)" by xeno-canto recordist (via Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:XC707075_-_European_Herring_Gull_-_Larus_argentatus.mp3
+sheep: "Sheep baa" by AntumDeluge (OpenGameArt). CC0 1.0. https://opengameart.org/content/sheep-baa
+snake: "Steam release sounds" by bart (OpenGameArt). CC0 1.0. https://opengameart.org/content/steam-release-sounds
+splash: "6 short water splashes" by qubodup (OpenGameArt). CC0 1.0. https://opengameart.org/content/6-short-water-splashes
+thunder: "Nosferatu thunderclap" by Richard Humphries. CC BY 4.0. https://commons.wikimedia.org/wiki/File:Nosferatu_thunderclap_-_Richard_Humphries.wav
+tiger: "Tiger sound effect" by Zagz (Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Tiger_sound_effect.wav
+tiger: "Angry tiger" by schots (freesound, via Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav
+whale: "52 Hz Whale (normal speed)" by Wikimedia Commons contributor. CC0 1.0. https://commons.wikimedia.org/wiki/File:52_Hz_Whale_Normal_Speed.wav
+whoosh: "Air whoosh" by pyranostudios (OpenGameArt). CC0 1.0. https://opengameart.org/content/air-whoosh
+wolf, snore: "80 CC0 creature SFX" by rubberduck (OpenGameArt). CC0 1.0. https://opengameart.org/content/80-cc0-creature-sfx
+
+Synthesized for Roarly: dinosaur, dragon, bee, boat, wind, train, airplane, elephant, owl, cow
