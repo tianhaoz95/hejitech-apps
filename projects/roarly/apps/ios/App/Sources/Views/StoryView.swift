@@ -16,6 +16,7 @@ struct StoryView: View {
                     VStack(spacing: 22) {
                         ModePicker()
                         Lantern()
+                        if model.isListening { PocketButton() }
                         if let error = model.errorMessage {
                             StoryCard {
                                 Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -53,6 +54,29 @@ struct StoryView: View {
             .sheet(isPresented: $showLibrary) { LibraryView() }
             .sheet(isPresented: $showSettings) { SettingsView() }
         }
+    }
+}
+
+/// "Pocket mode": black, locked screen while it keeps listening (Pro; a lock shows otherwise).
+private struct PocketButton: View {
+    @EnvironmentObject var model: AppModel
+    var body: some View {
+        Button { model.enterPocket() } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "moon.zzz.fill")
+                Text("Pocket mode")
+                if !model.isPro { Image(systemName: "lock.fill").font(.caption) }
+            }
+            .font(Theme.label(15))
+            .foregroundStyle(Theme.moon)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 18)
+            .background(Theme.card, in: Capsule())
+            .overlay(Capsule().stroke(Theme.cardStroke))
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Turns the screen black and locks it while Roarly keeps listening")
+        .accessibilityIdentifier("pocket-mode")
     }
 }
 

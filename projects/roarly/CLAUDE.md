@@ -44,7 +44,7 @@ with `xcrun devicectl device process launch --console com.hejitech.roarly -- <fl
 every decision as `[Roarly …]` lines.
 
 Debug launch flags (`App/Sources/Debug/DebugFlags.swift`): `-skipOnboarding`, `-resetOnboarding`,
-`-proUnlocked`, `-mode play|bedtime`, `-automation auto|balanced|ask`, `-showPaywall`, `-autoListen`,
+`-proUnlocked`, `-pocket` (Pocket mode after `-autoListen`), `-mode play|bedtime`, `-automation auto|balanced|ask`, `-showPaywall`, `-autoListen`,
 `-demoStory` (scripted story through the real decision path, no mic), `-selfTest` (small model on the
 director cases, logs answers + latency), `-listenFile <name>` (a recording copied into the app's
 Documents with `devicectl device copy to --domain-type appDataContainer` is streamed through the

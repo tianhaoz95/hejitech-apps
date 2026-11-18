@@ -25,7 +25,7 @@ struct PaywallView: View {
                     }
                     Text(reasonEmoji).font(.system(size: 64))
                     Text(headline).font(Theme.title(28)).foregroundStyle(Theme.moon).multilineTextAlignment(.center)
-                    Text("Roarly is free to use for good. Pro is optional: buy it only if you want more sounds.")
+                    Text("Roarly is free to use for good. Pro is optional: get it only if you want what it adds.")
                         .font(Theme.body(15)).foregroundStyle(Theme.ink).multilineTextAlignment(.center)
 
                     plan("Free, for good", already: true, lines: [
@@ -36,6 +36,7 @@ struct PaywallView: View {
                     plan("Roarly Pro", already: false, lines: [
                         "+\(SoundCatalog.all.count - SoundCatalog.freeCues.count) more sounds: " + SoundCatalog.all.filter { !$0.isFree }.prefix(14).map(\.emoji).joined(separator: " ") + " …",
                         "Your own words (\"Mister Whiskers\" plays the cat)",
+                        "Pocket mode: a black, locked screen while it listens, so the phone can go face down or in a pocket",
                         "Apple Watch remote: tap sounds or play them on the watch",
                         "Every sound we add later",
                     ])
@@ -88,6 +89,7 @@ struct PaywallView: View {
         switch model.paywallReason {
         case .customWords: return "✍️"
         case .watch: return "⌚️"
+        case .pocket: return "🌑"
         default: return "📖"
         }
     }
@@ -97,6 +99,7 @@ struct PaywallView: View {
         switch model.paywallReason {
         case .customWords: return "Your own words are part of Pro"
         case .watch: return "The watch remote is part of Pro"
+        case .pocket: return "Pocket mode is part of Pro"
         default: return "Open the whole storybook"
         }
     }

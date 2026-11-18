@@ -31,6 +31,7 @@ enum DebugFlags {
         if args.contains("-selfTest") { await SelfTest.run(model) }
         if args.contains("-demoStory") { await DemoStory.run(model) }
         if args.contains("-autoListen") { await model.start() }
+        if args.contains("-pocket") { model.enterPocket() }  // after -autoListen (or the Pro screen without Pro)
     }
 }
 

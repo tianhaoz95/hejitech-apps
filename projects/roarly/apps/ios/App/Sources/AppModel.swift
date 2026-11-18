@@ -40,12 +40,25 @@ final class AppModel: ObservableObject {
     @Published private(set) var level: Float = 0
     /// Why the Pro screen is open (nil = closed). It opens only from something the user tapped that
     /// is marked as Pro, never by itself.
-    enum PaywallReason: Equatable { case browse, sound(String), customWords, watch }
+    enum PaywallReason: Equatable { case browse, sound(String), customWords, watch, pocket }
     @Published var paywallReason: PaywallReason?
     var showPaywall: Bool {
         get { paywallReason != nil }
         set { paywallReason = newValue ? (paywallReason ?? .browse) : nil }
     }
+    /// Pocket mode (Pro): black, touch-locked screen while listening (`PocketView`).
+    @Published var pocketMode = false
+    func enterPocket() {
+        guard isPro else { openPaywall(.pocket); return }
+        guard isListening else { return }
+        pocketMode = true
+    }
+    func exitPocket() {
+        guard pocketMode else { return }
+        pocketMode = false
+        log("pocket mode off")
+    }
+
     func openPaywall(_ reason: PaywallReason) {
         log("pro screen opened: \(reason)")
         paywallReason = reason

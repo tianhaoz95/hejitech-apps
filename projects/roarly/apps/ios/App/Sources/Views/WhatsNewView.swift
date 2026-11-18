@@ -15,6 +15,7 @@ struct WhatsNewView: View {
     static let releases: [Release] = [
         Release(version: "0.1.1", items: [
             ("👂", "Listening stays put", "Starting a story no longer flips between \"Getting ready\" and \"Listening\"."),
+            ("🌑", "Pocket mode", "With Pro, the screen goes black and locks while Roarly keeps listening: put the phone face down or in a pocket. Tap, then hold the moon to unlock."),
             ("📖", "Clear about Pro", "Roarly is free for good with 12 sounds. Pro is optional, and its screen says what it adds and opens only when you tap a sound with a lock."),
         ]),
         Release(version: "0.1.0", items: [

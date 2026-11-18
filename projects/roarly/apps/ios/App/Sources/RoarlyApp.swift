@@ -35,6 +35,7 @@ struct RootView: View {
             }
         }
         .sheet(isPresented: $model.showPaywall) { PaywallView() }
+        .fullScreenCover(isPresented: $model.pocketMode) { PocketView() }
         .sheet(isPresented: $showWhatsNew) { WhatsNewView() }
         .task {
             if model.onboarded, WhatsNewView.shouldShowAutomatically { showWhatsNew = true }

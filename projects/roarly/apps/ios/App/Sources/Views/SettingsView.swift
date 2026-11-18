@@ -50,7 +50,7 @@ struct SettingsView: View {
                         Label("The whole storybook is open. Thank you!", systemImage: "checkmark.seal.fill")
                             .foregroundStyle(Theme.lantern)
                     } else {
-                        Text("You're on Roarly Free: \(SoundCatalog.freeCues.count) sounds and as many stories as you like, for good. Pro adds the other \(SoundCatalog.all.count - SoundCatalog.freeCues.count) sounds, your own words and the Apple Watch remote.")
+                        Text("You're on Roarly Free: \(SoundCatalog.freeCues.count) sounds and as many stories as you like, for good. Pro adds the other \(SoundCatalog.all.count - SoundCatalog.freeCues.count) sounds, your own words, Pocket mode and the Apple Watch remote.")
                             .font(Theme.body(14))
                         Button("See what Pro adds") { model.openPaywall(.browse) }
                     }
