@@ -47,7 +47,7 @@
           <div><b>App Store Connect</b><span class="ok">“Roarly: Story Sound Effects”, draft filled</span></div>
           <div><b>In-app purchases</b><span class="todo">Ready to submit; prices are my guess</span></div>
           <div><b>TestFlight</b><span class="todo">One command away (§5)</span></div>
-          <div><b>Bundled 0.6B model</b><span class="todo">Ships, but opt-in (measured weak)</span></div>
+          <div><b>Smart listening on your iPhone</b><span class="ok">New 1.3 MB classifier, 20/22</span></div>
         </div>
 
         <div class="cards">
@@ -55,7 +55,8 @@
             <h3>Verified</h3>
             <ul>
               <li><b>On-device speech + decisions + sounds</b> on the iPhone 13 (iOS 27.2): a spoken story recording streamed through the real SpeechAnalyzer (<code>-listenFile</code>), every sound right (log in §3).</li>
-              <li><b>Context rules</b>: 23 RoarlyKit tests incl. a 36-line story eval, all passing locally and in <code>roarly-ci.yml</code>.</li>
+              <li><b>Four voices, two new stories</b> (Kokoro, read through the real on-device speech model): 60/60 checks (§3).</li>
+              <li><b>Context rules</b>: 24 RoarlyKit tests incl. a 36-line story eval, all passing locally and in <code>roarly-ci.yml</code>.</li>
               <li><b>UI on device</b>: story screen, suggestions, loops, paywall with live sandbox prices.</li>
               <li><b>Watch UI</b> in the watchOS Simulator.</li>
             </ul>
@@ -110,12 +111,22 @@
       </section>
 
       <section id="model">
-        <h2>The bundled 0.6B model doesn't help (yet)</h2>
-        <p>As you asked, <code>Qwen3-0.6B-4bit</code> ships in the app (335 MB, like Voxbrief), fast enough (~430 ms per question on the iPhone 13). But on 22 “should it play now?” sentences it answered close to chance: on the phone it said yes to all 10 self-test cases. Apple's on-device model got 18 of 22 and only ever erred toward staying quiet.</p>
+        <h2>Smart listening on iPhones without Apple Intelligence</h2>
+        <p>As you asked, <code>Qwen3-0.6B-4bit</code> ships in the app (335 MB). It's fast (~430 ms on the iPhone 13) but answered “should it play now?” at chance; on the phone it said yes to everything. Apple's on-device model got 18 of 22, but your iPhone 13 doesn't have it.</p>
+        <p>With the faster Mac I trained a replacement: Apple's model <b>wrote 2,560 story sentences</b> (32 animals and things × 10 situations: arriving, roaring, leaving, asleep, remembered, negated…), each situation giving the label. A Create ML text classifier learned from them with the sound's name masked as THING, so one model covers every sound (<code>projects/roarly/ml</code>). It's <b>1.3 MB, ~10 ms</b> on your phone, and is now the default on iPhones without Apple Intelligence. The 0.6B model stays in the app as an “experimental” switch.</p>
         <div data-block="director"></div>
         <div data-block="latency"></div>
-        <p>So on iPhones without Apple Intelligence (yours included), the rules decide and unsure sounds wait for a tap; the built-in model is a switch in Settings (“Try the built-in model (experimental)”). The rules alone pass all 36 eval lines.</p>
-        <div class="callout"><b>Recommendation:</b> keep the bundled model for now and train a small classifier on sentences labeled by a large model (the Spark was offline tonight). Or drop the 335 MB if you'd rather keep the download small.</div>
+        <div class="callout"><b>Your call:</b> the 0.6B model now adds 335 MB for no measured benefit. I'd drop it in the next release; it stays for now because you asked for it.</div>
+      </section>
+
+      <section id="voices">
+        <h2>Four voices, two new stories</h2>
+        <p>Kokoro (run locally on this Mac) read a farm story and a jungle story in four voices: US female/male, UK female/male. Each recording was streamed through the real on-device speech model on your iPhone and scored against an answer key (<code>scripts/device_story_eval.sh</code>, <code>evals/stories/key.json</code>).</p>
+        <table class="grid">
+          <tr><th>Story</th><th>Must play</th><th>Must stay quiet</th><th>Result (each voice)</th></tr>
+          <tr><td>Farm</td><td>cow, dog, rain, thunder, knock, cat (and rain must stop)</td><td>the sleeping horse</td><td>7/7 × 4 voices</td></tr>
+          <tr><td>Jungle</td><td>monkey, tiger, dinosaur, frog, wolf</td><td>remembered elephant, “nobody had ever seen a dragon”, quiet owl</td><td>8/8 × 4 voices</td></tr>
+        </table>
       </section>
 
       <section id="sounds">
@@ -136,7 +147,7 @@
           <li><input type="checkbox" id="c-testflight"><span><b>Install from TestFlight and tell a story</b><small>Allow the microphone at the first lantern tap. Try “A tiger is chasing you!” and “The tiger ran away.”</small></span></li>
           <li><input type="checkbox" id="c-sounds"><span><b>Listen to the library and list sounds to replace</b><small>Especially the synthesized ones above.</small></span></li>
           <li><input type="checkbox" id="c-prices"><span><b>Confirm the prices</b><small>$4.99/year with a free week, $14.99 lifetime. Change them in App Store Connect › Roarly › Monetization if you want different ones.</small></span></li>
-          <li><input type="checkbox" id="c-privacy"><span><b>App Privacy questionnaire</b><small>Website only: “No, we do not collect data”.</small></span></li>
+          <li><input type="checkbox" id="c-privacy"><span><b>Publish App Privacy</b><small>I saved “Data Not Collected”; the Publish button asks you to attest the answers, so that click is yours (App Store Connect › Roarly › App Privacy).</small></span></li>
           <li><input type="checkbox" id="c-rights"><span><b>Check the content rights answer</b><small>I set “uses third-party content” (the CC0 sounds; we have the rights). Change it if you read it differently.</small></span></li>
           <li><input type="checkbox" id="c-shots"><span><b>Store screenshots and submit for review</b><small>Not done: screenshots, and the first in-app purchases go to review with the app version (skill heji-app-store-iap §1). Submit days apart from the other apps (4.3).</small></span></li>
           <li><input type="checkbox" id="c-watch"><span><b>Try the watch app</b><small>Install it from the Watch app, open it during a story.</small></span></li>
