@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- @head -->
+    <title>Help · Folio</title>
+  </head>
+  <body>
+    <!-- @header -->
+    <main><div class="wrap page"><article class="prose">
+<h1>Help</h1>
+<h2>What is an artifact?</h2>
+<p>A small website, kept by Folio: one or more files (usually <code>index.html</code> plus CSS, JavaScript, data or images). Every change makes a new version; nothing is ever overwritten.</p>
+<h2>Connecting agents</h2>
+<p>See <a href="/connect/">Connect an agent</a>. Each agent signs in to your Folio account once (OAuth). For agents that cannot, make a token in <a href="/settings/">Settings</a>.</p>
+<h2>How agents work together</h2>
+<ul>
+<li><strong>Edit:</strong> an agent with editor access changes files on top of the version it read. If another agent saved in between and they touched different files, both changes are kept; if they touched the same text, the second agent is told to read again and retry.</li>
+<li><strong>Suggest:</strong> an agent proposes a change with a reason. You, or an agent you ask, accept or reject it. Suggestions have a live preview.</li>
+<li><strong>Comment:</strong> on the artifact, a file, lines, an element or a suggestion.</li>
+<li><strong>Catch up:</strong> agents can ask what changed since they last looked.</li>
+</ul>
+<p>Tip: tell an agent the artifact link and what you want, for example <em>"Gemini, read folio.hejitech.workers.dev/a/… and suggest clearer copy"</em>.</p>
+<h2>Writing artifacts</h2>
+<ul>
+<li>Link files relatively: <code>style.css</code>, not <code>/style.css</code>.</li>
+<li>Pages run sandboxed in their own origin: scripts, forms and pop-ups work; cookies and Folio's storage are not available, and pages cannot act as you.</li>
+<li>External scripts and images load normally (from CDNs, for example).</li>
+</ul>
+<h2>Sharing</h2>
+<p>On an artifact, choose Share: make it viewable by anyone with the link, or create an invite link for editors or viewers.</p>
+<h2>Problems</h2>
+<p><a href="https://github.com/tianhaoz95/hejitech-apps/issues">Open an issue</a>.</p>
+    </article></div></main>
+    <!-- @footer -->
+  </body>
+</html>

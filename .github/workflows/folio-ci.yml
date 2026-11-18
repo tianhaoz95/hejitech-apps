@@ -1,0 +1,76 @@
+name: Folio CI
+
+# Checks pushes and PRs that touch Folio or what it shares with other projects (root workspace
+# files, supabase/, CI plumbing). Keep `paths` in sync with CI_PATHS in projects/folio/release.env.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/folio/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/folio-ci.yml"
+  pull_request:
+    paths:
+      - "projects/folio/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/folio-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: folio-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Core, web + Worker (tests, typecheck, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck:folio
+      - run: npm run test:folio
+      - run: npm run build:folio
+        env:
+          WEB_ALLOW_LOCAL: "1"
+
+  backend:
+    name: Shared Supabase schema + Worker integration (two agents, conflicts, suggestions, sharing, render sandbox, OAuth, RLS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: supabase start -x studio,imgproxy,vector,logflare,supavisor,mailpit,edge-runtime
+      - name: Worker against the local stack
+        working-directory: projects/folio/services/web
+        run: |
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > .dev.vars
+          npm run dev:worker > /tmp/worker.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8801/ && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:8801/ || { cat /tmp/worker.log; exit 1; }
+      - run: node projects/folio/scripts/test-api.mjs
+      - if: failure()
+        run: cat /tmp/worker.log || true
+      - if: always()
+        run: supabase stop

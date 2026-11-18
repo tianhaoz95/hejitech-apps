@@ -1,6 +1,6 @@
 # HEJI projects monorepo
 
-Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`, `g2digest`, `headway`, `fitloop`, `tether`, `tradeboard`, `icecap`, `hq`, `roarly`), sharing one
+Several products live in `projects/<name>/` (`waypack`, `weehours`, `feedbackkit`, `voxbrief`, `meowtrix`, `contempo`, `toddlercam`, `tinytouch`, `g2digest`, `headway`, `fitloop`, `tether`, `tradeboard`, `icecap`, `hq`, `roarly`, `folio`), sharing one
 Supabase project (FeedbackKit keeps its own: `BACKEND=own`; Voxbrief, Meowtrix, ToddlerCam, TinyTouch and Roarly have none: `BACKEND=none`) (`supabase/`, read `supabase/README.md` before any schema change), npm workspaces and CI
 plumbing. Layout and how to add a project: `README.md`. Keep each project self-contained; put
 something at the root only when it is genuinely shared. Each project has its own `CLAUDE.md`
@@ -149,6 +149,11 @@ For Roarly it bumps `MARKETING_VERSION` in `projects/roarly/apps/ios/project.yml
 in-app What's New describes the version) and publishes `roarly-v<version>`, which runs
 `roarly-testflight.yml` (iPhone app with its Watch app; fetches the bundled model first). No backend.
 See `projects/roarly/CLAUDE.md`.
+
+For Folio (web only) it bumps `projects/folio/services/web/package.json` (also the MCP server's
+`serverInfo.version`) and publishes `folio-v<version>`; no release workflows. Its Worker (site, artifact
+workspace, sandboxed `/r/` rendering, API, MCP with an MCP Apps view) deploys on push. See
+`projects/folio/CLAUDE.md`.
 
 For HQ it bumps `MARKETING_VERSION` in `projects/hq/apps/ios/project.yml` (refusing until the in-app
 What's New describes the version) and publishes `hq-v<version>`, which runs `hq-testflight.yml`

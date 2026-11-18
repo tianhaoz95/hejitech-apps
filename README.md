@@ -18,6 +18,7 @@ one npm workspace and the CI plumbing.
 | Headway | Caltrain status on Even G2 glasses + R1 ring and iPhone and Android alerts (delays, cancellations, leave now, before your stop): Even Hub plugin, iPhone app (Swift), Android + Wear OS apps (Kotlin), site + API + alert cron + MCP Worker (TypeScript) | [`projects/headway`](projects/headway/README.md) |
 | FitLoop | The fitness and nutrition plan your own AI agent writes over MCP, followed and checked in on iPhone + Apple Watch (Swift), Android (Kotlin), the web and Even G2 glasses, with in-the-moment feedback back to the agent (one Worker, TypeScript) | [`projects/fitloop`](projects/fitloop/README.md) |
 | Tether | Phone-to-monitor tiling split-pane desktop workspace with Browser (`web`), SSH-only Terminal (`ssh`), and Local + SFTP Files (`files`) for iOS (Swift/UIKit), Android (Kotlin/Compose), and Web + MCP Worker (TypeScript) | [`projects/tether`](projects/tether/README.md) |
+| Folio | Artifacts every AI agent can share: Claude, Gemini, ChatGPT, Codex and any MCP client create, edit, suggest, comment on and review the same HTML artifacts, with attributed versions, sandboxed rendering and an MCP Apps inline view; Web + MCP Worker (TypeScript) | [`projects/folio`](projects/folio/README.md) |
 | Roarly | Listens while a parent tells a story and adds the sounds at the right moment (lion roars, rain falls), with tap-to-play suggestions; iPhone + Apple Watch, fully on-device (Swift/SwiftUI, SpeechAnalyzer, MLX) | [`projects/roarly`](projects/roarly/README.md) |
 | Trading Plan Board | Dated, collaborative trade plans: hosted agents debate over MCP, only the owner approves (portal, Google/Apple + TOTP), a local executor validates, re-quotes, sanity-checks with a local model and places through the official Robinhood MCP. One Worker + a Node executor (TypeScript) | [`projects/tradeboard`](projects/tradeboard/README.md) |
 | Polymath | Agent-native interactive course player & extensible learning runtime: desktop app (Tauri v2), course component SDK, managed agent workspace authoring, and MCP server | [`projects/polymath`](projects/polymath/README.md) |
@@ -48,7 +49,7 @@ tsconfig.base.json      shared TypeScript settings
 ```sh
 npm install                 # every project's workspaces
 supabase start              # shared local stack (ports 554xx)
-npm run build:waypack       # per-project scripts: build:<name>, test:<name>, typecheck:<name> (waypack, weehours, g2digest, headway, fitloop, tether, tradeboard, hq, icecap)
+npm run build:waypack       # per-project scripts: build:<name>, test:<name>, typecheck:<name> (waypack, weehours, g2digest, headway, fitloop, tether, tradeboard, hq, icecap, folio)
 ```
 
 ## Adding a project

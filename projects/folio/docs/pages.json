@@ -1,0 +1,13 @@
+{
+  "name": "Folio",
+  "sidebar": [
+    {
+      "text": "Folio",
+      "items": [
+        { "text": "Overview", "link": "" },
+        { "text": "Decisions", "link": "decisions" },
+        { "text": "Deployment", "link": "DEPLOY" }
+      ]
+    }
+  ]
+}
