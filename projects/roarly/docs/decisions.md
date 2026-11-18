@@ -23,7 +23,7 @@
 7. **Speech.** `SpeechAnalyzer` + `SpeechTranscriber` (falls back to `DictationTranscriber`), with
    the catalog's words as contextual strings. iOS 26+. Verified on an iPhone 13 (iOS 27.2).
 8. **Pricing (owner).** Free download; Roarly Pro = yearly subscription with a 1-week free trial, or
-   a lifetime unlock. Free: 13 starter sounds and everything else. Pro: all sounds, your own words,
+   a lifetime unlock. Free: 12 starter sounds and everything else. Pro: all sounds, your own words,
    the watch remote. Prices are placeholders the owner sets in App Store Connect.
 9. **Sounds.** Public domain/CC0 recordings (Wikimedia Commons, OpenGameArt, NPS Yellowstone), one
    CC BY 4.0 (thunder, credited), a few synthesized (`tools/build_sounds.py`). Clips were chosen and

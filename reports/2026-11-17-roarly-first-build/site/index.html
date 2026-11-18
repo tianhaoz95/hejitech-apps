@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Roarly: first build</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8603A'/%3E%3Crect x='9' y='9' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='15' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='21' width='9' height='2.5' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>Roarly: first build</b><small>What was built overnight, what was tested on your iPhone, and what is left for you</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <!-- Filled from the sections' <h2>s by report.js; data-toc="Short label" on a section overrides. -->
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <!-- EXAMPLE CONTENT: replace every section. Each <section id> becomes a numbered TOC entry.
+           Building blocks (all styled in css/site.css, all written into the hand-off):
+           .status grid · .cards with .card.good/.warn · .callout · .unknown · .note · table.kv / table.grid
+           pre.cmd (gets a Copy button) · pre.code · ol.do · .shots figures (images in media/)
+           .fields > .field[data-max] > b + pre (a value to paste elsewhere: Copy button, character count)
+           a.dl[download] (a download button for a file in media/)
+           ul.checks (ticks saved per browser) · <div data-block="id"> (design block from js/content.js) -->
+
+      <section id="summary" data-toc="Summary">
+        <p class="kicker">Status report · 2026-11-17</p>
+        <h1>Roarly: first build</h1>
+        <p class="lede"><b>Roarly works on your iPhone 13.</b> It listens on the device and plays the right sound from context: the lion roars when it jumps out, and the tiger running away stays quiet. Unsure moments become cards to tap. It's in <code>projects/roarly</code> with CI, a TestFlight workflow, an App Store Connect record, two in-app purchase products and you as a tester. <b>The first TestFlight build is not out yet:</b> releasing is one command for you (§5), blocked tonight only because another session had uncommitted work in the checkout.</p>
+
+        <div class="status">
+          <div><b>iPhone app</b><span class="ok">Built, tested on device</span></div>
+          <div><b>Apple Watch app</b><span class="todo">Simulator only (no watch paired)</span></div>
+          <div><b>App Store Connect</b><span class="ok">“Roarly: Story Sound Effects”, draft filled</span></div>
+          <div><b>In-app purchases</b><span class="todo">Ready to submit; prices are my guess</span></div>
+          <div><b>TestFlight</b><span class="todo">One command away (§5)</span></div>
+          <div><b>Bundled 0.6B model</b><span class="todo">Ships, but opt-in (measured weak)</span></div>
+        </div>
+
+        <div class="cards">
+          <div class="card good">
+            <h3>Verified</h3>
+            <ul>
+              <li><b>On-device speech + decisions + sounds</b> on the iPhone 13 (iOS 27.2): a spoken story recording streamed through the real SpeechAnalyzer (<code>-listenFile</code>), every sound right (log in §3).</li>
+              <li><b>Context rules</b>: 23 RoarlyKit tests incl. a 36-line story eval, all passing locally and in <code>roarly-ci.yml</code>.</li>
+              <li><b>UI on device</b>: story screen, suggestions, loops, paywall with live sandbox prices.</li>
+              <li><b>Watch UI</b> in the watchOS Simulator.</li>
+            </ul>
+          </div>
+          <div class="card warn">
+            <h3>Not verified</h3>
+            <ul>
+              <li><b>The live microphone on the iPhone</b>: iOS asks for permission on first use and I can't tap it (UI automation is off on your phone). Echo cancellation is therefore untested too.</li>
+              <li><b>Phone ↔ watch over WatchConnectivity</b>: no physical watch is paired.</li>
+              <li><b>Apple's model on an iPhone</b>: your iPhone 13 has no Apple Intelligence; I measured it on the Mac.</li>
+              <li><b>A real purchase</b>: needs a person at Apple's sheet (TestFlight buys are free).</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>First thing to try:</b> install from TestFlight, tap the lantern, allow the microphone, and tell the story in §3 out loud. Then tell me which sounds you'd replace.</div>
+      </section>
+
+      <section id="what">
+        <h2>What Roarly does</h2>
+        <div class="shots">
+          <figure><img src="media/demo1.png" alt="Story screen while listening: the lantern glows, three tap-to-add cards (Cat, Forest, Lion) and the live words"><figcaption>Listening: unsure sounds wait as cards</figcaption></figure>
+          <figure><img src="media/demo3.png" alt="Story screen with Rain playing as a loop chip, the transcript, and the Again row with rain and lion"><figcaption>Rain loops until the story stops it</figcaption></figure>
+          <figure><img src="media/paywall.png" alt="Paywall titled Open the whole storybook, listing perks and the yearly plan at $4.99 a year from the sandbox"><figcaption>Its own paywall (4.3-safe), live sandbox price</figcaption></figure>
+          <figure><img src="media/watch.png" alt="Apple Watch screen: Listening, tap to stop, and a Tap to add card for Lion"><figcaption>Watch remote (Simulator)</figcaption></figure>
+        </div>
+        <table class="kv">
+          <tr><th>Sounds</th><td>45 sounds in 7 shelves, 12 free. Animals, weather loops (rain, wind, sea, forest, night, campfire, river), things, magic. 3.8 MB in all.</td></tr>
+          <tr><th>Modes</th><td>Bedtime (softer, fades at “the end / good night”) and Playtime. Automation: Mostly automatic / Balanced / Mostly ask me.</td></tr>
+          <tr><th>Pro</th><td>All sounds, your own trigger words (hold a sound in the library), the watch remote. Yearly <b>$4.99</b> with a 1-week free trial, lifetime <b>$14.99</b>.</td></tr>
+          <tr><th>Privacy</th><td>No account, backend, analytics or recordings. Privacy and support pages: <code>projects/roarly/docs</code> (published with the site).</td></tr>
+          <tr><th>Watch</th><td>Start/stop, suggestions, loops, replay; optional playback on the watch speaker.</td></tr>
+        </table>
+      </section>
+
+      <section id="tested">
+        <h2>What the iPhone heard and played</h2>
+        <p>The story below was read by the Mac's voice into a file, copied into the app on your iPhone and streamed through the real on-device speech model at normal speed (playtime, balanced). From the device console:</p>
+        <table class="grid">
+          <tr><th>Said</th><th>Roarly did</th></tr>
+          <tr><td>Once upon a time, a little kitten went for a walk in the forest.</td><td>Offered Cat and Forest as cards</td></tr>
+          <tr><td>Suddenly, a big lion jumped out from behind a tree!</td><td>Played the lion, about 2 s before the sentence finished</td></tr>
+          <tr><td>He opened his mouth and roared.</td><td>Played the lion again (“roared” goes to the lion in the story)</td></tr>
+          <tr><td>Then the lion was quiet, and the tiger was running away.</td><td>Nothing (a card appeared mid-sentence, then went away)</td></tr>
+          <tr><td>And then it started to rain.</td><td>Started the rain loop</td></tr>
+          <tr><td>Knock knock! Who's there? It was a sleepy owl.</td><td>Knock, then owl</td></tr>
+          <tr><td>The dog barked at the moon.</td><td>Dog</td></tr>
+          <tr><td>Oh no, a tiger is chasing you!</td><td>Tiger (“oh no” is alarm, not negation)</td></tr>
+          <tr><td>The rain stopped and the sun came out.</td><td>Stopped the rain</td></tr>
+        </table>
+        <div data-block="flow"></div>
+        <p>One bug found this way and fixed: “…and roared” right after the lion appeared was blocked by the 6-second repeat guard. The sound word itself may now repeat after 2.5 s (test <code>testSoundWordRepeatsSoonAfterAppearance</code>).</p>
+      </section>
+
+      <section id="model">
+        <h2>The bundled 0.6B model doesn't help (yet)</h2>
+        <p>As you asked, <code>Qwen3-0.6B-4bit</code> ships in the app (335 MB, like Voxbrief), fast enough (~430 ms per question on the iPhone 13). But on 22 “should it play now?” sentences it answered close to chance: on the phone it said yes to all 10 self-test cases. Apple's on-device model got 18 of 22 and only ever erred toward staying quiet.</p>
+        <div data-block="director"></div>
+        <div data-block="latency"></div>
+        <p>So on iPhones without Apple Intelligence (yours included), the rules decide and unsure sounds wait for a tap; the built-in model is a switch in Settings (“Try the built-in model (experimental)”). The rules alone pass all 36 eval lines.</p>
+        <div class="callout"><b>Recommendation:</b> keep the bundled model for now and train a small classifier on sentences labeled by a large model (the Spark was offline tonight). Or drop the 335 MB if you'd rather keep the download small.</div>
+      </section>
+
+      <section id="sounds">
+        <h2>Where the sounds come from</h2>
+        <p>No sound API keys were available and the Spark was offline, so every sound is a public-domain / CC0 recording (Wikimedia Commons, OpenGameArt, NPS Yellowstone) or one CC BY 4.0 thunderclap (credited in Settings › Sound credits), trimmed and leveled by <code>projects/roarly/tools/build_sounds.py</code>. Apple's built-in sound classifier picked the clip windows (<code>tools/classify_sound.swift</code>): the lion clip classifies as <code>lion_roar</code>, crickets as <code>cricket_chirp</code>, the sea as <code>ocean</code>.</p>
+        <p><b>Weak ones I couldn't verify by ear:</b> cow, elephant, owl, bee, boat horn, train whistle, airplane and wind are synthesized; monkey is a gorilla; horse is hooves. <b>Left out</b> until a good free recording turns up: duck, rooster, pig, goat.</p>
+        <div class="unknown"><b>Not known:</b> how they sound to you. Listen in the library (books icon) and note the ones to replace.</div>
+      </section>
+
+      <section id="todo">
+        <h2>What's left for you</h2>
+        <p class="progress" id="progress"></p>
+        <p><b>First, cut the release.</b> CI is green on <code>c554a5a</code> and the dry run passed. <code>cut_release.sh</code> refused only because another session (the new <code>projects/folio</code>) had uncommitted files in this checkout, and I wasn't allowed to <code>--force</code> past that. Once that work is committed or set aside:</p>
+        <pre class="cmd">scripts/cut_release.sh roarly 0.1.0 --watch   <span class="c"># tags roarly-v0.1.0 → roarly-testflight.yml</span></pre>
+        <p>Then the TestFlight invite goes out by itself to the internal group, or run <code>node .claude/skills/heji-app-store-connect/asc.mjs invite-tester com.hejitech.roarly tianhaozhou95@icloud.com</code> once the build is processed. A <code>git stash</code> entry from tonight (“WIP on main: c554a5ae”) holds a copy of those folio files; everything was restored, so it can be dropped once their owner confirms.</p>
+        <ul class="checks">
+          <li><input type="checkbox" id="c-release"><span><b>Cut Roarly 0.1.0</b><small>The command above; the workflow uploads to TestFlight and waits for Apple's verdict.</small></span></li>
+          <li><input type="checkbox" id="c-testflight"><span><b>Install from TestFlight and tell a story</b><small>Allow the microphone at the first lantern tap. Try “A tiger is chasing you!” and “The tiger ran away.”</small></span></li>
+          <li><input type="checkbox" id="c-sounds"><span><b>Listen to the library and list sounds to replace</b><small>Especially the synthesized ones above.</small></span></li>
+          <li><input type="checkbox" id="c-prices"><span><b>Confirm the prices</b><small>$4.99/year with a free week, $14.99 lifetime. Change them in App Store Connect › Roarly › Monetization if you want different ones.</small></span></li>
+          <li><input type="checkbox" id="c-privacy"><span><b>App Privacy questionnaire</b><small>Website only: “No, we do not collect data”.</small></span></li>
+          <li><input type="checkbox" id="c-rights"><span><b>Check the content rights answer</b><small>I set “uses third-party content” (the CC0 sounds; we have the rights). Change it if you read it differently.</small></span></li>
+          <li><input type="checkbox" id="c-shots"><span><b>Store screenshots and submit for review</b><small>Not done: screenshots, and the first in-app purchases go to review with the app version (skill heji-app-store-iap §1). Submit days apart from the other apps (4.3).</small></span></li>
+          <li><input type="checkbox" id="c-watch"><span><b>Try the watch app</b><small>Install it from the Watch app, open it during a story.</small></span></li>
+          <li><input type="checkbox" id="c-ui"><span><b>Optional: turn on Settings › Developer › Enable UI Automation</b><small>Lets me run the UI tests (<code>RoarlyUITests</code>) and the live-mic test on your phone next time.</small></span></li>
+        </ul>
+      </section>
+
+      <section id="details">
+        <h2>Where everything is</h2>
+        <table class="kv">
+          <tr><th>Code</th><td><code>projects/roarly</code> (read its <code>CLAUDE.md</code>); decisions in <code>docs/decisions.md</code></td></tr>
+          <tr><th>Commits</th><td><code>e0289927</code> (the app), <code>c554a5a</code> (watch standalone install)</td></tr>
+          <tr><th>CI</th><td><code>.github/workflows/roarly-ci.yml</code>: RoarlyKit tests + iPhone/watch build</td></tr>
+          <tr><th>Release</th><td><code>scripts/cut_release.sh roarly</code> → <code>roarly-v&lt;version&gt;</code> → <code>roarly-testflight.yml</code> (also weekly, Wednesdays 20:30 UTC)</td></tr>
+          <tr><th>App Store Connect</th><td>Roarly: Story Sound Effects (id 6836171344; “Roarly” was taken), bundle <code>com.hejitech.roarly</code>, version 0.1.0 draft: description, keywords, subtitle, URLs, Entertainment + Education, age rating, Free, all territories</td></tr>
+          <tr><th>Products</th><td><code>com.hejitech.roarly.pro.yearly</code> (group “Roarly Pro”, 175 prices + free-week offers), <code>com.hejitech.roarly.pro.lifetime</code>; both READY_TO_SUBMIT with review screenshots</td></tr>
+          <tr><th>Tester</th><td>tianhaozhou95@icloud.com in internal group “Team”</td></tr>
+        </table>
+        <pre class="cmd">scripts/cut_release.sh roarly --dry-run   <span class="c"># next release</span></pre>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-11-17-roarly-first-build</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- Order: design blocks → this report's config → the engine. -->
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>
