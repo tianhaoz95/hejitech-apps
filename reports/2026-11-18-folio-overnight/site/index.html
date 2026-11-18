@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Folio: the overnight build</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8603A'/%3E%3Crect x='9' y='9' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='15' width='14' height='2.5' rx='1.2' fill='%23fff'/%3E%3Crect x='9' y='21' width='9' height='2.5' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#top">
+      <span class="logo"></span>
+      <span><b>Folio: the overnight build</b><small>What was built overnight, what is live, and the few steps left for you</small></span>
+    </a>
+    <div class="seg" role="group" aria-label="Appearance">
+      <button data-mode="light">Light</button>
+      <button data-mode="dark">Dark</button>
+    </div>
+  </header>
+
+  <div class="layout" id="top">
+    <!-- Filled from the sections' <h2>s by report.js; data-toc="Short label" on a section overrides. -->
+    <nav class="toc" aria-label="Sections"></nav>
+
+    <main>
+      <section id="summary" data-toc="Summary">
+        <p class="kicker">Overnight build · 2026-11-18</p>
+        <h1>Folio is live: artifacts every AI agent can share</h1>
+        <p class="lede"><b>Folio is built, deployed and on <code>main</code></b> (<code>318fee1f</code>). It runs at <a href="https://folio.hejitech.workers.dev">folio.hejitech.workers.dev</a> with an MCP server at <code>/mcp</code>. Claude, Gemini, ChatGPT, Codex or any MCP client signs in once, then creates, edits, suggests, comments on and reviews the same artifacts, and every change is labelled with the agent that made it. What's left for you: sign in once for real, connect two agents, and link Workers Builds so pushes deploy.</p>
+
+        <div class="status">
+          <div><b>Site, app, API, MCP</b><span class="ok">Live, deployed by hand</span></div>
+          <div><b>Database</b><span class="ok">folio schema in production, exposed</span></div>
+          <div><b>Sign-in redirect</b><span class="ok">Added to the allow-list</span></div>
+          <div><b>Tests</b><span class="ok">23 unit + 20 integration checks pass</span></div>
+          <div><b>CI on main</b><span class="ok">Folio CI + Supabase conventions green</span></div>
+          <div><b>Workers Builds</b><span class="todo">Not linked: your step (§6)</span></div>
+          <div><b>Real Google / Apple sign-in</b><span class="todo">Not tried: your step (§6)</span></div>
+        </div>
+
+        <div class="cards">
+          <div class="card good">
+            <h3>Verified</h3>
+            <ul>
+              <li><b>Two agents on one artifact</b> over MCP, end to end on the local stack: create, edit, conflicting edits (409 and a clean rebase), suggestions (accept, reject, stale, revise, withdraw), comments, activity, restore, fork, zip export (<code>projects/folio/scripts/test-api.mjs</code>, 20 steps).</li>
+              <li><b>Sharing and roles</b> with a second person: viewers can suggest but not edit, private artifacts don't leak, and role changes take effect.</li>
+              <li><b>Sandboxed rendering</b> in real Chromium: the artifact's CSS and JS run, its origin is <code>null</code>, and Folio's storage throws <code>SecurityError</code> (<code>scripts/browser-check.mjs</code>).</li>
+              <li><b>OAuth 2.1</b>: register → consent (deny and approve) → token → MCP → disconnect, plus <code>fol_</code> tokens and revocation.</li>
+              <li><b>Production</b>: pages 200, <code>/mcp</code> 401 with the OAuth hint, OAuth metadata, and the Worker reading the <code>folio</code> schema.</li>
+            </ul>
+          </div>
+          <div class="card warn">
+            <h3>Not verified</h3>
+            <ul>
+              <li><b>Signing in for real</b> with Google or Apple in production. I didn't sign in with your account.</li>
+              <li><b>A real agent connecting to production</b> (Claude Code, Gemini CLI, Claude.ai). Every flow was tested with a scripted MCP client locally.</li>
+              <li><b>The MCP Apps inline view in a real host.</b> It follows the 2026-01-26 spec; no host has rendered it yet.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>Try this first (5 minutes):</b> connect Claude Code and Gemini CLI (§6), ask one to make an artifact and the other to suggest a change to it, then accept the suggestion in the web app. That's the whole product in one loop.</div>
+      </section>
+
+      <section id="tour" data-toc="What it looks like">
+        <h2>What it looks like</h2>
+        <p>Real screenshots of the web app on the local stack, taken with headless Chromium after the integration test ran two agents (<code>claude-code</code> and <code>gemini-cli</code>) against one artifact.</p>
+        <div class="shots">
+          <figure><img src="media/artifact.png" alt="Artifact workspace: the live page on the left, and on the right an activity timeline showing claude-code and gemini-cli creating, editing, suggesting and commenting"><figcaption>The workspace: the artifact runs live on the left, and the activity of every agent shows on the right, updating as they work.</figcaption></figure>
+          <figure><img src="media/suggestion.png" alt="Suggestion #1 'Add bread' by Gemini CLI, previewed: the page shows bread in the list, with the rationale, Accept and Reject buttons, a diff of app.js and a comment from claude-code"><figcaption>A suggestion from Gemini, previewed live (bread appears) before anyone accepts it, with its diff and the discussion.</figcaption></figure>
+          <figure><img src="media/history-dark.png" alt="Dark mode history view of version 3 by claude-code, 'Brand color', with a Restore button and the style.css diff"><figcaption>History in dark mode: every version names its agent, shows its diff, and can be restored.</figcaption></figure>
+          <figure><img src="media/share.png" alt="Share dialog: visibility select, link with Copy, invite people with a role, people list, delete artifact"><figcaption>Sharing: private or anyone with the link, invite links for editors or viewers.</figcaption></figure>
+          <figure><img src="media/dashboard.png" alt="Dashboard listing artifacts as cards and a recent activity feed across all artifacts"><figcaption>Dashboard: your artifacts and what every agent did recently.</figcaption></figure>
+          <figure><img src="media/home.png" alt="Landing page: 'One home for the pages your AI agents make', the four-step flow, features and a one-line connect command"><figcaption>The landing page.</figcaption></figure>
+          <figure><img src="media/artifact-phone.png" alt="The artifact workspace at phone width with the preview filling the screen and a bottom sheet for activity, suggestions and comments"><figcaption>Phone width: the side panel becomes a bottom sheet.</figcaption></figure>
+        </div>
+      </section>
+
+      <section id="agents" data-toc="How agents use it">
+        <h2>How agents use it</h2>
+        <p>Folio is one MCP server with 21 tools (<code>services/web/src/worker/mcp.ts</code>). Each agent signs in with OAuth (or a <code>fol_</code> token) and acts as you.</p>
+        <div data-block="tools"></div>
+        <p>The loop the tools are built around, also written into the server's <code>instructions</code>:</p>
+        <div data-block="loop"></div>
+      </section>
+
+      <section id="how">
+        <h2>How it works</h2>
+        <div data-block="arch"></div>
+        <table class="kv">
+          <tr><th>Versions</th><td>Each version is an immutable manifest (path → content hash). File contents are stored once per artifact: text in <code>folio.blobs</code>, binaries in the private <code>folio</code> bucket. The single writer is <code>folio.commit_version</code>, which checks the head under a row lock (<code>supabase/schemas/folio/schema.sql</code>).</td></tr>
+          <tr><th>Concurrency</th><td>Edits name the <code>base_version</code> they read. If someone saved since, the edit is replayed on the new head only when it can't lose work; otherwise a 409 names the newer versions, who made them and the conflicting files (table below).</td></tr>
+          <tr><th>Attribution</th><td>The agent's own <code>agent</code>/<code>model</code> arguments, else the MCP <code>clientInfo</code> (kept per <code>Mcp-Session-Id</code>), else the OAuth client or token name. Changes from the web are labelled "Web". It's a label for people, not a permission.</td></tr>
+          <tr><th>Rendering</th><td><code>/r/&lt;slug&gt;/&lt;version | s&lt;n&gt;&gt;/&lt;key&gt;/&lt;file&gt;</code> with <code>Content-Security-Policy: sandbox</code> (no <code>allow-same-origin</code>). Private artifacts need an HMAC key that expires after 12 h. Suggestions render live as <code>s&lt;n&gt;</code> without being committed.</td></tr>
+          <tr><th>Inline view</th><td><code>show_artifact</code> declares the MCP Apps resource <code>ui://folio/viewer.html</code> (<code>text/html;profile=mcp-app</code>). The view nests the render URL, allowed by <code>csp.frameDomains</code>. Hosts without MCP Apps get the link instead.</td></tr>
+          <tr><th>Prompt injection</th><td>Results containing other agents' text carry a <code>note</code> saying it is data, not instructions. The server instructions say the same. Agents can't delete artifacts.</td></tr>
+        </table>
+        <div data-block="merge"></div>
+      </section>
+
+      <section id="evidence" data-toc="Tests &amp; checks">
+        <h2>Tests and checks</h2>
+        <div data-block="checks"></div>
+        <p>Bugs these runs caught and fixed before the push: a blank artifact page on repeat visits (a 304 from the assets binding rewritten into an empty 200), replies on a suggestion's comment not belonging to that suggestion, and mixed-key blob upserts that PostgREST filled with <code>null</code>. The pitfalls are written down in <code>projects/folio/CLAUDE.md</code>.</p>
+      </section>
+
+      <section id="live" data-toc="Production">
+        <h2>What's in production</h2>
+        <table class="kv">
+          <tr><th>Worker</th><td><code>folio</code> at <a href="https://folio.hejitech.workers.dev">folio.hejitech.workers.dev</a>, deployed with <code>npm run deploy -w @folio/web</code>. Secrets: <code>SUPABASE_SERVICE_ROLE_KEY</code> (the project's default secret key) and <code>RENDER_SECRET</code> (new; a copy is in <code>~/Credentials/folio/folio.env</code> and in the GitHub secret <code>FOLIO_RENDER_SECRET</code>).</td></tr>
+          <tr><th>Database</th><td>Migration <code>20261118055145_folio_init.sql</code> pushed (it was the only pending one). <code>folio</code> added to the Data API's exposed schemas, now 12 of 14.</td></tr>
+          <tr><th>Auth</th><td><code>https://folio.hejitech.workers.dev/**</code> added to the redirect URLs (21 now; the other 20 and the site URL untouched). Google and Apple were already on project-wide.</td></tr>
+          <tr><th>Repo</th><td><code>projects/folio</code>, <code>folio-ci.yml</code>, root scripts <code>build/test/typecheck:folio</code>, README table, docs site card and status page entry, root <code>CLAUDE.md</code>. Isolation, Supabase conventions and the graduation check pass.</td></tr>
+        </table>
+        <pre class="cmd">claude mcp add --transport http folio https://folio.hejitech.workers.dev/mcp</pre>
+      </section>
+
+      <section id="todo" data-toc="Your steps">
+        <h2>Your steps</h2>
+        <p class="progress" id="progress"></p>
+        <ul class="checks">
+          <li><input type="checkbox" id="c-signin"><span><b>Sign in at folio.hejitech.workers.dev with Google, then with Apple</b><small>Both should land on an empty Artifacts page. Make a "New artifact" and check that it opens and the preview shows.</small></span></li>
+          <li><input type="checkbox" id="c-claude"><span><b>Connect Claude Code</b>: run the command above, then <code>/mcp</code> → folio → Authenticate<small>The consent page asks "Let Claude Code use Folio?". Then ask: "Make a Folio artifact: a one-page landing page for Waypack".</small></span></li>
+          <li><input type="checkbox" id="c-gemini"><span><b>Connect Gemini CLI</b> (<code>~/.gemini/settings.json</code> → <code>{"mcpServers":{"folio":{"httpUrl":"https://folio.hejitech.workers.dev/mcp"}}}</code>, then <code>/mcp auth folio</code>)<small>Ask: "Open my latest Folio artifact and suggest clearer copy." The suggestion should show up in the web app within 5 s, labelled with Gemini's name.</small></span></li>
+          <li><input type="checkbox" id="c-inline"><span><b>Add Folio as a custom connector in Claude.ai</b> and ask it to show the artifact<small>Expected: the artifact draws inline (MCP Apps). If it shows only a link, tell me what the host shows.</small></span></li>
+          <li><input type="checkbox" id="c-builds"><span><b>Link Workers Builds</b> for <code>folio</code> (Cloudflare dashboard): build <code>npm ci</code>, deploy <code>npm run deploy -w @folio/web</code>, non-production <code>npm run upload-version -w @folio/web</code>, watch path <code>projects/folio/*</code><small>Until then, pushes don't deploy Folio; I deployed by hand.</small></span></li>
+          <li><input type="checkbox" id="c-release"><span><b>Optional: cut the first release</b> with <code>scripts/cut_release.sh folio --dry-run</code> then <code>scripts/cut_release.sh folio</code><small>Tags <code>folio-v0.1.x</code>. There are no release workflows; it records the version.</small></span></li>
+        </ul>
+      </section>
+
+      <section id="next" data-toc="What to build next">
+        <h2>What to build next</h2>
+        <p>I left the extensions from our brainstorm out, as you asked. Pick any of them in your notes and I'll build them:</p>
+        <div data-block="ext"></div>
+        <h3>Open questions</h3>
+        <ul>
+          <li><b>Domain.</b> Folio runs on <code>workers.dev</code>. A custom domain (and a separate one for <code>/r/</code> rendering) would add defence in depth against untrusted pages, beyond the CSP sandbox.</li>
+          <li><b>A dedicated Supabase secret key</b> named <code>folio</code> (HQ's DEPLOY note recommends one per Worker) instead of the project's default secret key. It's a dashboard step; tell me if you want it.</li>
+          <li><b>Pricing.</b> Free for now, per your call. The limits (25 MB per version, 1000 artifacts per person) are in <code>docs/decisions.md</code>.</li>
+          <li><b>Native apps.</b> None yet. An iPhone viewer with a share sheet into Folio would fit the house pattern if you want one.</li>
+        </ul>
+        <div class="unknown"><b>Not known yet:</b> how ChatGPT and the Gemini app (not the CLI) handle custom MCP servers and MCP Apps today. The connect page gives the current instructions, but I couldn't test them without your accounts.</div>
+      </section>
+
+      <section id="handoff" data-toc="Notes &amp; hand-off" data-skip>
+        <div class="handoff">
+          <h2>Your notes</h2>
+          <p>Questions, corrections, decisions. Saved in this browser. <b>Copy summary</b> puts the whole report, your ticks and these notes on the clipboard for any agent, in this session or a new one.</p>
+          <textarea id="notes" placeholder="What should happen next?"></textarea>
+          <button class="btn pri" id="copy">Copy summary</button>
+        </div>
+      </section>
+
+      <p class="foot" data-skip>Report: <code>reports/2026-11-18-folio-overnight</code> · serve with <code>script/serve.sh</code></p>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- Order: design blocks → this report's config → the engine. -->
+  <script src="js/design.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>
