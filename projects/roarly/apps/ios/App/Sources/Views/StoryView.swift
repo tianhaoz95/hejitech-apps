@@ -53,6 +53,7 @@ struct StoryView: View {
             .toolbarBackground(.hidden, for: .navigationBar)
             .sheet(isPresented: $showLibrary) { LibraryView() }
             .sheet(isPresented: $showSettings) { SettingsView() }
+            .sheet(isPresented: $model.showModesHelp) { ModesHelpView() }
         }
     }
 }
@@ -83,21 +84,37 @@ private struct PocketButton: View {
 private struct ModePicker: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
-        HStack(spacing: 10) {
-            ForEach(StoryMode.allCases, id: \.self) { mode in
-                let on = model.mode == mode
-                Button {
-                    withAnimation(.snappy) { model.mode = mode }
-                } label: {
-                    Label(mode.title, systemImage: mode == .bedtime ? "moon.stars.fill" : "sun.max.fill")
-                        .font(Theme.label(15))
-                        .padding(.vertical, 9)
-                        .padding(.horizontal, 16)
-                        .foregroundStyle(on ? Theme.skyDeep : Theme.ink)
-                        .background(on ? Theme.lantern : Theme.card, in: Capsule())
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                ForEach(StoryMode.allCases, id: \.self) { mode in
+                    let on = model.mode == mode
+                    Button {
+                        withAnimation(.snappy) { model.mode = mode }
+                    } label: {
+                        Label(mode.title, systemImage: mode == .bedtime ? "moon.stars.fill" : "sun.max.fill")
+                            .font(Theme.label(15))
+                            .padding(.vertical, 9)
+                            .padding(.horizontal, 16)
+                            .foregroundStyle(on ? Theme.skyDeep : Theme.ink)
+                            .background(on ? Theme.lantern : Theme.card, in: Capsule())
+                    }
+                    .accessibilityIdentifier("mode-\(mode.rawValue)")
                 }
-                .accessibilityIdentifier("mode-\(mode.rawValue)")
+                Button { model.showModesHelp = true } label: {
+                    Image(systemName: "questionmark")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.ink)
+                        .frame(width: 38, height: 38)
+                        .background(Theme.card, in: Circle())
+                }
+                .accessibilityLabel("What's the difference between Bedtime and Playtime?")
+                .accessibilityIdentifier("modes-help")
             }
+            Text(model.mode.tagline)
+                .font(Theme.body(14))
+                .foregroundStyle(Theme.ink)
+                .animation(.default, value: model.mode)
+                .accessibilityIdentifier("mode-tagline")
         }
         .padding(.top, 4)
     }

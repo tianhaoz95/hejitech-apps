@@ -48,6 +48,8 @@ final class AppModel: ObservableObject {
     }
     /// Pocket mode (Pro): black, touch-locked screen while listening (`PocketView`).
     @Published var pocketMode = false
+    /// The "?" next to Bedtime / Playtime (`ModesHelpView`).
+    @Published var showModesHelp = false
     func enterPocket() {
         guard isPro else { openPaywall(.pocket); return }
         guard isListening else { return }

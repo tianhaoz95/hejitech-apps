@@ -28,6 +28,7 @@ enum DebugFlags {
         if let m = value("-mode").flatMap(StoryMode.init(rawValue:)) { model.mode = m }
         if let a = value("-automation").flatMap(Automation.init(rawValue:)) { model.automation = a }
         if args.contains("-showPaywall") { model.showPaywall = true }
+        if args.contains("-modesHelp") { model.showModesHelp = true }
         if args.contains("-selfTest") { await SelfTest.run(model) }
         if args.contains("-demoStory") { await DemoStory.run(model) }
         if args.contains("-autoListen") { await model.start() }
