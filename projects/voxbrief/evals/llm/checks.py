@@ -8,6 +8,10 @@ import re
 LEAK_MARKERS = ["Zentrify", "Sentrafy", "send trify", "Dictionary terms", "Transcript:"]
 LIGHT_KEYS = ["title", "summary", "cleanedText", "tags"]
 UNIVERSAL_KEYS = ["title", "summary", "tags"]
+BRIEF_KEYS = ["summary", "title"]
+BRIEF_MODES = ("brief", "brief-overview")
+# Openers that describe the memo instead of saying what is in it.
+DESCRIBING_OPENERS = ("the speaker", "the transcript", "this memo", "the memo", "the user", "this part")
 
 
 def extract_json(text):
@@ -44,13 +48,25 @@ def score_output(raw, mode, field_keys, expect, template=None):
     if obj is None:
         return checks
 
-    keys = LIGHT_KEYS if mode == "light" else UNIVERSAL_KEYS + list(field_keys)
+    if mode in BRIEF_MODES:
+        keys = BRIEF_KEYS
+    else:
+        keys = LIGHT_KEYS if mode == "light" else UNIVERSAL_KEYS + list(field_keys)
     missing = [k for k in keys if k not in obj]
     checks.append(("keys", not missing, f"missing {missing}" if missing else ""))
 
     title = obj.get("title") if isinstance(obj.get("title"), str) else ""
     words = len(title.split())
     checks.append(("title<=8 words", 0 < words <= 8, f"{words} words: {title!r}"))
+
+    if mode in BRIEF_MODES:
+        summary = obj.get("summary") if isinstance(obj.get("summary"), str) else ""
+        sentences = [s for s in re.split(r"(?<=[.!?])\s+", summary.strip()) if s]
+        checks.append(("summary is 1 sentence", len(sentences) == 1, f"{len(sentences)} sentences: {summary!r}"))
+        summary_words = len(summary.split())
+        checks.append(("summary<=30 words", 0 < summary_words <= 30, f"{summary_words} words"))
+        opener = next((o for o in DESCRIBING_OPENERS if summary.lower().startswith(o)), None)
+        checks.append(("summary says what, not 'the speaker'", opener is None, f"starts with {opener!r}" if opener else ""))
 
     text = "\n".join(strings_in(obj))
     body = "\n".join(s for k, v in obj.items() if k not in ("title", "tags") for s in strings_in(v))

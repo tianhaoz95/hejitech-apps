@@ -837,5 +837,110 @@
         "uh"
       ]
     }
+  },
+  {
+    "id": "brief-launch-plan",
+    "category": "brief",
+    "mode": "brief",
+    "note": "A short planning memo: the title names the plan, the summary says what was decided.",
+    "transcript": "For the launch next week, we're going to ship the iPhone app first and hold the Mac app until the updater is fixed. I'll write the release notes on Monday. Sam is handling the App Store screenshots, and we need them by Wednesday so review has time.",
+    "expect": {
+      "contains_ci": [
+        "iPhone"
+      ]
+    }
+  },
+  {
+    "id": "brief-junk-opening",
+    "category": "brief",
+    "mode": "brief",
+    "note": "The 1.31.1 report: a long recording that opens with non-speech tags got a summary about 'the transcript'.",
+    "transcript": "(speaking in foreign language) (speaking in foreign language) (silence) Coming. Okay, so the mega kernel work. The idea is to fuse every layer of the model into one GPU kernel so we stop paying launch overhead between layers. Our version is still about twice as slow as the reference one, and most of the gap is in how we schedule the attention blocks. Next I want to profile the scheduler and try a persistent kernel.",
+    "expect": {
+      "contains_ci": [
+        "kernel"
+      ],
+      "not_contains_ci": [
+        "silence",
+        "foreign language",
+        "transcript"
+      ]
+    }
+  },
+  {
+    "id": "brief-errands",
+    "category": "brief",
+    "mode": "brief",
+    "note": "A to-do memo.",
+    "transcript": "Things to do tomorrow. Pick up the dry cleaning before noon, call the dentist to move my appointment to next week, and buy milk, eggs and coffee on the way home. Also remind Alex about the soccer practice on Thursday.",
+    "expect": {
+      "contains_ci": [
+        "dentist"
+      ]
+    }
+  },
+  {
+    "id": "brief-decision",
+    "category": "brief",
+    "mode": "brief",
+    "note": "A meeting outcome: the summary carries the decision.",
+    "transcript": "We talked through the database options again. Everyone agreed that Postgres is the right call over MongoDB because our data is relational and we already know it. Priya will set up the staging instance this week, and we'll migrate the user table first.",
+    "expect": {
+      "contains_ci": [
+        "Postgres"
+      ]
+    }
+  },
+  {
+    "id": "brief-one-liner",
+    "category": "brief",
+    "mode": "brief",
+    "note": "A one-sentence memo still gets a label for a title, not the sentence itself.",
+    "transcript": "Remember to renew the car registration before the end of the month.",
+    "expect": {
+      "contains_ci": [
+        "registration"
+      ]
+    }
+  },
+  {
+    "id": "brief-names-kept",
+    "category": "brief",
+    "mode": "brief",
+    "note": "Product names keep their spelling from the cleaned text.",
+    "transcript": "Quick idea for Voxbrief: let the watch app show the last three memos as a complication, so you can see that the sync worked without opening the phone. Meowtrix could do the same thing for its dashboards later.",
+    "expect": {
+      "contains": [
+        "Voxbrief"
+      ]
+    }
+  },
+  {
+    "id": "brief-overview-kernels",
+    "category": "brief",
+    "mode": "brief-overview",
+    "note": "A long memo whose first part is small talk: the summary covers the whole memo, not its start.",
+    "transcript": "Greetings and a check that the microphone is working.\nThe mega kernel fuses every model layer into one GPU kernel to cut launch overhead.\nThe fused version runs about twice as slow as the reference implementation.\nMost of the gap comes from how attention blocks are scheduled.\nThe next step is profiling the scheduler and trying a persistent kernel.",
+    "expect": {
+      "contains_ci": [
+        "kernel"
+      ],
+      "not_contains_ci": [
+        "microphone",
+        "greeting"
+      ]
+    }
+  },
+  {
+    "id": "brief-overview-trip",
+    "category": "brief",
+    "mode": "brief-overview",
+    "note": "A long memo with several topics: the title names the main one.",
+    "transcript": "The train to Lisbon leaves Friday at eight fifteen.\nThe hotel is near the river and check-in is after two.\nMuseum tickets are cheaper on Tuesday.\nDinner on Saturday is booked at a seafood place Dana picked.\nWe still need travel insurance before Thursday.",
+    "expect": {
+      "contains_ci": [
+        "Lisbon"
+      ]
+    }
   }
 ]

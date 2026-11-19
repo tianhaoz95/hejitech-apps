@@ -67,6 +67,9 @@ public struct LLMProcessingResult: Sendable, Codable {
     public let parts: [LongMemoPart]
     /// How long each Stage 2 call took, in order (empty for the Ollama path).
     public let timings: [ProcessingTiming]
+    /// The title the speaker dictated ("title: ..."), which `title` already is. Set so a later
+    /// step (the brief, see `writeBrief`) knows not to replace it.
+    public let explicitTitle: String?
 
     public init(
         title: String,
@@ -81,7 +84,8 @@ public struct LLMProcessingResult: Sendable, Codable {
         templateId: UUID? = nil,
         templateName: String = "",
         parts: [LongMemoPart] = [],
-        timings: [ProcessingTiming] = []
+        timings: [ProcessingTiming] = [],
+        explicitTitle: String? = nil
     ) {
         self.title = title
         self.summary = summary
@@ -96,6 +100,21 @@ public struct LLMProcessingResult: Sendable, Codable {
         self.templateName = templateName
         self.parts = parts
         self.timings = timings
+        self.explicitTitle = explicitTitle
+    }
+}
+
+/// A note's title and one-line summary, written from its cleaned text (`writeBrief`).
+public struct NoteBrief: Sendable, Equatable {
+    public let title: String
+    public let summary: String
+    /// How many parts a long text was summarized in first (1 when it was read in one pass).
+    public let partCount: Int
+
+    public init(title: String, summary: String, partCount: Int = 1) {
+        self.title = title
+        self.summary = summary
+        self.partCount = partCount
     }
 }
 
@@ -115,6 +134,17 @@ public protocol LLMCopywriterServiceProtocol: Sendable {
     /// implementation (e.g. for a test double, or when routed to Ollama/ineligible for on-device).
     /// See `NoteProcessingPipeline.warmUp`.
     func warmUp() async
+
+    /// Writes a note's title and one-line summary from its cleaned text (the light cleanup's
+    /// output), a step of its own after the cleanup so the model does one job at a time and a
+    /// long memo is summarized as a whole, not from its first part. Returns nil when no engine
+    /// could write one; the caller then keeps the light cleanup's title and summary.
+    func writeBrief(cleanedText: String) async throws -> NoteBrief?
+}
+
+public extension LLMCopywriterServiceProtocol {
+    /// No brief: test doubles that don't care keep the light cleanup's title and summary.
+    func writeBrief(cleanedText: String) async throws -> NoteBrief? { nil }
 }
 
 public enum LLMCopywriterError: LocalizedError {
@@ -242,8 +272,185 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
             templateId: result.templateId,
             templateName: result.templateName,
             parts: result.parts,
-            timings: result.timings
+            timings: result.timings,
+            explicitTitle: commands.explicitTitle?.isEmpty == false ? commands.explicitTitle : nil
         )
+    }
+
+    // MARK: - Brief (title and one-line summary from the cleaned text)
+
+    /// Cleaned text up to this many words is titled and summarized in one call (~1,600 tokens,
+    /// well inside Apple Intelligence's 4,096 with the prompt and a short answer).
+    static let briefSinglePassWordLimit = 1200
+    /// Longer text is summarized part by part first, one sentence each, then once from those.
+    static let briefPartWordTarget = 1000
+    /// At most this many parts are summarized (evenly spread over the memo), so a memo of
+    /// hours costs a bounded number of calls.
+    static let briefMaxParts = 16
+    static let briefMaxTokens = 160
+    static let briefPartMaxTokens = 96
+
+    private struct BriefJSON: Decodable {
+        var summary: String?
+        var title: String?
+    }
+
+    public func writeBrief(cleanedText: String) async throws -> NoteBrief? {
+        let text = cleanedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        // The Ollama rewrite writes its own title and summary.
+        if UserDefaults.standard.bool(forKey: "use_local_llm_endpoint") { return nil }
+        for engine in await onDeviceEngines() {
+            do {
+                return try await writeBrief(text, engine: engine)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                print("[LLMCopywriterService] Brief failed on \(engine.label): \(error)")
+            }
+        }
+        return nil
+    }
+
+    /// `internal` so tests can drive it with a scripted engine.
+    func writeBrief(_ text: String, engine: StageTwoEngine) async throws -> NoteBrief {
+        let parts = Self.splitIntoParts(text, threshold: Self.briefSinglePassWordLimit, target: Self.briefPartWordTarget, overlap: false)
+        if parts.count == 1 {
+            let raw = try await engine.generate(buildBriefSystemPrompt(), briefUserPrompt(text), Self.briefMaxTokens)
+            return try parseBrief(raw, partCount: 1)
+        }
+
+        let sampled = Self.evenlySpaced(parts, limit: Self.briefMaxParts)
+        var summaries: [String] = []
+        for (index, part) in sampled.enumerated() {
+            try Task.checkCancellation()
+            do {
+                let raw = try await engine.generate(
+                    buildBriefPartSystemPrompt(),
+                    briefPartUserPrompt(part.text, index: index, count: sampled.count),
+                    Self.briefPartMaxTokens
+                )
+                if let summary = parseBriefPart(raw) { summaries.append(summary) }
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                print("[LLMCopywriterService] Brief part \(index + 1)/\(sampled.count) failed: \(error)")
+            }
+        }
+        guard !summaries.isEmpty else { throw LLMCopywriterError.unparsableResponse }
+        let raw = try await engine.generate(buildBriefOverviewSystemPrompt(), briefOverviewUserPrompt(summaries), Self.briefMaxTokens)
+        return try parseBrief(raw, partCount: sampled.count)
+    }
+
+    /// `limit` items spread evenly from first to last (all of them when there are no more).
+    static func evenlySpaced<T>(_ items: [T], limit: Int) -> [T] {
+        guard items.count > limit, limit > 1 else { return Array(items.prefix(max(limit, 0))) }
+        return (0..<limit).map { items[Int((Double($0) * Double(items.count - 1) / Double(limit - 1)).rounded())] }
+    }
+
+    /// Ways a small model opens a summary that describe the memo instead of saying what's in it.
+    private static let briefDescribingOpeners = "\"The speaker\", \"The transcript\", \"This memo\" or \"The user\""
+
+    /// System prompt for the brief of a note that fits in one call. No personal dictionary: the
+    /// cleaned text already spells the terms, and a small model given a list of terms with
+    /// nothing else to go on titled a note with them ("Dictionary Terms: ..."). `internal` for
+    /// tests and the eval export.
+    func buildBriefSystemPrompt() -> String {
+        """
+        You write the title and the one-line summary of a voice memo, so its owner can recognize \
+        it at a glance in a list of notes and find it again later. You are given the memo's text, \
+        already cleaned up. Respond with ONLY one valid JSON object -- no markdown code fences, no \
+        commentary before or after -- using exactly these keys, in this order: "summary" (exactly \
+        one sentence of at most 25 words saying what the memo is about: its main topic and its key \
+        point, decision or request; say it directly, without starting with \(Self.briefDescribingOpeners)), \
+        "title" (2 to 6 words naming the memo's main topic, specific enough to tell it apart from \
+        other notes; not a sentence). Use only what the memo says. Ignore anything that is not \
+        speech, such as "(silence)", "(music)" or "(speaking in foreign language)".
+        """
+    }
+
+    func briefUserPrompt(_ text: String) -> String {
+        "Memo text:\n\(text)"
+    }
+
+    /// System prompt for one part of a long memo's brief. `internal` for tests and the eval export.
+    func buildBriefPartSystemPrompt() -> String {
+        """
+        You summarize one part of a long voice memo. You are given the part's text, already \
+        cleaned up. Respond with ONLY one valid JSON object -- no markdown code fences, no \
+        commentary before or after -- with exactly one key: "summary" (one sentence of at most 25 \
+        words with what this part is about and its key point; say it directly, without starting with \
+        \(Self.briefDescribingOpeners)). If the part has no real speech, only things like \
+        "(silence)" or "(speaking in foreign language)", the summary is an empty string.
+        """
+    }
+
+    func briefPartUserPrompt(_ text: String, index: Int, count: Int) -> String {
+        "Part \(index + 1) of \(count):\n\(text)"
+    }
+
+    /// System prompt for a long memo's brief, written from its parts' summaries. `internal` for
+    /// tests and the eval export.
+    func buildBriefOverviewSystemPrompt() -> String {
+        """
+        You write the title and the one-line summary of one long voice memo, so its owner can \
+        recognize it at a glance in a list of notes and find it again later. You are given a \
+        one-sentence summary of each of its parts, in order. Respond with ONLY one valid JSON \
+        object -- no markdown code fences, no commentary before or after -- using exactly these \
+        keys, in this order: "summary" (one short sentence of at most 25 words naming what the \
+        whole memo covers, not just its start: its main topics, not every detail; say it \
+        directly, without starting with \(Self.briefDescribingOpeners)), "title" (2 to 6 words naming the memo's \
+        main topic or topics, specific enough to tell it apart from other notes; not a sentence).
+        """
+    }
+
+    func briefOverviewUserPrompt(_ partSummaries: [String]) -> String {
+        "Part summaries:\n" + partSummaries.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "\n")
+    }
+
+    /// `internal` for tests.
+    func parseBrief(_ raw: String, partCount: Int) throws -> NoteBrief {
+        guard let json = Self.extractJSONObject(from: raw),
+              let decoded = try? JSONDecoder().decode(BriefJSON.self, from: Data(json.utf8)) else {
+            throw LLMCopywriterError.unparsableResponse
+        }
+        let summary = Self.firstSentence(of: decoded.summary ?? "")
+        let title = Self.briefTitle(decoded.title ?? "")
+        guard !summary.isEmpty, !title.isEmpty else { throw LLMCopywriterError.unparsableResponse }
+        return NoteBrief(title: title, summary: summary, partCount: partCount)
+    }
+
+    /// One part's summary, or nil for an empty or unreadable answer. `internal` for tests.
+    func parseBriefPart(_ raw: String) -> String? {
+        guard let json = Self.extractJSONObject(from: raw),
+              let decoded = try? JSONDecoder().decode(BriefJSON.self, from: Data(json.utf8)) else { return nil }
+        let summary = Self.firstSentence(of: decoded.summary ?? "")
+        return summary.isEmpty ? nil : summary
+    }
+
+    /// The first sentence (a small model sometimes writes several, or a numbered list).
+    static func firstSentence(of text: String) -> String {
+        let firstLine = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: .newlines).first ?? ""
+        var result = firstLine
+        firstLine.enumerateSubstrings(in: firstLine.startIndex..<firstLine.endIndex, options: .bySentences) { substring, _, _, stop in
+            if let substring, !substring.trimmingCharacters(in: .whitespaces).isEmpty {
+                result = String(substring)
+                stop = true
+            }
+        }
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// A title as a label: no quotes, "Title:" prefix or closing period, at most 8 words.
+    static func briefTitle(_ text: String) -> String {
+        var title = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if title.lowercased().hasPrefix("title:") { title = String(title.dropFirst(6)) }
+        title = title.trimmingCharacters(in: CharacterSet(charactersIn: "\"'“”‘’#*").union(.whitespacesAndNewlines))
+        while title.hasSuffix(".") { title.removeLast() }
+        let words = title.split(whereSeparator: \.isWhitespace)
+        if words.count > 8 { title = words.prefix(8).joined(separator: " ") }
+        return title
     }
 
     // MARK: - On-Device LLM (MLX Swift + Qwen3)

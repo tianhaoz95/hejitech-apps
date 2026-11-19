@@ -7,7 +7,9 @@ isn't covered; Flash (Qwen3-4B-4bit) can be picked with `--model`.
 - `cases.json`: transcripts, optional personal dictionary and templates, and what the output must
   (not) contain. Categories: `dictionary` (sound-alike mishearings), `false-positive` (terms must
   not be inserted or forced onto common words), `classification` (template choice and its fields),
-  `light` (proofread keeps content, drops fillers and ASR tags).
+  `light` (proofread keeps content, drops fillers and ASR tags), `brief` (title and one-line
+  summary from cleaned text: mode `brief`, or `brief-overview` with a long memo's part summaries
+  one per line as `transcript`).
 - `Tests/MacUnitTests/LLMPromptExportTests.swift` builds every prompt with the app's own code
   (alias correction, `buildClassificationSystemPrompt`, `buildGenerationSystemPrompt`,
   `buildLightSystemPrompt`, `transcriptUserPrompt`) and writes `prompts.json`. It runs in the

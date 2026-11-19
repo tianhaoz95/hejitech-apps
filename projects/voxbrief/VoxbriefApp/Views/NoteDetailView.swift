@@ -526,9 +526,12 @@ public struct NoteDetailView: View {
             }
 
             if !viewModel.note.summary.isEmpty {
+                // A brief, not the whole note: long summaries end in "…".
                 Text(viewModel.note.summary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
             }
 
             // Tags row with interactive remove and add tag button

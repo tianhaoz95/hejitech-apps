@@ -168,6 +168,8 @@ public final class CaptureCoordinator: ObservableObject {
             draft.templateChoice = TemplateChoice.none
             repository.save(draft)
 
+            // Pasted as soon as it's cleaned up: no title-and-summary step to wait for.
+            pipeline.skipBrief(for: draft.id)
             await pipeline.process(note: draft)
             guard let processed = repository.note(withId: draft.id) else { return }
 

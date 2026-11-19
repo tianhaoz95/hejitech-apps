@@ -13,7 +13,6 @@ public enum WatchCaptureTag: String, CaseIterable, Identifiable, Sendable {
 public struct WatchMainRecordView: View {
     @StateObject private var recorder = WatchAudioRecorder.shared
     @StateObject private var syncService = WatchSyncService.shared
-    @StateObject private var storage = WatchStorage.shared
 
     @State private var selectedPage: Int = 0
     @State private var selectedTag: WatchCaptureTag = .auto
@@ -254,10 +253,10 @@ public struct WatchMainRecordView: View {
                         ZStack {
                             Circle()
                                 .fill(Color.accentColor)
-                                .frame(width: 76, height: 76)
+                                .frame(width: 96, height: 96)
 
                             Image(systemName: "mic.fill")
-                                .font(.system(size: 32, weight: .semibold))
+                                .font(.system(size: 40, weight: .semibold))
                                 .foregroundColor(.white)
                         }
                     }
@@ -269,32 +268,6 @@ public struct WatchMainRecordView: View {
                         .padding(.top, 6)
 
                     Spacer(minLength: 4)
-
-                    // Bottom Navigation Hint (Direct Vault trigger)
-                    HStack {
-                        Spacer()
-                        Button {
-                            withAnimation {
-                                selectedPage = 1
-                            }
-                        } label: {
-                            HStack(spacing: 3) {
-                                Image(systemName: "tray.full.fill")
-                                    .font(.system(size: 9))
-                                Text("Vault (\(storage.notes.count))")
-                                    .font(.system(size: 9, weight: .semibold, design: .rounded))
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 7, weight: .bold))
-                            }
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.white.opacity(0.10), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.bottom, 2)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

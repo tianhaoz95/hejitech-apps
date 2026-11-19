@@ -97,6 +97,7 @@
 		61F408C2E43D4E8D9B0D1C27 /* VoxbriefWatchWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48925CE7621616AF282F7CAF /* VoxbriefWatchWidgets.swift */; };
 		63BC7A37BED88DE7F24A4EEE /* DailyBriefSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4DEA392C84B36408EE59E0A /* DailyBriefSnapshot.swift */; };
 		64449EC42EE8123A116A08EB /* TemplateEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B14742A80B04804C7A613CF4 /* TemplateEditView.swift */; };
+		65B4281350BF78246279DA3F /* NoteBriefTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD0324A16BEFB23E75F23E50 /* NoteBriefTests.swift */; };
 		67642845892E3B515B0D78D2 /* AudioConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988E0BDCC158250481339E11 /* AudioConstants.swift */; };
 		689757FD1E6FA235DD108957 /* LongMemoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55974E872286B4E9013399AE /* LongMemoTests.swift */; };
 		691B6C26A9E7585D09DB058C /* LLMCopywriterServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9E58587D34FC957F4AE403 /* LLMCopywriterServiceTests.swift */; };
@@ -462,6 +463,7 @@
 		C91C6D08A783909886979019 /* AudioImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioImportService.swift; sourceTree = "<group>"; };
 		C9E355E590054B01A75FB779 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CBCCE4CBCC64C9FC561BE96C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CD0324A16BEFB23E75F23E50 /* NoteBriefTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteBriefTests.swift; sourceTree = "<group>"; };
 		CE87D7287DCE466F347E5168 /* AskService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskService.swift; sourceTree = "<group>"; };
 		CEAD3B4021131DA58668E5C9 /* ASRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASRService.swift; sourceTree = "<group>"; };
 		D04388B08F3A85CF017C8018 /* NoteRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteRepository.swift; sourceTree = "<group>"; };
@@ -939,6 +941,7 @@
 				4F9E58587D34FC957F4AE403 /* LLMCopywriterServiceTests.swift */,
 				55974E872286B4E9013399AE /* LongMemoTests.swift */,
 				89D721E51560611852EAE187 /* MarkdownLiteTextTests.swift */,
+				CD0324A16BEFB23E75F23E50 /* NoteBriefTests.swift */,
 				1408F482A93D5BC763F22E74 /* NoteDetailViewModelTests.swift */,
 				EF5CDE95EFC5F0A340223DED /* NoteExportServiceTests.swift */,
 				A722022C9E282A8840CA734E /* NoteListViewModelTests.swift */,
@@ -1338,6 +1341,7 @@
 				691B6C26A9E7585D09DB058C /* LLMCopywriterServiceTests.swift in Sources */,
 				689757FD1E6FA235DD108957 /* LongMemoTests.swift in Sources */,
 				469AA6B209B5B456DA6946F7 /* MarkdownLiteTextTests.swift in Sources */,
+				65B4281350BF78246279DA3F /* NoteBriefTests.swift in Sources */,
 				C18574E5E77EE031411CBCA2 /* NoteDetailViewModelTests.swift in Sources */,
 				8E62084FAAC0B96BF129C31A /* NoteExportServiceTests.swift in Sources */,
 				0AD043C3BB7E0B09A1667977 /* NoteListViewModelTests.swift in Sources */,
@@ -1801,7 +1805,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.30.0;
+				MARKETING_VERSION = 1.31.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1901,7 +1905,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.30.0;
+				MARKETING_VERSION = 1.31.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

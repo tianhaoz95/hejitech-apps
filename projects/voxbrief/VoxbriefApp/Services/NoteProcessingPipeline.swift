@@ -22,6 +22,9 @@ public final class NoteProcessingPipeline: ObservableObject {
     /// Notes currently mid-pipeline. Guards against double-processing the same note when a
     /// retry, a pull-to-refresh, and the original sync-triggered run could otherwise overlap.
     private var inFlightNoteIds: Set<UUID> = []
+    /// Dictation captures (the keyboard, the Mac's hotkey) that skip the brief: they're pasted
+    /// as soon as the cleanup is done, so a title and summary aren't worth the wait.
+    private var briefSkippedNoteIds: Set<UUID> = []
 
     /// Settings / Preferences: the format a new note gets on top of its light cleanup when
     /// nothing was picked before recording (a `TemplateChoice` raw value). Defaults to none: the
@@ -71,6 +74,12 @@ public final class NoteProcessingPipeline: ObservableObject {
         }
     }
 
+    /// Marks a note about to be processed as a dictation capture, which skips the brief (the
+    /// title and summary step) and keeps the light cleanup's. Applies to its next `process`.
+    public func skipBrief(for noteId: UUID) {
+        briefSkippedNoteIds.insert(noteId)
+    }
+
     /// Executes the two-stage processing pipeline for a given voice note. `liveTranscript`, when
     /// the iPhone's live transcript kept up with the recording (`LiveTranscriber`), stands in for
     /// Stage 1, so the note goes straight to Stage 2.
@@ -93,6 +102,7 @@ public final class NoteProcessingPipeline: ObservableObject {
         activeProcessingCount += 1
         defer {
             inFlightNoteIds.remove(note.id)
+            briefSkippedNoteIds.remove(note.id)
             activeProcessingCount -= 1
             streamingTranscripts.removeValue(forKey: note.id)
             if !sessionPieces.isEmpty,
@@ -393,6 +403,9 @@ public final class NoteProcessingPipeline: ObservableObject {
         structuredFailureThrows: Bool = false
     ) async throws -> [ProcessingTiming] {
         var timings: [ProcessingTiming] = []
+        // Whether this run wrote the summary in a step of its own; a structured rewrite then
+        // keeps it. On a format change (`reuseLightCleanup`) the note keeps the summary it has.
+        var keepsSummary = reuseLightCleanup
 
         if reuseLightCleanup, let existing = note.cleanedText {
             note.lightCleanedNote = existing
@@ -405,6 +418,25 @@ public final class NoteProcessingPipeline: ObservableObject {
             note.tags = light.tags
             note.lightCleanedNote = light.cleanedMarkdown
             note.lightCleanupEngine = light.engine
+
+            // The brief: title and one-line summary from the cleaned text, in a step of their
+            // own. When it can't run, the light cleanup's stay.
+            if !briefSkippedNoteIds.contains(note.id) {
+                let briefStart = ContinuousClock.now
+                do {
+                    if let brief = try await llmService.writeBrief(cleanedText: light.cleanedMarkdown) {
+                        if light.explicitTitle == nil { note.title = brief.title }
+                        note.summary = brief.summary
+                        keepsSummary = true
+                        let name = brief.partCount > 1 ? "Title & summary (\(brief.partCount) parts)" : "Title & summary"
+                        timings.append(ProcessingTiming(name: name, seconds: Self.seconds(since: briefStart)))
+                    }
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    print("[NoteProcessingPipeline] Brief failed for note \(note.id); kept the cleanup's title and summary: \(error)")
+                }
+            }
         }
 
         func clearStructuredRewrite() {
@@ -427,8 +459,8 @@ public final class NoteProcessingPipeline: ObservableObject {
 
         do {
             let full = try await llmService.processTranscript(transcript, mode: .full, dictionary: dictionary, templates: templates)
-            // The title always comes from the light cleanup, so a template never renames a note.
-            note.summary = full.summary
+            // A template never renames a note, and keeps a summary written in its own step.
+            if !keepsSummary { note.summary = full.summary }
             note.tags = full.tags
             note.cleanedNote = full.cleanedMarkdown
             note.requirements = full.requirements

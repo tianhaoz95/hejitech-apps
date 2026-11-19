@@ -57,6 +57,9 @@ def resolve_template(raw, candidates, fallback):
 
 def run_sample(runner, prompts, seed):
     """Returns (template or None, raw generation, raw classification or None)."""
+    if "brief" in prompts:
+        b = prompts["brief"]
+        return None, runner(b["system"], b["user"], b["maxTokens"], seed), None
     if prompts["mode"] == "light":
         light = prompts["light"]
         return None, runner(light["system"], light["user"], GENERATION_MAX_TOKENS, seed), None
@@ -74,7 +77,7 @@ def run_sample(runner, prompts, seed):
 
 def score(case, prompts, template, raw):
     """List of (check, passed, detail); the checks live in checks.py."""
-    field_keys = [] if case["mode"] == "light" else prompts["generation"][template]["fieldKeys"]
+    field_keys = prompts["generation"][template]["fieldKeys"] if case["mode"] == "full" else []
     return score_output(raw, case["mode"], field_keys, case.get("expect", {}), template)
 
 

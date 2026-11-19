@@ -48,6 +48,12 @@ fileprivate final class MockLLMCopywriterService: LLMCopywriterServiceProtocol, 
     var stubError: Error?
     /// Set by a test to make only the structured (`.full`) call fail.
     var stubFullError: Error?
+    /// The brief `writeBrief` returns (nil: none, like the protocol's default).
+    var stubBrief: NoteBrief?
+    var stubBriefError: Error?
+    /// A title dictated with a voice command, reported on the light result.
+    var stubExplicitTitle: String?
+    private(set) var briefInputs: [String] = []
 
     func processTranscript(_ rawTranscript: String, mode: RewriteMode, dictionary: [DictionaryEntry], templates: [NoteTemplate]) async throws -> LLMProcessingResult {
         receivedDictionaries.append(dictionary)
@@ -64,7 +70,8 @@ fileprivate final class MockLLMCopywriterService: LLMCopywriterServiceProtocol, 
                 actionItems: [],
                 cleanedMarkdown: "mock light",
                 tags: ["#light"],
-                engine: "mock-light"
+                engine: "mock-light",
+                explicitTitle: stubExplicitTitle
             )
         }
         if let stubFullError { throw stubFullError }
@@ -85,6 +92,12 @@ fileprivate final class MockLLMCopywriterService: LLMCopywriterServiceProtocol, 
 
     func warmUp() async {
         warmUpCallCount += 1
+    }
+
+    func writeBrief(cleanedText: String) async throws -> NoteBrief? {
+        briefInputs.append(cleanedText)
+        if let stubBriefError { throw stubBriefError }
+        return stubBrief
     }
 }
 
@@ -161,6 +174,76 @@ final class NoteProcessingPipelineTests: XCTestCase {
         XCTAssertNil(saved?.templateId)
         XCTAssertNil(saved?.templateChoice)
         XCTAssertEqual(saved?.processingTimings.map(\.name), ["Transcribe", "Clean up"])
+    }
+
+    func testBriefWritesTitleAndSummaryFromTheCleanedText() async {
+        mockLLM.stubBrief = NoteBrief(title: "Brief Title", summary: "Brief summary.", partCount: 3)
+        let note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
+        repository.save(note)
+
+        await pipeline.process(note: note)
+
+        XCTAssertEqual(mockLLM.briefInputs, ["mock light"])
+        let saved = repository.note(withId: note.id)
+        XCTAssertEqual(saved?.title, "Brief Title")
+        XCTAssertEqual(saved?.summary, "Brief summary.")
+        XCTAssertEqual(saved?.processingTimings.map(\.name), ["Transcribe", "Clean up", "Title & summary (3 parts)"])
+    }
+
+    func testStructuredRewriteKeepsTheBriefsSummary() async {
+        mockLLM.stubBrief = NoteBrief(title: "Brief Title", summary: "Brief summary.")
+        var note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
+        note.templateChoice = .auto
+        repository.save(note)
+
+        await pipeline.process(note: note)
+
+        let saved = repository.note(withId: note.id)
+        XCTAssertEqual(saved?.cleanedNote, "mock markdown")
+        XCTAssertEqual(saved?.title, "Brief Title")
+        XCTAssertEqual(saved?.summary, "Brief summary.")
+    }
+
+    func testBriefKeepsADictatedTitle() async {
+        mockLLM.stubBrief = NoteBrief(title: "Brief Title", summary: "Brief summary.")
+        mockLLM.stubExplicitTitle = "Light Title"
+        let note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
+        repository.save(note)
+
+        await pipeline.process(note: note)
+
+        let saved = repository.note(withId: note.id)
+        XCTAssertEqual(saved?.title, "Light Title")
+        XCTAssertEqual(saved?.summary, "Brief summary.")
+    }
+
+    func testFailedBriefKeepsTheCleanupsTitleAndSummary() async {
+        mockLLM.stubBriefError = LLMCopywriterError.unparsableResponse
+        let note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
+        repository.save(note)
+
+        await pipeline.process(note: note)
+
+        let saved = repository.note(withId: note.id)
+        XCTAssertEqual(saved?.status, .ready)
+        XCTAssertEqual(saved?.title, "Light Title")
+        XCTAssertEqual(saved?.summary, "Light Summary")
+    }
+
+    func testDictationCaptureSkipsTheBrief() async {
+        mockLLM.stubBrief = NoteBrief(title: "Brief Title", summary: "Brief summary.")
+        let note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
+        repository.save(note)
+
+        pipeline.skipBrief(for: note.id)
+        await pipeline.process(note: note)
+
+        XCTAssertTrue(mockLLM.briefInputs.isEmpty)
+        XCTAssertEqual(repository.note(withId: note.id)?.title, "Light Title")
+
+        // Only that run: processing the note again writes one.
+        await pipeline.reprocessWithLLM(noteId: note.id)
+        XCTAssertEqual(mockLLM.briefInputs, ["mock light"])
     }
 
     func testProcessWithAChosenTemplateAddsTheStructuredRewrite() async {

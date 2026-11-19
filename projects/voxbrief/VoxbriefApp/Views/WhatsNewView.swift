@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.31.1"
+    public static let currentVersion = "1.31.2"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,47 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.31.2",
+            date: "November 2026",
+            tagline: "Titles You Can Find",
+            features: [
+                WhatsNewItem(
+                    icon: "text.magnifyingglass",
+                    tint: .purple,
+                    title: "Better Titles and Summaries",
+                    description: "After a note is cleaned up, the on-device model reads the cleaned text again to write its title and a one-line summary, so you can spot the note in a list and find it later.",
+                    detailedDescription: "The title and summary used to come out of the same pass that cleans up your words, and a long recording only had its first few minutes read for them. Now they're written in a step of their own from the cleaned text, and a long recording is summarized part by part and then as a whole, so the title and summary describe all of it. It adds a few seconds per note; dictation from the keyboard or the Mac skips it, so pasting stays as quick as before.",
+                    highlights: [
+                        "Long recordings are summarized as a whole, not from their start",
+                        "Silence and other non-speech at the start no longer steer the title",
+                        "The summary stays the same when you apply a template"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "mic.circle.fill",
+                    tint: .red,
+                    title: "A Bigger Record Button on Your Watch",
+                    description: "The record button on the watch fills more of the screen, so it's easier to hit in a hurry."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "hand.draw",
+                    tint: .gray,
+                    title: "One Way to Your Saved Memos",
+                    description: "The watch's record screen no longer has a Vault button. Swipe left to open your saved memos, as before.",
+                    kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "text.alignleft",
+                    tint: .blue,
+                    title: "Shorter Summaries at the Top of a Note",
+                    description: "A note's summary now takes at most two lines under its title, so a long one no longer pushes the note itself off the screen.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.31.1",
             date: "November 2026",

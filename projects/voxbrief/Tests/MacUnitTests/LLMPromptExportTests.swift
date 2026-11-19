@@ -45,6 +45,21 @@ final class LLMPromptExportTests: XCTestCase {
 
             var item: [String: Any] = ["id": evalCase.id, "mode": evalCase.mode]
             switch evalCase.mode {
+            case "brief":
+                // `transcript` is the cleaned text the brief is written from.
+                item["brief"] = [
+                    "system": service.buildBriefSystemPrompt(),
+                    "user": service.briefUserPrompt(evalCase.transcript),
+                    "maxTokens": LLMCopywriterService.briefMaxTokens
+                ] as [String: Any]
+            case "brief-overview":
+                // `transcript` is a long memo's part summaries, one per line.
+                let summaries = evalCase.transcript.split(separator: "\n").map(String.init)
+                item["brief"] = [
+                    "system": service.buildBriefOverviewSystemPrompt(),
+                    "user": service.briefOverviewUserPrompt(summaries),
+                    "maxTokens": LLMCopywriterService.briefMaxTokens
+                ] as [String: Any]
             case "light":
                 item["light"] = ["system": service.buildLightSystemPrompt(dictionary: dictionary), "user": userPrompt]
             case "full":
