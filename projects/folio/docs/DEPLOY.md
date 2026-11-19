@@ -33,9 +33,10 @@ npx wrangler secret put RENDER_SECRET --env production            # random 32+ b
 `RENDER_SECRET` is also in `~/Credentials/folio/folio.env` and the GitHub secret
 `FOLIO_RENDER_SECRET`. Rotating it only expires open render links (they're re-issued on load).
 
-Cloudflare Workers Builds (dashboard, owner): project from this repo, root directory = repo root,
-build `npm ci`, deploy `npm run deploy -w @folio/web`, non-production
-`npm run upload-version -w @folio/web`, watch path `projects/folio/*`.
+Cloudflare Workers Builds (linked 2026-11-19): the `folio` Worker builds from this repo, root
+directory = repo root, build `npm ci`, deploy `npm run deploy -w @folio/web` on `main`, and
+`npm run upload-version -w @folio/web` for other branches (preview versions). Pushes to `main` deploy;
+check the "Workers Builds: folio" check on the commit.
 
 Smoke test:
 
