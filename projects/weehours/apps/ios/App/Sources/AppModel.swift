@@ -73,6 +73,9 @@ final class AppModel: ObservableObject {
     @Published var snoozedUntil: [PlannedReminder.Kind: Date] = [:]
     @Published var lastSync: Date?
     @Published var syncError: String?
+    /// Set when the server ended this phone's session: the sign-in screen explains that the
+    /// household and the entries waiting to upload are kept for the same account.
+    @Published var sessionExpiredNotice: String? = SharedStore.defaults.string(forKey: "sessionExpiredNotice")
     @Published var tokens: [AccessToken] = []
     /// Entries saved on this phone that haven't reached the server yet (the outbox).
     @Published var pending: [LogEvent] = []
@@ -142,6 +145,7 @@ final class AppModel: ObservableObject {
         let session = Keychain.get("session").flatMap { try? LogCoding.decoder.decode(AuthSession.self, from: $0) }
         let client = SupabaseClient(config: config, session: session)
         client.onSessionChange = { s in Keychain.set(s.flatMap { try? LogCoding.encoder.encode($0) }, for: "session") }
+        client.onSessionExpired = { [weak self] in Task { @MainActor in self?.sessionExpired() } }
         return client
     }
 
@@ -193,6 +197,7 @@ final class AppModel: ObservableObject {
             return
         }
         if backend.session == nil { phase = .signedOut; return }
+        clearSessionExpiredNotice()
         if let h = SharedStore.household, SharedStore.me == backend.session?.userId {
             await enter(h)
             Task { await syncNow() }
@@ -323,6 +328,7 @@ final class AppModel: ObservableObject {
     }
 
     func signOut() {
+        clearSessionExpiredNotice()
         // this phone's photo copies belong to the household being left
         try? FileManager.default.removeItem(at: PhotoFiles.directory)
         PhotoFiles.pendingUploads = []
@@ -332,6 +338,27 @@ final class AppModel: ObservableObject {
         service = nil
         localOnly = false
         phase = .signedOut
+    }
+
+    /// The server refused this phone's session for good (signed out on another device or the
+    /// website, a reused refresh token). Unlike `signOut()` this keeps the household, its photos and
+    /// the outbox: signing in again with the same account goes straight back and uploads them.
+    func sessionExpired() {
+        guard !localOnly, phase != .signedOut else { return }
+        let waiting = (try? service?.store.unsyncedEvents().count) ?? pending.count
+        let notice = waiting > 0
+            ? "You were signed out. Sign in again with the same account: the \(waiting) \(waiting == 1 ? "entry" : "entries") waiting on this phone will upload then."
+            : "You were signed out. Sign in again with the same account to keep syncing."
+        sessionExpiredNotice = notice
+        SharedStore.defaults.set(notice, forKey: "sessionExpiredNotice")
+        syncError = nil
+        service = nil
+        phase = .signedOut
+    }
+
+    private func clearSessionExpiredNotice() {
+        sessionExpiredNotice = nil
+        SharedStore.defaults.removeObject(forKey: "sessionExpiredNotice")
     }
 
     /// "Use without an account": set up the household on this phone only.

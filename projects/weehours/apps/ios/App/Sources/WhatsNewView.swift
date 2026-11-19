@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.1.2"
+    static let currentVersion = "1.1.3"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,28 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.1.3",
+            date: "November 2026",
+            tagline: "Sync recovers after a sign-out",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "arrow.triangle.2.circlepath",
+                    tint: Theme.accent,
+                    title: "Entries upload again after you're signed out",
+                    description: "If your sign-in ended (for example after signing out on the website), Sync kept failing with a server error. Wee Hours now asks you to sign in again and keeps everything waiting on this phone, which uploads as soon as you're back.",
+                    kind: .fix
+                ),
+                WhatsNewItem(
+                    icon: "rectangle.portrait.and.arrow.right",
+                    tint: Theme.accent,
+                    title: "Signing out on the website stays on the website",
+                    description: "Sign out on your account page no longer signs your phones out too.",
+                    kind: .fix
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.1.2",
             date: "November 2026",

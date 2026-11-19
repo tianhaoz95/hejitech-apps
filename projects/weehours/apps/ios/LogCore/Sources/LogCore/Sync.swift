@@ -49,12 +49,16 @@ public struct AuthSession: Codable, Hashable, Sendable {
 public enum BackendError: Error, LocalizedError {
     case http(Int, String)
     case notSignedIn
+    /// The server no longer knows this session (signed out elsewhere, account changes, a reused
+    /// refresh token): only signing in again helps, so the client has dropped it.
+    case sessionExpired
     case decode(String)
 
     public var errorDescription: String? {
         switch self {
         case .http(let code, let body): return "Server error \(code): \(body.prefix(200))"
         case .notSignedIn: return "Not signed in"
+        case .sessionExpired: return "You were signed out. Sign in again to upload your entries."
         case .decode(let s): return "Unexpected server response: \(s)"
         }
     }
@@ -83,7 +87,11 @@ public final class SupabaseClient: @unchecked Sendable {
     public private(set) var session: AuthSession?
     private let http: URLSession
     private let lock = NSLock()
+    /// One refresh at a time: refresh tokens rotate, so parallel refreshes would race each other.
+    private var refreshing: Task<Void, Error>?
     public var onSessionChange: ((AuthSession?) -> Void)?
+    /// Called after the server refused the session for good and the client dropped it.
+    public var onSessionExpired: (() -> Void)?
 
     public init(config: BackendConfig, session: AuthSession? = nil, http: URLSession = .shared) {
         self.config = config
@@ -136,7 +144,37 @@ public final class SupabaseClient: @unchecked Sendable {
     public func refreshIfNeeded() async throws {
         guard let s = currentSession() else { throw BackendError.notSignedIn }
         if s.expiresAt.timeIntervalSinceNow > 60 { return }
-        _ = try await authRequest("token?grant_type=refresh_token", body: ["refresh_token": s.refreshToken])
+        let task: Task<Void, Error> = lock.withLock {
+            if let t = refreshing { return t }
+            let t = Task { [weak self] in
+                guard let self else { return }
+                defer { self.lock.withLock { self.refreshing = nil } }
+                // another caller may have refreshed while this one waited
+                guard let s = self.currentSession() else { throw BackendError.notSignedIn }
+                if s.expiresAt.timeIntervalSinceNow > 60 { return }
+                do {
+                    _ = try await self.authRequest("token?grant_type=refresh_token", body: ["refresh_token": s.refreshToken])
+                } catch BackendError.http(let code, let body) where Self.isDeadSession(code, body) {
+                    // Retrying the same token can never work: drop the session so the app asks to sign in.
+                    if self.currentSession()?.refreshToken == s.refreshToken {
+                        self.setSession(nil)
+                        self.onSessionExpired?()
+                    }
+                    throw BackendError.sessionExpired
+                }
+            }
+            refreshing = t
+            return t
+        }
+        try await task.value
+    }
+
+    /// Auth's answers for a refresh token it will never accept again (as opposed to being offline
+    /// or a server hiccup, where the session stays and the next sync tries again).
+    static func isDeadSession(_ code: Int, _ body: String) -> Bool {
+        guard code == 400 || code == 401 || code == 403 else { return false }
+        return ["refresh_token_not_found", "refresh_token_already_used", "session_not_found", "session_expired",
+                "user_not_found", "Invalid Refresh Token"].contains { body.contains($0) }
     }
 
     public func signOut() {

@@ -315,7 +315,7 @@ async function render() {
     return;
   }
 
-  const signOut = el("button", { class: "btn secondary small", type: "button", onclick: async () => { await supabase.auth.signOut(); render(); } }, "Sign out");
+  const signOut = el("button", { class: "btn secondary small", type: "button", onclick: async () => { await supabase.auth.signOut({ scope: "local" }); render(); } }, "Sign out");
   const header = el("div", { class: "head", style: "display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px" },
     el("div", {}, el("h1", { style: "font-size: 34px; margin: 0" }, "Account"), el("div", { class: "muted small" }, session.user.email ?? "")),
     signOut,

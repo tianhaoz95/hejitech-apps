@@ -167,6 +167,14 @@ struct SignInView: View {
                 Text("Wee Hours").font(.largeTitle.bold())
                 Text("Log a feed, diaper or nap in three seconds, by voice, a tap, your watch or your glasses.")
                     .foregroundStyle(.secondary)
+                if let notice = model.sessionExpiredNotice {
+                    Label(notice, systemImage: "person.crop.circle.badge.exclamationmark")
+                        .font(.callout)
+                        .foregroundStyle(.orange)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                }
                 SignInWithAppleButton(.signIn) { req in req.requestedScopes = [.email] } onCompletion: { r in
                     Task { await model.signInWithApple(r) }
                 }
