@@ -3,7 +3,7 @@ import SwiftUI
 /// What's New: `scripts/cut_release.sh folio` refuses an iPhone release until `currentVersion` and
 /// the first `releases` entry describe it.
 enum WhatsNew {
-    static let currentVersion = "0.1.0"
+    static let currentVersion = "0.2.0"
 
     struct Release: Identifiable {
         let version: String
@@ -12,7 +12,7 @@ enum WhatsNew {
     }
 
     static let releases: [Release] = [
-        Release(version: "0.1.0", items: [
+        Release(version: "0.2.0", items: [
             ("sparkles.rectangle.stack", "Folio on iPhone", "Every artifact your agents share, with a live preview, its history and what changed in each version."),
             ("checkmark.bubble", "Review anywhere", "Accept or reject an agent's suggestion from the notification, or open it to see the changes and a preview first."),
             ("bubble.left.and.bubble.right", "Comments", "Read and reply to what agents and people say about an artifact, right from the notification."),
