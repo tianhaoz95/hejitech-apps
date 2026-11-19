@@ -66,7 +66,7 @@ public enum SpeakerTurns {
         var turns: [SpeakerTurn] = []
         var numbering: [Int: Int] = [:]
         for (segment, speaker) in zip(segments, speakers) {
-            let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let text = spokenText(segment)
             guard let speaker, !text.isEmpty else { continue }
             let number = numbering[speaker] ?? {
                 let next = numbering.count
@@ -82,6 +82,15 @@ public enum SpeakerTurns {
         return turns
     }
 
+    /// What a segment says: no Whisper control tokens (`<|0.00|>`, `<|endoftext|>`), audio
+    /// tags, notes like "(silence)" or speaker-change marks. Empty for a segment of tokens only.
+    public static func spokenText(_ segment: TranscriptTimingSegment) -> String {
+        TranscriptText.removingNonSpeechAnnotations(segment.displayText)
+            .replacingOccurrences(of: TranscriptText.speakerChangeMarker, with: " ")
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+    }
+
     /// Per segment: its speaker, with gaps (no overlap) and speakers below the word minimum given
     /// to the speaker before them (the first speaker for any at the start).
     private static func resolvedSpeakers(_ segments: [TranscriptTimingSegment]) -> [Int?] {
@@ -91,7 +100,7 @@ public enum SpeakerTurns {
         var words: [Int: Int] = [:]
         for (segment, speaker) in zip(segments, speakers) {
             guard let speaker else { continue }
-            words[speaker, default: 0] += segment.text.split(whereSeparator: \.isWhitespace).count
+            words[speaker, default: 0] += spokenText(segment).split(whereSeparator: \.isWhitespace).count
         }
         let kept = Set(words.filter { $0.value >= minimumWordsPerSpeaker }.keys)
         guard !kept.isEmpty else { return speakers.map { _ in nil } }

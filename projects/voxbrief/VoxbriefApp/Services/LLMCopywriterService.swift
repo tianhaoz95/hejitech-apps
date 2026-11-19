@@ -36,10 +36,13 @@ public enum CleanupEngineLabel {
 /// (Ollama -> on-device LLM -> rule-based fallback), just with a different prompt/transform:
 /// `.full` restructures the transcript into requirements/conditions/action items (today's
 /// behavior), while `.light` only fixes typos, grammar, and filler words, keeping the original
-/// wording and sentence order intact.
+/// wording and sentence order intact. `.conversation` is the light rewrite of a recording with
+/// two or more speakers: given the transcript as "Speaker N: ..." turns, it writes a readable,
+/// lightly condensed account in prose (the turns themselves are proofread by `cleanUpTurns`).
 public enum RewriteMode: Sendable {
     case full
     case light
+    case conversation
 }
 
 /// Result produced by the Stage 2 on-device LLM cleanup and copywriting engine
@@ -641,7 +644,10 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     }
 
     private func processWithOnDeviceLLM(transcript: String, mode: RewriteMode, dictionary: [DictionaryEntry], templates: [NoteTemplate]) async throws -> LLMProcessingResult {
-        let engine = StageTwoEngine(label: CleanupEngineLabel.onDeviceLLM(model: await OnDeviceLLMService.shared.mlxModelDisplayName)) { system, user, maxTokens in
+        let engine = StageTwoEngine(
+            label: CleanupEngineLabel.onDeviceLLM(model: await OnDeviceLLMService.shared.mlxModelDisplayName),
+            writesReports: await OnDeviceLLMService.shared.isUsingLargeModel
+        ) { system, user, maxTokens in
             try await OnDeviceLLMService.shared.generate(systemPrompt: system, userPrompt: user, maxTokens: maxTokens)
         }
         return try await process(transcript: transcript, mode: mode, dictionary: dictionary, templates: templates, engine: engine)
@@ -674,6 +680,10 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     /// Intelligence ignores `maxTokens` (its session manages the answer length itself).
     struct StageTwoEngine: Sendable {
         let label: String
+        /// Whether the model can write a conversation up as a report. Lite can't: measured on
+        /// the eval's conversation cases it copied the turns back as a script in 5 of 6 samples,
+        /// so its conversations get the light cleanup instead.
+        var writesReports = true
         let generate: @Sendable (_ system: String, _ user: String, _ maxTokens: Int) async throws -> String
     }
 
@@ -714,6 +724,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
                 return try await processLongLight(parts: parts, transcript: transcript, dictionary: dictionary, engine: engine)
             }
             return try await processLight(transcript: transcript, dictionary: dictionary, engine: engine)
+        case .conversation:
+            return try await processConversation(transcript: transcript, dictionary: dictionary, engine: engine)
         }
     }
 
@@ -1161,6 +1173,162 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         to 6 words, not a sentence from the transcript), "summary" (one sentence string), "tags" \
         (array of short hashtags starting with #).\(dictionaryInstructionBlock(dictionary))
         """
+    }
+
+    /// System prompt for a conversation's cleaned text: a short report in the third person, not
+    /// a transcript. The turns go in as JSON (`conversationUserPrompt`): given "Speaker 1: ..."
+    /// lines, Flash answered with the same lines in 2 of 3 cases; given JSON, in none of 6.
+    /// `internal` for tests and the eval.
+    func buildConversationSystemPrompt(dictionary: [DictionaryEntry]) -> String {
+        """
+        You write a short report of a conversation for someone who was not there. You are given \
+        its turns as JSON, each with who spoke ("speaker") and what they said ("said"). Write the \
+        report as plain paragraphs in the third person, in the order things were said, in your \
+        own words: for example, the speaker explained what a test is for, someone asked what \
+        happens next, the speaker agreed to book it. Keep every fact, number, name, date, \
+        question, answer, decision and next step. Leave out greetings, small talk and filler \
+        words. Never quote the turns and never write "Name:" lines. Respond with ONLY one valid \
+        JSON object -- no markdown code fences, no commentary before or after -- with exactly \
+        these keys: "report" (string), "title" (2 to 6 words), "summary" (one sentence), "tags" \
+        (array of hashtags).\(dictionaryInstructionBlock(dictionary))
+        """
+    }
+
+    /// One turn of a conversation as Stage 2 reads it: the speaker's label and what they said.
+    struct ConversationTurn: Equatable, Sendable {
+        var speaker: String
+        var said: String
+    }
+
+    /// The turns of a conversation transcript ("Speaker 1: ..." paragraphs, as the pipeline
+    /// writes it); a paragraph without a label continues the turn before it. `internal` for tests.
+    static func conversationTurns(_ transcript: String) -> [ConversationTurn] {
+        var turns: [ConversationTurn] = []
+        for block in transcript.components(separatedBy: "\n\n") {
+            let text = block.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { continue }
+            if let match = text.range(of: #"^Speaker \d+:"#, options: .regularExpression) {
+                let label = String(text[match].dropLast())
+                let said = text[match.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+                turns.append(ConversationTurn(speaker: label, said: said))
+            } else if !turns.isEmpty {
+                turns[turns.count - 1].said += " " + text
+            } else {
+                turns.append(ConversationTurn(speaker: "Speaker 1", said: text))
+            }
+        }
+        return turns
+    }
+
+    /// The turns as a JSON array of {"speaker", "said"}. `internal` for tests and the eval.
+    func conversationUserPrompt(_ turns: [ConversationTurn]) -> String {
+        let objects = turns.map { ["speaker": $0.speaker, "said": $0.said] }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        let array = (try? encoder.encode(objects)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        return "The conversation's turns:\n" + array
+    }
+
+    /// Whether a model's report reads as one: not the turns copied back as "Name:" lines, and
+    /// shorter than what was said. `internal` for tests.
+    static func isReport(_ report: String, of turns: [ConversationTurn]) -> Bool {
+        let words = report.split(whereSeparator: \.isWhitespace).count
+        guard words >= 3 else { return false }
+        let labels = (try? NSRegularExpression(pattern: #"(?:^|[.!?"'\n]\s*)[A-Z][\w.' ]{0,24}:\s"#))?
+            .numberOfMatches(in: report, range: NSRange(report.startIndex..., in: report)) ?? 0
+        guard labels < 2 else { return false }
+        let inputWords = turns.reduce(0) { $0 + $1.said.split(whereSeparator: \.isWhitespace).count }
+        return inputWords < 60 || Double(words) < Double(inputWords) * 0.9
+    }
+
+    /// The conversation's turns in parts of up to `longMemoPartWordTarget` words, whole turns
+    /// only (a longer turn is a part of its own).
+    static func conversationParts(_ turns: [ConversationTurn]) -> [[ConversationTurn]] {
+        var parts: [[ConversationTurn]] = []
+        var current: [ConversationTurn] = []
+        var words = 0
+        for turn in turns {
+            let count = turn.said.split(whereSeparator: \.isWhitespace).count
+            if !current.isEmpty, words + count > longMemoPartWordTarget {
+                parts.append(current)
+                current = []
+                words = 0
+            }
+            current.append(turn)
+            words += count
+        }
+        if !current.isEmpty { parts.append(current) }
+        return parts
+    }
+
+    private struct ConversationReportJSON: Decodable {
+        var report: String?
+        var cleanedText: String?
+        var title: String?
+        var summary: String?
+        var tags: [String]?
+    }
+
+    /// A conversation's cleaned text: a report of each part from a model that can write one,
+    /// otherwise (Lite, or a report that came back as the turns) the light cleanup of what was
+    /// said, without the labels. Title, summary and tags come from the first part that had them.
+    private func processConversation(transcript: String, dictionary: [DictionaryEntry], engine: StageTwoEngine) async throws -> LLMProcessingResult {
+        let turns = Self.conversationTurns(transcript)
+        guard !turns.isEmpty else {
+            return try await process(transcript: transcript, mode: .light, dictionary: dictionary, templates: [], engine: engine)
+        }
+        var texts: [String] = []
+        var firstReport: ConversationReportJSON?
+        var lightResults: [LLMProcessingResult] = []
+        var anyModelOutput = false
+        for part in Self.conversationParts(turns) {
+            try Task.checkCancellation()
+            if engine.writesReports {
+                do {
+                    let raw = try await engine.generate(buildConversationSystemPrompt(dictionary: dictionary), conversationUserPrompt(part), Self.lightMaxTokens)
+                    if let json = Self.extractJSONObject(from: raw),
+                       let decoded = try? JSONDecoder().decode(ConversationReportJSON.self, from: Data(json.utf8)),
+                       let report = (decoded.report ?? decoded.cleanedText)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                       Self.isReport(report, of: part) {
+                        texts.append(TranscriptText.paragraphed(stripASRSpecialTokens(report)))
+                        if firstReport == nil { firstReport = decoded }
+                        anyModelOutput = true
+                        continue
+                    }
+                    print("[LLMCopywriterService] Conversation report read like the turns; using the light cleanup for this part")
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    print("[LLMCopywriterService] Conversation report failed; using the light cleanup for this part: \(error)")
+                }
+            }
+            let spoken = part.map(\.said).joined(separator: "\n\n")
+            do {
+                let light = try await process(transcript: spoken, mode: .light, dictionary: dictionary, templates: [], engine: engine)
+                texts.append(light.cleanedMarkdown)
+                lightResults.append(light)
+                anyModelOutput = true
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                texts.append(TranscriptText.paragraphed(stripASRSpecialTokens(sanitizeSpeechTranscript(spoken))))
+            }
+        }
+        guard anyModelOutput else { throw LLMCopywriterError.unparsableResponse }
+
+        let title = firstReport?.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let summary = firstReport?.summary?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let tags = Self.mergedTags([firstReport?.tags ?? []] + lightResults.map(\.tags))
+        return LLMProcessingResult(
+            title: title?.isEmpty == false ? title! : (lightResults.first?.title ?? "Conversation"),
+            summary: summary?.isEmpty == false ? summary! : (lightResults.first?.summary ?? ""),
+            requirements: [],
+            conditions: [],
+            actionItems: [],
+            cleanedMarkdown: texts.joined(separator: "\n\n"),
+            tags: tags,
+            engine: engine.label
+        )
     }
 
     /// Parses step B's raw model output. Universal fields decode via a small `Decodable` type,
@@ -1722,7 +1890,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         switch mode {
         case .full:
             return try await callLocalLLMEndpointFull(url: url, model: model, transcript: transcript, dictionary: dictionary, templates: templates)
-        case .light:
+        case .light, .conversation:
             return try await callLocalLLMEndpointLight(url: url, model: model, transcript: transcript, dictionary: dictionary)
         }
     }

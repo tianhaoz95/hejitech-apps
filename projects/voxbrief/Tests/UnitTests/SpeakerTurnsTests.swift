@@ -62,39 +62,41 @@ final class SpeakerTurnsTests: XCTestCase {
     // MARK: - On the note
 
     private func conversationNote() -> VoiceNote {
-        var note = VoiceNote(title: "Visit")
+        var note = VoiceNote(title: "Speaker 2's itching")
         note.speakerTurns = [
             SpeakerTurn(speaker: 0, start: 0, text: "How are you feeling?"),
             SpeakerTurn(speaker: 1, start: 2, text: "Itchy at night.\n\nMostly fine otherwise.")
         ]
-        note.lightCleanedNote = note.conversationText
-        note.cleanedNote = note.conversationText ?? ""
+        note.lightCleanedNote = "Speaker 1 asked how Speaker 2 was feeling. Speaker 2 said nights were itchy."
+        note.cleanedNote = note.lightCleanedNote ?? ""
+        note.summary = "Speaker 2 has itching at night; Speaker 10 was not there."
         return note
     }
 
     func testConversationTextNamesEachTurn() {
         XCTAssertEqual(conversationNote().conversationText, "Speaker 1: How are you feeling?\n\nSpeaker 2: Itchy at night.\nMostly fine otherwise.")
-        XCTAssertTrue(conversationNote().showsConversation)
     }
 
-    func testRenamingASpeakerRewritesTheCleanedText() {
+    func testRenamingASpeakerRenamesThemInTheText() {
         var note = conversationNote()
-        note.renameSpeaker(0, to: " Dr. Lee ")
-        XCTAssertEqual(note.speakerName(0), "Dr. Lee")
-        XCTAssertTrue(note.cleanedNote.hasPrefix("Dr. Lee: How are you feeling?"))
-        XCTAssertTrue(note.showsConversation)
-        note.renameSpeaker(0, to: "")
-        XCTAssertEqual(note.speakerName(0), "Speaker 1")
-        XCTAssertNil(note.speakerNames["0"])
+        note.renameSpeaker(1, to: " Mia ")
+        XCTAssertEqual(note.speakerName(1), "Mia")
+        XCTAssertEqual(note.cleanedNote, "Speaker 1 asked how Mia was feeling. Mia said nights were itchy.")
+        XCTAssertEqual(note.lightCleanedNote, note.cleanedNote)
+        XCTAssertEqual(note.summary, "Mia has itching at night; Speaker 10 was not there.", "Only the whole label")
+        XCTAssertEqual(note.title, "Mia's itching")
+        XCTAssertTrue(note.conversationText!.contains("Mia: Itchy at night."))
+
+        note.renameSpeaker(1, to: "")
+        XCTAssertEqual(note.speakerName(1), "Speaker 2")
+        XCTAssertNil(note.speakerNames["1"])
+        XCTAssertEqual(note.title, "Speaker 2's itching")
     }
 
-    func testAnEditedConversationShowsAsText() {
-        var note = conversationNote()
-        note.cleanedNote += " (edited)"
-        note.lightCleanedNote = note.cleanedNote
-        XCTAssertFalse(note.showsConversation)
-        note.renameSpeaker(1, to: "Me")
-        XCTAssertTrue(note.cleanedNote.hasSuffix("(edited)"), "A rename never overwrites an edit")
+    func testSpokenTextDropsTokensAndNotes() {
+        let segment = TranscriptTimingSegment(start: 0, end: 1, text: "<|startoftranscript|><|0.00|> (<|0.00|> >> Hi, guys. <|18.50|> (silence) How are you? <|21.90|><|endoftext|>")
+        XCTAssertEqual(SpeakerTurns.spokenText(segment), "Hi, guys. How are you?")
+        XCTAssertEqual(SpeakerTurns.spokenText(TranscriptTimingSegment(start: 0, end: 1, text: "<|startoftranscript|><|0.00|> <|4.18|><|endoftext|>")), "")
     }
 
     func testNotesFromBeforeSpeakersStillDecode() throws {

@@ -1,12 +1,14 @@
 import SwiftUI
 
-/// A conversation note's cleaned text as chat bubbles: each turn is a bubble, sides alternate
-/// whenever the speaker changes (consecutive turns always have different speakers), and each
-/// speaker keeps one color and a name above their bubbles. Tapping a name renames that speaker.
+/// A conversation's turns as chat bubbles (the Transcript tab): each turn is a bubble, sides
+/// alternate whenever the speaker changes (consecutive turns always have different speakers),
+/// and each speaker keeps one color and a name above their bubbles. Tapping a name renames that
+/// speaker; tapping the time plays from there.
 struct ConversationBubblesView: View {
     let turns: [SpeakerTurn]
     let name: (Int) -> String
     let onRename: (Int) -> Void
+    var onSeek: ((TimeInterval) -> Void)?
 
     static let palette: [Color] = [.blue, .orange, .green, .purple, .pink, .teal, .indigo, .brown]
 
@@ -27,18 +29,32 @@ struct ConversationBubblesView: View {
         return HStack(alignment: .top, spacing: 0) {
             if !leading { Spacer(minLength: 36) }
             VStack(alignment: leading ? .leading : .trailing, spacing: 4) {
-                Button {
-                    onRename(turn.speaker)
-                } label: {
-                    HStack(spacing: 4) {
-                        Circle().fill(color).frame(width: 7, height: 7)
-                        Text(name(turn.speaker))
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(color)
+                HStack(spacing: 8) {
+                    Button {
+                        onRename(turn.speaker)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Circle().fill(color).frame(width: 7, height: 7)
+                            Text(name(turn.speaker))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(color)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Renames this speaker")
+
+                    if let onSeek {
+                        Button {
+                            onSeek(turn.start)
+                        } label: {
+                            Text(turn.start.formattedDuration)
+                                .font(.caption2.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Play from \(turn.start.formattedDuration)")
                     }
                 }
-                .buttonStyle(.plain)
-                .accessibilityHint("Renames this speaker")
 
                 Text(turn.text)
                     .font(.body)
@@ -56,7 +72,6 @@ struct ConversationBubblesView: View {
             .frame(maxWidth: .infinity, alignment: leading ? .leading : .trailing)
             if leading { Spacer(minLength: 36) }
         }
-        .accessibilityElement(children: .combine)
     }
 }
 

@@ -61,7 +61,7 @@ fileprivate final class MockLLMCopywriterService: LLMCopywriterServiceProtocol, 
         receivedTemplates.append(templates)
         receivedModes.append(mode)
         if let stubError { throw stubError }
-        if mode == .light {
+        if mode == .light || mode == .conversation {
             return LLMProcessingResult(
                 title: "Light Title",
                 summary: "Light Summary",
@@ -219,7 +219,7 @@ final class NoteProcessingPipelineTests: XCTestCase {
         SpeakerSpan(start: 8, end: 12, speaker: 5)
     ])
 
-    func testAConversationIsCleanedTurnByTurn() async throws {
+    func testAConversationGetsAReadableAccountAndCleanedTurns() async throws {
         mockLLM.stubBrief = NoteBrief(title: "Itching Follow-up", summary: "Bile acid test this week.", tags: ["#health"])
         let pipeline = speakerPipeline(twoSpeakers)
         let note = VoiceNote(id: UUID(), audioFileName: try audioFile(), status: .syncing)
@@ -231,13 +231,36 @@ final class NoteProcessingPipelineTests: XCTestCase {
         XCTAssertEqual(saved.speakerCount, 2)
         XCTAssertEqual(saved.speakerTurns.map(\.speaker), [0, 1, 0])
         XCTAssertEqual(saved.speakerTurns.map(\.text), conversationSegments.map(\.text))
-        XCTAssertTrue(saved.showsConversation)
-        XCTAssertEqual(saved.cleanedText, saved.conversationText)
-        XCTAssertEqual(mockLLM.receivedModes, [], "No memo cleanup for a conversation")
-        XCTAssertEqual(mockLLM.briefInputs, [saved.conversationText!])
+        // The cleaned text is the conversation rewrite, read with who said what.
+        XCTAssertEqual(mockLLM.receivedModes, [.conversation])
+        XCTAssertEqual(mockLLM.receivedTranscripts, [
+            "Speaker 1: How have you been feeling since the last visit?\n\nSpeaker 2: Mostly fine, but the itching at night got worse.\n\nSpeaker 1: Then we check the bile acid level again this week."
+        ])
+        XCTAssertEqual(saved.cleanedText, "mock light")
+        XCTAssertEqual(mockLLM.briefInputs, ["mock light"])
         XCTAssertEqual(saved.title, "Itching Follow-up")
-        XCTAssertEqual(saved.tags, ["#health"])
-        XCTAssertEqual(saved.processingTimings.map(\.name), ["Transcribe (live)", "Speakers", "Clean up (3 turns)", "Title & summary"])
+        XCTAssertEqual(saved.processingTimings.map(\.name), ["Transcribe (live)", "Speakers", "Clean up", "Title & summary", "Speaker turns (3)"])
+    }
+
+    func testWhisperTokensNeverReachTheTurns() async throws {
+        let pipeline = speakerPipeline(twoSpeakers)
+        let note = VoiceNote(id: UUID(), audioFileName: try audioFile(), status: .syncing)
+        repository.save(note)
+        let tokenized = [
+            TranscriptTimingSegment(start: 0, end: 4, text: "<|startoftranscript|><|0.00|> How have you been feeling? <|3.66|><|endoftext|>"),
+            TranscriptTimingSegment(start: 4, end: 6, text: "<|startoftranscript|><|0.00|> <|4.18|><|endoftext|>"),
+            TranscriptTimingSegment(start: 6, end: 8, text: "<|0.00|> (silence) Itchy at night, mostly fine otherwise.<|7.36|>"),
+            TranscriptTimingSegment(start: 8, end: 12, text: ">> [BLANK_AUDIO] Then we check the bile acid level.")
+        ]
+
+        await pipeline.process(note: note, liveTranscript: ("all of it", tokenized))
+
+        let saved = try XCTUnwrap(repository.note(withId: note.id))
+        XCTAssertEqual(saved.speakerTurns.map(\.text), [
+            "How have you been feeling?",
+            "Itchy at night, mostly fine otherwise.",
+            "Then we check the bile acid level."
+        ])
     }
 
     func testOneSpeakerIsAMemo() async throws {
@@ -251,7 +274,6 @@ final class NoteProcessingPipelineTests: XCTestCase {
         XCTAssertEqual(saved.speakerCount, 1)
         XCTAssertTrue(saved.speakerTurns.isEmpty)
         XCTAssertEqual(mockLLM.receivedModes, [.light])
-        XCTAssertFalse(saved.showsConversation)
     }
 
     func testFailedDetectionLeavesAMemoToTryAgainOnReRun() async throws {

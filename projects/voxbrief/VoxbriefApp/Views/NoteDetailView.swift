@@ -16,6 +16,7 @@ public struct NoteDetailView: View {
     @State private var showingCopiedNotification = false
     @State private var copiedNotificationText = ""
     @State private var transcriptSearchText = ""
+    @State private var showsRawTranscript = false
     @State private var showingAppendSheet = false
     @State private var appendMemoText = ""
     @State private var appendMemoTitle = ""
@@ -1088,8 +1089,8 @@ public struct NoteDetailView: View {
                 copyButton(text: viewModel.note.cleanedText ?? "", field: .lightCleanup)
             }
 
-            if viewModel.note.showsConversation {
-                Text("\(Set(viewModel.note.speakerTurns.map(\.speaker)).count) speakers. Typos, grammar and filler words fixed in each turn. Tap a name to rename that speaker.")
+            if !viewModel.note.speakerTurns.isEmpty {
+                Text("A readable account of a conversation between \(speakerCountLabel): small talk and repetition dropped, the details kept. Who said what is in the Transcript tab.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -1098,16 +1099,7 @@ public struct NoteDetailView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if viewModel.note.showsConversation {
-                ConversationBubblesView(
-                    turns: viewModel.note.speakerTurns,
-                    name: { viewModel.note.speakerName($0) },
-                    onRename: { speaker in
-                        speakerNameDraft = viewModel.note.speakerNames[String(speaker)] ?? ""
-                        renamingSpeaker = speaker
-                    }
-                )
-            } else if let lightNote = viewModel.note.cleanedText {
+            if let lightNote = viewModel.note.cleanedText {
                 MarkdownLiteText(lightNote)
                     .foregroundStyle(.primary)
             } else if viewModel.isGeneratingLightCleanup {
@@ -1333,12 +1325,43 @@ public struct NoteDetailView: View {
 
     // MARK: - Raw Transcript Section
 
+    private var speakerCountLabel: String {
+        "\(Set(viewModel.note.speakerTurns.map(\.speaker)).count) people"
+    }
+
+    /// Whether the Transcript tab shows the speakers' turns as chat bubbles (a conversation,
+    /// unless the user switched to the raw output).
+    private var showsSpeakerTurns: Bool {
+        !viewModel.note.speakerTurns.isEmpty && !showsRawTranscript
+    }
+
     private var rawTranscriptSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                sectionHeader(icon: "waveform", tint: .secondary, title: "Verbatim ASR Output")
+                sectionHeader(
+                    icon: showsSpeakerTurns ? "person.2.wave.2" : "waveform",
+                    tint: .secondary,
+                    title: showsSpeakerTurns ? "Who Said What" : "Verbatim ASR Output"
+                )
                 Spacer()
-                copyButton(text: viewModel.note.rawTranscript, field: .rawTranscript)
+                copyButton(
+                    text: showsSpeakerTurns ? (viewModel.note.conversationText ?? "") : viewModel.note.rawTranscript,
+                    field: .rawTranscript
+                )
+            }
+
+            if !viewModel.note.speakerTurns.isEmpty {
+                Picker("Transcript view", selection: $showsRawTranscript) {
+                    Text("Speakers").tag(false)
+                    Text("Raw").tag(true)
+                }
+                .pickerStyle(.segmented)
+
+                Text(showsSpeakerTurns
+                     ? "\(speakerCountLabel), each turn with typos and filler words fixed. Tap a name to rename that speaker, a time to play from there."
+                     : "Exactly what speech recognition heard, with its markers.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             // In-transcript keyword search
@@ -1366,7 +1389,25 @@ public struct NoteDetailView: View {
 
             let query = transcriptSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-            if !viewModel.note.transcriptSegments.isEmpty {
+            if showsSpeakerTurns {
+                let turns = query.isEmpty ? viewModel.note.speakerTurns : viewModel.note.speakerTurns.filter {
+                    $0.text.lowercased().contains(query) || viewModel.note.speakerName($0.speaker).lowercased().contains(query)
+                }
+                if !query.isEmpty {
+                    Text("\(turns.count) matches found")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                ConversationBubblesView(
+                    turns: turns,
+                    name: { viewModel.note.speakerName($0) },
+                    onRename: { speaker in
+                        speakerNameDraft = viewModel.note.speakerNames[String(speaker)] ?? ""
+                        renamingSpeaker = speaker
+                    },
+                    onSeek: { viewModel.seek(toTime: $0) }
+                )
+            } else if !viewModel.note.transcriptSegments.isEmpty {
                 let matching = query.isEmpty ? viewModel.note.transcriptSegments : viewModel.note.transcriptSegments.filter { $0.displayText.lowercased().contains(query) }
 
                 if !query.isEmpty {

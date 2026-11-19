@@ -16,7 +16,7 @@ final class LLMCopywriterServiceTests: XCTestCase {
         let stripped = service.stripASRSpecialTokens(transcript)
         switch mode {
         case .full: return service.transformLocally(rawTranscript: stripped)
-        case .light: return service.transformLocallyLight(rawTranscript: stripped)
+        case .light, .conversation: return service.transformLocallyLight(rawTranscript: stripped)
         }
     }
     

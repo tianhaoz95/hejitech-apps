@@ -7,6 +7,7 @@ import re
 # The prompt's own scaffolding must never end up in a note.
 LEAK_MARKERS = ["Zentrify", "Sentrafy", "send trify", "Dictionary terms", "Transcript:"]
 LIGHT_KEYS = ["title", "summary", "cleanedText", "tags"]
+REPORT_KEYS = ["report", "title", "summary", "tags"]
 UNIVERSAL_KEYS = ["title", "summary", "tags"]
 BRIEF_KEYS = ["summary", "title", "tags"]
 TURNS_KEYS = ["turns"]
@@ -62,7 +63,7 @@ def score_output(raw, mode, field_keys, expect, template=None):
     elif mode in BRIEF_MODES:
         keys = BRIEF_KEYS
     else:
-        keys = LIGHT_KEYS if mode == "light" else UNIVERSAL_KEYS + list(field_keys)
+        keys = {"light": LIGHT_KEYS, "conversation": REPORT_KEYS}.get(mode, UNIVERSAL_KEYS + list(field_keys))
     missing = [k for k in keys if k not in obj]
     checks.append(("keys", not missing, f"missing {missing}" if missing else ""))
 
@@ -84,6 +85,13 @@ def score_output(raw, mode, field_keys, expect, template=None):
         checks.append(("summary<=30 words", 0 < summary_words <= 30, f"{summary_words} words"))
         opener = next((o for o in DESCRIBING_OPENERS if summary.lower().startswith(o)), None)
         checks.append(("summary says what, not 'the speaker'", opener is None, f"starts with {opener!r}" if opener else ""))
+
+    if mode == "conversation":
+        # A readable account, not the turns copied out as a script.
+        # Like LLMCopywriterService.isReport: "Name:" lines mean the turns were copied back.
+        report = obj.get("report") if isinstance(obj.get("report"), str) else ""
+        script = re.findall(r"(?:^|[.!?\"'\n]\s*)[A-Z][\w.' ]{0,24}:\s", report)
+        checks.append(("prose, not a script", len(script) < 2, f"{len(script)} 'Name:' lines"))
 
     text = "\n".join(strings_in(obj))
     body = "\n".join(s for k, v in obj.items() if k not in ("title", "tags") for s in strings_in(v))

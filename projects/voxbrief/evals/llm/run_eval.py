@@ -63,7 +63,7 @@ def run_sample(runner, prompts, seed):
     if "brief" in prompts:
         b = prompts["brief"]
         return None, runner(b["system"], b["user"], b["maxTokens"], seed), None
-    if prompts["mode"] == "light":
+    if prompts["mode"] in ("light", "conversation"):
         light = prompts["light"]
         return None, runner(light["system"], light["user"], GENERATION_MAX_TOKENS, seed), None
     generation = prompts["generation"]

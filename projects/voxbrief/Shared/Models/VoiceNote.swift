@@ -335,8 +335,8 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     /// How many people speaker detection heard: nil when it hasn't run on this note (dictation,
     /// notes from before 1.32.0, or it failed), 1 for a memo.
     public var speakerCount: Int?
-    /// A conversation's turns with their cleaned text, in order; empty for a memo. The cleaned
-    /// text (`lightCleanedNote`) is these turns written out (`conversationText`).
+    /// A conversation's turns, each proofread on its own, in order; empty for a memo. Shown as
+    /// chat bubbles in the Transcript tab; the cleaned text is a readable account instead.
     public var speakerTurns: [SpeakerTurn] = []
     /// Names the user gave speakers, by speaker number ("0", "1", ...).
     public var speakerNames: [String: String] = [:]
@@ -461,7 +461,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     }
 
     /// The conversation as plain text, one turn per paragraph ("Speaker 1: ..."), or nil for a
-    /// memo. What exports, search, copying and the title-and-summary step read.
+    /// memo. What the Transcript tab's speaker view copies.
     public var conversationText: String? {
         guard !speakerTurns.isEmpty else { return nil }
         return speakerTurns
@@ -469,22 +469,30 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
             .joined(separator: "\n\n")
     }
 
-    /// Whether the cleaned text is the detected conversation, unedited, so it can be shown as
-    /// chat bubbles. After an edit the note shows the edited text as it is.
-    public var showsConversation: Bool {
-        guard let conversation = conversationText else { return false }
-        return cleanedText == conversation
-    }
-
-    /// Names a speaker (an empty name goes back to "Speaker N"), rewriting the cleaned text to
-    /// match unless it was edited.
+    /// Names a speaker (an empty name goes back to "Speaker N"). The cleaned text, summary and
+    /// title refer to people by their labels, so the old label is replaced there too.
     public mutating func renameSpeaker(_ speaker: Int, to name: String) {
-        let before = conversationText
+        let before = speakerName(speaker)
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         speakerNames[String(speaker)] = trimmed.isEmpty || trimmed == "Speaker \(speaker + 1)" ? nil : trimmed
-        guard let before, let after = conversationText else { return }
-        if lightCleanedNote == before { lightCleanedNote = after }
-        if cleanedNote == before { cleanedNote = after }
+        let after = speakerName(speaker)
+        guard before != after else { return }
+        func replaced(_ text: String) -> String { Self.replacingName(before, with: after, in: text) }
+        lightCleanedNote = lightCleanedNote.map(replaced)
+        cleanedNote = replaced(cleanedNote)
+        summary = replaced(summary)
+        title = replaced(title)
+    }
+
+    /// `name` as a whole word or phrase ("Speaker 1" but not "Speaker 10").
+    static func replacingName(_ name: String, with replacement: String, in text: String) -> String {
+        let pattern = "(?<![\\p{L}\\p{N}])" + NSRegularExpression.escapedPattern(for: name) + "(?![\\p{L}\\p{N}])"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return text }
+        return regex.stringByReplacingMatches(
+            in: text,
+            range: NSRange(text.startIndex..., in: text),
+            withTemplate: NSRegularExpression.escapedTemplate(for: replacement)
+        )
     }
 
     /// `templateSections` if this note has any (every note processed after multi-template

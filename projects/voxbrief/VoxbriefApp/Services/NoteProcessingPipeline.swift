@@ -428,47 +428,21 @@ public final class NoteProcessingPipeline: ObservableObject {
 
         // A conversation: the note's single recording, with two or more speakers detected.
         let rawTurns = note.segments.count <= 1 ? SpeakerTurns.turns(from: note.transcriptSegments) : []
+        if note.speakerCount != nil {
+            note.speakerCount = max(1, SpeakerTurns.speakerCount(in: note.transcriptSegments))
+        }
 
         if reuseLightCleanup, let existing = note.cleanedText {
             note.lightCleanedNote = existing
-        } else if !rawTurns.isEmpty {
-            let start = ContinuousClock.now
-            let cleaned = try await llmService.cleanUpTurns(
-                rawTurns.map { DictionaryCorrector.apply(to: $0.text, entries: dictionary) },
-                dictionary: dictionary
-            )
-            timings.append(ProcessingTiming(name: "Clean up (\(rawTurns.count) turns)", seconds: Self.seconds(since: start)))
-            note.speakerTurns = zip(rawTurns, cleaned.texts).map { turn, text in
-                SpeakerTurn(id: turn.id, speaker: turn.speaker, start: turn.start, text: text)
-            }
-            let conversation = note.conversationText ?? ""
-            note.lightCleanedNote = conversation
-            note.lightCleanupEngine = cleaned.engine
-            if let title = Self.provisionalTitle(from: transcript) { note.title = title }
-            note.summary = ""
-            note.tags = []
-
-            if !briefSkippedNoteIds.contains(note.id) {
-                let briefStart = ContinuousClock.now
-                do {
-                    if let brief = try await llmService.writeBrief(cleanedText: conversation) {
-                        note.title = brief.title
-                        note.summary = brief.summary
-                        note.tags = brief.tags
-                        keepsSummary = true
-                        let name = brief.partCount > 1 ? "Title & summary (\(brief.partCount) parts)" : "Title & summary"
-                        timings.append(ProcessingTiming(name: name, seconds: Self.seconds(since: briefStart)))
-                    }
-                } catch is CancellationError {
-                    throw CancellationError()
-                } catch {
-                    print("[NoteProcessingPipeline] Brief failed for conversation \(note.id): \(error)")
-                }
-            }
         } else {
-            note.speakerTurns = []
+            // The cleaned text: a light cleanup of a memo, or for a conversation a readable,
+            // lightly condensed account of it (the turns are read with who said them).
+            let conversation = !rawTurns.isEmpty
+            let input = conversation
+                ? rawTurns.map { "Speaker \($0.speaker + 1): \(DictionaryCorrector.apply(to: $0.text, entries: dictionary))" }.joined(separator: "\n\n")
+                : transcript
             let start = ContinuousClock.now
-            let light = try await llmService.processTranscript(transcript, mode: .light, dictionary: dictionary, templates: [])
+            let light = try await llmService.processTranscript(input, mode: conversation ? .conversation : .light, dictionary: dictionary, templates: [])
             timings.append(ProcessingTiming(name: "Clean up", seconds: Self.seconds(since: start)))
             note.title = light.title
             note.summary = light.summary
@@ -493,6 +467,30 @@ public final class NoteProcessingPipeline: ObservableObject {
                 } catch {
                     print("[NoteProcessingPipeline] Brief failed for note \(note.id); kept the cleanup's title and summary: \(error)")
                 }
+            }
+
+            // The Transcript tab's speaker view: each turn proofread on its own. Without a model
+            // the turns are tidied (tokens, notes and fillers removed) and still shown.
+            if conversation {
+                let turnsStart = ContinuousClock.now
+                var texts = rawTurns.map { TranscriptText.paragraphed(TranscriptText.removingFillerSounds($0.text)) }
+                do {
+                    let cleaned = try await llmService.cleanUpTurns(
+                        rawTurns.map { DictionaryCorrector.apply(to: $0.text, entries: dictionary) },
+                        dictionary: dictionary
+                    )
+                    if cleaned.texts.count == texts.count { texts = cleaned.texts }
+                    timings.append(ProcessingTiming(name: "Speaker turns (\(rawTurns.count))", seconds: Self.seconds(since: turnsStart)))
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    print("[NoteProcessingPipeline] Turn cleanup failed for note \(note.id); kept the tidied turns: \(error)")
+                }
+                note.speakerTurns = zip(rawTurns, texts).map { turn, text in
+                    SpeakerTurn(id: turn.id, speaker: turn.speaker, start: turn.start, text: text)
+                }
+            } else {
+                note.speakerTurns = []
             }
         }
 

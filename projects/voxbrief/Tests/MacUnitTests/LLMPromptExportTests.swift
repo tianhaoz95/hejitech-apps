@@ -73,6 +73,10 @@ final class LLMPromptExportTests: XCTestCase {
                 ] as [String: Any]
             case "light":
                 item["light"] = ["system": service.buildLightSystemPrompt(dictionary: dictionary), "user": userPrompt]
+            case "conversation":
+                // `transcript` is the conversation as the pipeline hands it over ("Speaker 1: ...").
+                let turns = LLMCopywriterService.conversationTurns(transcript)
+                item["light"] = ["system": service.buildConversationSystemPrompt(dictionary: dictionary), "user": service.conversationUserPrompt(turns)]
             case "full":
                 let templates = try evalCase.templates.map { names in
                     try names.map { name in

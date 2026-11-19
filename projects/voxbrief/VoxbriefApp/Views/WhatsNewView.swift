@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.32.0"
+    public static let currentVersion = "1.33.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,44 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.33.0",
+            date: "November 2026",
+            tagline: "The Gist, Then the Words",
+            features: [
+                WhatsNewItem(
+                    icon: "doc.text.magnifyingglass",
+                    tint: .blue,
+                    title: "Conversations Written Up",
+                    description: "For a recording with more than one person, Cleaned Text is now a short write-up of what was said, in order and in plain sentences: who explained what, who asked what, what was decided. Greetings and small talk are left out; facts, numbers and next steps stay.",
+                    detailedDescription: "The write-up needs Flash or Apple Intelligence. With Lite, Cleaned Text is what was said, proofread and in paragraphs, without the speaker names. Rename a speaker and the write-up uses the new name too. Notes you already have get it when you tap Re-run.",
+                    highlights: [
+                        "Written by the model on your iPhone",
+                        "Long recordings are written up part by part",
+                        "Renaming \"Speaker 1\" to \"Doctor\" renames them in the write-up"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "bubble.left.and.bubble.right.fill",
+                    tint: .orange,
+                    title: "Chat Bubbles in the Transcript Tab",
+                    description: "The conversation as chat bubbles moved to the Transcript tab. Switch between Speakers, each turn proofread with a color per person, and Raw, exactly what speech recognition heard.",
+                    highlights: [
+                        "Tap a turn's time to play from there",
+                        "Search finds turns and speaker names"
+                    ]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "chevron.left.forwardslash.chevron.right",
+                    tint: .gray,
+                    title: "No Stray Markers in Speaker Turns",
+                    description: "Speaker turns no longer show the speech recognizer's markers like <|0.00|> or <|endoftext|>, and stretches with no words in them no longer count as someone speaking, so fewer phantom speakers.",
+                    kind: .fix
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.32.0",
             date: "November 2026",

@@ -1018,5 +1018,56 @@
         "wots brief"
       ]
     }
+  },
+  {
+    "id": "conversation-visit",
+    "category": "conversation",
+    "mode": "conversation",
+    "transcript": "Speaker 1: Coming, please. Hi, guys. How are you feeling?\n\nSpeaker 2: Um, mostly okay, but the itching at night has been, uh, getting worse, like really bad on my hands and feet.\n\nSpeaker 1: Okay. So with itching like that we think about cholestasis. For cholestasis the bile acid level is the main way that we diagnose it, and it takes forever to come back, it is about a week.\n\nSpeaker 3: So what do we do in the meantime? Do we just wait?\n\nSpeaker 1: In the meantime we do two non-stress tests a week to watch the baby's heart rate, and I'll start you on ursodiol, 300 milligrams twice a day.\n\nSpeaker 2: Okay. Thank you.",
+    "expect": {
+      "contains_ci": [
+        "bile acid",
+        "week",
+        "ursodiol",
+        "300",
+        "non-stress",
+        "itch"
+      ],
+      "not_contains_ci": [
+        "um,",
+        "uh,"
+      ]
+    }
+  },
+  {
+    "id": "conversation-standup",
+    "category": "conversation",
+    "mode": "conversation",
+    "transcript": "Speaker 1: Morning everyone, uh, can you hear me? Okay cool. So let's go around. Priya?\n\nSpeaker 2: Yeah so yesterday I finished the, um, the login migration, it's merged. Today I'm on the billing page, and I'm blocked on the Stripe test keys, I still don't have them.\n\nSpeaker 1: I'll send you the Stripe keys right after this call. Marco?\n\nSpeaker 3: I'm still fixing the crash on Android 14 when you rotate the camera screen. Should be done by Thursday.\n\nSpeaker 1: Great. Release is still Friday, so Thursday works. That's it, thanks all.",
+    "expect": {
+      "contains_ci": [
+        "login",
+        "billing",
+        "stripe",
+        "android 14",
+        "thursday",
+        "friday"
+      ]
+    }
+  },
+  {
+    "id": "conversation-plans",
+    "category": "conversation",
+    "mode": "conversation",
+    "transcript": "Speaker 1: Hey! How was your weekend?\n\nSpeaker 2: Good, good, you know, pretty chill. So about the trip, I looked at flights to Lisbon, the cheapest is 640 dollars, leaving May 3rd.\n\nSpeaker 1: Oh nice. Can we do the 5th instead? I have a dentist appointment on the 3rd.\n\nSpeaker 2: The 5th is 710. I can book it tonight if you're okay with that.\n\nSpeaker 1: Yeah, book the 5th. I'll find the hotel, something near Alfama.",
+    "expect": {
+      "contains_ci": [
+        "lisbon",
+        "710",
+        "5th",
+        "dentist",
+        "alfama"
+      ]
+    }
   }
 ]
