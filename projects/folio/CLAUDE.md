@@ -3,7 +3,7 @@
 Artifacts every AI agent can share. An artifact is a small website (one or more files) kept with
 its full history; any MCP client the person connects (Claude Code, Claude, Gemini CLI, ChatGPT,
 Codex, Cursor, …) can create, read, edit, suggest changes to, comment on and review the same
-artifacts, and every change is attributed to the agent that made it. Web only, free for now.
+artifacts, and every change is attributed to the agent that made it. Web, MCP and an iPhone app; free for now.
 Live at https://folio.hejitech.workers.dev.
 
 ## Layout
@@ -22,6 +22,17 @@ Live at https://folio.hejitech.workers.dev.
   - Pages (Vite multi-page, partials in `src/partials/`): `/` landing, `/app/` dashboard,
     `/a/<slug>` workspace (`artifact.ts`; the Worker serves `a/index.html` for every `/a/…`),
     `/connect/`, `/settings/`, `/login/`, `/oauth/consent/`, `/invite/#fiv_…`, privacy, terms, help.
+    `push.ts`: APNs notifications for events (from `logEvent` via `setNotifier`); `review.ts` +
+    `demo.ts`: App Review's demo sign-in, reset to demo artifacts on every sign-in.
+- `apps/ios/` (XcodeGen `project.yml`; `Folio.xcodeproj` is generated and ignored): the iPhone app.
+  - `FolioKit/` (Swift package, `swift test`): Supabase sign-in without the SDK (`Auth.swift`, a
+    backend file), the session in the Keychain group shared with the extension (`SessionVault`),
+    the REST client (`FolioAPI`, sends `X-Folio-Client: iPhone`), models, and `ShareDraft` (shared
+    items → an artifact's files).
+  - `App/Sources`: `AppModel` (state, sign-in, links, notification actions), `PushRelay` (APNs,
+    the Accept/Reject/Reply categories), `Views/` (home, artifact with Preview/Review/Comments/
+    History, suggestion with diff + preview, version, sharing, activity, settings, connect).
+  - `ShareExtension/`: "Folio" in the share sheet → a new artifact.
 - Database: `supabase/schemas/folio/schema.sql` (schema + bucket `folio`), seed
   `supabase/seeds/folio.sql` (folio-dev@example.com / `folio-dev`, token `fol_dev_local_token`,
   artifact `seedpage2`).
@@ -40,7 +51,16 @@ echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_
 npm run dev:worker -w @folio/web                # 127.0.0.1:8801, email sign-in for the seed account
 node projects/folio/scripts/test-api.mjs
 node projects/folio/scripts/browser-check.mjs <slug> <out-dir>
+projects/folio/scripts/dev-env.sh               # .dev.vars: local service key + throwaway APNs key
+# iPhone app
+(cd projects/folio/apps/ios/FolioKit && swift test)
+(cd projects/folio/apps/ios && xcodegen generate)   # then build scheme App; Debug launch args:
+#   -local [mac-ip]   the local stack (simulator: 127.0.0.1)    -reviewSignIn   demo account
 ```
+
+Local demo account: `review@example.com` / `folio-review-dev` (Sign in with email; every sign-in
+resets it to the demo artifacts). Locally the Worker sends pushes to `test-api.mjs`'s fake APNs on
+127.0.0.1:8851, never to Apple.
 
 ## How it works (decided; see docs/decisions.md)
 
@@ -65,6 +85,13 @@ node projects/folio/scripts/browser-check.mjs <slug> <out-dir>
 
 ## Pitfalls
 
+- Simulator builds need signing (`CODE_SIGN_IDENTITY=-`, the default): with `CODE_SIGNING_ALLOWED=NO`
+  the app has no Keychain at all and forgets the session on every launch.
+- No App Group: the app and the Share extension share the session through the Keychain access
+  group `$(AppIdentifierPrefix)com.hejitech.folio.shared` (CI can't register App Groups).
+- Notifications are sent inline from `logEvent` (awaited, 5 s timeout, never throws). Changes made
+  with `via: web` (web and iPhone app) don't notify their author; agents' (`via: mcp`) do.
+
 - The app's built-in browser pane blocks the sandboxed frame's subresources
   (`ERR_BLOCKED_BY_CLIENT`); real Chromium renders fine. Check the UI with `browser-check.mjs`.
 - The `/a/…` rewrite strips conditional headers: a 304 from ASSETS rewritten to 200 was a blank page.
@@ -73,5 +100,7 @@ node projects/folio/scripts/browser-check.mjs <slug> <out-dir>
 
 ## Releasing
 
-Web only: `scripts/cut_release.sh folio` bumps `services/web/package.json` (also the MCP
-`serverInfo.version`) and tags `folio-v<version>`; the Worker deploys on push (Workers Builds).
+`scripts/cut_release.sh folio` bumps `services/web/package.json` (also the MCP `serverInfo.version`)
+and tags `folio-v<version>`; the Worker deploys on push (Workers Builds) and the release runs
+`folio-testflight.yml`: the iPhone app ships the same version (`scripts/release_testflight.sh`
+passes it as MARKETING_VERSION). It refuses until `WhatsNewView.swift` describes the version.

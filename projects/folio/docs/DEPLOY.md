@@ -45,10 +45,28 @@ curl -s https://folio.hejitech.workers.dev/.well-known/oauth-authorization-serve
 curl -s https://folio.hejitech.workers.dev/api/status | jq .version
 ```
 
+Notifications and the App Review account (once; both safe to run again):
+
+```sh
+projects/folio/scripts/setup_push.sh       # APNS_TEAM_ID, APNS_KEY_ID, APNS_PRIVATE_KEY (team key)
+scripts/review_account.sh folio            # REVIEW_EMAIL, REVIEW_PASSWORD_SHA256 + App Store Connect
+```
+
 ## 4. Releases
 
 `scripts/cut_release.sh folio --dry-run`, then `scripts/cut_release.sh folio`: bumps
-`services/web/package.json` (the MCP `serverInfo.version`), tags `folio-v<version>`. The push deploys.
+`services/web/package.json` (the MCP `serverInfo.version`), tags `folio-v<version>`. The push deploys
+the Worker; the release runs `folio-testflight.yml` (the iPhone app and its Share extension, same
+version; refuses until the in-app What's New describes it).
+
+## 4b. iPhone app
+
+- Bundle IDs `com.hejitech.folio` (Sign in with Apple, Push Notifications) and
+  `com.hejitech.folio.share`; the Keychain group `com.hejitech.folio.shared` needs no portal setup.
+- Auth: `folio://login-callback` is in the shared project's redirect list (Google), and
+  `com.hejitech.folio` in the Apple provider's client IDs (native Sign in with Apple).
+- App Store Connect app "Folio" (or `Folio: <descriptor>` if the name is taken); TestFlight tester
+  per the root CLAUDE.md.
 
 ## 5. Docs
 

@@ -14,6 +14,17 @@ export interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string;
   /** Optional secret for signing render links; derived from the service key when unset. */
   RENDER_SECRET?: string;
+  /** iPhone notifications (secrets; the team's APNs key). Unset: nothing is sent. */
+  APNS_TEAM_ID?: string;
+  APNS_KEY_ID?: string;
+  APNS_PRIVATE_KEY?: string;
+  /** Bundle id the pushes are for (default com.hejitech.folio). */
+  APNS_TOPIC?: string;
+  /** Local tests only: send pushes to this receiver instead of Apple. */
+  APNS_HOST?: string;
+  /** App Review's demo account (secrets; scripts/review_account.sh folio). */
+  REVIEW_EMAIL?: string;
+  REVIEW_PASSWORD_SHA256?: string;
 }
 
 export const SCHEMA = "folio";

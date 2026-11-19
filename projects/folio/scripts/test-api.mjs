@@ -5,11 +5,14 @@
 // Plays two agents ("Claude Code" and "Gemini CLI") working on the same artifact: create, read,
 // edit, a conflicting edit (409) and a clean rebase, suggestions (accept, reject, stale), comments,
 // activity, restore, fork, export, sharing with a second person and role checks, the sandboxed
-// render endpoint (CSP, signed keys), MCP Apps resource, OAuth 2.1 + tokens, and data deletion.
+// render endpoint (CSP, signed keys), MCP Apps resource, iPhone notifications (a fake APNs on
+// 127.0.0.1:8851; scripts/dev-env.sh gives the Worker a throwaway key), OAuth 2.1 + tokens, and
+// data deletion.
 //
 //   node projects/folio/scripts/test-api.mjs [site] [supabase]
 import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
+import { createServer } from "node:http";
 
 const site = (process.argv[2] ?? "http://127.0.0.1:8801").replace(/\/$/, "");
 const supabase = (process.argv[3] ?? "http://127.0.0.1:55421").replace(/\/$/, "");
@@ -438,6 +441,105 @@ await step("web API: artifact page data, edits by Web, comments, events polling"
   assert.ok(list.body.some((a) => a.slug === slug && a.open_suggestions === 0));
   const bad = await call(`/api/artifacts/${slug}/edits`, { method: "POST", auth: other, body: { base_version: 1, ops: [{ op: "write", path: "index.html", content: "x" }] } });
   assert.equal(bad.status, 409, "the other person (editor) gets a stale conflict, not silent overwrite");
+});
+
+/** Stands in for Apple's push service: records each push; answers 410 for tokens starting "dead". */
+const pushes = [];
+const apns = createServer((req, res) => {
+  let data = "";
+  req.on("data", (c) => (data += c));
+  req.on("end", () => {
+    const token = req.url.split("/").pop();
+    pushes.push({ token, headers: req.headers, body: JSON.parse(data || "{}") });
+    const dead = token.startsWith("dead");
+    res.writeHead(dead ? 410 : 200, { "content-type": "application/json" });
+    res.end(dead ? JSON.stringify({ reason: "Unregistered" }) : "");
+  });
+});
+await new Promise((r) => apns.listen(8851, "127.0.0.1", r));
+const hexToken = (prefix) => (prefix + randomBytes(32).toString("hex")).slice(0, 64);
+const pushesTo = (t) => pushes.filter((p) => p.token === t);
+
+await step("iPhone notifications: agents' work notifies, your own taps don't, prefs and dead tokens", async () => {
+  const mine = hexToken("aa");
+  const theirs = hexToken("bb");
+  const bad = await call("/api/push", { method: "POST", auth: owner, body: { token: "nope" } });
+  assert.equal(bad.status, 400);
+  assert.equal((await call("/api/push", { method: "POST", body: { token: mine } })).status, 401);
+  const r = await call("/api/push", { method: "POST", auth: owner, body: { token: mine, sandbox: true, edits: false } });
+  assert.deepEqual(r.body, { ok: true, suggestions: true, comments: true, edits: false });
+  await call("/api/push", { method: "POST", auth: other, body: { token: theirs } });
+  pushes.length = 0;
+
+  // Gemini (the owner's agent) suggests: both people hear about it, with Accept/Reject buttons.
+  const head = (await call(`/api/artifacts/${slug}`, { auth: owner })).body.artifact.head_version;
+  const s = await gemini.tool("suggest_edit", { artifact: slug, base_version: head, title: "Add butter", rationale: "Toast.", ops: [{ op: "write", path: "butter.txt", content: "butter\n" }], agent: "Gemini CLI" });
+  const [p] = pushesTo(mine);
+  assert.ok(p, "the owner's iPhone got the suggestion");
+  assert.equal(p.body.aps.alert.title, "Gemini CLI suggested a change");
+  assert.equal(p.body.aps.alert.subtitle, "Shopping list");
+  assert.equal(p.body.aps.alert.body, "Add butter");
+  assert.equal(p.body.aps.category, "FOLIO_SUGGESTION");
+  assert.equal(p.body.slug, slug);
+  assert.equal(p.body.suggestion, s.suggestion.number);
+  assert.equal(p.headers["apns-topic"], "com.hejitech.folio");
+  assert.equal(p.headers["apns-push-type"], "alert");
+  const [h, c] = p.headers.authorization.replace(/^bearer /, "").split(".").slice(0, 2).map((x) => JSON.parse(Buffer.from(x, "base64url").toString()));
+  assert.deepEqual([h.alg, h.kid, c.iss], ["ES256", "LOCALKEY01", "LOCALTEST1"], "ES256 provider token");
+  assert.equal(pushesTo(theirs).length, 1, "members hear about it too");
+
+  // The owner comments from the iPhone app: attributed "iPhone", and only the other person is told.
+  pushes.length = 0;
+  const cm = await call(`/api/artifacts/${slug}/comments`, { method: "POST", auth: owner, headers: { "X-Folio-Client": "iPhone" }, body: { body: "Salted, please." } });
+  assert.equal(cm.status, 201, cm.text);
+  assert.equal(cm.body.agent, "iPhone");
+  assert.equal(pushesTo(mine).length, 0, "your own comment doesn't notify you");
+  assert.equal(pushesTo(theirs)[0].body.aps.alert.title, "iPhone commented");
+  assert.equal(pushesTo(theirs)[0].body.aps.alert.body, "Salted, please.");
+  assert.equal(pushesTo(theirs)[0].body.aps.category, "FOLIO_COMMENT");
+
+  // Claude saves a version: the owner turned edits off, the other person didn't.
+  pushes.length = 0;
+  const h2 = (await call(`/api/artifacts/${slug}`, { auth: owner })).body.artifact.head_version;
+  await claude.tool("edit_artifact", { artifact: slug, base_version: h2, ops: [{ op: "write", path: "jam.txt", content: "jam\n" }], message: "Add jam" });
+  assert.equal(pushesTo(mine).length, 0, "edits switched off");
+  assert.equal(pushesTo(theirs)[0].body.aps.alert.title, `claude-code saved v${h2 + 1}`);
+  assert.equal(pushesTo(theirs)[0].body.aps.alert.body, "Add jam");
+  assert.equal(pushesTo(theirs)[0].body.version, h2 + 1);
+
+  // Turning everything off, signing out (DELETE) and Apple's 410 all stop pushes.
+  await call("/api/push", { method: "POST", auth: owner, body: { token: mine, suggestions: false, comments: false, edits: false } });
+  await call(`/api/push/${theirs}`, { method: "DELETE", auth: other });
+  const dead = hexToken("dead");
+  await call("/api/push", { method: "POST", auth: other, body: { token: dead } });
+  pushes.length = 0;
+  await gemini.tool("comment", { artifact: slug, body: "One more thing." });
+  assert.deepEqual(pushes.map((x) => x.token), [dead], "only the dead token was tried");
+  pushes.length = 0;
+  await gemini.tool("comment", { artifact: slug, body: "And another." });
+  assert.equal(pushes.length, 0, "Apple's 410 removed the dead token");
+  await call(`/api/artifacts/${slug}/suggestions/${s.suggestion.number}/review`, { method: "POST", auth: owner, body: { decision: "reject" } });
+  await call(`/api/push/${mine}`, { method: "DELETE", auth: owner });
+});
+apns.close();
+
+await step("review sign-in: wrong password 401; demo data on every sign-in, same account", async () => {
+  const wrong = await call("/api/review-sign-in", { method: "POST", body: { email: "review@example.com", password: "nope" } });
+  assert.equal(wrong.status, 401);
+  const r = await call("/api/review-sign-in", { method: "POST", body: { email: "Review@Example.com ", password: "folio-review-dev" } });
+  assert.equal(r.status, 200, r.text);
+  assert.ok(r.body.access_token && r.body.refresh_token && r.body.user.id);
+  const list = (await call("/api/artifacts", { auth: r.body.access_token })).body;
+  assert.deepEqual(list.map((a) => a.title).sort(), ["Big Sur weekend", "Standing desks under $600"]);
+  const trip = list.find((a) => a.title === "Big Sur weekend");
+  assert.equal(trip.open_suggestions, 1);
+  const versions = (await call(`/api/artifacts/${trip.slug}/versions`, { auth: r.body.access_token })).body;
+  assert.deepEqual(versions.map((v) => v.agent), ["Gemini", "Claude"]);
+  // The reviewer deletes things; the next sign-in brings the demo back for the same user.
+  await call(`/api/artifacts/${trip.slug}`, { method: "DELETE", auth: r.body.access_token });
+  const again = await call("/api/review-sign-in", { method: "POST", body: { email: "review@example.com", password: "folio-review-dev" } });
+  assert.equal(again.body.user.id, r.body.user.id);
+  assert.equal((await call("/api/artifacts", { auth: again.body.access_token })).body.length, 2);
 });
 
 await step("tokens: revoke stops access", async () => {

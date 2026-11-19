@@ -1,0 +1,114 @@
+# XcodeGen spec. `xcodegen generate` creates Folio.xcodeproj (git-ignored).
+name: Folio
+options:
+  bundleIdPrefix: com.hejitech
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  defaultConfig: Debug
+
+settings:
+  base:
+    APP_DISPLAY_NAME: Folio
+    PRODUCT_SLUG: folio
+    DEVELOPMENT_TEAM: 68CTFST8W2
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+packages:
+  FolioKit:
+    path: FolioKit
+
+targets:
+  App:
+    type: application
+    platform: iOS
+    sources:
+      - path: App/Sources
+      - path: App/Resources
+    dependencies:
+      - package: FolioKit
+      - target: ShareExtension
+    settings:
+      base:
+        PRODUCT_NAME: Folio
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG)
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_KEY_CFBundleDisplayName: $(APP_DISPLAY_NAME)
+        TARGETED_DEVICE_FAMILY: "1"
+    entitlements:
+      path: App/App.entitlements
+      properties:
+        com.apple.developer.applesignin: [Default]
+        aps-environment: development
+        # Shared with the Share extension: the signed-in session (no App Group; see CLAUDE.md).
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)com.hejitech.folio.shared
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: $(APP_DISPLAY_NAME)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        FolioKeychainGroup: $(AppIdentifierPrefix)com.hejitech.folio.shared
+        UILaunchScreen: {}
+        UIBackgroundModes: [remote-notification]
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        ITSAppUsesNonExemptEncryption: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        CFBundleURLTypes:
+          - CFBundleURLName: com.hejitech.folio
+            CFBundleURLSchemes: [folio]
+
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ShareExtension
+    dependencies:
+      - package: FolioKit
+    settings:
+      base:
+        PRODUCT_NAME: FolioShare
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG).share
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_CFBundleDisplayName: Folio
+    entitlements:
+      path: ShareExtension/ShareExtension.entitlements
+      properties:
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)com.hejitech.folio.shared
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Folio
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        FolioKeychainGroup: $(AppIdentifierPrefix)com.hejitech.folio.shared
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsWebPageWithMaxCount: 1
+              NSExtensionActivationSupportsImageWithMaxCount: 10
+              NSExtensionActivationSupportsFileWithMaxCount: 10
+
+schemes:
+  App:
+    build:
+      targets:
+        App: all
+        ShareExtension: all
+    run:
+      config: Debug
+    test:
+      config: Debug

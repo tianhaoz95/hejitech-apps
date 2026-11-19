@@ -153,6 +153,20 @@ create table folio.access_tokens (
 );
 create index access_tokens_user on folio.access_tokens(user_id);
 
+-- iPhones that get notified about suggestions, comments and agents' edits (APNs device tokens).
+-- Only the Worker reads or writes them.
+create table folio.push_devices (
+  apns_token text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  environment text not null default 'production' check (environment in ('production', 'sandbox')),
+  notify_suggestions boolean not null default true,
+  notify_comments boolean not null default true,
+  notify_edits boolean not null default true,
+  created_at timestamptz not null default now(),
+  last_sent_at timestamptz
+);
+create index push_devices_user on folio.push_devices(user_id);
+
 -- ---------------------------------------------------------------- access rules
 
 alter table folio.artifacts enable row level security;
@@ -164,6 +178,7 @@ alter table folio.suggestions enable row level security;
 alter table folio.comments enable row level security;
 alter table folio.events enable row level security;
 alter table folio.access_tokens enable row level security;
+alter table folio.push_devices enable row level security;
 
 create or replace function folio.is_member(p_artifact uuid)
 returns boolean

@@ -1,7 +1,9 @@
 // The site's API (/api/*) for the web app. Same service layer as MCP; changes made here are
 // attributed to "Web". Artifacts anyone with the link can view are readable without signing in.
 import { bytesToBase64, isTextType, unifiedDiff, zip } from "@folio/core";
+import { resetDemo } from "./demo.ts";
 import { renderBase } from "./render.ts";
+import { reviewSignIn } from "./review.ts";
 import {
   acceptInvite,
   access,
@@ -43,7 +45,7 @@ import { SERVER_VERSION, TOOLS } from "./mcp.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Headers": "authorization, content-type, x-folio-client",
   "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
 };
 const reply = (body: unknown, status = 200, extra: Record<string, string> = {}) => json(body, status, { ...cors, ...extra });
@@ -73,8 +75,14 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     return reply({ service: "folio", version: SERVER_VERSION, mcp: `${env.PUBLIC_URL}/mcp`, tools: TOOLS.map((t) => t.name) });
   }
 
+  // App Review's demo account (only with the Worker's REVIEW_* secrets; skill heji-review-account).
+  if (path === "/api/review-sign-in" && method === "POST") {
+    const r = await reviewSignIn(env, req, (userId) => resetDemo(db, userId));
+    return reply(r.body, r.status);
+  }
+
   const user = await supabaseUser(env, req);
-  const actor = webActor(user?.id ?? null);
+  const actor = webActor(user?.id ?? null, req.headers.get("X-Folio-Client"));
   const need = () => {
     if (!user) throw new FolioError(401, "sign_in", "Sign in first.");
     return user;
@@ -304,6 +312,32 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   if (tok && method === "DELETE") {
     need();
     await db.from("access_tokens").delete().eq("user_id", actor.userId!).eq("id", tok[1]);
+    return reply({ ok: true });
+  }
+
+  // ---------------------------------------------------------------- iPhone notifications (APNs device tokens)
+  if (path === "/api/push" && method === "POST") {
+    const u = need();
+    const b = await body(req);
+    const token = String(b.token ?? "").toLowerCase();
+    if (!/^[0-9a-f]{64,200}$/.test(token)) throw new FolioError(400, "bad_token", "token must be an APNs device token (hex).");
+    const flag = (k: string) => (typeof b[k] === "boolean" ? (b[k] as boolean) : true);
+    const row = {
+      apns_token: token,
+      user_id: u.id,
+      environment: b.sandbox === true ? "sandbox" : "production",
+      notify_suggestions: flag("suggestions"),
+      notify_comments: flag("comments"),
+      notify_edits: flag("edits"),
+    };
+    const { error } = await db.from("push_devices").upsert(row, { onConflict: "apns_token" });
+    if (error) throw new FolioError(500, "database", error.message);
+    return reply({ ok: true, suggestions: row.notify_suggestions, comments: row.notify_comments, edits: row.notify_edits });
+  }
+  const pushTok = path.match(/^\/api\/push\/([0-9a-fA-F]{64,200})$/);
+  if (pushTok && method === "DELETE") {
+    const u = need();
+    await db.from("push_devices").delete().eq("user_id", u.id).eq("apns_token", pushTok[1].toLowerCase());
     return reply({ ok: true });
   }
 

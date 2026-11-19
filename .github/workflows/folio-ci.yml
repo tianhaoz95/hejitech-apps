@@ -47,8 +47,29 @@ jobs:
         env:
           WEB_ALLOW_LOCAL: "1"
 
+  ios:
+    name: iPhone app (FolioKit tests, simulator build with the Share extension)
+    runs-on: xcode-27
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: projects/folio/apps/ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "27.2"
+      - run: brew install xcodegen
+      - name: FolioKit tests
+        working-directory: projects/folio/apps/ios/FolioKit
+        run: swift test
+      - run: xcodegen generate
+      - name: Build for the simulator
+        run: xcodebuild -project Folio.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+
   backend:
-    name: Shared Supabase schema + Worker integration (two agents, conflicts, suggestions, sharing, render sandbox, OAuth, RLS)
+    name: Shared Supabase schema + Worker integration (two agents, conflicts, suggestions, sharing, render sandbox, push, OAuth, RLS)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -65,7 +86,7 @@ jobs:
       - name: Worker against the local stack
         working-directory: projects/folio/services/web
         run: |
-          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r .SERVICE_ROLE_KEY)" > .dev.vars
+          ../../scripts/dev-env.sh
           npm run dev:worker > /tmp/worker.log 2>&1 &
           for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8801/ && break; sleep 1; done
           curl -sf -o /dev/null http://127.0.0.1:8801/ || { cat /tmp/worker.log; exit 1; }

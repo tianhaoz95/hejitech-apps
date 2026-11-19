@@ -4,7 +4,9 @@
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { handleApi } from "./api.ts";
 import { handleMcp, type Caller } from "./mcp.ts";
+import { notifyEvent } from "./push.ts";
 import { handleRender } from "./render.ts";
+import { setNotifier } from "./service.ts";
 import { admin, json, PREFIX, resolveAgentToken, supabaseUser, type Env as BaseEnv } from "./store.ts";
 
 export interface Env extends BaseEnv {
@@ -176,5 +178,8 @@ function getProvider(env: Env): OAuthProvider<Env> {
 }
 
 export default {
-  fetch: (req: Request, env: Env, ctx: ExecutionContext) => getProvider(env).fetch(req, env, ctx),
+  fetch: (req: Request, env: Env, ctx: ExecutionContext) => {
+    setNotifier((e) => notifyEvent(env, admin(env), e));
+    return getProvider(env).fetch(req, env, ctx);
+  },
 } satisfies ExportedHandler<Env>;

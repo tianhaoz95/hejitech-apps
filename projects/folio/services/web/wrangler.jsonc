@@ -19,9 +19,14 @@
     "PUBLIC_URL": "http://127.0.0.1:8801",
     "SUPABASE_URL": "http://127.0.0.1:55421",
     // The demo anon key every local `supabase start` ships with.
-    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0",
+    // Pushes go to scripts/test-api.mjs's receiver, never to Apple, from a local Worker.
+    "APNS_HOST": "http://127.0.0.1:8851",
+    // App Review's demo sign-in, locally: review@example.com / folio-review-dev (production: secrets).
+    "REVIEW_EMAIL": "review@example.com",
+    "REVIEW_PASSWORD_SHA256": "2b0022759f6db92aa5ef27a3e025446013d3a23e9792c09dbdffb671d5d0b43c"
   },
-  // Local secrets: .dev.vars (SUPABASE_SERVICE_ROLE_KEY).
+  // Local secrets: .dev.vars (scripts/dev-env.sh: SUPABASE_SERVICE_ROLE_KEY and a throwaway APNs key).
   "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "folio-oauth-local" }],
   "dev": { "port": 8801, "ip": "127.0.0.1" },
 
@@ -34,7 +39,9 @@
         "SUPABASE_URL": "https://jitdzllkxfhlrxxvljhp.supabase.co",
         "SUPABASE_ANON_KEY": "sb_publishable_lZSe_L4Wd0Sw01h25eixzQ_vLU7FPP8"
       },
-      // Secrets (wrangler secret put --env production): SUPABASE_SERVICE_ROLE_KEY, RENDER_SECRET.
+      // Secrets (wrangler secret put --env production): SUPABASE_SERVICE_ROLE_KEY, RENDER_SECRET,
+      // APNS_TEAM_ID, APNS_KEY_ID, APNS_PRIVATE_KEY (scripts/setup_push.sh), REVIEW_EMAIL,
+      // REVIEW_PASSWORD_SHA256 (scripts/review_account.sh folio).
       "kv_namespaces": [{ "binding": "OAUTH_KV" }]
     }
   }

@@ -150,8 +150,10 @@ in-app What's New describes the version) and publishes `roarly-v<version>`, whic
 `roarly-testflight.yml` (iPhone app with its Watch app; fetches the bundled model first). No backend.
 See `projects/roarly/CLAUDE.md`.
 
-For Folio (web only) it bumps `projects/folio/services/web/package.json` (also the MCP server's
-`serverInfo.version`) and publishes `folio-v<version>`; no release workflows. Its Worker (site, artifact
+For Folio it bumps `projects/folio/services/web/package.json` (also the MCP server's
+`serverInfo.version`; refusing until the iPhone app's What's New describes the version) and publishes
+`folio-v<version>`, which runs `folio-testflight.yml` (the iPhone app with its Share extension, same
+version). Its Worker (site, artifact
 workspace, sandboxed `/r/` rendering, API, MCP with an MCP Apps view) deploys on push. See
 `projects/folio/CLAUDE.md`.
 

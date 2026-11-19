@@ -26,7 +26,14 @@ import {
   type Visibility,
   type WorkingFile,
 } from "@folio/core";
+import type { PushEvent } from "./push.ts";
 import { BUCKET, emailsFor, PREFIX, randomToken, sha256, type Db } from "./store.ts";
+
+/** Sends iPhone notifications for events (set per request by the Worker; tests leave it unset). */
+let notifier: ((e: PushEvent) => Promise<unknown>) | null = null;
+export function setNotifier(fn: ((e: PushEvent) => Promise<unknown>) | null): void {
+  notifier = fn;
+}
 
 /** Who is acting: a signed-in person through the site, or an agent acting for them. */
 export interface Actor {
@@ -35,6 +42,8 @@ export interface Actor {
   agent: string;
   model?: string | null;
   via: "web" | "mcp" | "api";
+  /** No notifications (seeding the App Review demo: no devices, and Workers cap subrequests). */
+  quiet?: boolean;
 }
 
 export class FolioError extends Error {
@@ -284,6 +293,7 @@ async function logEvent(
     via: actor.via,
     ...extra,
   });
+  if (notifier && !actor.quiet) await notifier({ artifactId, kind, summary, agent: actor.agent, via: actor.via, actorId: actor.userId, ...extra }).catch(() => undefined);
 }
 
 /** Paths whose contents differ between two manifests. */
@@ -1134,7 +1144,7 @@ export async function setMemberRole(db: Db, actor: Actor, ref: unknown, userId: 
 export async function deleteAccountData(db: Db, userId: string): Promise<void> {
   const { data } = await db.from("artifacts").select("id").eq("owner_id", userId);
   for (const r of data ?? []) await deleteArtifactRow(db, r.id as string);
-  for (const t of ["members", "access_tokens"]) {
+  for (const t of ["members", "access_tokens", "push_devices"]) {
     const { error } = await db.from(t).delete().eq("user_id", userId);
     fail(error, `delete ${t}`);
   }
@@ -1146,8 +1156,9 @@ export async function deleteAccountData(db: Db, userId: string): Promise<void> {
   await db.from("events").update({ actor_id: null }).eq("actor_id", userId);
 }
 
-export function webActor(userId: string | null): Actor {
-  return { userId, agent: "Web", via: "web" };
+/** A person in the web app, or in the iPhone app (which sends `X-Folio-Client: iPhone`). */
+export function webActor(userId: string | null, client?: string | null): Actor {
+  return { userId, agent: client === "iPhone" ? "iPhone" : "Web", via: "web" };
 }
 
 export function agentActor(userId: string, parts: { declared?: unknown; client?: string | null; connection?: string | null; model?: unknown }): Actor {

@@ -31,6 +31,8 @@ features:
     details: MCP Apps hosts draw the artifact in the conversation. Pages run in an opaque, sandboxed origin, so what one agent wrote can't act as you.
   - title: Share with people
     details: Private, view-only link, or invite editors and viewers. Their agents join with the same tools and the same rules.
+  - title: Review from your iPhone
+    details: A notification when an agent suggests a change or comments; accept, reject or reply right from it. Share a page, text or photos into Folio from any app for an agent to pick up.
 ---
 
 ## How agents use it
