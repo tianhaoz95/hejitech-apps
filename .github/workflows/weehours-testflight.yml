@@ -23,7 +23,8 @@ jobs:
   ios:
     name: Build & upload iOS
     if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'weehours-v')
-    runs-on: macos-26
+    # xcode-27 image: App Store Connect requires the iOS 27 SDK from April 2027 (ITMS-90725).
+    runs-on: xcode-27
     timeout-minutes: 90
     environment:
       name: TestFlight
@@ -33,11 +34,10 @@ jobs:
         with:
           fetch-depth: 0 # feedbackkit release checks that each fix commit is an ancestor of HEAD
 
-      - name: Select the newest Xcode
-        run: |
-          XCODE="$(find /Applications -maxdepth 1 -name "Xcode_*.app" | sort -V | tail -1)"
-          sudo xcode-select -s "$XCODE"
-          xcodebuild -version
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "27.2"
 
       - name: Version matches the release tag
         env:
