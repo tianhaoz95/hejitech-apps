@@ -50,7 +50,7 @@ final class CatalogTests: XCTestCase {
         XCTAssertEqual(Set(SoundCatalog.all.map(\.id)).count, SoundCatalog.all.count)
         XCTAssertGreaterThanOrEqual(SoundCatalog.freeCues.count, 10)
         for cue in SoundCatalog.all {
-            XCTAssertFalse(cue.triggers.isEmpty, cue.id)
+            XCTAssertFalse(StoryLanguage.english.lexicon.words(for: cue).triggers.isEmpty, cue.id)
             XCTAssertFalse(cue.files.isEmpty, cue.id)
         }
     }
@@ -92,12 +92,18 @@ final class StoryEngineTests: XCTestCase {
     }
 
     /// The story eval: every line read as a finished utterance.
-    func testStoryEval() throws {
-        let url = try XCTUnwrap(Bundle.module.url(forResource: "stories", withExtension: "json"))
+    /// Every language's stories (`stories_<id>.json`); a language without one fails.
+    func testStoryEvalEveryLanguage() throws {
+        XCTAssertGreaterThanOrEqual(StoryLanguage.all.count, 3)
+        for language in StoryLanguage.all { try runEval("stories_\(language.rawValue)", language) }
+    }
+
+    func runEval(_ name: String, _ language: StoryLanguage) throws {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: name, withExtension: "json"), "missing \(name).json")
         let suite = try JSONDecoder().decode(Suite.self, from: Data(contentsOf: url))
         var failures: [String] = []
         for c in suite.cases {
-            let engine = StoryEngine(settings: .init(mode: .play, automation: .balanced))
+            let engine = StoryEngine(settings: .init(mode: .play, automation: .balanced, language: language))
             var all: [StoryAction] = []
             var t = Date()
             for line in c.lines {
@@ -109,7 +115,7 @@ final class StoryEngineTests: XCTestCase {
             for id in c.suggest ?? [] where !p.contains(id) && !s.contains(id) { failures.append("\(c.lines.joined(separator: " ")) → expected \(id) offered") }
             for id in c.never ?? [] where p.contains(id) { failures.append("\(c.lines.joined(separator: " ")) → \(id) must not play") }
         }
-        XCTAssertTrue(failures.isEmpty, failures.joined(separator: "\n"))
+        XCTAssertTrue(failures.isEmpty, "[\(language.englishName)]\n" + failures.joined(separator: "\n"))
     }
 
     func testVolatileSuggestionWithdrawnWhenTigerLeaves() {
@@ -224,5 +230,91 @@ final class DirectorTests: XCTestCase {
         let q = DirectorPrompt.question(for: r)
         XCTAssertTrue(q.contains("the tiger"))
         XCTAssertTrue(q.contains("Once upon a time."))
+    }
+}
+
+extension StoryLanguage {
+    static let zh = StoryLanguage(rawValue: "zh")!
+    static let es = StoryLanguage(rawValue: "es")!
+}
+
+final class LanguageTests: XCTestCase {
+    func played(_ actions: [StoryAction]) -> Set<String> {
+        Set(actions.compactMap { if case .play(let id, _) = $0 { return id }; if case .startAmbient(let id, _) = $0 { return id }; return nil })
+    }
+
+    func testEveryCueHasWordsInEveryLanguage() {
+        for language in StoryLanguage.all {
+            let lex = language.lexicon
+            for cue in SoundCatalog.all {
+                XCTAssertFalse(lex.words(for: cue).triggers.isEmpty, "\(language.englishName) has no words for \(cue.id)")
+            }
+            for id in lex.cueWords.keys { XCTAssertNotNil(SoundCatalog.cue(id), "\(language) lists unknown cue \(id)") }
+        }
+    }
+
+    func testHanCharactersAreTokens() {
+        let t = TextNormalizer.tokens("狮子，吼！")
+        XCTAssertEqual(t.map(\.text), ["狮", "子", "吼"])
+        XCTAssertTrue(t[1].endsClause)
+        XCTAssertTrue(t[2].endsSentence)
+    }
+
+    func testTraditionalBecomesSimplified() {
+        XCTAssertEqual(TextNormalizer.words("獅子"), TextNormalizer.words("狮子"))
+    }
+
+    func testAccentsFold() {
+        XCTAssertEqual(TextNormalizer.words("León rugió"), ["leon", "rugio"])
+        XCTAssertTrue(TextNormalizer.matches("leones", "leon"))
+        XCTAssertTrue(StoryLanguage.es.lexicon.matches("peces", "pez"))
+        XCTAssertFalse(TextNormalizer.matches("peces", "pez"))
+    }
+
+    func testBlockersAreDropped() {
+        let m = CueMatcher(language: .zh)
+        XCTAssertTrue(m.mentions(in: TextNormalizer.tokens("我们马上出发")).isEmpty)
+        XCTAssertEqual(m.mentions(in: TextNormalizer.tokens("一匹马")).map(\.cueID), ["horse"])
+        XCTAssertEqual(m.mentions(in: TextNormalizer.tokens("猫头鹰")).map(\.cueID), ["owl"])
+    }
+
+    func testMandarinRainStopsAndGoodnight() {
+        let e = StoryEngine(settings: .init(mode: .play, language: .zh))
+        XCTAssertEqual(played(e.ingest("开始下雨了。", isFinal: true)), ["rain"])
+        XCTAssertTrue(e.ingest("后来雨停了。", isFinal: true).contains(.stopAmbient(cueID: "rain")))
+        _ = e.ingest("开始下雨了。", isFinal: true)
+        XCTAssertTrue(e.ingest("晚安，宝贝。", isFinal: true).contains(.fadeAll))
+    }
+
+    func testStopOnlyInItsSentence() {
+        let e = StoryEngine(settings: .init(mode: .play, language: .es))
+        _ = e.ingest("Había un perrito en el bosque. Y empezó a llover.", isFinal: false)
+        let a = e.ingest("Había un perrito en el bosque. Y empezó a llover. Por fin, la lluvia paró.", isFinal: true)
+        XCTAssertTrue(a.contains(.stopAmbient(cueID: "rain")))
+        XCTAssertFalse(a.contains(.stopAmbient(cueID: "forest")))
+    }
+
+    func testSpanishGoodnight() {
+        let e = StoryEngine(settings: .init(mode: .play, language: .es))
+        XCTAssertEqual(played(e.ingest("Y empezó a llover.", isFinal: true)), ["rain"])
+        XCTAssertFalse(e.ingest("Por fin, la lluvia paró.", isFinal: true).contains(.fadeAll))
+        _ = e.ingest("Y empezó a llover.", isFinal: true)
+        XCTAssertTrue(e.ingest("Fin. Buenas noches.", isFinal: true).contains(.fadeAll))
+        _ = e.ingest("Y empezó a llover.", isFinal: true)
+        XCTAssertTrue(e.ingest("Colorín colorado, este cuento se ha acabado.", isFinal: true).contains(.fadeAll))
+    }
+
+    func testEnglishWordsDontCountInMandarin() {
+        let e = StoryEngine(settings: .init(mode: .play, language: .zh))
+        XCTAssertTrue(played(e.ingest("The lion roared.", isFinal: true)).isEmpty)
+    }
+}
+
+final class MandarinPartialTests: XCTestCase {
+    func testNameAtEndOfPartialWaits() {
+        let e = StoryEngine(settings: .init(mode: .play, language: .zh))
+        let t = Date()
+        XCTAssertTrue(e.ingest("我们马", isFinal: false, at: t).isEmpty)
+        XCTAssertTrue(e.ingest("我们马上就到家了", isFinal: false, at: t + 1).isEmpty)
     }
 }

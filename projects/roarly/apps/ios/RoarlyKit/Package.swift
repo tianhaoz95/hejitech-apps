@@ -9,11 +9,13 @@ let package = Package(
     platforms: [.iOS("26.0"), .watchOS("26.0"), .macOS("26.0")],
     products: [.library(name: "RoarlyKit", targets: ["RoarlyKit"])],
     targets: [
-        .target(name: "RoarlyKit", swiftSettings: [.swiftLanguageMode(.v5)]),
+        // Lexicons/<language>.json: one file per story language (see Language.swift).
+        .target(name: "RoarlyKit", resources: [.copy("Lexicons")], swiftSettings: [.swiftLanguageMode(.v5)]),
         .testTarget(
             name: "RoarlyKitTests",
             dependencies: ["RoarlyKit"],
-            resources: [.copy("Resources/stories.json")],
+            // stories_<language>.json for every lexicon.
+            resources: [.process("Resources")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]

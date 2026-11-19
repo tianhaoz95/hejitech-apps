@@ -67,6 +67,28 @@ real SpeechAnalyzer instead of the mic: tests on-device speech without the permi
 4. `AudioHub`: one `AVAudioEngine` with voice processing on the input (echo cancellation uses our
    own output as reference), a pool of one-shot player nodes, one looping node per bed with fades.
 
+## Story languages
+
+Every story language is one file, `RoarlyKit/Sources/RoarlyKit/Lexicons/<id>.json`, like an i18n
+catalog; no code names a language (`StoryLanguage` is a struct loaded from those files; Settings ›
+Story language lists them; the default follows the phone's language via `languageCodes`;
+`-language <id>`). `SoundCatalog` holds what is the same everywhere (id, emoji, files, loudness);
+each lexicon maps every cue id to its `words` (names) and `sounds` (noises), plus how the language
+is read: `negations`/`notNegations`, `arrivals`, `departures`, `memories`, `askBefore`/`askAfter`,
+`blockers` (words that contain a name but aren't it, e.g. "马上"), `stopWords`, `clearSkies`,
+`goodnight`/`notGoodnight`, `plurals` (singular → plural endings), `interjections`,
+`negationSuffixes`, `reach` (token windows), `speechLocales`, `storySenseClassifier` (the
+classifier is English-only; other languages use Apple's model or a tap) and
+`holdNamesAtEndOfPartial` (for scripts without spaces). Tokens are accent-folded and every Han
+character is a token (Traditional → Simplified), which is script-level and needs no language code.
+
+**Adding a language:** copy `es.json` to `<id>.json`, translate every cue and list, set the
+locales; add `Tests/RoarlyKitTests/Resources/stories_<id>.json` (the eval runs every lexicon and
+fails without it; another test fails if a cue has no words); `swift test`; then check on the iPhone:
+render a story with `say -v <voice>` (`[[slnc 900]]` between sentences and 3 s of silence at the
+end, or the last final never comes), copy it into Documents, run `-language <id> -listenFile …`
+(the first run downloads the speech model, ~20 s). `-settings` opens Settings.
+
 ## Pitfalls
 
 - **MLX never runs in the Simulator** (Metal allocator abort): `SmallModelDirector.builtInAvailable`

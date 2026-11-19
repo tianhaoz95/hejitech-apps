@@ -4,7 +4,7 @@ import RoarlyKit
 /// Launch arguments for testing on a device and taking screenshots without taps:
 /// `-skipOnboarding`, `-autoListen` (start listening at launch), `-demoStory` (a scripted story
 /// through the real decision path, no microphone), `-selfTest` (asks the small model the eval
-/// questions and logs answers and latency), `-mode play|bedtime`, `-automation auto|balanced|ask`,
+/// questions and logs answers and latency), `-mode play|bedtime`, `-language en|zh|es`, `-settings` (opens Settings), `-automation auto|balanced|ask`,
 /// `-showPaywall`, `-proUnlocked` (Debug builds).
 enum DebugFlags {
     static let args = ProcessInfo.processInfo.arguments
@@ -26,6 +26,7 @@ enum DebugFlags {
     @MainActor
     static func runLaunchActions(_ model: AppModel) async {
         if let m = value("-mode").flatMap(StoryMode.init(rawValue:)) { model.mode = m }
+        if let l = value("-language").flatMap(StoryLanguage.init(rawValue:)) { model.language = l }
         if let a = value("-automation").flatMap(Automation.init(rawValue:)) { model.automation = a }
         if args.contains("-showPaywall") { model.showPaywall = true }
         if args.contains("-modesHelp") { model.showModesHelp = true }

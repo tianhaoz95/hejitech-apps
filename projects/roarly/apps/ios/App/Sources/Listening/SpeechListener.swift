@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import Speech
+import RoarlyKit
 
 /// Live, on-device speech to text with Apple's SpeechAnalyzer.
 ///
@@ -44,9 +45,11 @@ final class SpeechListener {
 
     /// Prepares the model (downloading it once if iOS hasn't yet) and starts listening through
     /// `hub`'s microphone tap.
-    func start(hub: AudioHub, vocabulary: [String]) async throws {
+    func start(hub: AudioHub, vocabulary: [String], language: StoryLanguage) async throws {
         await stop()
-        let locale = await Self.locale()
+        guard let locale = await Self.locale(for: language) else {
+            throw NSError(domain: "Roarly", code: 3, userInfo: [NSLocalizedDescriptionKey: "This iPhone can't recognize \(language.englishName) speech yet. Pick another story language in Settings."])
+        }
         let module: any SpeechModule
         let results: AsyncThrowingStream<(String, Bool), Error>
         if SpeechTranscriber.isAvailable {
@@ -153,9 +156,21 @@ final class SpeechListener {
         }
     }
 
-    private static func locale() async -> Locale {
-        if let l = await SpeechTranscriber.supportedLocale(equivalentTo: Locale.current) { return l }
-        return Locale(identifier: "en-US")
+    /// The phone's own locale when it speaks the story's language (its region, e.g. es-MX), else
+    /// the locales the language's lexicon lists, in order.
+    private static func locale(for language: StoryLanguage) async -> Locale? {
+        var candidates = language.speechLocales.map(Locale.init(identifier:))
+        if StoryLanguage.matching(languageCode: Locale.current.language.languageCode?.identifier) == language {
+            candidates.insert(Locale.current, at: 0)
+        }
+        for c in candidates {
+            if SpeechTranscriber.isAvailable {
+                if let l = await SpeechTranscriber.supportedLocale(equivalentTo: c) { return l }
+            } else if let l = await DictationTranscriber.supportedLocale(equivalentTo: c) {
+                return l
+            }
+        }
+        return nil
     }
 
     private static func relay<S: AsyncSequence & Sendable, R>(_ seq: S, _ map: @escaping @Sendable (R) -> (String, Bool)) -> AsyncThrowingStream<(String, Bool), Error> where S.Element == R {

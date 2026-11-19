@@ -18,21 +18,26 @@ public struct CueMatcher: Sendable {
     }
 
     private let phrases: [Phrase]
+    private let lexicon: Lexicon
     /// Sound words that belong to exactly one cue ("woof" → dog); the others ("roared") need a
     /// recent mention to say whose sound it is.
     private let uniqueSoundWords: Set<String>
 
-    public init(cues: [Cue] = SoundCatalog.all, customTriggers: [String: [String]] = [:]) {
-        var phrases: [Phrase] = []
+    public init(cues: [Cue] = SoundCatalog.all, customTriggers: [String: [String]] = [:], language: StoryLanguage = .english) {
+        let lexicon = language.lexicon
+        self.lexicon = lexicon
+        // Words that only look like a name ("马上"): they take their tokens and are dropped.
+        var phrases: [Phrase] = lexicon.blockers.map { Phrase(cueID: "", words: $0, isSoundWord: false) }
         var soundWordOwners: [String: Set<String>] = [:]
         for cue in cues {
-            let soundPhrases = Set(cue.soundWords.map { TextNormalizer.words($0).joined(separator: " ") })
-            for t in cue.triggers + (customTriggers[cue.id] ?? []) {
+            let words = lexicon.words(for: cue)
+            let soundPhrases = Set(words.soundWords.map { TextNormalizer.words($0).joined(separator: " ") })
+            for t in words.triggers + (customTriggers[cue.id] ?? []) {
                 let w = TextNormalizer.words(t)
                 // A trigger that is also the sound ("knock knock", "snoring") is the sound itself.
                 if !w.isEmpty { phrases.append(Phrase(cueID: cue.id, words: w, isSoundWord: soundPhrases.contains(w.joined(separator: " ")))) }
             }
-            for s in cue.soundWords {
+            for s in words.soundWords {
                 let w = TextNormalizer.words(s)
                 guard !w.isEmpty else { continue }
                 phrases.append(Phrase(cueID: cue.id, words: w, isSoundWord: true))
@@ -56,7 +61,7 @@ public struct CueMatcher: Sendable {
             guard n <= words.count else { continue }
             var i = 0
             while i + n <= words.count {
-                if !taken[i..<(i + n)].contains(true), zip(words[i..<(i + n)], phrase.words).allSatisfy({ TextNormalizer.matches($0, $1) }) {
+                if !taken[i..<(i + n)].contains(true), zip(words[i..<(i + n)], phrase.words).allSatisfy({ lexicon.matches($0, $1) }) {
                     found.append(Mention(cueID: phrase.cueID, range: i..<(i + n), isSoundWord: phrase.isSoundWord))
                     for k in i..<(i + n) { taken[k] = true }
                     i += n
@@ -65,6 +70,7 @@ public struct CueMatcher: Sendable {
                 }
             }
         }
+        found = found.filter { !$0.cueID.isEmpty }
         found.sort { $0.range.lowerBound < $1.range.lowerBound }
 
         // Resolve shared sound words to their owner in context.
@@ -96,7 +102,7 @@ public struct CueMatcher: Sendable {
         let parts = key.split(separator: " ").map(String.init)
         return table.keys.first { candidate in
             let c = candidate.split(separator: " ").map(String.init)
-            return c.count == parts.count && zip(parts, c).allSatisfy { TextNormalizer.matches($0, $1) }
+            return c.count == parts.count && zip(parts, c).allSatisfy { lexicon.matches($0, $1) }
         } ?? key
     }
 }

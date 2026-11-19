@@ -10,6 +10,7 @@ public enum DirectorPrompt {
     For the sound named, decide whether it should play right now. \
     Answer yes if the thing is here now: arriving, appearing, chasing, acting or making its noise. \
     Answer no if it is leaving, running away, gone, asleep, quiet, far away, only imagined, negated, or just being talked about. \
+    The story may be told in any language; always reply in English. \
     Reply with one word: yes or no.
     """
 
@@ -27,7 +28,7 @@ public enum DirectorPrompt {
     /// replaced by THING, so one model covers every sound ("THING is running away").
     public static func masked(_ review: StoryEngine.Review, customWords: [String] = []) -> String {
         guard let cue = SoundCatalog.cue(review.cueID) else { return review.utterance }
-        let phrases = (cue.triggers + customWords).sorted { $0.count > $1.count }
+        let phrases = (StoryLanguage.english.lexicon.words(for: cue).triggers + customWords).sorted { $0.count > $1.count }
         var text = review.utterance
         for p in phrases {
             let word: String

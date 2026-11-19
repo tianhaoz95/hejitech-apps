@@ -37,3 +37,9 @@
 11. **Device testing without the mic prompt.** Stories read by Kokoro (mlx-audio, four voices) are
     streamed through the real on-device SpeechAnalyzer (`-listenFile`) and scored against
     `evals/stories/key.json` by `scripts/device_story_eval.sh`: 60/60 on 2026-11-17.
+12. **Story languages as data (2026-11-18, owner).** English, Mandarin and Spanish, chosen in
+    Settings. Each language is one i18n-style file, `RoarlyKit/Sources/RoarlyKit/Lexicons/<id>.json`
+    (every sound's words plus the words for arriving, leaving, negation and endings, and how the
+    language is read); no code is specific to a language, so adding one is adding a file and its
+    `stories_<id>.json` eval. The app's screens stay in English for now. Checked on an iPhone 13
+    with stories spoken by system voices (zh_CN, es_US).

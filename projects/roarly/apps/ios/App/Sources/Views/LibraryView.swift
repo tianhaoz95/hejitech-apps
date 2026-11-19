@@ -101,7 +101,7 @@ struct CustomWordsView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("\(cue.emoji)  Roarly already listens for: \(cue.triggers.prefix(5).joined(separator: ", ")).")
+                    Text("\(cue.emoji)  Roarly already listens for: \(model.language.lexicon.words(for: cue).triggers.prefix(5).joined(separator: ", ")).")
                         .font(Theme.body(15))
                 }
                 Section("Your words") {

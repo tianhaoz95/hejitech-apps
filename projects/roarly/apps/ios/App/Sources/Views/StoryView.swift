@@ -6,7 +6,7 @@ import SwiftUI
 struct StoryView: View {
     @EnvironmentObject var model: AppModel
     @State private var showLibrary = false
-    @State private var showSettings = false
+    @State private var showSettings = DebugFlags.args.contains("-settings")
 
     var body: some View {
         NavigationStack {

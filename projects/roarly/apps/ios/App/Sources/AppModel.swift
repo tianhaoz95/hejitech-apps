@@ -18,10 +18,20 @@ final class AppModel: ObservableObject {
     // Settings (UserDefaults).
     @AppStorage("mode") var mode: StoryMode = .bedtime { didSet { syncEngineSettings() } }
     @AppStorage("automation") var automation: Automation = .balanced { didSet { syncEngineSettings() } }
+    /// The language stories are told in; defaults to the phone's when Roarly knows it.
+    @AppStorage("storyLanguage") var language: StoryLanguage = StoryLanguage.matching(languageCode: Locale.current.language.languageCode?.identifier) {
+        didSet {
+            guard language != oldValue else { return }
+            syncEngineSettings()
+            director.choose(useBuiltIn: preferBuiltIn, language: language)
+            log("story language: \(language.englishName)")
+            if isListening { Task { await self.stop(keepSounds: true); await self.start() } }
+        }
+    }
     @AppStorage("output") var output: SoundOutput = .phone { didSet { pushWatchState() } }
     @AppStorage("showWords") var showWords = true
-    @AppStorage("smartListening") var smartListening = true { didSet { director.choose(useBuiltIn: preferBuiltIn); if smartListening, isListening { director.warmUp() } } }
-    @AppStorage("useBuiltInModel") var preferBuiltIn = false { didSet { director.choose(useBuiltIn: preferBuiltIn) } }
+    @AppStorage("smartListening") var smartListening = true { didSet { director.choose(useBuiltIn: preferBuiltIn, language: language); if smartListening, isListening { director.warmUp() } } }
+    @AppStorage("useBuiltInModel") var preferBuiltIn = false { didSet { director.choose(useBuiltIn: preferBuiltIn, language: language) } }
     @AppStorage("onboarded") var onboarded = false
     @AppStorage("customWords") private var customWordsData = Data()
 
@@ -79,7 +89,7 @@ final class AppModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     init() {
-        director.choose(useBuiltIn: preferBuiltIn)
+        director.choose(useBuiltIn: preferBuiltIn, language: language)
         listener.onText = { [weak self] text, isFinal in self?.heard(text, isFinal: isFinal) }
         listener.onPhase = { [weak self] phase in self?.listenerPhase(phase) }
         hub.onRestartNeeded = { [weak self] in
@@ -129,14 +139,16 @@ final class AppModel: ObservableObject {
     private func syncEngineSettings() {
         director.customWords = isPro ? customWords : [:]
         let allowed = SoundCatalog.all.filter { isUnlocked($0) }.map(\.id)
-        engine.update(settings: .init(mode: mode, automation: automation, allowedCueIDs: Set(allowed), customTriggers: isPro ? customWords : [:]))
+        engine.update(settings: .init(mode: mode, automation: automation, allowedCueIDs: Set(allowed), customTriggers: isPro ? customWords : [:], language: language))
     }
 
     /// Words the speech model should expect.
     private var vocabulary: [String] {
         var words: [String] = []
+        let lexicon = language.lexicon
         for cue in SoundCatalog.all {
-            words += cue.triggers + cue.soundWords
+            let w = lexicon.words(for: cue)
+            words += w.triggers + w.soundWords
             words += customWords[cue.id] ?? []
         }
         return Array(Set(words)).sorted()
@@ -162,13 +174,13 @@ final class AppModel: ObservableObject {
         }
         if smartListening { director.warmUp() }
         do {
-            try await listener.start(hub: hub, vocabulary: vocabulary)
+            try await listener.start(hub: hub, vocabulary: vocabulary, language: language)
             isListening = true
             status = "Listening"
             UIApplication.shared.isIdleTimerDisabled = true
             startTicker()
             pushWatchState()
-            log("listening (smart: \(smartListening ? director.engine.rawValue : "off"), mode \(mode.rawValue), \(automation.rawValue))")
+            log("listening (\(language.englishName), smart: \(smartListening ? director.engine.rawValue : "off"), mode \(mode.rawValue), \(automation.rawValue))")
         } catch {
             log("start failed: \(error)")
             errorMessage = "Couldn't start listening: \(error.localizedDescription)"
@@ -235,6 +247,9 @@ final class AppModel: ObservableObject {
             liveLine = ""
             log("heard: \(trimmed)")
         } else {
+            #if DEBUG
+            if DebugFlags.value("-listenFile") != nil { log("partial: \(trimmed)") }
+            #endif
             liveLine = trimmed
         }
         handle(actions)

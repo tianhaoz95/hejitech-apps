@@ -43,10 +43,12 @@ final class SmallModelDirector {
     /// Apple's model when the iPhone has it, else the story-sense classifier. The bundled 0.6B
     /// language model only when asked for: on evals/director_cases.json it answered at chance
     /// (11/22), Apple's model 18/22, the classifier 20/22 (and 96.9% on animals it never saw).
-    func choose(useBuiltIn: Bool = false) {
+    /// The classifier was trained on one language (its lexicon says `storySenseClassifier`); other
+    /// stories use Apple's model or leave unsure moments to the parent's tap.
+    func choose(useBuiltIn: Bool = false, language: StoryLanguage = .english) {
         if useBuiltIn && Self.builtInAvailable { engine = .builtIn }
         else if Self.appleAvailable { engine = .apple }
-        else if classifier != nil { engine = .classifier }
+        else if classifier != nil && language.lexicon.storySenseClassifier { engine = .classifier }
         else { engine = .none }
     }
 

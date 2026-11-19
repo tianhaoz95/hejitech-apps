@@ -65,18 +65,21 @@ public final class StoryEngine {
         /// Cues the user may hear (the free set without Pro). Others are never matched.
         public var allowedCueIDs: Set<String>
         public var customTriggers: [String: [String]]
+        /// The story's language: which words count and how the sentence is read.
+        public var language: StoryLanguage
         public var suggestionLifetime: TimeInterval
         public var cooldown: TimeInterval
 
         public init(
             mode: StoryMode = .bedtime, automation: Automation = .balanced,
             allowedCueIDs: Set<String> = Set(SoundCatalog.all.map(\.id)), customTriggers: [String: [String]] = [:],
-            suggestionLifetime: TimeInterval = 9, cooldown: TimeInterval = 6
+            language: StoryLanguage = .english, suggestionLifetime: TimeInterval = 9, cooldown: TimeInterval = 6
         ) {
             self.mode = mode
             self.automation = automation
             self.allowedCueIDs = allowedCueIDs
             self.customTriggers = customTriggers
+            self.language = language
             self.suggestionLifetime = suggestionLifetime
             self.cooldown = cooldown
         }
@@ -120,7 +123,7 @@ public final class StoryEngine {
         self.settings = settings
         let allowed = SoundCatalog.all.filter { settings.allowedCueIDs.contains($0.id) }
         self.cues = Dictionary(uniqueKeysWithValues: allowed.map { ($0.id, $0) })
-        self.matcher = CueMatcher(cues: allowed, customTriggers: settings.customTriggers)
+        self.matcher = CueMatcher(cues: allowed, customTriggers: settings.customTriggers, language: settings.language)
     }
 
     public func update(settings new: Settings) {
@@ -128,8 +131,10 @@ public final class StoryEngine {
         settings = new
         let allowed = SoundCatalog.all.filter { new.allowedCueIDs.contains($0.id) }
         cues = Dictionary(uniqueKeysWithValues: allowed.map { ($0.id, $0) })
-        matcher = CueMatcher(cues: allowed, customTriggers: new.customTriggers)
+        matcher = CueMatcher(cues: allowed, customTriggers: new.customTriggers, language: new.language)
     }
+
+    private var lexicon: Lexicon { settings.language.lexicon }
 
     var thresholds: (play: Double, suggest: Double) {
         let t = settings.automation.thresholds
@@ -156,7 +161,10 @@ public final class StoryEngine {
         var order: [String] = []
         for m in mentions {
             guard let cue = cues[m.cueID] else { continue }
-            let j = ContextJudge.judge(m, in: tokens, isFinal: isFinal, soundWords: cue.soundWords)
+            // Partial text can stop mid-word ("我们马" before "马上"): in languages written without
+            // spaces a name at the very end waits for the next character.
+            if !isFinal, lexicon.holdNamesAtEndOfPartial, !m.isSoundWord, m.range.upperBound == tokens.count { continue }
+            let j = ContextJudge.judge(m, in: tokens, isFinal: isFinal, soundWords: lexicon.words(for: cue).soundWords, language: settings.language)
             if best[m.cueID] == nil { order.append(m.cueID) }
             if (best[m.cueID]?.score ?? -1) < j.score { best[m.cueID] = j }
         }
@@ -292,31 +300,44 @@ public final class StoryEngine {
         }
     }
 
-    static let stopWords: [[String]] = [["stopped"], ["stops"], ["ended"], ["is", "over"], ["was", "over"], ["no", "more"], ["went", "away"], ["cleared"], ["calmed", "down"], ["died", "down"], ["passed"]]
-    static let clearSkies: [[String]] = [["sun", "came", "out"], ["sun", "come", "out"], ["sunny"], ["rainbow"], ["sky", "cleared"]]
-    static let goodnight: [[String]] = [["the", "end"], ["good", "night"], ["goodnight"], ["sweet", "dreams"], ["fell", "fast", "asleep"], ["fast", "asleep"]]
-
     /// "The rain stopped", "the sun came out", "the end": ambient beds end with the story.
     private func endings(in tokens: [Token]) -> [StoryAction] {
         let words = tokens.map(\.text)
-        if !activeAmbients.isEmpty, Self.goodnight.contains(where: { ContextJudge.contains(words, $0) }) {
+        // "Por fin, la lluvia paró" (finally) isn't "Fin": drop those tokens before looking for an ending.
+        var endingWords = words
+        for phrase in lexicon.notGoodnight where phrase.count <= endingWords.count {
+            var i = 0
+            while i + phrase.count <= endingWords.count {
+                if Array(endingWords[i..<(i + phrase.count)]) == phrase { endingWords.replaceSubrange(i..<(i + phrase.count), with: ["·"]) }
+                i += 1
+            }
+        }
+        if !activeAmbients.isEmpty, lexicon.goodnight.contains(where: { ContextJudge.contains(endingWords, $0, lexicon) }) {
             activeAmbients = []
             return [.fadeAll]
         }
         var actions: [StoryAction] = []
         let weather: Set<String> = ["rain", "wind", "thunder"]
-        if Self.clearSkies.contains(where: { ContextJudge.contains(words, $0) }) {
+        if lexicon.clearSkies.contains(where: { ContextJudge.contains(words, $0, lexicon) }) {
             for id in activeAmbients.intersection(weather) {
                 activeAmbients.remove(id)
                 actions.append(.stopAmbient(cueID: id))
             }
         }
+        // "The rain stopped", "it stopped raining": the sound and the stop in the same sentence.
+        var sentences: [[String]] = [[]]
+        for t in tokens {
+            sentences[sentences.count - 1].append(t.text)
+            if t.endsSentence { sentences.append([]) }
+        }
         for id in activeAmbients {
             guard let cue = cues[id] else { continue }
-            let triggers = cue.triggers.map(TextNormalizer.words)
-            // "the rain stopped", "it stopped raining".
-            let mentioned = triggers.contains { ContextJudge.contains(words, $0) }
-            if mentioned, Self.stopWords.contains(where: { ContextJudge.contains(words, $0) }) {
+            let triggers = (lexicon.words(for: cue).triggers + (settings.customTriggers[id] ?? [])).map(TextNormalizer.words)
+            let stopped = sentences.contains { sentence in
+                triggers.contains { ContextJudge.contains(sentence, $0, lexicon) }
+                    && lexicon.stopWords.contains { ContextJudge.contains(sentence, $0, lexicon) }
+            }
+            if stopped {
                 activeAmbients.remove(id)
                 actions.append(.stopAmbient(cueID: id))
             }

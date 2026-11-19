@@ -13,6 +13,17 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
+                    Picker("Story language", selection: $model.language) {
+                        ForEach(StoryLanguage.all) { Text($0.title).tag($0) }
+                    }
+                    .accessibilityIdentifier("story-language")
+                } header: {
+                    Text("Language")
+                } footer: {
+                    Text(languageFooter)
+                }
+
+                Section {
                     Picker("Sounds play", selection: $model.automation) {
                         ForEach(Automation.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
@@ -87,7 +98,16 @@ struct SettingsView: View {
 
     private var engineName: String {
         guard model.smartListening else { return "off" }
+        if model.director.engine == .none, !model.language.lexicon.storySenseClassifier {
+            return "for \(model.language.englishName) stories this needs Apple Intelligence, so here unsure sounds are offered as taps"
+        }
         return model.director.engine == .none ? "unavailable, so unsure sounds are offered as taps" : model.director.engine.rawValue
+    }
+
+    /// The language's own line (from its lexicon file), then the others it could switch to.
+    private var languageFooter: String {
+        let others = StoryLanguage.all.filter { $0 != model.language }.map(\.title)
+        return model.language.hint + " Roarly also listens in " + others.joined(separator: " and ") + ". The app's screens stay in English."
     }
 
     private var automationFooter: String {
