@@ -11,6 +11,8 @@ public struct NoteDetailView: View {
     @State private var calendarExportMessage = ""
     @State private var showingAddTagAlert = false
     @State private var newTagText = ""
+    @State private var renamingSpeaker: Int?
+    @State private var speakerNameDraft = ""
     @State private var showingCopiedNotification = false
     @State private var copiedNotificationText = ""
     @State private var transcriptSearchText = ""
@@ -318,6 +320,23 @@ public struct NoteDetailView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(calendarExportMessage)
+        }
+        .alert("Rename Speaker", isPresented: Binding(
+            get: { renamingSpeaker != nil },
+            set: { if !$0 { renamingSpeaker = nil } }
+        )) {
+            TextField("Name", text: $speakerNameDraft)
+            Button("Rename") {
+                if let speaker = renamingSpeaker {
+                    viewModel.renameSpeaker(speaker, to: speakerNameDraft)
+                }
+                renamingSpeaker = nil
+            }
+            Button("Cancel", role: .cancel) {
+                renamingSpeaker = nil
+            }
+        } message: {
+            Text("The new name is used for every one of this speaker's turns in this note.")
         }
         .alert("Add Tag", isPresented: $showingAddTagAlert) {
             TextField("#tag", text: $newTagText)
@@ -1069,11 +1088,26 @@ public struct NoteDetailView: View {
                 copyButton(text: viewModel.note.cleanedText ?? "", field: .lightCleanup)
             }
 
-            Text("Typos, grammar and filler words fixed. Your wording and order are kept; nothing is restructured.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if viewModel.note.showsConversation {
+                Text("\(Set(viewModel.note.speakerTurns.map(\.speaker)).count) speakers. Typos, grammar and filler words fixed in each turn. Tap a name to rename that speaker.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Typos, grammar and filler words fixed. Your wording and order are kept; nothing is restructured.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
-            if let lightNote = viewModel.note.cleanedText {
+            if viewModel.note.showsConversation {
+                ConversationBubblesView(
+                    turns: viewModel.note.speakerTurns,
+                    name: { viewModel.note.speakerName($0) },
+                    onRename: { speaker in
+                        speakerNameDraft = viewModel.note.speakerNames[String(speaker)] ?? ""
+                        renamingSpeaker = speaker
+                    }
+                )
+            } else if let lightNote = viewModel.note.cleanedText {
                 MarkdownLiteText(lightNote)
                     .foregroundStyle(.primary)
             } else if viewModel.isGeneratingLightCleanup {

@@ -52,6 +52,17 @@ final class LLMPromptExportTests: XCTestCase {
                     "user": service.briefUserPrompt(evalCase.transcript),
                     "maxTokens": LLMCopywriterService.briefMaxTokens
                 ] as [String: Any]
+            case "turns":
+                // `transcript` is a conversation's turns, one per line, as the pipeline hands them over.
+                let turns = evalCase.transcript.split(separator: "\n").map {
+                    service.prepareTurn(DictionaryCorrector.apply(to: String($0), entries: dictionary))
+                }
+                item["turns"] = [
+                    "system": service.buildTurnsSystemPrompt(dictionary: dictionary),
+                    "user": service.turnsUserPrompt(turns),
+                    "maxTokens": LLMCopywriterService.lightMaxTokens,
+                    "count": turns.count
+                ] as [String: Any]
             case "brief-overview":
                 // `transcript` is a long memo's part summaries, one per line.
                 let summaries = evalCase.transcript.split(separator: "\n").map(String.init)

@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.31.2"
+    public static let currentVersion = "1.32.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,41 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.32.0",
+            date: "November 2026",
+            tagline: "Who Said What",
+            features: [
+                WhatsNewItem(
+                    icon: "bubble.left.and.bubble.right.fill",
+                    tint: .blue,
+                    title: "Conversations as Chat Bubbles",
+                    description: "When a recording has more than one person talking, Voxbrief tells the voices apart on your iPhone and shows the cleaned text as a chat: one bubble per turn, a color per person.",
+                    detailedDescription: "After transcribing, a small on-device model (downloaded once, about 11 MB) listens for who speaks when, matching the same voice across a long recording. Each turn is then cleaned up on its own, so nothing one person said ends up in another's bubble. Bubbles switch sides whenever the speaker changes. It all stays on your iPhone. Notes you already have get it when you tap Re-run.",
+                    highlights: [
+                        "Tap a speaker's name to rename them, like \"Doctor\" or \"Me\"",
+                        "Copying, sharing and exports read \"Name: what they said\"",
+                        "A memo with one voice gets paragraphs instead",
+                        "Keyboard and Mac dictation skip it, so pasting stays fast"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "text.alignleft",
+                    tint: .teal,
+                    title: "Paragraphs in Cleaned Text",
+                    description: "Cleaned text is split into paragraphs: a new one wherever the speaker seems to change, and otherwise every few sentences, so a long memo is no longer one block."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "waveform.badge.minus",
+                    tint: .gray,
+                    title: "No More \"(silence)\" in Your Notes",
+                    description: "Notes the speech recognizer adds about sounds, like \"(speaking in foreign language)\", \"(silence)\" or \">>\", are removed from the cleaned text, and \"um\" and \"uh\" go with the comma after them.",
+                    kind: .fix
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.31.2",
             date: "November 2026",

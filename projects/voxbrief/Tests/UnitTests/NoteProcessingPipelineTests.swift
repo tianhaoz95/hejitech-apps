@@ -101,6 +101,15 @@ fileprivate final class MockLLMCopywriterService: LLMCopywriterServiceProtocol, 
     }
 }
 
+fileprivate struct StubSpeakerDetector: SpeakerDetecting {
+    var spans: [SpeakerSpan] = []
+    var error: Error?
+    func speakerSpans(forAudioAt url: URL) async throws -> [SpeakerSpan] {
+        if let error { throw error }
+        return spans
+    }
+}
+
 @MainActor
 final class NoteProcessingPipelineTests: XCTestCase {
 
@@ -174,6 +183,106 @@ final class NoteProcessingPipelineTests: XCTestCase {
         XCTAssertNil(saved?.templateId)
         XCTAssertNil(saved?.templateChoice)
         XCTAssertEqual(saved?.processingTimings.map(\.name), ["Transcribe", "Clean up"])
+    }
+
+    // MARK: - Speakers
+
+    private let conversationSegments = [
+        TranscriptTimingSegment(start: 0, end: 4, text: "How have you been feeling since the last visit?"),
+        TranscriptTimingSegment(start: 4, end: 8, text: "Mostly fine, but the itching at night got worse."),
+        TranscriptTimingSegment(start: 8, end: 12, text: "Then we check the bile acid level again this week.")
+    ]
+
+    private func speakerPipeline(_ detector: StubSpeakerDetector) -> NoteProcessingPipeline {
+        NoteProcessingPipeline(
+            asrService: mockASR,
+            llmService: mockLLM,
+            repository: repository,
+            audioFileManager: AudioFileManager(),
+            dictionaryStore: dictionaryStore,
+            templateStore: templateStore,
+            speakerDetector: detector
+        )
+    }
+
+    /// Speaker detection only runs on a recording that exists.
+    private func audioFile() throws -> String {
+        let name = "speaker-test-\(UUID().uuidString).m4a"
+        try Data([0]).write(to: AudioFileManager().url(for: name))
+        addTeardownBlock { try? FileManager.default.removeItem(at: AudioFileManager().url(for: name)) }
+        return name
+    }
+
+    private let twoSpeakers = StubSpeakerDetector(spans: [
+        SpeakerSpan(start: 0, end: 4, speaker: 5),
+        SpeakerSpan(start: 4, end: 8, speaker: 2),
+        SpeakerSpan(start: 8, end: 12, speaker: 5)
+    ])
+
+    func testAConversationIsCleanedTurnByTurn() async throws {
+        mockLLM.stubBrief = NoteBrief(title: "Itching Follow-up", summary: "Bile acid test this week.", tags: ["#health"])
+        let pipeline = speakerPipeline(twoSpeakers)
+        let note = VoiceNote(id: UUID(), audioFileName: try audioFile(), status: .syncing)
+        repository.save(note)
+
+        await pipeline.process(note: note, liveTranscript: ("all of it", conversationSegments))
+
+        let saved = try XCTUnwrap(repository.note(withId: note.id))
+        XCTAssertEqual(saved.speakerCount, 2)
+        XCTAssertEqual(saved.speakerTurns.map(\.speaker), [0, 1, 0])
+        XCTAssertEqual(saved.speakerTurns.map(\.text), conversationSegments.map(\.text))
+        XCTAssertTrue(saved.showsConversation)
+        XCTAssertEqual(saved.cleanedText, saved.conversationText)
+        XCTAssertEqual(mockLLM.receivedModes, [], "No memo cleanup for a conversation")
+        XCTAssertEqual(mockLLM.briefInputs, [saved.conversationText!])
+        XCTAssertEqual(saved.title, "Itching Follow-up")
+        XCTAssertEqual(saved.tags, ["#health"])
+        XCTAssertEqual(saved.processingTimings.map(\.name), ["Transcribe (live)", "Speakers", "Clean up (3 turns)", "Title & summary"])
+    }
+
+    func testOneSpeakerIsAMemo() async throws {
+        let pipeline = speakerPipeline(StubSpeakerDetector(spans: [SpeakerSpan(start: 0, end: 12, speaker: 0)]))
+        let note = VoiceNote(id: UUID(), audioFileName: try audioFile(), status: .syncing)
+        repository.save(note)
+
+        await pipeline.process(note: note, liveTranscript: ("all of it", conversationSegments))
+
+        let saved = try XCTUnwrap(repository.note(withId: note.id))
+        XCTAssertEqual(saved.speakerCount, 1)
+        XCTAssertTrue(saved.speakerTurns.isEmpty)
+        XCTAssertEqual(mockLLM.receivedModes, [.light])
+        XCTAssertFalse(saved.showsConversation)
+    }
+
+    func testFailedDetectionLeavesAMemoToTryAgainOnReRun() async throws {
+        var failing = twoSpeakers
+        failing.error = ASRError.emptyAudio
+        let note = VoiceNote(id: UUID(), audioFileName: try audioFile(), status: .syncing)
+        repository.save(note)
+
+        await speakerPipeline(failing).process(note: note, liveTranscript: ("all of it", conversationSegments))
+        XCTAssertNil(repository.note(withId: note.id)?.speakerCount)
+        XCTAssertEqual(repository.note(withId: note.id)?.status, .ready)
+
+        // Re-run, as for a note from before speaker detection: it runs this time.
+        await speakerPipeline(twoSpeakers).reprocessWithLLM(noteId: note.id)
+        let saved = try XCTUnwrap(repository.note(withId: note.id))
+        XCTAssertEqual(saved.speakerCount, 2)
+        XCTAssertEqual(saved.speakerTurns.count, 3)
+        XCTAssertTrue(saved.processingTimings.map(\.name).contains("Speakers"))
+    }
+
+    func testDictationSkipsSpeakerDetection() async throws {
+        let pipeline = speakerPipeline(twoSpeakers)
+        let note = VoiceNote(id: UUID(), audioFileName: try audioFile(), status: .syncing)
+        repository.save(note)
+
+        pipeline.skipBrief(for: note.id)
+        await pipeline.process(note: note, liveTranscript: ("all of it", conversationSegments))
+
+        let saved = try XCTUnwrap(repository.note(withId: note.id))
+        XCTAssertNil(saved.speakerCount)
+        XCTAssertTrue(saved.speakerTurns.isEmpty)
     }
 
     func testBriefWritesTitleAndSummaryFromTheCleanedText() async {

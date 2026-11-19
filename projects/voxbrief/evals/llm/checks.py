@@ -8,7 +8,8 @@ import re
 LEAK_MARKERS = ["Zentrify", "Sentrafy", "send trify", "Dictionary terms", "Transcript:"]
 LIGHT_KEYS = ["title", "summary", "cleanedText", "tags"]
 UNIVERSAL_KEYS = ["title", "summary", "tags"]
-BRIEF_KEYS = ["summary", "title"]
+BRIEF_KEYS = ["summary", "title", "tags"]
+TURNS_KEYS = ["turns"]
 BRIEF_MODES = ("brief", "brief-overview")
 # Openers that describe the memo instead of saying what is in it.
 DESCRIBING_OPENERS = ("the speaker", "the transcript", "this memo", "the memo", "the user", "this part")
@@ -44,20 +45,36 @@ def score_output(raw, mode, field_keys, expect, template=None):
     output was generated for (checked against `expect["template"]`)."""
     checks = []
     obj = extract_json(raw)
+    if obj is None and mode == "turns":
+        # Like LLMCopywriterService.parseTurns: a bare array of turns is accepted too.
+        start, end = raw.find("["), raw.rfind("]")
+        try:
+            value = json.loads(raw[start:end + 1]) if 0 <= start < end else None
+        except json.JSONDecodeError:
+            value = None
+        obj = {"turns": value} if isinstance(value, list) else None
     checks.append(("json", obj is not None, "" if obj else "no JSON object in output"))
     if obj is None:
         return checks
 
-    if mode in BRIEF_MODES:
+    if mode == "turns":
+        keys = TURNS_KEYS
+    elif mode in BRIEF_MODES:
         keys = BRIEF_KEYS
     else:
         keys = LIGHT_KEYS if mode == "light" else UNIVERSAL_KEYS + list(field_keys)
     missing = [k for k in keys if k not in obj]
     checks.append(("keys", not missing, f"missing {missing}" if missing else ""))
 
-    title = obj.get("title") if isinstance(obj.get("title"), str) else ""
-    words = len(title.split())
-    checks.append(("title<=8 words", 0 < words <= 8, f"{words} words: {title!r}"))
+    if mode == "turns":
+        turns = obj.get("turns") if isinstance(obj.get("turns"), list) else []
+        want = expect.get("turn_count")
+        checks.append(("same turn count", len(turns) == want, f"{len(turns)} of {want}"))
+        checks.append(("no '>>' left", not any(">>" in str(t) for t in turns), ""))
+    else:
+        title = obj.get("title") if isinstance(obj.get("title"), str) else ""
+        words = len(title.split())
+        checks.append(("title<=8 words", 0 < words <= 8, f"{words} words: {title!r}"))
 
     if mode in BRIEF_MODES:
         summary = obj.get("summary") if isinstance(obj.get("summary"), str) else ""

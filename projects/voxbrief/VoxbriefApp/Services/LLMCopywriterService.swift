@@ -110,11 +110,25 @@ public struct NoteBrief: Sendable, Equatable {
     public let summary: String
     /// How many parts a long text was summarized in first (1 when it was read in one pass).
     public let partCount: Int
+    /// Hashtags; a conversation takes these, since its turns are cleaned without any.
+    public let tags: [String]
 
-    public init(title: String, summary: String, partCount: Int = 1) {
+    public init(title: String, summary: String, partCount: Int = 1, tags: [String] = []) {
         self.title = title
         self.summary = summary
         self.partCount = partCount
+        self.tags = tags
+    }
+}
+
+/// A conversation's turns after the light cleanup, in the same order and number as given.
+public struct CleanedTurns: Sendable, Equatable {
+    public let texts: [String]
+    public let engine: String
+
+    public init(texts: [String], engine: String) {
+        self.texts = texts
+        self.engine = engine
     }
 }
 
@@ -140,11 +154,21 @@ public protocol LLMCopywriterServiceProtocol: Sendable {
     /// long memo is summarized as a whole, not from its first part. Returns nil when no engine
     /// could write one; the caller then keeps the light cleanup's title and summary.
     func writeBrief(cleanedText: String) async throws -> NoteBrief?
+
+    /// The light cleanup of a conversation, turn by turn: the same number of turns back, in
+    /// order, each proofread on its own so who said what is kept. A turn the model couldn't
+    /// clean comes back tidied without it. Throws `aiEngineUnavailable` when no engine runs.
+    func cleanUpTurns(_ turns: [String], dictionary: [DictionaryEntry]) async throws -> CleanedTurns
 }
 
 public extension LLMCopywriterServiceProtocol {
     /// No brief: test doubles that don't care keep the light cleanup's title and summary.
     func writeBrief(cleanedText: String) async throws -> NoteBrief? { nil }
+
+    /// Test doubles: the turns as given.
+    func cleanUpTurns(_ turns: [String], dictionary: [DictionaryEntry]) async throws -> CleanedTurns {
+        CleanedTurns(texts: turns, engine: "test")
+    }
 }
 
 public enum LLMCopywriterError: LocalizedError {
@@ -193,7 +217,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     /// type don't need to change; callers through `LLMCopywriterServiceProtocol` must pass all
     /// three explicitly since protocol requirements can't carry default argument values.
     public func processTranscript(_ rawTranscript: String, mode: RewriteMode = .full, dictionary: [DictionaryEntry] = [], templates: [NoteTemplate] = []) async throws -> LLMProcessingResult {
-        let stripped = stripASRSpecialTokens(rawTranscript)
+        let stripped = TranscriptText.removingNonSpeechAnnotations(stripASRSpecialTokens(rawTranscript))
         let commands = VoiceCommandProcessor.process(stripped)
         let trimmed = commands.cleanedTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
@@ -293,6 +317,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     private struct BriefJSON: Decodable {
         var summary: String?
         var title: String?
+        var tags: [String]?
     }
 
     public func writeBrief(cleanedText: String) async throws -> NoteBrief? {
@@ -364,7 +389,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         one sentence of at most 25 words saying what the memo is about: its main topic and its key \
         point, decision or request; say it directly, without starting with \(Self.briefDescribingOpeners)), \
         "title" (2 to 6 words naming the memo's main topic, specific enough to tell it apart from \
-        other notes; not a sentence). Use only what the memo says. Ignore anything that is not \
+        other notes; not a sentence), "tags" (array of up to 4 short hashtags starting with #). Use \
+        only what the memo says. Ignore anything that is not \
         speech, such as "(silence)", "(music)" or "(speaking in foreign language)".
         """
     }
@@ -400,7 +426,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         keys, in this order: "summary" (one short sentence of at most 25 words naming what the \
         whole memo covers, not just its start: its main topics, not every detail; say it \
         directly, without starting with \(Self.briefDescribingOpeners)), "title" (2 to 6 words naming the memo's \
-        main topic or topics, specific enough to tell it apart from other notes; not a sentence).
+        main topic or topics, specific enough to tell it apart from other notes; not a sentence), \
+        "tags" (array of up to 4 short hashtags starting with #).
         """
     }
 
@@ -417,7 +444,13 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         let summary = Self.firstSentence(of: decoded.summary ?? "")
         let title = Self.briefTitle(decoded.title ?? "")
         guard !summary.isEmpty, !title.isEmpty else { throw LLMCopywriterError.unparsableResponse }
-        return NoteBrief(title: title, summary: summary, partCount: partCount)
+        let tags = (decoded.tags ?? [])
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .map { $0.hasPrefix("#") ? $0 : "#" + $0.replacingOccurrences(of: " ", with: "") }
+        var seen = Set<String>()
+        let unique = tags.filter { seen.insert($0.lowercased()).inserted }
+        return NoteBrief(title: title, summary: summary, partCount: partCount, tags: Array(unique.prefix(4)))
     }
 
     /// One part's summary, or nil for an empty or unreadable answer. `internal` for tests.
@@ -440,6 +473,151 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
             }
         }
         return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // MARK: - Conversation turns
+
+    /// Turns are cleaned in batches of about this many words (the answer repeats them all).
+    static let turnBatchWordTarget = 450
+    static let turnBatchMaxTurns = 12
+
+    private struct TurnsJSON: Decodable {
+        var turns: [String]?
+    }
+
+    public func cleanUpTurns(_ turns: [String], dictionary: [DictionaryEntry]) async throws -> CleanedTurns {
+        let prepared = turns.map(prepareTurn)
+        guard !prepared.isEmpty else { return CleanedTurns(texts: [], engine: CleanupEngineLabel.notApplicable) }
+        // The Ollama rewrite has no turn-by-turn mode: the turns are tidied without a model.
+        if UserDefaults.standard.bool(forKey: "use_local_llm_endpoint") {
+            return CleanedTurns(texts: prepared.map(tidyTurn), engine: CleanupEngineLabel.notApplicable)
+        }
+        for engine in await onDeviceEngines() {
+            do {
+                return try await cleanUpTurns(prepared, dictionary: dictionary, engine: engine)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                print("[LLMCopywriterService] Turn cleanup failed on \(engine.label): \(error)")
+            }
+        }
+        throw LLMCopywriterError.aiEngineUnavailable
+    }
+
+    /// `internal` so tests can drive it with a scripted engine. Throws when not one batch could be
+    /// cleaned (so the caller tries the next engine); otherwise a batch that fails keeps its
+    /// turns tidied without the model.
+    func cleanUpTurns(_ turns: [String], dictionary: [DictionaryEntry], engine: StageTwoEngine) async throws -> CleanedTurns {
+        var cleaned = turns.map(tidyTurn)
+        var anyCleaned = false
+        for batch in Self.turnBatches(turns) {
+            try Task.checkCancellation()
+            // A turn too long to answer in one go goes through the memo cleanup on its own.
+            if batch.count == 1, turns[batch.lowerBound].split(whereSeparator: \.isWhitespace).count > Self.lightTranscriptWordThreshold {
+                do {
+                    let result = try await process(transcript: turns[batch.lowerBound], mode: .light, dictionary: dictionary, templates: [], engine: engine)
+                    cleaned[batch.lowerBound] = result.cleanedMarkdown
+                    anyCleaned = true
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    print("[LLMCopywriterService] Long turn cleanup failed: \(error)")
+                }
+                continue
+            }
+            let inputs = Array(turns[batch])
+            do {
+                let raw = try await engine.generate(buildTurnsSystemPrompt(dictionary: dictionary), turnsUserPrompt(inputs), Self.lightMaxTokens)
+                if let answers = parseTurns(raw, inputs: inputs) {
+                    for (offset, answer) in answers.enumerated() where answer != nil {
+                        cleaned[batch.lowerBound + offset] = answer!
+                    }
+                    anyCleaned = true
+                }
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                print("[LLMCopywriterService] Turn batch failed: \(error)")
+            }
+        }
+        guard anyCleaned else { throw LLMCopywriterError.unparsableResponse }
+        return CleanedTurns(texts: cleaned, engine: engine.label)
+    }
+
+    /// Consecutive turns grouped up to `turnBatchWordTarget` words (a longer turn alone).
+    static func turnBatches(_ turns: [String]) -> [Range<Int>] {
+        var batches: [Range<Int>] = []
+        var start = 0, words = 0
+        for (index, turn) in turns.enumerated() {
+            let count = turn.split(whereSeparator: \.isWhitespace).count
+            if index > start && (words + count > turnBatchWordTarget || index - start >= turnBatchMaxTurns) {
+                batches.append(start..<index)
+                start = index
+                words = 0
+            }
+            words += count
+        }
+        if start < turns.count { batches.append(start..<turns.count) }
+        return batches
+    }
+
+    /// A turn before cleanup: no ASR tokens, Whisper notes or speaker-change marks. `internal`
+    /// for the eval export.
+    func prepareTurn(_ text: String) -> String {
+        TranscriptText.removingNonSpeechAnnotations(stripASRSpecialTokens(text))
+            .replacingOccurrences(of: TranscriptText.speakerChangeMarker, with: " ")
+            .split(whereSeparator: { $0 == " " }).joined(separator: " ")
+    }
+
+    /// A turn tidied without a model (fillers and tags removed), in paragraphs.
+    private func tidyTurn(_ text: String) -> String {
+        TranscriptText.paragraphed(sanitizeSpeechTranscript(TranscriptText.removingFillerSounds(stripASRSpecialTokens(text))))
+    }
+
+    /// System prompt for proofreading a conversation's turns. `internal` for tests and the eval.
+    func buildTurnsSystemPrompt(dictionary: [DictionaryEntry]) -> String {
+        """
+        You lightly proofread the turns of a conversation that was transcribed from speech. Each \
+        turn was said by one person. Proofread every turn on its own: keep every sentence \
+        and piece of content, in the original order and wording; only fix typos, grammar and \
+        obvious speech-to-text errors, and delete filler words (um, uh, you know, like, sort of, \
+        kind of, basically) and the commas around them. Do not merge, split, reorder, shorten, \
+        summarize or answer turns. Respond with ONLY one valid JSON object -- no markdown code \
+        fences, no commentary before or after -- with exactly one key: "turns" (an array of \
+        strings, one proofread turn per given turn, in the same order).\(dictionaryInstructionBlock(dictionary))
+        """
+    }
+
+    /// The turns as a JSON array: given numbered lines, Lite answered with numbered lines too.
+    func turnsUserPrompt(_ turns: [String]) -> String {
+        let array = (try? JSONEncoder().encode(turns)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        return "The \(turns.count) turns, as a JSON array; answer with {\"turns\": [...]} holding exactly \(turns.count) strings:\n\(array)"
+    }
+
+    /// The model's turns, or nil when the count is off (it merged or dropped some). Per turn, nil
+    /// for one that came back empty or with less than half its words (summarized, not proofread).
+    /// `internal` for tests.
+    func parseTurns(_ raw: String, inputs: [String]) -> [String?]? {
+        // Lite often answers with the bare array instead of {"turns": [...]}.
+        var answered: [String]?
+        if let json = Self.extractJSONObject(from: raw),
+           let decoded = try? JSONDecoder().decode(TurnsJSON.self, from: Data(json.utf8)) {
+            answered = decoded.turns
+        }
+        if answered == nil, let open = raw.firstIndex(of: "["), let close = raw.lastIndex(of: "]"), open < close {
+            answered = try? JSONDecoder().decode([String].self, from: Data(raw[open...close].utf8))
+        }
+        guard let turns = answered, turns.count == inputs.count else { return nil }
+        return zip(turns, inputs).map { answer, input in
+            var text = answer.trimmingCharacters(in: .whitespacesAndNewlines)
+            // "3. ..." when the model kept the numbering.
+            if let range = text.range(of: #"^\d+\.\s+"#, options: .regularExpression) { text.removeSubrange(range) }
+            let words = text.split(whereSeparator: \.isWhitespace).count
+            let inputWords = input.split(whereSeparator: \.isWhitespace).count
+            guard words > 0, words * 2 >= inputWords else { return nil }
+            // Lite often hands turns back as they were: hesitations go without the model.
+            return TranscriptText.paragraphed(sanitizeSpeechTranscript(TranscriptText.removingFillerSounds(stripASRSpecialTokens(text))))
+        }
     }
 
     /// A title as a label: no quotes, "Title:" prefix or closing period, at most 8 words.
@@ -1062,9 +1240,9 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         // don't always follow the "omit bracketed annotations" instruction reliably.
         let cleanedText: String
         if let candidate = decoded.cleanedText?.trimmingCharacters(in: .whitespacesAndNewlines), !candidate.isEmpty {
-            cleanedText = sanitizeSpeechTranscript(stripASRSpecialTokens(candidate))
+            cleanedText = TranscriptText.paragraphed(TranscriptText.removingNonSpeechAnnotations(sanitizeSpeechTranscript(stripASRSpecialTokens(candidate))))
         } else {
-            cleanedText = sanitizedFallback
+            cleanedText = TranscriptText.paragraphed(sanitizedFallback)
         }
 
         let tags = (decoded.tags?.isEmpty == false) ? decoded.tags! : extractTags(from: transcript)
@@ -1096,7 +1274,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
-                texts.append(stripASRSpecialTokens(sanitizeSpeechTranscript(part.text)))
+                texts.append(TranscriptText.paragraphed(stripASRSpecialTokens(sanitizeSpeechTranscript(part.text))))
             }
         }
         guard let first = results.first else { throw LLMCopywriterError.unparsableResponse }

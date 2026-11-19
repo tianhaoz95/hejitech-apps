@@ -113,6 +113,8 @@ targets:
         embed: true
       - package: ArgmaxOSS
         product: WhisperKit
+      - package: ArgmaxOSS
+        product: SpeakerKit
       - package: MLXSwiftExamples
         product: MLXLLM
       - package: MLXSwiftExamples
@@ -340,6 +342,7 @@ targets:
       - path: VoxbriefApp/ViewModels/NoteDetailViewModel.swift
       - path: VoxbriefApp/Views/NoteRowView.swift
       - path: VoxbriefApp/Views/NoteDetailView.swift
+      - path: VoxbriefApp/Views/ConversationBubblesView.swift
       - path: VoxbriefApp/Views/NoteMergePickerSheet.swift
       - path: VoxbriefApp/Views/MarkdownLiteText.swift
       - path: VoxbriefApp/Views/PersonalDictionaryView.swift

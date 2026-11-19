@@ -132,6 +132,7 @@ final class BackgroundProcessingManager {
         print("[BackgroundProcessingManager] Unloading models (\(reason))")
         OnDeviceLLMService.shared.unloadModels()
         Task { await ASRService.shared.unload() }
+        Task { await SpeakerDiarizationService.shared.unload() }
     }
 
     // MARK: - Continued processing (iOS 26+)

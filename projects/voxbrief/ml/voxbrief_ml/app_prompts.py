@@ -119,7 +119,7 @@ def verify_against_export(prompts_export, cases_path):
         if case is None:
             problems.append(f"{exported['id']}: not in cases.json (stale export)")
             continue
-        if exported["mode"] in ("brief", "brief-overview"):
+        if exported["mode"] in ("brief", "brief-overview", "turns"):
             continue  # The brief's prompts take no dictionary and aren't part of the fine-tune.
         dictionary = case.get("dictionary") or []
         user = kit.user_prompt(app_transcript(case["transcript"], dictionary), dictionary)

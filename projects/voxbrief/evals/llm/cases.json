@@ -942,5 +942,81 @@
         "Lisbon"
       ]
     }
+  },
+  {
+    "id": "turns-appointment",
+    "category": "turns",
+    "mode": "turns",
+    "note": "The 1.31.2 report: a doctor's appointment recorded on the watch, as speaker detection splits it.",
+    "transcript": "Hi guys. How are you feeling?\nUm, mostly okay, but the itching at night has been, uh, getting worse.\nSo for colostasis the bile acid level is the main way that we diagnose in that one and it takes forever to come back it is about a week turnaround time so I don't have that level back yet.\nOkay so it's-\n>> So during that week, do we have proactive plan to keep track of the baby's heart?\nYeah, we can. So yeah, so if we're pretty highly suspicious that it's happening, then yes we would start things and while we're waiting for that result to come back we do some extra monitoring of the baby.",
+    "expect": {
+      "contains_ci": [
+        "bile acid",
+        "baby's heart",
+        "extra monitoring"
+      ],
+      "not_contains_ci": [
+        "um,",
+        "uh,"
+      ]
+    }
+  },
+  {
+    "id": "turns-meeting",
+    "category": "turns",
+    "mode": "turns",
+    "note": "A short work meeting: every turn kept, none merged or answered.",
+    "transcript": "So, um, where are we on the database migration?\nWe moved the user table last night, uh, the orders table is next.\nAny problems with the user table?\nNo, it went fine. We had like five minutes of downtime.\nGreat. Let's do orders on Thursday then.",
+    "expect": {
+      "contains_ci": [
+        "user table",
+        "orders",
+        "Thursday",
+        "downtime"
+      ],
+      "not_contains_ci": [
+        "um,",
+        "uh,"
+      ]
+    }
+  },
+  {
+    "id": "turns-short-replies",
+    "category": "turns",
+    "mode": "turns",
+    "note": "One-word turns stay their own turns.",
+    "transcript": "Did you book the train for Friday?\nYes.\nAnd the hotel?\nNot yet, I'll do it tonight.\nOkay.",
+    "expect": {
+      "contains_ci": [
+        "train",
+        "hotel",
+        "tonight"
+      ]
+    }
+  },
+  {
+    "id": "turns-dictionary",
+    "category": "turns",
+    "mode": "turns",
+    "note": "Dictionary terms are corrected inside turns too.",
+    "transcript": "Did you try the new fox brief build on your watch?\nYeah, the wots brief app synced the memo in like two seconds.\nNice, ship it.",
+    "dictionary": [
+      {
+        "term": "Voxbrief",
+        "aliases": [
+          "fox brief",
+          "wots brief"
+        ]
+      }
+    ],
+    "expect": {
+      "contains": [
+        "Voxbrief"
+      ],
+      "not_contains_ci": [
+        "fox brief",
+        "wots brief"
+      ]
+    }
   }
 ]

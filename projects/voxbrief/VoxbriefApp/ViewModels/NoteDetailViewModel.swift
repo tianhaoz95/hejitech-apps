@@ -208,6 +208,15 @@ public final class NoteDetailViewModel: ObservableObject {
         PDFExportService.shared.exportTemporaryPDF(for: note)
     }
 
+    /// Names a conversation's speaker everywhere in the note (an empty name goes back to
+    /// "Speaker N").
+    public func renameSpeaker(_ speaker: Int, to name: String) {
+        var updated = note
+        updated.renameSpeaker(speaker, to: name)
+        self.note = updated
+        repository.save(updated)
+    }
+
     public func isActionItemCompleted(_ item: String) -> Bool {
         note.completedActionItems.contains(item)
     }

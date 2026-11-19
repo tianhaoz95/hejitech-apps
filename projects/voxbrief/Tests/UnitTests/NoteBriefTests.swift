@@ -89,6 +89,11 @@ final class NoteBriefTests: XCTestCase {
         } catch {}
     }
 
+    func testTagsAreHashtagsWithoutRepeats() throws {
+        let brief = try LLMCopywriterService().parseBrief(##"{"summary": "Errands.", "title": "To Do", "tags": ["#shopping", "Shopping", "dry cleaning", "#a", "#b"]}"##, partCount: 1)
+        XCTAssertEqual(brief.tags, ["#shopping", "#drycleaning", "#a", "#b"])
+    }
+
     func testAnswerWithoutTitleOrSummaryFails() {
         let service = LLMCopywriterService()
         XCTAssertThrowsError(try service.parseBrief(#"{"summary": "Only a summary."}"#, partCount: 1))

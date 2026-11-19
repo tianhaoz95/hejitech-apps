@@ -1,8 +1,18 @@
 import Foundation
 
+/// Finds who speaks when in a recording (SpeakerKit on the iPhone, see
+/// `SpeakerDiarizationService`): spans with speaker numbers shared across the whole recording.
+public protocol SpeakerDetecting: Sendable {
+    func speakerSpans(forAudioAt url: URL) async throws -> [SpeakerSpan]
+}
+
 @MainActor
 public final class NoteProcessingPipeline: ObservableObject {
+    #if os(iOS)
+    public static let shared = NoteProcessingPipeline(speakerDetector: SpeakerDiarizationService.shared)
+    #else
     public static let shared = NoteProcessingPipeline()
+    #endif
     
     private let asrService: ASRServiceProtocol
     private let llmService: LLMCopywriterServiceProtocol
@@ -10,6 +20,8 @@ public final class NoteProcessingPipeline: ObservableObject {
     private let audioFileManager: AudioFileManager
     private let dictionaryStore: PersonalDictionaryStore
     private let templateStore: TemplateStore
+    /// nil: no speaker detection (the Mac, tests that don't set one).
+    private let speakerDetector: SpeakerDetecting?
     /// Pieces of a watch recording still waiting on this device (see `WatchSessionStore`). A note
     /// whose id has pieces there is a watch recording that arrived in pieces.
     var sessionStore: WatchSessionStore = .shared
@@ -22,8 +34,8 @@ public final class NoteProcessingPipeline: ObservableObject {
     /// Notes currently mid-pipeline. Guards against double-processing the same note when a
     /// retry, a pull-to-refresh, and the original sync-triggered run could otherwise overlap.
     private var inFlightNoteIds: Set<UUID> = []
-    /// Dictation captures (the keyboard, the Mac's hotkey) that skip the brief: they're pasted
-    /// as soon as the cleanup is done, so a title and summary aren't worth the wait.
+    /// Dictation captures (the keyboard, the Mac's hotkey) that skip the brief and speaker
+    /// detection: they're pasted as soon as the cleanup is done, so neither is worth the wait.
     private var briefSkippedNoteIds: Set<UUID> = []
 
     /// Settings / Preferences: the format a new note gets on top of its light cleanup when
@@ -48,8 +60,10 @@ public final class NoteProcessingPipeline: ObservableObject {
         repository: NoteRepository = .shared,
         audioFileManager: AudioFileManager = .shared,
         dictionaryStore: PersonalDictionaryStore = .shared,
-        templateStore: TemplateStore = .shared
+        templateStore: TemplateStore = .shared,
+        speakerDetector: SpeakerDetecting? = nil
     ) {
+        self.speakerDetector = speakerDetector
         self.asrService = asrService
         self.llmService = llmService
         self.repository = repository
@@ -75,7 +89,8 @@ public final class NoteProcessingPipeline: ObservableObject {
     }
 
     /// Marks a note about to be processed as a dictation capture, which skips the brief (the
-    /// title and summary step) and keeps the light cleanup's. Applies to its next `process`.
+    /// title and summary step, keeping the light cleanup's) and speaker detection. Applies to
+    /// its next `process`.
     public func skipBrief(for noteId: UUID) {
         briefSkippedNoteIds.insert(noteId)
     }
@@ -166,6 +181,10 @@ public final class NoteProcessingPipeline: ObservableObject {
                     rawTranscript: rawTranscript
                 )
             ]
+            if !briefSkippedNoteIds.contains(note.id),
+               let speakerTiming = await detectSpeakers(on: &transcribed, audioURL: audioURL) {
+                transcribed.processingTimings.append(speakerTiming)
+            }
             transcribedNote = transcribed
 
             // Stage 2: the light cleanup, then a structured rewrite only if one was asked for.
@@ -176,7 +195,7 @@ public final class NoteProcessingPipeline: ObservableObject {
             let stage2Timings = try await runStage2(on: &updatedNote, transcript: rawTranscript, choice: choice, dictionary: dictionaryEntries)
             updatedNote.status = .ready
             updatedNote.errorMessage = nil
-            updatedNote.processingTimings = [transcribeTiming] + stage2Timings
+            updatedNote.processingTimings = transcribed.processingTimings + stage2Timings
 
             repository.save(updatedNote)
 
@@ -407,9 +426,47 @@ public final class NoteProcessingPipeline: ObservableObject {
         // keeps it. On a format change (`reuseLightCleanup`) the note keeps the summary it has.
         var keepsSummary = reuseLightCleanup
 
+        // A conversation: the note's single recording, with two or more speakers detected.
+        let rawTurns = note.segments.count <= 1 ? SpeakerTurns.turns(from: note.transcriptSegments) : []
+
         if reuseLightCleanup, let existing = note.cleanedText {
             note.lightCleanedNote = existing
+        } else if !rawTurns.isEmpty {
+            let start = ContinuousClock.now
+            let cleaned = try await llmService.cleanUpTurns(
+                rawTurns.map { DictionaryCorrector.apply(to: $0.text, entries: dictionary) },
+                dictionary: dictionary
+            )
+            timings.append(ProcessingTiming(name: "Clean up (\(rawTurns.count) turns)", seconds: Self.seconds(since: start)))
+            note.speakerTurns = zip(rawTurns, cleaned.texts).map { turn, text in
+                SpeakerTurn(id: turn.id, speaker: turn.speaker, start: turn.start, text: text)
+            }
+            let conversation = note.conversationText ?? ""
+            note.lightCleanedNote = conversation
+            note.lightCleanupEngine = cleaned.engine
+            if let title = Self.provisionalTitle(from: transcript) { note.title = title }
+            note.summary = ""
+            note.tags = []
+
+            if !briefSkippedNoteIds.contains(note.id) {
+                let briefStart = ContinuousClock.now
+                do {
+                    if let brief = try await llmService.writeBrief(cleanedText: conversation) {
+                        note.title = brief.title
+                        note.summary = brief.summary
+                        note.tags = brief.tags
+                        keepsSummary = true
+                        let name = brief.partCount > 1 ? "Title & summary (\(brief.partCount) parts)" : "Title & summary"
+                        timings.append(ProcessingTiming(name: name, seconds: Self.seconds(since: briefStart)))
+                    }
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    print("[NoteProcessingPipeline] Brief failed for conversation \(note.id): \(error)")
+                }
+            }
         } else {
+            note.speakerTurns = []
             let start = ContinuousClock.now
             let light = try await llmService.processTranscript(transcript, mode: .light, dictionary: dictionary, templates: [])
             timings.append(ProcessingTiming(name: "Clean up", seconds: Self.seconds(since: start)))
@@ -519,6 +576,12 @@ public final class NoteProcessingPipeline: ObservableObject {
         note.rawTranscript = mergedTranscript
 
         repository.updateStatus(for: noteId, status: .cleaningLLM)
+        // A note from before speaker detection (or whose detection failed) gets it on a re-run.
+        var speakerTiming: ProcessingTiming?
+        if !reuseLightCleanup, note.speakerCount == nil, segments.count == 1,
+           let audioFileName = note.audioFileName {
+            speakerTiming = await detectSpeakers(on: &note, audioURL: audioFileManager.url(for: audioFileName))
+        }
         let timings = try await runStage2(
             on: &note,
             transcript: mergedTranscript,
@@ -529,8 +592,9 @@ public final class NoteProcessingPipeline: ObservableObject {
         )
         note.status = .ready
         note.errorMessage = nil
-        // Keep the note's last transcription time; Stage 2's are replaced.
-        note.processingTimings = note.processingTimings.filter { $0.name.hasPrefix("Transcribe") } + timings
+        // Keep the note's last transcription and speaker times; Stage 2's are replaced.
+        let kept = note.processingTimings.filter { $0.name.hasPrefix("Transcribe") || ($0.name == Self.speakerTimingName && speakerTiming == nil) }
+        note.processingTimings = kept + (speakerTiming.map { [$0] } ?? []) + timings
         repository.save(note)
     }
 
@@ -581,6 +645,27 @@ public final class NoteProcessingPipeline: ObservableObject {
     }
 
     /// A title for a note whose transcript exists but whose Stage 2 failed: its first few words.
+    static let speakerTimingName = "Speakers"
+
+    /// Speaker detection on a transcribed note: each transcript segment gets its speaker and the
+    /// note its speaker count. Returns the step's timing, or nil when it didn't run (no detector,
+    /// no timed transcript) or failed; a failure leaves `speakerCount` nil so a re-run tries
+    /// again, and the note is processed as a memo.
+    private func detectSpeakers(on note: inout VoiceNote, audioURL: URL) async -> ProcessingTiming? {
+        guard let speakerDetector, !note.transcriptSegments.isEmpty,
+              FileManager.default.fileExists(atPath: audioURL.path) else { return nil }
+        let start = ContinuousClock.now
+        do {
+            let spans = try await speakerDetector.speakerSpans(forAudioAt: audioURL)
+            note.transcriptSegments = SpeakerTurns.assign(note.transcriptSegments, spans: spans)
+            note.speakerCount = max(1, SpeakerTurns.speakerCount(in: note.transcriptSegments))
+            return ProcessingTiming(name: Self.speakerTimingName, seconds: Self.seconds(since: start))
+        } catch {
+            print("[NoteProcessingPipeline] Speaker detection failed for note \(note.id): \(error)")
+            return nil
+        }
+    }
+
     static func provisionalTitle(from transcript: String) -> String? {
         let words = transcript.split(whereSeparator: \.isWhitespace)
         guard !words.isEmpty else { return nil }

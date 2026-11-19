@@ -9,7 +9,8 @@ isn't covered; Flash (Qwen3-4B-4bit) can be picked with `--model`.
   not be inserted or forced onto common words), `classification` (template choice and its fields),
   `light` (proofread keeps content, drops fillers and ASR tags), `brief` (title and one-line
   summary from cleaned text: mode `brief`, or `brief-overview` with a long memo's part summaries
-  one per line as `transcript`).
+  one per line as `transcript`), `turns` (a conversation's turns proofread turn by turn, one turn
+  per line as `transcript`: same count back, content kept).
 - `Tests/MacUnitTests/LLMPromptExportTests.swift` builds every prompt with the app's own code
   (alias correction, `buildClassificationSystemPrompt`, `buildGenerationSystemPrompt`,
   `buildLightSystemPrompt`, `transcriptUserPrompt`) and writes `prompts.json`. It runs in the

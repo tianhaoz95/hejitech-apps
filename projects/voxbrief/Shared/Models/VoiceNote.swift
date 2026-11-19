@@ -112,12 +112,16 @@ public struct TranscriptTimingSegment: Codable, Hashable, Sendable, Identifiable
     public let start: TimeInterval
     public let end: TimeInterval
     public let text: String
+    /// Who speaks in this segment (see `SpeakerTurns`), nil before speaker detection ran or
+    /// when it found no one here. Speaker numbers are the detector's, not the turns' numbering.
+    public var speaker: Int?
 
-    public init(id: UUID = UUID(), start: TimeInterval, end: TimeInterval, text: String) {
+    public init(id: UUID = UUID(), start: TimeInterval, end: TimeInterval, text: String, speaker: Int? = nil) {
         self.id = id
         self.start = start
         self.end = end
         self.text = text
+        self.speaker = speaker
     }
 
     public var formattedRange: String {
@@ -328,6 +332,15 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     /// field existed.
     public var processingTimings: [ProcessingTiming] = []
 
+    /// How many people speaker detection heard: nil when it hasn't run on this note (dictation,
+    /// notes from before 1.32.0, or it failed), 1 for a memo.
+    public var speakerCount: Int?
+    /// A conversation's turns with their cleaned text, in order; empty for a memo. The cleaned
+    /// text (`lightCleanedNote`) is these turns written out (`conversationText`).
+    public var speakerTurns: [SpeakerTurn] = []
+    /// Names the user gave speakers, by speaker number ("0", "1", ...).
+    public var speakerNames: [String: String] = [:]
+
     public init(
         id: UUID = UUID(),
         createdAt: Date = Date(),
@@ -432,6 +445,46 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         transcriptSegments = try container.decodeIfPresent([TranscriptTimingSegment].self, forKey: .transcriptSegments) ?? []
         longMemoParts = try container.decodeIfPresent([LongMemoPart].self, forKey: .longMemoParts) ?? []
         processingTimings = try container.decodeIfPresent([ProcessingTiming].self, forKey: .processingTimings) ?? []
+        speakerCount = try container.decodeIfPresent(Int.self, forKey: .speakerCount)
+        speakerTurns = try container.decodeIfPresent([SpeakerTurn].self, forKey: .speakerTurns) ?? []
+        speakerNames = try container.decodeIfPresent([String: String].self, forKey: .speakerNames) ?? [:]
+    }
+
+    // MARK: - Conversations
+
+    /// A speaker's name: the one the user gave, else "Speaker 1", "Speaker 2", ...
+    public func speakerName(_ speaker: Int) -> String {
+        if let name = speakerNames[String(speaker)]?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+            return name
+        }
+        return "Speaker \(speaker + 1)"
+    }
+
+    /// The conversation as plain text, one turn per paragraph ("Speaker 1: ..."), or nil for a
+    /// memo. What exports, search, copying and the title-and-summary step read.
+    public var conversationText: String? {
+        guard !speakerTurns.isEmpty else { return nil }
+        return speakerTurns
+            .map { "\(speakerName($0.speaker)): \($0.text.replacingOccurrences(of: "\n\n", with: "\n"))" }
+            .joined(separator: "\n\n")
+    }
+
+    /// Whether the cleaned text is the detected conversation, unedited, so it can be shown as
+    /// chat bubbles. After an edit the note shows the edited text as it is.
+    public var showsConversation: Bool {
+        guard let conversation = conversationText else { return false }
+        return cleanedText == conversation
+    }
+
+    /// Names a speaker (an empty name goes back to "Speaker N"), rewriting the cleaned text to
+    /// match unless it was edited.
+    public mutating func renameSpeaker(_ speaker: Int, to name: String) {
+        let before = conversationText
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        speakerNames[String(speaker)] = trimmed.isEmpty || trimmed == "Speaker \(speaker + 1)" ? nil : trimmed
+        guard let before, let after = conversationText else { return }
+        if lightCleanedNote == before { lightCleanedNote = after }
+        if cleanedNote == before { cleanedNote = after }
     }
 
     /// `templateSections` if this note has any (every note processed after multi-template

@@ -57,6 +57,9 @@ def resolve_template(raw, candidates, fallback):
 
 def run_sample(runner, prompts, seed):
     """Returns (template or None, raw generation, raw classification or None)."""
+    if "turns" in prompts:
+        t = prompts["turns"]
+        return None, runner(t["system"], t["user"], t["maxTokens"], seed), None
     if "brief" in prompts:
         b = prompts["brief"]
         return None, runner(b["system"], b["user"], b["maxTokens"], seed), None
@@ -78,7 +81,10 @@ def run_sample(runner, prompts, seed):
 def score(case, prompts, template, raw):
     """List of (check, passed, detail); the checks live in checks.py."""
     field_keys = prompts["generation"][template]["fieldKeys"] if case["mode"] == "full" else []
-    return score_output(raw, case["mode"], field_keys, case.get("expect", {}), template)
+    expect = dict(case.get("expect", {}))
+    if case["mode"] == "turns":
+        expect.setdefault("turn_count", prompts["turns"]["count"])
+    return score_output(raw, case["mode"], field_keys, expect, template)
 
 
 def pct(passed, total):
