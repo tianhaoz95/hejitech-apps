@@ -230,7 +230,11 @@ struct SettingsView: View {
                     if !model.localOnly {
                         NavigationLink { AgentsView() } label: { Label("AI agents (MCP)", systemImage: "sparkles") }
                     }
-                    if let url = model.exportCSV() {
+                    // checked with allows(), not requirePro(): opening the paywall while drawing
+                    // Settings redrew it forever and froze the app (killed by iOS on the phone)
+                    if !model.allows(.export) {
+                        Button { _ = model.requirePro(.export) } label: { Label("Export CSV", systemImage: "square.and.arrow.up") }
+                    } else if let url = model.exportCSV() {
                         ShareLink(item: url) { Label("Export CSV", systemImage: "square.and.arrow.up") }
                     }
                 } footer: {

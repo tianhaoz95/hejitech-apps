@@ -32,7 +32,7 @@ struct ReleaseHistoryItem: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.1.1"
+    static let currentVersion = "1.1.2"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     /// After an update, not on a fresh install: `markSeen()` runs during sign-in and setup.
@@ -45,6 +45,21 @@ struct WhatsNewView: View {
     }
 
     static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.1.2",
+            date: "November 2026",
+            tagline: "Settings opens again",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "gearshape.fill",
+                    tint: Theme.accent,
+                    title: "Settings no longer closes the app",
+                    description: "After the free trial ended, opening Settings could freeze Wee Hours until iOS closed it. Settings opens normally now, and Export CSV takes you to Wee Hours Pro when you tap it.",
+                    kind: .fix
+                ),
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.1.1",
             date: "November 2026",

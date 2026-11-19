@@ -1121,8 +1121,9 @@ final class AppModel: ObservableObject {
         var errorDescription: String? { message }
     }
 
+    /// The log as a CSV file to share. Doesn't check Pro: callers gate with `allows(.export)`
+    /// (never `requirePro` while building a view, which opens the paywall and redraws forever).
     func exportCSV() -> URL? {
-        guard requirePro(.export) else { return nil }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(household.active.count > 1 ? household.name : household.babyName)-log.csv")
         do {
             try CSVExport.csv(log: log, household: household).write(to: url, atomically: true, encoding: .utf8)
