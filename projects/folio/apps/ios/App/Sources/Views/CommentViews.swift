@@ -30,8 +30,13 @@ struct CommentThreads: View {
             }
         } else {
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) { list }.padding()
+                // Fill the width: with no comments the list is empty and the scroll view would
+                // otherwise shrink to its padding, a thin strip with the empty state squeezed in it.
+                VStack(alignment: .leading, spacing: 12) { list }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(uiColor: .systemGroupedBackground))
             .overlay {
                 if comments.isEmpty {
