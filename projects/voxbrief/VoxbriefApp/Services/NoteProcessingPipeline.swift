@@ -114,6 +114,12 @@ public final class NoteProcessingPipeline: ObservableObject {
         briefSkippedNoteIds.insert(noteId)
     }
 
+    /// Whether the note being processed is a dictation capture that skips the brief and
+    /// speakers (the Pipeline tab leaves those steps out).
+    public func skipsBrief(for noteId: UUID) -> Bool {
+        briefSkippedNoteIds.contains(noteId)
+    }
+
     /// Executes the two-stage processing pipeline for a given voice note. `liveTranscript`, when
     /// the iPhone's live transcript kept up with the recording (`LiveTranscriber`), stands in for
     /// Stage 1, so the note goes straight to Stage 2.

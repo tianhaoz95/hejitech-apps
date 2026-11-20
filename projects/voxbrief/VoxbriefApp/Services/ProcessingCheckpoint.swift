@@ -18,15 +18,43 @@ public struct ChunkProgress: Codable, Equatable, Sendable {
     public var step: String
     public var done: Int
     public var total: Int
+    /// When this run started the step, and how many parts were already done then (more than 0
+    /// for a step resumed from a checkpoint). Stamped by `ProcessingCheckpoint.report`; with
+    /// `updatedAt` they give the step's pace, for the Pipeline tab's time left.
+    public var startedAt: Date?
+    public var startDone: Int?
+    public var updatedAt: Date?
 
-    public init(step: String, done: Int, total: Int) {
+    public init(step: String, done: Int, total: Int, startedAt: Date? = nil, startDone: Int? = nil, updatedAt: Date? = nil) {
         self.step = step
         self.done = done
         self.total = total
+        self.startedAt = startedAt
+        self.startDone = startDone
+        self.updatedAt = updatedAt
     }
 
     public var fraction: Double? {
         total > 0 ? min(1, Double(done) / Double(total)) : nil
+    }
+
+    /// Seconds left in the step at `now`, from this run's pace: the average time per part
+    /// finished since the step started, times the parts left, less the time already spent on
+    /// the current one. Nil until a part has finished in this run (no pace yet), or for a step
+    /// that doesn't count parts.
+    public func secondsLeft(at now: Date) -> Double? {
+        guard total > 1, let startedAt, let updatedAt else { return nil }
+        let finished = done - (startDone ?? 0)
+        guard finished > 0 else { return nil }
+        let perPart = updatedAt.timeIntervalSince(startedAt) / Double(finished)
+        let left = perPart * Double(total - done) - now.timeIntervalSince(updatedAt)
+        return max(0, left)
+    }
+
+    /// Same place in the same step (the time stamps aside).
+    func sameCount(as other: ChunkProgress?) -> Bool {
+        guard let other else { return false }
+        return step == other.step && done == other.done && total == other.total
     }
 }
 
@@ -55,6 +83,9 @@ final class ProcessingCheckpoint: @unchecked Sendable {
     let fileURL: URL
     private let lock = NSLock()
     private var stored: Stored
+    /// The step this run is on, when it started it and with how many parts done (not saved: a
+    /// resumed run measures its own pace).
+    private var runStep: (step: String, startedAt: Date, done: Int)?
     /// Told every progress update (the pipeline publishes it for the note's view).
     var onProgress: (@Sendable (ChunkProgress) -> Void)?
 
@@ -90,13 +121,21 @@ final class ProcessingCheckpoint: @unchecked Sendable {
         lock.withLock { stored.progress }
     }
 
-    func report(_ progress: ChunkProgress) {
-        lock.withLock {
-            guard stored.progress != progress else { return }
-            stored.progress = progress
+    func report(_ progress: ChunkProgress, at now: Date = Date()) {
+        let stamped: ChunkProgress? = lock.withLock {
+            guard !progress.sameCount(as: stored.progress) || runStep?.step != progress.step else { return nil }
+            if runStep?.step != progress.step {
+                runStep = (progress.step, now, progress.done)
+            }
+            var stamped = progress
+            stamped.startedAt = runStep?.startedAt
+            stamped.startDone = runStep?.done
+            stamped.updatedAt = now
+            stored.progress = stamped
             save()
+            return stamped
         }
-        onProgress?(progress)
+        if let stamped { onProgress?(stamped) }
     }
 
     /// Reports for the note being processed in this task, if any.

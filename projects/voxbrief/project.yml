@@ -341,8 +341,10 @@ targets:
       - path: VoxbriefApp/Extensions/PlatformUI.swift
       - path: VoxbriefApp/ViewModels/NoteListViewModel.swift
       - path: VoxbriefApp/ViewModels/NoteDetailViewModel.swift
+      - path: VoxbriefApp/ViewModels/PipelineTimeline.swift
       - path: VoxbriefApp/Views/NoteRowView.swift
       - path: VoxbriefApp/Views/NoteDetailView.swift
+      - path: VoxbriefApp/Views/PipelineTimelineView.swift
       - path: VoxbriefApp/Views/ConversationBubblesView.swift
       - path: VoxbriefApp/Views/NoteMergePickerSheet.swift
       - path: VoxbriefApp/Views/MarkdownLiteText.swift

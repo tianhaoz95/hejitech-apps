@@ -1453,60 +1453,19 @@ public struct NoteDetailView: View {
         .background(Color.appSecondaryBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    // MARK: - 2-Stage Pipeline Diagnostics Section
-
-    private enum PipelineStepState {
-        case pending, active, done
-    }
-
-    /// Stage 1 only ever runs during a full retry (`retryFullProcessing`) -- a plain Stage-2-only
-    /// reprocess (`reprocessNote`) starts from an existing transcript and never revisits ASR.
-    private var asrStepState: PipelineStepState {
-        if viewModel.note.status == .transcribingASR { return .active }
-        return viewModel.note.rawTranscript.isEmpty ? .pending : .done
-    }
-
-    private var llmStepState: PipelineStepState {
-        if viewModel.note.status == .cleaningLLM { return .active }
-        if viewModel.isReprocessing && asrStepState == .done { return .pending }
-        return viewModel.note.cleanedNote.isEmpty ? .pending : .done
-    }
+    // MARK: - Pipeline (timeline of every processing step)
 
     private var pipelineSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            pipelineStep(
-                number: 1,
-                title: "Speech-to-Text (ASR)",
-                description: "Converts audio into a verbatim text transcript.",
-                icon: "waveform",
-                state: asrStepState
-            )
+        let steps = viewModel.timelineSteps
+        let running = steps.contains { $0.state == .active || $0.state == .paused }
+        return VStack(alignment: .leading, spacing: 12) {
+            PipelineTimelineView(steps: steps)
 
-            connectorLine(filled: asrStepState == .done)
-
-            pipelineStep(
-                number: 2,
-                title: "On-Device LLM Cleanup",
-                description: "Formats requirements into bullets, conditions into numbered steps, and fixes grammar.",
-                icon: "sparkles",
-                state: llmStepState
-            )
-
-            if let progress = viewModel.chunkProgress {
-                ChunkProgressCard(progress: progress, isRunning: viewModel.isProgressLive)
-                    .padding(.top, 12)
-            }
-
-            if !viewModel.note.processingTimings.isEmpty {
+            if !viewModel.note.processingTimings.isEmpty, !running {
                 timingsCard
-                    .padding(.top, 12)
             }
 
-            if viewModel.chunkProgress != nil {
-                EmptyView()
-            } else if viewModel.isReprocessing {
-                liveProgressBanner
-            } else {
+            if !running, !viewModel.isReprocessing {
                 Button {
                     viewModel.reprocessNote()
                 } label: {
@@ -1516,7 +1475,6 @@ public struct NoteDetailView: View {
                         .padding(.vertical, 4)
                 }
                 .buttonStyle(.borderedProminent)
-                .padding(.top, 12)
             }
         }
     }
@@ -1565,91 +1523,6 @@ public struct NoteDetailView: View {
 
     private static func formatSeconds(_ seconds: Double) -> String {
         seconds < 10 ? String(format: "%.1f s", seconds) : String(format: "%.0f s", seconds)
-    }
-
-    /// Live status card shown while a reprocess/retry is in flight -- reflects the note's actual
-    /// `NoteProcessingStatus` (not a fake timer), with an animated icon so progress reads as
-    /// "alive" rather than a bare spinner.
-    private var liveProgressBanner: some View {
-        let status = viewModel.note.status
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Image(systemName: status.iconName)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.accentColor)
-                    .symbolEffect(.pulse, options: .repeating, isActive: true)
-                    .frame(width: 22)
-
-                Text(status.stepDescription)
-                    .font(.subheadline.weight(.semibold))
-                    .contentTransition(.opacity)
-                    .animation(.easeInOut, value: status)
-
-                Spacer(minLength: 0)
-            }
-
-            ProgressView()
-                .progressViewStyle(.linear)
-                .tint(Color.accentColor)
-        }
-        .padding(14)
-        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .padding(.top, 12)
-    }
-
-    private func connectorLine(filled: Bool) -> some View {
-        Rectangle()
-            .fill(filled ? Color.green : Color.appTertiaryFill)
-            .frame(width: 2, height: 16)
-            .padding(.leading, 27)
-            .animation(.easeInOut(duration: 0.3), value: filled)
-    }
-
-    private func pipelineStep(number: Int, title: String, description: String, icon: String, state: PipelineStepState) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(stepColor(state))
-                    .frame(width: 28, height: 28)
-
-                switch state {
-                case .done:
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                case .active:
-                    Image(systemName: icon)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                        .symbolEffect(.pulse, options: .repeating, isActive: true)
-                case .pending:
-                    Text("\(number)")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .animation(.easeInOut(duration: 0.3), value: state)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                Text(description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(14)
-        .background(Color.appSecondaryBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    private func stepColor(_ state: PipelineStepState) -> Color {
-        switch state {
-        case .done: return .green
-        case .active: return .accentColor
-        case .pending: return Color.appTertiaryFill
-        }
     }
 
     // MARK: - Metadata Footer
@@ -1859,69 +1732,5 @@ private struct TranscriptFlowLayout: Layout {
         }
         if !current.indices.isEmpty { rows.append(current) }
         return rows
-    }
-}
-
-// MARK: - Chunk progress (Pipeline tab)
-
-/// The step a note is on and how many of its pieces or parts are done, as a bar. A note whose
-/// run was interrupted shows where it stopped; it continues from there when the app is open.
-struct ChunkProgressCard: View {
-    let progress: ChunkProgress
-    let isRunning: Bool
-
-    private var unit: String {
-        progress.step == NoteProcessingPipeline.transcribeStep ? "piece" : "part"
-    }
-
-    private var countText: String? {
-        guard progress.total > 1 else { return nil }
-        let current = min(progress.done + (isRunning ? 1 : 0), progress.total)
-        return isRunning
-            ? "\(unit.capitalized) \(current) of \(progress.total)"
-            : "\(progress.done) of \(progress.total) \(unit)s done"
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: isRunning ? "gearshape.2.fill" : "pause.circle.fill")
-                    .foregroundStyle(isRunning ? Color.accentColor : .orange)
-                    .symbolEffect(.pulse, options: .repeating, isActive: isRunning)
-                Text(progress.step)
-                    .font(.subheadline.weight(.semibold))
-                Spacer(minLength: 0)
-                if let countText {
-                    Text(countText)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .contentTransition(.numericText())
-                }
-            }
-            if let fraction = progress.fraction, progress.total > 1 {
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.appTertiaryFill)
-                        Capsule()
-                            .fill(isRunning ? Color.accentColor : .orange)
-                            .frame(width: max(6, geometry.size.width * fraction))
-                    }
-                }
-                .frame(height: 6)
-                .animation(.easeInOut, value: fraction)
-                .accessibilityValue("\(Int(fraction * 100)) percent")
-            } else if isRunning {
-                ProgressView()
-                    .progressViewStyle(.linear)
-            }
-            if !isRunning {
-                Text("Paused. Finished pieces and parts are saved; it continues from here when Voxbrief is open.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(14)
-        .background((isRunning ? Color.accentColor : Color.orange).opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .accessibilityElement(children: .combine)
     }
 }

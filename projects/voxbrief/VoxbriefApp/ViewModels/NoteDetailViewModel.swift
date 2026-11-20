@@ -11,6 +11,17 @@ public final class NoteDetailViewModel: ObservableObject {
     @Published public private(set) var chunkProgress: ChunkProgress?
     /// Whether `chunkProgress` is moving now (false: saved by a run that was interrupted).
     @Published public private(set) var isProgressLive = false
+
+    /// The Pipeline tab's timeline: every step this note runs, with where each stands.
+    var timelineSteps: [PipelineTimelineStep] {
+        PipelineTimeline.steps(
+            for: note,
+            progress: chunkProgress,
+            isLive: isProgressLive,
+            skipsBrief: pipeline.skipsBrief(for: note.id),
+            isReprocessing: isReprocessing
+        )
+    }
     @Published public var isEditing: Bool = false
     @Published public var editedTitle: String = ""
     @Published public var editedCleanedNote: String = ""

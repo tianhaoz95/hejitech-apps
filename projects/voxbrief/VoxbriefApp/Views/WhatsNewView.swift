@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.33.2"
+    public static let currentVersion = "1.33.3"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,34 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.33.3",
+            date: "November 2026",
+            tagline: "Every Step, as It Happens",
+            features: [
+                WhatsNewItem(
+                    icon: "list.bullet.below.rectangle",
+                    tint: .blue,
+                    title: "A Timeline of Every Step",
+                    description: "The Pipeline tab now shows every step a note goes through, in order: Transcribe, Find Speakers, Clean Up, Title & Summary, Speaker Turns and Structure, with only the ones your note needs. The step running now has an animated progress bar and the time left.",
+                    detailedDescription: "A summary at the top shows which step a note is on, how far along the whole run is, and roughly how long the current step has left, worked out from how fast its parts have gone so far. Each finished step shows how long it took, a paused step shows where it stopped, and one that didn't finish is marked.",
+                    highlights: [
+                        "Part counts and time left for long notes",
+                        "Times for every finished step",
+                        "Paused and stopped steps are easy to spot"
+                    ]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "clock.arrow.circlepath",
+                    tint: .teal,
+                    title: "Time Left That Learns as It Goes",
+                    description: "The time left is measured from the parts finished in this run, so a note that resumed after a pause gives an honest estimate instead of counting the parts it had already saved.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.33.2",
             date: "November 2026",

@@ -112,6 +112,8 @@ final class ProcessingCheckpointTests: XCTestCase {
         private var items: [ChunkProgress] = []
         func add(_ p: ChunkProgress) { lock.withLock { items.append(p) } }
         var all: [ChunkProgress] { lock.withLock { items } }
+        /// The reports without their time stamps.
+        var counts: [ChunkProgress] { all.map { ChunkProgress(step: $0.step, done: $0.done, total: $0.total) } }
     }
 
     func testALongMemoReportsItsPartsAndTheLastOneIsSaved() async throws {
@@ -132,7 +134,7 @@ final class ProcessingCheckpointTests: XCTestCase {
 
         let parts = checkpoint.answerCount
         XCTAssertGreaterThan(parts, 1)
-        XCTAssertEqual(reports.all, (0..<parts).map { ChunkProgress(step: "Cleaning up", done: $0, total: parts) })
+        XCTAssertEqual(reports.counts, (0..<parts).map { ChunkProgress(step: "Cleaning up", done: $0, total: parts) })
         XCTAssertEqual(ProcessingCheckpoint(noteId: checkpoint.noteId, directory: directory).progress, reports.all.last, "Kept for the next launch")
     }
 
@@ -152,7 +154,31 @@ final class ProcessingCheckpointTests: XCTestCase {
             try await service.process(transcript: transcript, mode: .conversation, dictionary: [], templates: [], engine: engine)
         }
 
-        XCTAssertEqual(reports.all, [ChunkProgress(step: "Cleaning up", done: 0, total: 2), ChunkProgress(step: "Cleaning up", done: 1, total: 2)])
+        XCTAssertEqual(reports.counts, [ChunkProgress(step: "Cleaning up", done: 0, total: 2), ChunkProgress(step: "Cleaning up", done: 1, total: 2)])
+    }
+
+    func testReportsAreStampedWithTheStepsStartAndPace() {
+        let checkpoint = ProcessingCheckpoint(noteId: UUID(), directory: directory)
+        let start = Date(timeIntervalSince1970: 1_000)
+        checkpoint.report(ChunkProgress(step: "Cleaning up", done: 4, total: 10), at: start)
+        checkpoint.report(ChunkProgress(step: "Cleaning up", done: 4, total: 10), at: start.addingTimeInterval(5))
+        XCTAssertEqual(checkpoint.progress?.updatedAt, start, "The same count again isn't a new report")
+        XCTAssertNil(checkpoint.progress?.secondsLeft(at: start), "No pace before a part finishes in this run")
+
+        checkpoint.report(ChunkProgress(step: "Cleaning up", done: 6, total: 10), at: start.addingTimeInterval(40))
+        let progress = try! XCTUnwrap(checkpoint.progress)
+        XCTAssertEqual(progress.startedAt, start)
+        XCTAssertEqual(progress.startDone, 4, "A resumed step measures only this run's parts")
+        // 20 s a part, 4 left: 80 s, less 10 s into the current part.
+        XCTAssertEqual(try XCTUnwrap(progress.secondsLeft(at: start.addingTimeInterval(50))), 70, accuracy: 0.001)
+        XCTAssertEqual(progress.secondsLeft(at: start.addingTimeInterval(500)), 0)
+
+        checkpoint.report(ChunkProgress(step: "Title & summary", done: 0, total: 1), at: start.addingTimeInterval(90))
+        XCTAssertEqual(checkpoint.progress?.startedAt, start.addingTimeInterval(90), "A new step starts its own clock")
+
+        let resumed = ProcessingCheckpoint(noteId: checkpoint.noteId, directory: directory)
+        resumed.report(ChunkProgress(step: "Title & summary", done: 0, total: 1), at: start.addingTimeInterval(900))
+        XCTAssertEqual(resumed.progress?.startedAt, start.addingTimeInterval(900), "A new run starts its own clock")
     }
 
     func testFraction() {
