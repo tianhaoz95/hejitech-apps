@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.33.1"
+    public static let currentVersion = "1.33.2"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,33 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.33.2",
+            date: "November 2026",
+            tagline: "Never Start Over",
+            features: [
+                WhatsNewItem(
+                    icon: "bookmark.fill",
+                    tint: .green,
+                    title: "Long Notes Resume Where They Stopped",
+                    description: "If Voxbrief is closed while a long note is being processed, it no longer starts over. Pieces of a watch recording already transcribed, and parts of the cleanup already written, are kept, and processing picks up at the next one.",
+                    detailedDescription: "A long recording is transcribed piece by piece and cleaned up part by part. Each finished piece and part is now saved on your iPhone as soon as it's done, so stopping at part 4 of 10 resumes at part 5. The saved work is deleted once the note is done, and Re-run always starts fresh.",
+                    highlights: [
+                        "The transcript is saved before the cleanup starts",
+                        "Works after closing the app, a restart or a crash"
+                    ]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "waveform",
+                    tint: .blue,
+                    title: "No Second Transcription",
+                    description: "A note interrupted during its cleanup used to be transcribed again from the start. Its transcript is now kept, so only the cleanup runs again.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.33.1",
             date: "November 2026",

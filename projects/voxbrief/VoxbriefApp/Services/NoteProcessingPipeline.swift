@@ -22,6 +22,8 @@ public final class NoteProcessingPipeline: ObservableObject {
     private let templateStore: TemplateStore
     /// nil: no speaker detection (the Mac, tests that don't set one).
     private let speakerDetector: SpeakerDetecting?
+    /// Where each note's `ProcessingCheckpoint` is saved while it's processed.
+    private let checkpointDirectory: URL
     /// Pieces of a watch recording still waiting on this device (see `WatchSessionStore`). A note
     /// whose id has pieces there is a watch recording that arrived in pieces.
     var sessionStore: WatchSessionStore = .shared
@@ -61,9 +63,11 @@ public final class NoteProcessingPipeline: ObservableObject {
         audioFileManager: AudioFileManager = .shared,
         dictionaryStore: PersonalDictionaryStore = .shared,
         templateStore: TemplateStore = .shared,
-        speakerDetector: SpeakerDetecting? = nil
+        speakerDetector: SpeakerDetecting? = nil,
+        checkpointDirectory: URL? = nil
     ) {
         self.speakerDetector = speakerDetector
+        self.checkpointDirectory = checkpointDirectory ?? ProcessingCheckpoint.defaultDirectory
         self.asrService = asrService
         self.llmService = llmService
         self.repository = repository
@@ -113,6 +117,9 @@ public final class NoteProcessingPipeline: ObservableObject {
         let sessionPieces = sessionStore.pieces(for: note.id)
         // Set once Stage 1 succeeds, so a Stage 2 failure still saves the transcript.
         var transcribedNote: VoiceNote?
+        // What this note's processing has finished, kept until it's ready or failed so a run
+        // that's interrupted resumes from there.
+        let checkpoint = ProcessingCheckpoint(noteId: note.id, directory: checkpointDirectory)
         inFlightNoteIds.insert(note.id)
         activeProcessingCount += 1
         defer {
@@ -150,7 +157,8 @@ public final class NoteProcessingPipeline: ObservableObject {
                 (asrTranscript, timingSegments) = try await transcribe(
                     pieces: sessionPieces,
                     sessionId: note.id,
-                    vocabulary: dictionaryEntries.map(\.term)
+                    vocabulary: dictionaryEntries.map(\.term),
+                    checkpoint: checkpoint
                 )
             } else {
                 (asrTranscript, timingSegments) = try await asrService.transcribeAudioWithTimings(
@@ -185,19 +193,31 @@ public final class NoteProcessingPipeline: ObservableObject {
                let speakerTiming = await detectSpeakers(on: &transcribed, audioURL: audioURL) {
                 transcribed.processingTimings.append(speakerTiming)
             }
+            let choice = note.templateChoice ?? Self.defaultTemplateChoice
+            transcribed.templateChoice = choice == .none ? nil : choice
             transcribedNote = transcribed
 
+            // Saved before Stage 2 so an interruption from here on (the app closed, killed or
+            // crashed) only re-runs Stage 2, which `resumeInterruptedNotes` does for a pending
+            // note with a transcript.
+            var pendingStage2 = transcribed
+            pendingStage2.status = .cleaningLLM
+            if pendingStage2.title == "Processing Voice Note...", let title = Self.provisionalTitle(from: rawTranscript) {
+                pendingStage2.title = title
+            }
+            repository.save(pendingStage2)
+
             // Stage 2: the light cleanup, then a structured rewrite only if one was asked for.
-            repository.updateStatus(for: note.id, status: .cleaningLLM)
             var updatedNote = transcribed
-            let choice = note.templateChoice ?? Self.defaultTemplateChoice
-            updatedNote.templateChoice = choice == .none ? nil : choice
-            let stage2Timings = try await runStage2(on: &updatedNote, transcript: rawTranscript, choice: choice, dictionary: dictionaryEntries)
+            let stage2Timings = try await ProcessingCheckpoint.$current.withValue(checkpoint) {
+                try await runStage2(on: &updatedNote, transcript: rawTranscript, choice: choice, dictionary: dictionaryEntries)
+            }
             updatedNote.status = .ready
             updatedNote.errorMessage = nil
             updatedNote.processingTimings = transcribed.processingTimings + stage2Timings
 
             repository.save(updatedNote)
+            checkpoint.remove()
 
             print("[NoteProcessingPipeline] Successfully processed note: \(note.id) -> '\(updatedNote.title)'")
         } catch {
@@ -227,6 +247,7 @@ public final class NoteProcessingPipeline: ObservableObject {
                 }
             }
             repository.save(failedNote)
+            checkpoint.remove()
         }
     }
     
@@ -236,12 +257,22 @@ public final class NoteProcessingPipeline: ObservableObject {
     private func transcribe(
         pieces: [WatchSessionPiece],
         sessionId: UUID,
-        vocabulary: [String]
+        vocabulary: [String],
+        checkpoint: ProcessingCheckpoint? = nil
     ) async throws -> (String, [TranscriptTimingSegment]) {
         var texts: [String] = []
         var timings: [TranscriptTimingSegment] = []
         var offset: TimeInterval = 0
         for piece in pieces {
+            // A piece transcribed by an interrupted run isn't transcribed again.
+            if let saved = checkpoint?.piece(piece.fileName) {
+                if !saved.transcript.isEmpty {
+                    texts.append(saved.transcript)
+                    timings += WatchSessionStore.offset(saved.segments, by: offset)
+                }
+                offset += piece.duration
+                continue
+            }
             let soFar = texts.joined(separator: " ")
             do {
                 let result = try await asrService.transcribeAudioWithTimings(
@@ -255,8 +286,10 @@ public final class NoteProcessingPipeline: ObservableObject {
                 )
                 texts.append(result.transcript)
                 timings += WatchSessionStore.offset(result.segments, by: offset)
+                checkpoint?.record(piece: piece.fileName, .init(transcript: result.transcript, segments: result.segments))
             } catch ASRError.emptyAudio {
                 // Nothing was said in this piece.
+                checkpoint?.record(piece: piece.fileName, .init(transcript: "", segments: []))
             }
             offset += piece.duration
         }
@@ -559,7 +592,7 @@ public final class NoteProcessingPipeline: ObservableObject {
     /// `choice` defaults to the note's own (`VoiceNote.regenerationChoice`): the template it was
     /// structured with, or the light cleanup alone. Throws without touching the note's status --
     /// callers decide what a failure means.
-    private func reprocessStage2(for noteId: UUID, choice: TemplateChoice? = nil, reuseLightCleanup: Bool = false) async throws {
+    private func reprocessStage2(for noteId: UUID, choice: TemplateChoice? = nil, reuseLightCleanup: Bool = false, checkpoint: ProcessingCheckpoint? = nil) async throws {
         guard var note = repository.note(withId: noteId) else { return }
         let dictionaryEntries = dictionaryStore.entries
 
@@ -580,14 +613,16 @@ public final class NoteProcessingPipeline: ObservableObject {
            let audioFileName = note.audioFileName {
             speakerTiming = await detectSpeakers(on: &note, audioURL: audioFileManager.url(for: audioFileName))
         }
-        let timings = try await runStage2(
-            on: &note,
-            transcript: mergedTranscript,
-            choice: choice ?? note.regenerationChoice,
-            dictionary: dictionaryEntries,
-            reuseLightCleanup: reuseLightCleanup && !transcriptChanged,
-            structuredFailureThrows: choice != nil
-        )
+        let timings = try await ProcessingCheckpoint.$current.withValue(checkpoint) {
+            try await runStage2(
+                on: &note,
+                transcript: mergedTranscript,
+                choice: choice ?? note.regenerationChoice,
+                dictionary: dictionaryEntries,
+                reuseLightCleanup: reuseLightCleanup && !transcriptChanged,
+                structuredFailureThrows: choice != nil
+            )
+        }
         note.status = .ready
         note.errorMessage = nil
         // Keep the note's last transcription and speaker times; Stage 2's are replaced.
@@ -598,14 +633,20 @@ public final class NoteProcessingPipeline: ObservableObject {
 
     /// `reprocessStage2` with the note's own format, marking the note failed (content kept) on
     /// error -- or leaving it pending when the app is in the background (see `isAppInBackground`).
-    private func reprocessStage2MarkingFailure(for noteId: UUID) async {
+    /// `resuming` (an interrupted note being finished) reuses what its last run saved in the
+    /// note's checkpoint; anything else (Re-run, append, merge) starts fresh.
+    private func reprocessStage2MarkingFailure(for noteId: UUID, resuming: Bool = false) async {
+        let checkpoint = ProcessingCheckpoint(noteId: noteId, directory: checkpointDirectory)
+        if !resuming { checkpoint.remove() }
         do {
-            try await reprocessStage2(for: noteId)
+            try await reprocessStage2(for: noteId, checkpoint: resuming ? checkpoint : nil)
+            checkpoint.remove()
         } catch {
             if Self.isAppInBackground() {
                 repository.updateStatus(for: noteId, status: .cleaningLLM)
             } else {
                 repository.updateStatus(for: noteId, status: .failed, errorMessage: error.localizedDescription)
+                checkpoint.remove()
             }
         }
     }
@@ -621,6 +662,10 @@ public final class NoteProcessingPipeline: ObservableObject {
     /// and was waiting on Stage 2 re-runs only Stage 2; anything else runs the whole pipeline.
     /// Called at launch and whenever the app becomes active (and by pull-to-refresh).
     public func resumeInterruptedNotes() async {
+        ProcessingCheckpoint.prune(
+            in: checkpointDirectory,
+            keeping: Set(repository.notes.filter { $0.status.isProcessing }.map(\.id))
+        )
         for note in interruptedNotes {
             guard let current = repository.note(withId: note.id),
                   current.status.isProcessing,
@@ -628,7 +673,7 @@ public final class NoteProcessingPipeline: ObservableObject {
             if current.status == .cleaningLLM && !current.rawTranscript.isEmpty {
                 inFlightNoteIds.insert(current.id)
                 activeProcessingCount += 1
-                await reprocessStage2MarkingFailure(for: current.id)
+                await reprocessStage2MarkingFailure(for: current.id, resuming: true)
                 inFlightNoteIds.remove(current.id)
                 activeProcessingCount -= 1
             } else {

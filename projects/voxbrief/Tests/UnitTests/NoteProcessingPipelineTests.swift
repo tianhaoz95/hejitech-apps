@@ -54,12 +54,15 @@ fileprivate final class MockLLMCopywriterService: LLMCopywriterServiceProtocol, 
     /// A title dictated with a voice command, reported on the light result.
     var stubExplicitTitle: String?
     private(set) var briefInputs: [String] = []
+    /// Called at the start of every `processTranscript`, e.g. to look at what was saved by then.
+    var onProcessTranscript: (() -> Void)?
 
     func processTranscript(_ rawTranscript: String, mode: RewriteMode, dictionary: [DictionaryEntry], templates: [NoteTemplate]) async throws -> LLMProcessingResult {
         receivedDictionaries.append(dictionary)
         receivedTranscripts.append(rawTranscript)
         receivedTemplates.append(templates)
         receivedModes.append(mode)
+        onProcessTranscript?()
         if let stubError { throw stubError }
         if mode == .light || mode == .conversation {
             return LLMProcessingResult(
@@ -292,6 +295,22 @@ final class NoteProcessingPipelineTests: XCTestCase {
         XCTAssertEqual(saved.speakerCount, 2)
         XCTAssertEqual(saved.speakerTurns.count, 3)
         XCTAssertTrue(saved.processingTimings.map(\.name).contains("Speakers"))
+    }
+
+    func testTheTranscriptIsSavedBeforeStage2Starts() async throws {
+        let note = VoiceNote(id: UUID(), audioFileName: try audioFile(), status: .syncing)
+        repository.save(note)
+        var seen: VoiceNote?
+        mockLLM.onProcessTranscript = { [repository] in
+            if seen == nil { seen = repository?.note(withId: note.id) }
+        }
+
+        await speakerPipeline(StubSpeakerDetector()).process(note: note, liveTranscript: ("all of it", conversationSegments))
+
+        let during = try XCTUnwrap(seen)
+        XCTAssertEqual(during.status, .cleaningLLM)
+        XCTAssertEqual(during.rawTranscript, "all of it", "A crash during Stage 2 no longer loses the transcript")
+        XCTAssertEqual(during.transcriptSegments.count, conversationSegments.count)
     }
 
     func testABriefStoppedByBackgroundingLeavesTheNotePending() async throws {

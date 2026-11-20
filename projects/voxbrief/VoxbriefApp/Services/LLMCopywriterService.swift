@@ -695,7 +695,30 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         /// the eval's conversation cases it copied the turns back as a script in 5 of 6 samples,
         /// so its conversations get the light cleanup instead.
         var writesReports = true
-        let generate: @Sendable (_ system: String, _ user: String, _ maxTokens: Int) async throws -> String
+        private let produce: @Sendable (_ system: String, _ user: String, _ maxTokens: Int) async throws -> String
+
+        init(label: String, writesReports: Bool = true, generate: @escaping @Sendable (_ system: String, _ user: String, _ maxTokens: Int) async throws -> String) {
+            self.label = label
+            self.writesReports = writesReports
+            self.produce = generate
+        }
+
+        /// One model call. Inside the pipeline, an answer saved by an interrupted run of the same
+        /// note (`ProcessingCheckpoint`) is reused, and a new one is saved as soon as it's done.
+        var generate: @Sendable (_ system: String, _ user: String, _ maxTokens: Int) async throws -> String {
+            let label = label
+            let produce = produce
+            return { system, user, maxTokens in
+                guard let checkpoint = ProcessingCheckpoint.current else {
+                    return try await produce(system, user, maxTokens)
+                }
+                let key = ProcessingCheckpoint.key(engine: label, system: system, user: user, maxTokens: maxTokens)
+                if let saved = checkpoint.answer(for: key) { return saved }
+                let answer = try await produce(system, user, maxTokens)
+                checkpoint.record(answer: answer, for: key)
+                return answer
+            }
+        }
     }
 
     /// A long transcript is read in parts once it passes this many words. Apple Intelligence's

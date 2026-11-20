@@ -224,4 +224,44 @@ final class WatchSessionAssemblyTests: XCTestCase {
         XCTAssertEqual(duration, 6, accuracy: 0.5)
         XCTAssertTrue(store.stagedPieces(for: sessionId).isEmpty, "Pieces are dropped once the transcript is saved")
     }
+
+    func testAnInterruptedRunSkipsPiecesItAlreadyTranscribed() async throws {
+        let sessionId = UUID()
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let first = try stage(sessionId, index: 0, seconds: 2, start: start)
+        let silent = try stage(sessionId, index: 1, seconds: 2, start: start)
+        let last = try stage(sessionId, index: 2, seconds: 2, start: start)
+        try store.saveManifest(WatchSessionManifest(sessionId: sessionId, pieceIds: [first, silent, last]))
+
+        // The run before was stopped after the first two pieces.
+        let checkpoints = root.appendingPathComponent("checkpoints", isDirectory: true)
+        let saved = ProcessingCheckpoint(noteId: sessionId, directory: checkpoints)
+        saved.record(piece: "\(first.uuidString).m4a", .init(transcript: "morning plan", segments: [TranscriptTimingSegment(start: 0.5, end: 1.5, text: "morning plan")]))
+        saved.record(piece: "\(silent.uuidString).m4a", .init(transcript: "", segments: []))
+
+        let asr = PieceASRService()
+        asr.transcripts = ["\(last.uuidString).m4a": "evening recap"]
+        let repository = NoteRepository(customStorageURL: root.appendingPathComponent("notes.json"))
+        let pipeline = NoteProcessingPipeline(
+            asrService: asr,
+            llmService: StubLLM(),
+            repository: repository,
+            audioFileManager: AudioFileManager(baseDirectoryOverride: root.appendingPathComponent("notes", isDirectory: true)),
+            dictionaryStore: PersonalDictionaryStore(customStorageURL: root.appendingPathComponent("dictionary.json")),
+            templateStore: TemplateStore(customStorageURL: root.appendingPathComponent("templates.json")),
+            checkpointDirectory: checkpoints
+        )
+        pipeline.sessionStore = store
+
+        let note = VoiceNote(id: sessionId, createdAt: start, duration: 6, audioFileName: "\(sessionId.uuidString).m4a", status: .syncing, source: .watchApp)
+        repository.save(note)
+        await pipeline.process(note: note)
+
+        let done = try XCTUnwrap(repository.note(withId: sessionId))
+        XCTAssertEqual(done.status, .ready)
+        XCTAssertEqual(done.rawTranscript, "morning plan evening recap")
+        XCTAssertEqual(asr.receivedAudioURLs.map(\.lastPathComponent), ["\(last.uuidString).m4a"], "Only the piece left is transcribed")
+        XCTAssertEqual(done.transcriptSegments.map(\.start), [0.5, 4.5])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: saved.fileURL.path), "The checkpoint goes once the note is ready")
+    }
 }

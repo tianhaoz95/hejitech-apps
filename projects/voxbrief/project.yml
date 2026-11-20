@@ -318,6 +318,7 @@ targets:
       - path: VoxbriefApp/Services/AppleFoundationModelService.swift
       - path: VoxbriefApp/Services/OnDeviceLLMService.swift
       - path: VoxbriefApp/Services/NoteProcessingPipeline.swift
+      - path: VoxbriefApp/Services/ProcessingCheckpoint.swift
       - path: VoxbriefApp/Services/WatchSessionStore.swift
       - path: VoxbriefApp/Services/NoteRepository.swift
       - path: VoxbriefApp/Services/AudioFileManager.swift
