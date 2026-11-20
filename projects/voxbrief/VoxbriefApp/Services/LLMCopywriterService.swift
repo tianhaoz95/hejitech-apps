@@ -363,6 +363,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         var summaries: [String] = []
         for (index, part) in sampled.enumerated() {
             try Task.checkCancellation()
+            ProcessingCheckpoint.report(step: Self.briefStep, done: index, total: sampled.count + 1)
             do {
                 let raw = try await engine.generate(
                     buildBriefPartSystemPrompt(),
@@ -377,6 +378,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
             }
         }
         guard !summaries.isEmpty else { throw LLMCopywriterError.unparsableResponse }
+        ProcessingCheckpoint.report(step: Self.briefStep, done: sampled.count, total: sampled.count + 1)
         let raw = try await engine.generate(buildBriefOverviewSystemPrompt(), briefOverviewUserPrompt(summaries), Self.briefMaxTokens)
         return try parseBrief(raw, partCount: sampled.count)
     }
@@ -524,12 +526,16 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     func cleanUpTurns(_ turns: [String], dictionary: [DictionaryEntry], engine: StageTwoEngine) async throws -> CleanedTurns {
         var cleaned = turns.map(tidyTurn)
         var anyCleaned = false
-        for batch in Self.turnBatches(turns) {
+        let batches = Self.turnBatches(turns)
+        for (index, batch) in batches.enumerated() {
             try Task.checkCancellation()
+            ProcessingCheckpoint.report(step: Self.turnsStep, done: index, total: batches.count)
             // A turn too long to answer in one go goes through the memo cleanup on its own.
             if batch.count == 1, turns[batch.lowerBound].split(whereSeparator: \.isWhitespace).count > Self.lightTranscriptWordThreshold {
                 do {
-                    let result = try await process(transcript: turns[batch.lowerBound], mode: .light, dictionary: dictionary, templates: [], engine: engine)
+                    let result = try await ProcessingCheckpoint.$reportsProgress.withValue(false) {
+                        try await process(transcript: turns[batch.lowerBound], mode: .light, dictionary: dictionary, templates: [], engine: engine)
+                    }
                     cleaned[batch.lowerBound] = result.cleanedMarkdown
                     anyCleaned = true
                 } catch let error where error.stopsStageTwo {
@@ -689,6 +695,12 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
 
     /// One Stage 2 engine's raw text generation plus the label stored on the note. Apple
     /// Intelligence ignores `maxTokens` (its session manages the answer length itself).
+    /// Step names in the Pipeline tab's progress (`ProcessingCheckpoint.report`).
+    static let cleanupStep = "Cleaning up"
+    static let briefStep = "Title & summary"
+    static let turnsStep = "Speaker turns"
+    static let structureStep = "Structuring"
+
     struct StageTwoEngine: Sendable {
         let label: String
         /// Whether the model can write a conversation up as a report. Lite can't: measured on
@@ -867,6 +879,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         var readParts: [(part: TranscriptPart, parsed: (title: String?, summary: String?, tags: [String]?, sections: [TemplateSectionContent]))] = []
         for (index, part) in parts.enumerated() {
             try Task.checkCancellation()
+            ProcessingCheckpoint.report(step: Self.structureStep, done: index, total: parts.count + 1)
             do {
                 let raw = try await measured("Part \(index + 1) of \(parts.count)", into: &timings) {
                     try await engine.generate(systemPrompt, longMemoPartUserPrompt(part.text, index: index, count: parts.count, dictionary: dictionary), 1024)
@@ -884,6 +897,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         let partSummaries = readParts.map { $0.parsed.summary?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "" }
 
         var overview: GenerationUniversalFields?
+        ProcessingCheckpoint.report(step: Self.structureStep, done: parts.count, total: parts.count + 1)
         do {
             let raw = try await measured("Overview", into: &timings) {
                 try await engine.generate(
@@ -1315,8 +1329,10 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         var firstReport: ConversationReportJSON?
         var lightResults: [LLMProcessingResult] = []
         var anyModelOutput = false
-        for part in Self.conversationParts(turns) {
+        let parts = Self.conversationParts(turns)
+        for (index, part) in parts.enumerated() {
             try Task.checkCancellation()
+            ProcessingCheckpoint.report(step: Self.cleanupStep, done: index, total: parts.count)
             if engine.writesReports {
                 do {
                     let raw = try await engine.generate(buildConversationSystemPrompt(dictionary: dictionary), conversationUserPrompt(part), Self.lightMaxTokens)
@@ -1338,7 +1354,9 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
             }
             let spoken = part.map(\.said).joined(separator: "\n\n")
             do {
-                let light = try await process(transcript: spoken, mode: .light, dictionary: dictionary, templates: [], engine: engine)
+                let light = try await ProcessingCheckpoint.$reportsProgress.withValue(false) {
+                    try await process(transcript: spoken, mode: .light, dictionary: dictionary, templates: [], engine: engine)
+                }
                 texts.append(light.cleanedMarkdown)
                 lightResults.append(light)
                 anyModelOutput = true
@@ -1467,8 +1485,9 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     private func processLongLight(parts: [TranscriptPart], transcript: String, dictionary: [DictionaryEntry], engine: StageTwoEngine) async throws -> LLMProcessingResult {
         var results: [LLMProcessingResult] = []
         var texts: [String] = []
-        for part in parts {
+        for (index, part) in parts.enumerated() {
             try Task.checkCancellation()
+            ProcessingCheckpoint.report(step: Self.cleanupStep, done: index, total: parts.count)
             do {
                 let result = try await processLight(transcript: part.text, dictionary: dictionary, engine: engine)
                 results.append(result)

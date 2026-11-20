@@ -263,5 +263,6 @@ final class WatchSessionAssemblyTests: XCTestCase {
         XCTAssertEqual(asr.receivedAudioURLs.map(\.lastPathComponent), ["\(last.uuidString).m4a"], "Only the piece left is transcribed")
         XCTAssertEqual(done.transcriptSegments.map(\.start), [0.5, 4.5])
         XCTAssertFalse(FileManager.default.fileExists(atPath: saved.fileURL.path), "The checkpoint goes once the note is ready")
+        XCTAssertNil(pipeline.progress(for: sessionId), "Nothing left to show once the note is ready")
     }
 }

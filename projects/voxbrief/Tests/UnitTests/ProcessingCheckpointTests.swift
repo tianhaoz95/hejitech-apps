@@ -104,4 +104,59 @@ final class ProcessingCheckpointTests: XCTestCase {
         let second = try await engine.generate("s", "u", 10)
         XCTAssertEqual([first, second], ["1", "2"])
     }
+
+    // MARK: - Progress
+
+    private final class Reports: @unchecked Sendable {
+        private let lock = NSLock()
+        private var items: [ChunkProgress] = []
+        func add(_ p: ChunkProgress) { lock.withLock { items.append(p) } }
+        var all: [ChunkProgress] { lock.withLock { items } }
+    }
+
+    func testALongMemoReportsItsPartsAndTheLastOneIsSaved() async throws {
+        let service = LLMCopywriterService()
+        let transcript = (1...4).map { part in
+            (1...60).map { "Part \(part) sentence \($0) says something worth keeping." }.joined(separator: " ")
+        }.joined(separator: " ")
+        let engine = LLMCopywriterService.StageTwoEngine(label: "Lite") { _, _, _ in
+            #"{"cleanedText": "Cleaned.", "title": "Memo", "summary": "A memo.", "tags": []}"#
+        }
+        let checkpoint = ProcessingCheckpoint(noteId: UUID(), directory: directory)
+        let reports = Reports()
+        checkpoint.onProgress = { reports.add($0) }
+
+        _ = try await ProcessingCheckpoint.$current.withValue(checkpoint) {
+            try await service.process(transcript: transcript, mode: .light, dictionary: [], templates: [], engine: engine)
+        }
+
+        let parts = checkpoint.answerCount
+        XCTAssertGreaterThan(parts, 1)
+        XCTAssertEqual(reports.all, (0..<parts).map { ChunkProgress(step: "Cleaning up", done: $0, total: parts) })
+        XCTAssertEqual(ProcessingCheckpoint(noteId: checkpoint.noteId, directory: directory).progress, reports.all.last, "Kept for the next launch")
+    }
+
+    func testAConversationsFallbackDoesNotReplaceItsCount() async throws {
+        let service = LLMCopywriterService()
+        // Three ~400-word turns: two conversation parts, each redone as a light cleanup by Lite.
+        let said = Array(repeating: "we went over the plan for the week and what each of us does next", count: 27).joined(separator: " ")
+        let transcript = (1...3).map { "Speaker \($0 % 2 + 1): \(said)" }.joined(separator: "\n\n")
+        let engine = LLMCopywriterService.StageTwoEngine(label: "Lite", writesReports: false) { _, _, _ in
+            #"{"cleanedText": "Cleaned.", "title": "Plan", "summary": "A plan.", "tags": []}"#
+        }
+        let checkpoint = ProcessingCheckpoint(noteId: UUID(), directory: directory)
+        let reports = Reports()
+        checkpoint.onProgress = { reports.add($0) }
+
+        _ = try await ProcessingCheckpoint.$current.withValue(checkpoint) {
+            try await service.process(transcript: transcript, mode: .conversation, dictionary: [], templates: [], engine: engine)
+        }
+
+        XCTAssertEqual(reports.all, [ChunkProgress(step: "Cleaning up", done: 0, total: 2), ChunkProgress(step: "Cleaning up", done: 1, total: 2)])
+    }
+
+    func testFraction() {
+        XCTAssertEqual(ChunkProgress(step: "x", done: 4, total: 10).fraction, 0.4)
+        XCTAssertNil(ChunkProgress(step: "x", done: 0, total: 0).fraction)
+    }
 }

@@ -1492,12 +1492,19 @@ public struct NoteDetailView: View {
                 state: llmStepState
             )
 
+            if let progress = viewModel.chunkProgress {
+                ChunkProgressCard(progress: progress, isRunning: viewModel.isProgressLive)
+                    .padding(.top, 12)
+            }
+
             if !viewModel.note.processingTimings.isEmpty {
                 timingsCard
                     .padding(.top, 12)
             }
 
-            if viewModel.isReprocessing {
+            if viewModel.chunkProgress != nil {
+                EmptyView()
+            } else if viewModel.isReprocessing {
                 liveProgressBanner
             } else {
                 Button {
@@ -1852,5 +1859,69 @@ private struct TranscriptFlowLayout: Layout {
         }
         if !current.indices.isEmpty { rows.append(current) }
         return rows
+    }
+}
+
+// MARK: - Chunk progress (Pipeline tab)
+
+/// The step a note is on and how many of its pieces or parts are done, as a bar. A note whose
+/// run was interrupted shows where it stopped; it continues from there when the app is open.
+struct ChunkProgressCard: View {
+    let progress: ChunkProgress
+    let isRunning: Bool
+
+    private var unit: String {
+        progress.step == NoteProcessingPipeline.transcribeStep ? "piece" : "part"
+    }
+
+    private var countText: String? {
+        guard progress.total > 1 else { return nil }
+        let current = min(progress.done + (isRunning ? 1 : 0), progress.total)
+        return isRunning
+            ? "\(unit.capitalized) \(current) of \(progress.total)"
+            : "\(progress.done) of \(progress.total) \(unit)s done"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: isRunning ? "gearshape.2.fill" : "pause.circle.fill")
+                    .foregroundStyle(isRunning ? Color.accentColor : .orange)
+                    .symbolEffect(.pulse, options: .repeating, isActive: isRunning)
+                Text(progress.step)
+                    .font(.subheadline.weight(.semibold))
+                Spacer(minLength: 0)
+                if let countText {
+                    Text(countText)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
+                }
+            }
+            if let fraction = progress.fraction, progress.total > 1 {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.appTertiaryFill)
+                        Capsule()
+                            .fill(isRunning ? Color.accentColor : .orange)
+                            .frame(width: max(6, geometry.size.width * fraction))
+                    }
+                }
+                .frame(height: 6)
+                .animation(.easeInOut, value: fraction)
+                .accessibilityValue("\(Int(fraction * 100)) percent")
+            } else if isRunning {
+                ProgressView()
+                    .progressViewStyle(.linear)
+            }
+            if !isRunning {
+                Text("Paused. Finished pieces and parts are saved; it continues from here when Voxbrief is open.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background((isRunning ? Color.accentColor : Color.orange).opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }

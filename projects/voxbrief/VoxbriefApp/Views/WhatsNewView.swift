@@ -121,6 +121,12 @@ public struct WhatsNewView: View {
                         "The transcript is saved before the cleanup starts",
                         "Works after closing the app, a restart or a crash"
                     ]
+                ),
+                WhatsNewItem(
+                    icon: "chart.bar.xaxis",
+                    tint: .orange,
+                    title: "See How Far Along a Note Is",
+                    description: "The Pipeline tab shows a progress bar while a note is processed: which step it's on and how many pieces or parts are done, like \"Cleaning up, part 4 of 10\". A note that was interrupted shows where it paused."
                 )
             ],
             improvementsAndFixes: [

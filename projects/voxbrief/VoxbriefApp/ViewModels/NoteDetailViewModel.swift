@@ -6,6 +6,11 @@ public final class NoteDetailViewModel: ObservableObject {
     @Published public var note: VoiceNote
     @Published public var selectedTab: DetailTab = .lightCleanup
     @Published public var isReprocessing: Bool = false
+    /// Where this note's processing has got, in pieces or parts (the Pipeline tab's bar); kept
+    /// from an interrupted run until it resumes.
+    @Published public private(set) var chunkProgress: ChunkProgress?
+    /// Whether `chunkProgress` is moving now (false: saved by a run that was interrupted).
+    @Published public private(set) var isProgressLive = false
     @Published public var isEditing: Bool = false
     @Published public var editedTitle: String = ""
     @Published public var editedCleanedNote: String = ""
@@ -65,6 +70,17 @@ public final class NoteDetailViewModel: ObservableObject {
                 if let updated = allNotes.first(where: { $0.id == self.note.id }) {
                     self.note = updated
                 }
+                self.chunkProgress = self.pipeline.progress(for: self.note.id)
+            }
+            .store(in: &cancellables)
+
+        chunkProgress = pipeline.progress(for: note.id)
+        pipeline.$chunkProgress
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.chunkProgress = self.pipeline.progress(for: self.note.id)
+                self.isProgressLive = self.pipeline.chunkProgress[self.note.id] != nil
             }
             .store(in: &cancellables)
     }

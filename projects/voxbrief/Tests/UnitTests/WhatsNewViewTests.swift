@@ -14,7 +14,7 @@ final class WhatsNewViewTests: XCTestCase {
 
     func testCurrentReleaseContent() {
         let current = WhatsNewView.releases.first
-        XCTAssertEqual(current?.features.count, 1)
+        XCTAssertEqual(current?.features.count, 2)
         XCTAssertEqual(current?.improvementsAndFixes.count, 1)
         XCTAssertEqual(current?.improvementsAndFixes.filter { $0.kind == .improvement }.count, 1)
 

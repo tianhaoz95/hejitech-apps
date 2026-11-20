@@ -11,10 +11,32 @@ import Foundation
 /// conversation reports, turn batches, the brief's parts) skips its finished parts without
 /// knowing about this. A call cut off mid-answer saved nothing and runs again. A user's Re-run
 /// starts fresh (the pipeline deletes the note's checkpoint first).
+/// How far the step a note is on has got, in its own pieces or parts ("Cleaning up", part 4 of
+/// 10), for the Pipeline tab's progress bar. `total` 0: the step can't count its parts (one
+/// recording transcribed whole).
+public struct ChunkProgress: Codable, Equatable, Sendable {
+    public var step: String
+    public var done: Int
+    public var total: Int
+
+    public init(step: String, done: Int, total: Int) {
+        self.step = step
+        self.done = done
+        self.total = total
+    }
+
+    public var fraction: Double? {
+        total > 0 ? min(1, Double(done) / Double(total)) : nil
+    }
+}
+
 final class ProcessingCheckpoint: @unchecked Sendable {
     /// The checkpoint of the note being processed in this task, read by
     /// `LLMCopywriterService.StageTwoEngine`. Nil outside the pipeline (tests, a Re-run).
     @TaskLocal static var current: ProcessingCheckpoint?
+    /// False inside a step's own fallback (a conversation part redone as a light cleanup), so
+    /// its inner parts don't replace the step's count.
+    @TaskLocal static var reportsProgress = true
 
     struct PieceTranscript: Codable, Equatable {
         /// Empty for a piece with no speech in it.
@@ -26,12 +48,15 @@ final class ProcessingCheckpoint: @unchecked Sendable {
     private struct Stored: Codable {
         var pieces: [String: PieceTranscript] = [:]
         var answers: [String: String] = [:]
+        var progress: ChunkProgress?
     }
 
     let noteId: UUID
     let fileURL: URL
     private let lock = NSLock()
     private var stored: Stored
+    /// Told every progress update (the pipeline publishes it for the note's view).
+    var onProgress: (@Sendable (ChunkProgress) -> Void)?
 
     init(noteId: UUID, directory: URL) {
         self.noteId = noteId
@@ -56,6 +81,28 @@ final class ProcessingCheckpoint: @unchecked Sendable {
             stored.pieces[name] = transcript
             save()
         }
+    }
+
+    // MARK: Progress
+
+    /// The last progress saved, so a note interrupted at part 4 of 10 shows that until it resumes.
+    var progress: ChunkProgress? {
+        lock.withLock { stored.progress }
+    }
+
+    func report(_ progress: ChunkProgress) {
+        lock.withLock {
+            guard stored.progress != progress else { return }
+            stored.progress = progress
+            save()
+        }
+        onProgress?(progress)
+    }
+
+    /// Reports for the note being processed in this task, if any.
+    static func report(step: String, done: Int, total: Int) {
+        guard reportsProgress, let current else { return }
+        current.report(ChunkProgress(step: step, done: done, total: total))
     }
 
     // MARK: Model answers

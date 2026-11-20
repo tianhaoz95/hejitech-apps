@@ -32,6 +32,11 @@ public final class NoteProcessingPipeline: ObservableObject {
     /// Holds the live, progressive transcript for any notes actively undergoing Stage 1 ASR transcription.
     /// Cleared once processing completes or fails.
     @Published public private(set) var streamingTranscripts: [UUID: String] = [:]
+    /// The step each note being processed is on, counted in its pieces or parts, for the
+    /// Pipeline tab (see `progress(for:)`).
+    @Published public private(set) var chunkProgress: [UUID: ChunkProgress] = [:]
+    /// Notes whose progress is being published (a late update after a run ends is dropped).
+    private var progressNoteIds: Set<UUID> = []
 
     /// Notes currently mid-pipeline. Guards against double-processing the same note when a
     /// retry, a pull-to-refresh, and the original sync-triggered run could otherwise overlap.
@@ -119,10 +124,11 @@ public final class NoteProcessingPipeline: ObservableObject {
         var transcribedNote: VoiceNote?
         // What this note's processing has finished, kept until it's ready or failed so a run
         // that's interrupted resumes from there.
-        let checkpoint = ProcessingCheckpoint(noteId: note.id, directory: checkpointDirectory)
+        let checkpoint = makeCheckpoint(for: note.id)
         inFlightNoteIds.insert(note.id)
         activeProcessingCount += 1
         defer {
+            endProgress(for: note.id)
             inFlightNoteIds.remove(note.id)
             briefSkippedNoteIds.remove(note.id)
             activeProcessingCount -= 1
@@ -161,6 +167,7 @@ public final class NoteProcessingPipeline: ObservableObject {
                     checkpoint: checkpoint
                 )
             } else {
+                checkpoint.report(ChunkProgress(step: Self.transcribeStep, done: 0, total: 0))
                 (asrTranscript, timingSegments) = try await asrService.transcribeAudioWithTimings(
                     at: audioURL,
                     vocabulary: dictionaryEntries.map(\.term),
@@ -189,6 +196,9 @@ public final class NoteProcessingPipeline: ObservableObject {
                     rawTranscript: rawTranscript
                 )
             ]
+            if !briefSkippedNoteIds.contains(note.id) {
+                checkpoint.report(ChunkProgress(step: Self.speakersStep, done: 0, total: 0))
+            }
             if !briefSkippedNoteIds.contains(note.id),
                let speakerTiming = await detectSpeakers(on: &transcribed, audioURL: audioURL) {
                 transcribed.processingTimings.append(speakerTiming)
@@ -263,7 +273,8 @@ public final class NoteProcessingPipeline: ObservableObject {
         var texts: [String] = []
         var timings: [TranscriptTimingSegment] = []
         var offset: TimeInterval = 0
-        for piece in pieces {
+        for (index, piece) in pieces.enumerated() {
+            checkpoint?.report(ChunkProgress(step: Self.transcribeStep, done: index, total: pieces.count))
             // A piece transcribed by an interrupted run isn't transcribed again.
             if let saved = checkpoint?.piece(piece.fileName) {
                 if !saved.transcript.isEmpty {
@@ -475,6 +486,7 @@ public final class NoteProcessingPipeline: ObservableObject {
                 ? rawTurns.map { "Speaker \($0.speaker + 1): \(DictionaryCorrector.apply(to: $0.text, entries: dictionary))" }.joined(separator: "\n\n")
                 : transcript
             let start = ContinuousClock.now
+            ProcessingCheckpoint.report(step: LLMCopywriterService.cleanupStep, done: 0, total: 1)
             let light = try await llmService.processTranscript(input, mode: conversation ? .conversation : .light, dictionary: dictionary, templates: [])
             timings.append(ProcessingTiming(name: "Clean up", seconds: Self.seconds(since: start)))
             note.title = light.title
@@ -487,6 +499,7 @@ public final class NoteProcessingPipeline: ObservableObject {
             // own. When it can't run, the light cleanup's stay.
             if !briefSkippedNoteIds.contains(note.id) {
                 let briefStart = ContinuousClock.now
+                ProcessingCheckpoint.report(step: LLMCopywriterService.briefStep, done: 0, total: 1)
                 do {
                     if let brief = try await llmService.writeBrief(cleanedText: light.cleanedMarkdown) {
                         if light.explicitTitle == nil { note.title = brief.title }
@@ -506,6 +519,7 @@ public final class NoteProcessingPipeline: ObservableObject {
             // the turns are tidied (tokens, notes and fillers removed) and still shown.
             if conversation {
                 let turnsStart = ContinuousClock.now
+                ProcessingCheckpoint.report(step: LLMCopywriterService.turnsStep, done: 0, total: 1)
                 var texts = rawTurns.map { TranscriptText.paragraphed(TranscriptText.removingFillerSounds($0.text)) }
                 do {
                     let cleaned = try await llmService.cleanUpTurns(
@@ -546,6 +560,7 @@ public final class NoteProcessingPipeline: ObservableObject {
         }
 
         do {
+            ProcessingCheckpoint.report(step: LLMCopywriterService.structureStep, done: 0, total: 1)
             let full = try await llmService.processTranscript(transcript, mode: .full, dictionary: dictionary, templates: templates)
             // A template never renames a note, and keeps a summary written in its own step.
             if !keepsSummary { note.summary = full.summary }
@@ -631,15 +646,48 @@ public final class NoteProcessingPipeline: ObservableObject {
         repository.save(note)
     }
 
+    static let transcribeStep = "Transcribing"
+    static let speakersStep = "Finding speakers"
+
+    /// The note's checkpoint, publishing its progress while the note is processed.
+    private func makeCheckpoint(for noteId: UUID) -> ProcessingCheckpoint {
+        let checkpoint = ProcessingCheckpoint(noteId: noteId, directory: checkpointDirectory)
+        progressNoteIds.insert(noteId)
+        if let saved = checkpoint.progress { chunkProgress[noteId] = saved }
+        checkpoint.onProgress = { [weak self] progress in
+            Task { @MainActor [weak self] in
+                guard let self, self.progressNoteIds.contains(noteId) else { return }
+                self.chunkProgress[noteId] = progress
+            }
+        }
+        return checkpoint
+    }
+
+    private func endProgress(for noteId: UUID) {
+        progressNoteIds.remove(noteId)
+        chunkProgress.removeValue(forKey: noteId)
+    }
+
+    /// Where a note's processing has got: live while it runs, else what an interrupted run
+    /// saved (so the Pipeline tab shows part 4 of 10 until the note resumes). Nil when there's
+    /// nothing to show.
+    public func progress(for noteId: UUID) -> ChunkProgress? {
+        if let live = chunkProgress[noteId] { return live }
+        guard let note = repository.note(withId: noteId), note.status.isProcessing else { return nil }
+        return ProcessingCheckpoint(noteId: noteId, directory: checkpointDirectory).progress
+    }
+
     /// `reprocessStage2` with the note's own format, marking the note failed (content kept) on
     /// error -- or leaving it pending when the app is in the background (see `isAppInBackground`).
     /// `resuming` (an interrupted note being finished) reuses what its last run saved in the
-    /// note's checkpoint; anything else (Re-run, append, merge) starts fresh.
+    /// note's checkpoint; anything else (Re-run, append, merge) starts a fresh one, so it too
+    /// resumes if interrupted.
     private func reprocessStage2MarkingFailure(for noteId: UUID, resuming: Bool = false) async {
-        let checkpoint = ProcessingCheckpoint(noteId: noteId, directory: checkpointDirectory)
-        if !resuming { checkpoint.remove() }
+        if !resuming { ProcessingCheckpoint(noteId: noteId, directory: checkpointDirectory).remove() }
+        let checkpoint = makeCheckpoint(for: noteId)
+        defer { endProgress(for: noteId) }
         do {
-            try await reprocessStage2(for: noteId, checkpoint: resuming ? checkpoint : nil)
+            try await reprocessStage2(for: noteId, checkpoint: checkpoint)
             checkpoint.remove()
         } catch {
             if Self.isAppInBackground() {
