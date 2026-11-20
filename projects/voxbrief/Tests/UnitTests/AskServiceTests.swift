@@ -66,14 +66,23 @@ final class AskServiceTests: XCTestCase {
     private final class Script: @unchecked Sendable {
         private let lock = NSLock()
         private var calls: [(messages: [AskMessage], tools: Int, prefill: String)] = []
+        private var checked: [String] = []
+        func recordCheck(_ question: String) { lock.withLock { checked.append(question) } }
+        /// The messages asked "small talk or notes?", in order.
+        var checks: [String] { lock.withLock { checked } }
         func record(_ messages: [AskMessage], _ tools: Int, _ prefill: String) {
             lock.withLock { calls.append((messages, tools, prefill)) }
         }
         var all: [(messages: [AskMessage], tools: Int, prefill: String)] { lock.withLock { calls } }
     }
 
-    private func engine(startsWithSearch: Bool = false, script: Script, reply: @escaping @Sendable ([AskMessage], String) -> String) -> AskEngine {
+    /// A scripted model. The small-talk check is answered by `label` (not recorded in `all`).
+    private func engine(startsWithSearch: Bool = false, label: String = "NOTES", script: Script, reply: @escaping @Sendable ([AskMessage], String) -> String) -> AskEngine {
         AskEngine(label: "Test", startsWithSearch: startsWithSearch) { messages, tools, prefill, _ in
+            if messages.first?.content == AskConversation.chatCheckPrompt {
+                script.recordCheck(messages.last?.content ?? "")
+                return label
+            }
             script.record(messages, tools.count, prefill)
             return prefill + reply(messages, prefill)
         }
@@ -101,7 +110,7 @@ final class AskServiceTests: XCTestCase {
         let calls = script.all
         XCTAssertEqual(calls.count, 2)
         XCTAssertEqual(calls[0].tools, 1, "The model is offered the search tool")
-        XCTAssertTrue(calls[1].messages.last?.content.contains("[1] Note \"Q4 roadmap sync\"") == true, "It reads numbered passages")
+        XCTAssertTrue(calls[1].messages.last?.content.contains("Passage 1, from \"Q4 roadmap sync\"") == true, "It reads numbered passages")
         XCTAssertEqual(ask.history.map(\.role), [.user, .assistant, .tool, .assistant])
     }
 
@@ -115,6 +124,40 @@ final class AskServiceTests: XCTestCase {
         XCTAssertEqual(script.all.first?.prefill, AskConversation.searchCallPrefill)
         XCTAssertEqual(answer.searches.map(\.query), ["drill"], "The model wrote the query itself")
         XCTAssertEqual(answer.citations.map(\.noteTitle), ["Errands"])
+    }
+
+    func testASmallModelRepliesToSmallTalkWithoutSearching() async throws {
+        let ask = conversation([note("Errands", transcript: "Pharmacy pickup and return the drill.")])
+        let script = Script()
+        let model = engine(startsWithSearch: true, label: "CHAT", script: script) { _, _ in "Hi! What would you like to find?" }
+        let answer = try await ask.ask("Hi", engine: model)
+        XCTAssertEqual(answer.text, "Hi! What would you like to find?")
+        XCTAssertTrue(answer.searches.isEmpty)
+        XCTAssertEqual(script.checks, ["Hi"])
+        XCTAssertEqual(script.all.map(\.prefill), [""], "No search was started")
+        XCTAssertEqual(script.all.first?.tools, 0)
+        XCTAssertEqual(script.all.first?.messages.first?.content, AskConversation.chatPrompt)
+        XCTAssertEqual(ask.history.map(\.role), [.user, .assistant])
+    }
+
+    func testAnUnclearCheckStillSearches() async throws {
+        let ask = conversation([note("Errands", transcript: "Pharmacy pickup and return the drill.")])
+        let script = Script()
+        let model = engine(startsWithSearch: true, label: "I think it is", script: script) { _, prefill in
+            prefill.isEmpty ? "Return the drill [1]." : "{\"query\": \"drill\"}}\n</tool_call>"
+        }
+        let answer = try await ask.ask("drill?", engine: model)
+        XCTAssertEqual(answer.searches.map(\.query), ["drill"])
+    }
+
+    func testAGreetingAnsweredWithoutSearchingStands() async throws {
+        let ask = conversation([note("Errands", transcript: "Pharmacy pickup and return the drill.")])
+        let script = Script()
+        let model = engine(label: "CHAT", script: script) { _, _ in "Hello! Ask me about your notes." }
+        let answer = try await ask.ask("Hello", engine: model)
+        XCTAssertEqual(answer.text, "Hello! Ask me about your notes.")
+        XCTAssertEqual(script.all.count, 1, "Not redone as a search")
+        XCTAssertEqual(script.checks, ["Hello"])
     }
 
     func testAnAnswerBeforeAnySearchIsRetriedAsASearch() async throws {
@@ -184,7 +227,7 @@ final class AskServiceTests: XCTestCase {
         XCTAssertTrue(latest.contains("Errands"))
         // Keyword searches only rank recent notes first (a model often adds a limit the question
         // didn't ask for), so an older match is still found.
-        XCTAssertTrue(ask.search(query: "drill", daysBack: 1).hasPrefix("[2] Note \"Errands\""))
+        XCTAssertTrue(ask.search(query: "drill", daysBack: 1).hasPrefix("Passage 2, from \"Errands\""))
     }
 
     func testAnEmptyQueryReturnsTheLatestNotes() {
@@ -199,7 +242,7 @@ final class AskServiceTests: XCTestCase {
         let ask = conversation([note("Errands", transcript: "Return the drill."), note("Books", transcript: "Dana recommended Piranesi.")])
         _ = ask.search(query: "drill", daysBack: nil)
         let second = ask.search(query: "Piranesi", daysBack: nil)
-        XCTAssertTrue(second.hasPrefix("[\(ask.passages.count)]"))
+        XCTAssertTrue(second.hasPrefix("Passage \(ask.passages.count), from"))
         XCTAssertEqual(ask.search(query: "volcano", daysBack: nil), "No notes matched \"volcano\".")
     }
 

@@ -65,3 +65,13 @@ question's tool calls and answer.
 First run (2026-11-20): Lite 12 of 13 correct, searching on every question; Flash 13 of 13,
 searching on every new question and answering 3 follow-ups from the conversation. Without the
 first-reply rule Lite searched 0 of 10 times, and Flash 0 of 10 with a softer prompt.
+
+Small talk and copying (2026-11-20, 1.34.1): on a phone Lite answered "Hi" by searching "money"
+(the example word in the query description) and pasting the passage with its
+`Note "…" (date, transcript):` heading. The eval now uses the app's exact passage format (it had
+used a shorter one, which hid the pasting), fails any answer that copies a heading, runs the
+app's small-talk check ("CHAT or NOTES?", Lite on every message, Flash only when it answered
+before searching) and starts with a "Hi … Thanks!" conversation. `ASK_FORMAT=A|B|C` compares
+passage formats: A, the old `[n] Note "Title" (date, transcript): text`, Lite 6 of 16; B (the
+source after the text) 8 of 16; C, `Passage n, from "Title" (date):` with the text on its own
+line, Lite 13 of 16 and Flash 16 of 16, which the app uses.

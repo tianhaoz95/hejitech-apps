@@ -151,6 +151,12 @@ final class AskConversation {
         var turn: [AskMessage] = [AskMessage(role: .user, content: question)]
         var searched = false
 
+        // Lite would otherwise search for "Hi" too (every first reply is a search): small talk
+        // gets a short reply instead.
+        if engine.startsWithSearch, try await Self.isSmallTalk(question, engine: engine) {
+            return try await chat(turn, engine: engine)
+        }
+
         for step in 0..<Self.maxSteps {
             let last = step == Self.maxSteps - 1
             let messages = [AskMessage(role: .system, content: Self.systemPrompt(now: now()))]
@@ -159,6 +165,10 @@ final class AskConversation {
             var prefill = !searched && step == 0 && engine.startsWithSearch ? Self.searchCallPrefill : ""
             var reply = try await engine.respond(messages, last ? [] : [Self.searchToolSpec], prefill, 400)
             if !last, !searched, passages.isEmpty, Self.toolCall(in: reply) == nil, prefill.isEmpty {
+                // An answer to small talk stands; any other answer before a search is redone as one.
+                if try await Self.isSmallTalk(question, engine: engine) {
+                    return keep(finish(reply, engine: engine.label), turn: turn)
+                }
                 prefill = Self.searchCallPrefill
                 reply = try await engine.respond(messages, [Self.searchToolSpec], prefill, 400)
             }
@@ -176,6 +186,20 @@ final class AskConversation {
         }
         // Only searches, no answer.
         let answer = finish("", engine: engine.label)
+        history += turn + [AskMessage(role: .assistant, content: answer.text)]
+        return answer
+    }
+
+    /// A reply to small talk: the conversation's questions and answers (no searches) and no tools.
+    private func chat(_ turn: [AskMessage], engine: AskEngine) async throws -> AskAnswer {
+        let said = history.filter { $0.role == .user || ($0.role == .assistant && Self.toolCall(in: $0.content) == nil) }
+        let reply = try await engine.respond(
+            [AskMessage(role: .system, content: Self.chatPrompt)] + said + turn, [], "", 200
+        )
+        return keep(finish(reply, engine: engine.label), turn: turn)
+    }
+
+    private func keep(_ answer: AskAnswer, turn: [AskMessage]) -> AskAnswer {
         history += turn + [AskMessage(role: .assistant, content: answer.text)]
         return answer
     }
@@ -253,7 +277,8 @@ final class AskConversation {
     // MARK: - The search tool
 
     static let searchToolDescription = "Search the user's voice notes by keywords. Returns numbered passages, each with its note's title and date. An empty query returns the most recent notes."
-    static let queryDescription = "Keywords to look for, with a few synonyms (for \"money\": budget, cost, price)."
+    /// No example words here: Lite copied the old example ("money") as its query for "Hi".
+    static let queryDescription = "Words from the question to look for, plus a few synonyms."
     static let daysDescription = "Only when the question names a time (\"this week\": 7, \"yesterday\": 1). Leave it out otherwise."
 
     static let searchToolSpec: [String: any Sendable] = [
@@ -324,15 +349,12 @@ final class AskConversation {
         return result
     }
 
+    /// "Passage 3, from "Title" (Nov 18, 2026):" and the text on its own line. Lite pasted the
+    /// earlier one-line `[3] Note "Title" (date, transcript): text` into its answers (6 of 16
+    /// right in the eval, 13 of 16 with this).
     static func render(_ passage: NoteSearchIndex.Passage, number: Int) -> String {
         let date = passage.noteDate.formatted(date: .abbreviated, time: .omitted)
-        let section: String
-        switch passage.kind {
-        case .overview: section = "summary"
-        case .section(let title): section = title
-        case .transcript: section = "transcript"
-        }
-        return "[\(number)] Note \"\(passage.noteTitle)\" (\(date), \(section)): \(passage.text)"
+        return "Passage \(number), from \"\(passage.noteTitle)\" (\(date)):\n\(passage.text)"
     }
 
     // MARK: - The answer
@@ -345,9 +367,46 @@ final class AskConversation {
         must be a search_notes call; answer only after you've read its results, and search again \
         with other words if they don't answer it. Then answer in one to four sentences, speaking \
         to the user as "you", with specifics (names, dates, amounts) from the passages, and cite \
-        the passages you used like [2]. If the passages don't answer it, say you couldn't find it \
-        in the notes.
+        the passages you used like [2]. Answer in your own words: never copy a passage or its \
+        "Note ... :" heading. If the passages don't answer it, say you couldn't find it in the notes.
         """
+    }
+
+    /// Asks the model whether a message is small talk (a greeting, thanks, a question about the
+    /// assistant) rather than about the notes. Lite labels it wrong when only told the rules (13
+    /// of 25), right with examples (20 of 25, and never "CHAT" for a question about notes).
+    static let chatCheckPrompt = """
+    Label the message CHAT or NOTES. CHAT: greetings, thanks, small talk, questions about the \
+    assistant. NOTES: asks about the user's own recordings, plans, people, tasks, numbers or topics.
+    Examples:
+    hey there -> CHAT
+    thanks a lot -> CHAT
+    what are you? -> CHAT
+    when is the team offsite? -> NOTES
+    what did Alex say about pricing -> NOTES
+    groceries -> NOTES
+    Reply with the label only.
+    """
+
+    /// The reply to small talk, without the notes or tools.
+    static let chatPrompt = """
+    You are Voxbrief's assistant: you find things in the user's own voice notes and answer \
+    questions about them. Reply to this message in one or two short, friendly sentences. \
+    Don't make up anything about their notes.
+    """
+
+    /// Whether the model calls the message small talk. Anything but a clear "CHAT" counts as a
+    /// question about the notes, so an unsure answer still searches.
+    static func isSmallTalk(_ question: String, engine: AskEngine) async throws -> Bool {
+        let reply = try await engine.respond(
+            [AskMessage(role: .system, content: chatCheckPrompt), AskMessage(role: .user, content: question)],
+            [], "", 4
+        )
+        return reply
+            .replacing(/<think>[\s\S]*?<\/think>/, with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+            .hasPrefix("CHAT")
     }
 
     /// The model's final reply as the answer: thinking and stray tool tags removed, "[n]"
@@ -398,7 +457,7 @@ struct SearchNotesTool: Tool {
 
     @Generable
     struct Arguments {
-        @Guide(description: "Keywords to look for, with a few synonyms (for \"money\": budget, cost, price).")
+        @Guide(description: "Words from the question to look for, plus a few synonyms.")
         var query: String
         @Guide(description: "Only when the question names a time (\"this week\": 7, \"yesterday\": 1). Leave it out otherwise.")
         var daysBack: Int?
