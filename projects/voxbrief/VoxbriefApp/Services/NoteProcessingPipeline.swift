@@ -51,7 +51,7 @@ public final class NoteProcessingPipeline: ObservableObject {
     /// Notes currently mid-pipeline. Guards against double-processing the same note when a
     /// retry, a pull-to-refresh, and the original sync-triggered run could otherwise overlap.
     private var inFlightNoteIds: Set<UUID> = []
-    /// Dictation captures (the keyboard, the Mac's hotkey) that skip the brief and speaker
+    /// Dictation captures (the Mac's hotkey) that skip the brief and speaker
     /// detection: they're pasted as soon as the cleanup is done, so neither is worth the wait.
     private var briefSkippedNoteIds: Set<UUID> = []
 

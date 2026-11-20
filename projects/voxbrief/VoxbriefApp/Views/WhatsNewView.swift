@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.34.1"
+    public static let currentVersion = "1.34.2"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,21 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.34.2",
+            date: "November 2026",
+            tagline: "One Less Keyboard",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "keyboard",
+                    tint: .gray,
+                    title: "The Voxbrief Keyboard Is Gone",
+                    description: "The Voxbrief keyboard has been removed. To capture a thought, use the Action Button, Control Center, a widget or your watch. If you added the keyboard, iOS removes it with this update.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.34.1",
             date: "November 2026",
@@ -1987,20 +2002,22 @@ public struct WhatsNewView: View {
                             }
                             .padding(.top, 4)
 
-                            // MARK: - New Features (Shown Up Front)
-                            VStack(alignment: .leading, spacing: 14) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "sparkles")
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(Color.accentColor)
-                                    Text("NEW FEATURES")
-                                        .font(.subheadline.weight(.bold))
-                                        .foregroundStyle(.secondary)
-                                }
-                                .padding(.bottom, 2)
+                            // MARK: - New Features (Shown Up Front; a release can have none)
+                            if !currentRelease.features.isEmpty {
+                                VStack(alignment: .leading, spacing: 14) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "sparkles")
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(Color.accentColor)
+                                        Text("NEW FEATURES")
+                                            .font(.subheadline.weight(.bold))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .padding(.bottom, 2)
 
-                                ForEach(currentRelease.features) { item in
-                                    itemRow(item)
+                                    ForEach(currentRelease.features) { item in
+                                        itemRow(item)
+                                    }
                                 }
                             }
 

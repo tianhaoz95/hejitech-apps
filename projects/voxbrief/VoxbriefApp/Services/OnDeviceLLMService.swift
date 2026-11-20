@@ -85,9 +85,9 @@ public enum OnDeviceModelSelection: String, CaseIterable, Identifiable, Sendable
 /// *before* touching any MLX API, rather than letting that abort happen.
 ///
 /// The same category of crash also happens on a real device if generation is attempted while
-/// the app is backgrounded: confirmed via a TestFlight crash report where a keyboard-triggered
+/// the app is backgrounded: confirmed via a TestFlight crash report where a
 /// recording's Stage 2 generation was still running when the user switched back to their
-/// previous app (exactly what the keyboard flow's "you can switch back now" messaging invites).
+/// previous app.
 /// iOS revokes/suspends foreground GPU access for a backgrounded app, and MLX's Metal command
 /// buffer for the in-flight generation later completes with an error; its completion handler
 /// (`mlx::core::gpu::check_error`) throws a C++ exception from deep inside an async Metal/

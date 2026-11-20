@@ -17,7 +17,7 @@ hero:
 
 features:
   - title: Capture in one tap
-    details: Watch complications, the Action Button, Control Center, a Live Activity or the keyboard extension start a recording instantly, even with no iPhone nearby.
+    details: Watch complications, the Action Button, Control Center, or a Live Activity start a recording instantly, even with no iPhone nearby.
   - title: On-device pipeline
     details: WhisperKit transcribes; Qwen3 through MLX Swift extracts the title, summary, requirements, conditions, action items and tags, rendered as Markdown. A rule-based transformer is the fallback.
   - title: No backend
@@ -29,7 +29,7 @@ features:
 ```mermaid
 flowchart LR
     W["Apple Watch\n(record .m4a)"] -- "WatchConnectivity" --> P
-    K["iPhone: Action Button,\nControl Center, keyboard"] --> P
+    K["iPhone: Action Button,\nControl Center"] --> P
     subgraph P["iPhone / Mac"]
         A["WhisperKit ASR"] --> L["Qwen3 (MLX)\nstructured JSON"] --> M["Markdown note"]
     end
@@ -38,7 +38,7 @@ flowchart LR
 ## Working on it
 
 Everything is in [`projects/voxbrief`](https://github.com/tianhaoz95/hejitech-apps/tree/main/projects/voxbrief):
-an XcodeGen project (`project.yml`) with the iOS app, watch app, widgets, keyboard extension and
+an XcodeGen project (`project.yml`) with the iOS app, watch app, widgets, Share extension and
 the Mac app. Its `CLAUDE.md` has the commands, architecture and the rules that matter (MLX never
 runs in the Simulator; every change goes into the in-app What's New).
 

@@ -1,7 +1,7 @@
 import Foundation
 
 /// What the Daily Brief widget shows, written by the app into the shared App Group
-/// (`KeyboardHandoff.appGroupID`) whenever notes change and read by `VoxbriefWidgets`. The notes
+/// (`AppGroup.id`) whenever notes change and read by `VoxbriefWidgets`. The notes
 /// store itself stays private to the app; the widget only ever sees this summary.
 public struct DailyBriefSnapshot: Codable, Equatable, Sendable {
     public struct Item: Codable, Equatable, Sendable {
@@ -39,7 +39,7 @@ public struct DailyBriefSnapshot: Codable, Equatable, Sendable {
     private static let storageKey = "daily_brief_snapshot"
 
     private static var defaults: UserDefaults? {
-        UserDefaults(suiteName: KeyboardHandoff.appGroupID)
+        UserDefaults(suiteName: AppGroup.id)
     }
 
     /// The last snapshot the app wrote, or nil before the app has run with the widget installed.

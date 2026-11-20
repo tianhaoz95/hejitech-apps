@@ -1,7 +1,7 @@
 name: Voxbrief → TestFlight
 
 # Publishing a GitHub Release tagged voxbrief-v<version> (scripts/cut_release.sh voxbrief) uploads
-# that version (iPhone app with the watch app, widgets and keyboard embedded) to TestFlight; other
+# that version (iPhone app with the watch app, widgets and Share extension embedded) to TestFlight; other
 # projects' releases are skipped. Also from the Actions tab (then the version is whatever
 # projects/voxbrief/project.yml says). Deliberately not on push: it uploads a real build.
 on:

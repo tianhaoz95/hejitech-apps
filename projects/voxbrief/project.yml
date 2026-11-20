@@ -92,8 +92,8 @@ targets:
       # NOTE: XcodeGen owns/regenerates this file from `properties` below on every `xcodegen
       # generate` -- like `info.properties` for Info.plist -- so don't hand-edit the checked-in
       # .entitlements file directly, it'll be silently overwritten (this is exactly how the App
-      # Group entry here first went missing). Shared with VoxbriefKeyboard's entitlements below so
-      # the two can pass a finished recording's text via Shared/Services/KeyboardHandoff.swift.
+      # Group entry here first went missing). Shared with the widgets and Share extension
+      # (Shared/Services/AppGroup.swift).
       properties:
         com.apple.security.application-groups:
           - group.com.jacksonzhou666.voxbrief
@@ -106,8 +106,6 @@ targets:
       - target: VoxbriefWidgets
         embed: true
       - target: VoxbriefWatch
-        embed: true
-      - target: VoxbriefKeyboard
         embed: true
       - target: VoxbriefShare
         embed: true
@@ -169,50 +167,13 @@ targets:
       - framework: WatchConnectivity.framework
       - framework: WatchKit.framework
 
-  VoxbriefKeyboard:
-    type: app-extension
-    platform: iOS
-    deploymentTarget: "17.0"
-    sources:
-      # Foundation-only files this extension needs directly (not the whole VoxbriefApp glob,
-      # which pulls in UIKit-app-lifecycle/AVAudioSession/WhisperKit/MLX code this lightweight
-      # extension has no business linking -- see CLAUDE.md on why ASR/LLM stay in the main app).
-      - path: Shared
-        excludes:
-          - "Models/VoiceNoteActivityAttributes.swift"
-          - "Views/CaptureWaveformView.swift"
-      - path: VoxbriefKeyboard
-    entitlements:
-      path: VoxbriefKeyboard/Keyboard.entitlements
-      # See the matching NOTE on Voxbrief's entitlements above -- XcodeGen owns this file's
-      # content from `properties` here, not from hand-editing the checked-in file.
-      properties:
-        com.apple.security.application-groups:
-          - group.com.jacksonzhou666.voxbrief
-    info:
-      path: VoxbriefKeyboard/Info.plist
-      properties:
-        NSExtension:
-          NSExtensionPointIdentifier: com.apple.keyboard-service
-          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
-          NSExtensionAttributes:
-            IsASCIICapable: true
-            PrimaryLanguage: en-US
-            RequestsOpenAccess: true
-        CFBundleDisplayName: "Voxbrief Keyboard"
-        CFBundleShortVersionString: "$(MARKETING_VERSION)"
-        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
-    settings:
-      PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.app.keyboard
-      TARGETED_DEVICE_FAMILY: "1,2"
-
   VoxbriefShare:
     type: app-extension
     platform: iOS
     deploymentTarget: "17.0"
     sources:
       # Only copies shared files into the App Group; the app imports them (SharedImportInbox).
-      - path: Shared/Services/KeyboardHandoff.swift
+      - path: Shared/Services/AppGroup.swift
       - path: Shared/Services/SharedImportInbox.swift
       - path: VoxbriefShare
     entitlements:
@@ -249,7 +210,7 @@ targets:
       - path: VoxbriefApp/Intents/ControlLaunchIntent.swift
       # The Daily Brief widget reads the snapshot the app writes to the App Group.
       - path: Shared/Models/DailyBriefSnapshot.swift
-      - path: Shared/Services/KeyboardHandoff.swift
+      - path: Shared/Services/AppGroup.swift
       - path: VoxbriefWidgets
     entitlements:
       path: VoxbriefWidgets/Widgets.entitlements

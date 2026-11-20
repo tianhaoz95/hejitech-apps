@@ -24,9 +24,8 @@ public final class RecordingCoordinator: ObservableObject {
     /// branches into `NoteProcessingPipeline.appendRecording` instead of creating a standalone note.
     private var appendTargetNoteId: UUID?
 
-    /// Guards Stage 1/2 processing after `finishRecording()` returns -- the caller (e.g.
-    /// `KeyboardRecordSheet`) is expected to let the user switch away immediately rather than
-    /// stay foregrounded until the pipeline lands, so this needs the same protection
+    /// Guards Stage 1/2 processing after `finishRecording()` returns -- the user may switch away
+    /// immediately rather than stay foregrounded until the pipeline lands, so this needs the same protection
     /// `WatchSyncService` uses for its own background-triggered processing.
     private var activeBackgroundTaskId: UIBackgroundTaskIdentifier = .invalid
 
@@ -77,9 +76,8 @@ public final class RecordingCoordinator: ObservableObject {
     /// foregrounded/on-screen for the pipeline to actually finish.
     /// `templateChoice` is the format the new note gets on top of its light cleanup (`nil`: the
     /// Settings default); it doesn't apply when appending, which keeps the note's own format.
-    /// `forPaste`: a dictation capture, pasted as soon as it's cleaned up, so it skips the brief.
     @discardableResult
-    public func finishRecording(templateChoice: TemplateChoice? = nil, forPaste: Bool = false) -> VoiceNote? {
+    public func finishRecording(templateChoice: TemplateChoice? = nil) -> VoiceNote? {
         guard let result = recordingService.stopRecording() else { return nil }
         let audioFileName = "\(result.noteId.uuidString).\(AudioConstants.fileExtension)"
 
@@ -136,7 +134,6 @@ public final class RecordingCoordinator: ObservableObject {
         note.templateChoice = templateChoice ?? self.templateChoice ?? NoteProcessingPipeline.defaultTemplateChoice
         self.templateChoice = nil
         repository.save(note)
-        if forPaste { pipeline.skipBrief(for: note.id) }
         Task {
             defer { self.endActiveBackgroundTask() }
             // The live transcript, when it kept up, replaces Stage 1 for this note.

@@ -14,7 +14,7 @@ public enum SharedImportInbox {
 
     public static var directory: URL? {
         FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: KeyboardHandoff.appGroupID)?
+            .containerURL(forSecurityApplicationGroupIdentifier: AppGroup.id)?
             .appendingPathComponent(folderName, isDirectory: true)
     }
 

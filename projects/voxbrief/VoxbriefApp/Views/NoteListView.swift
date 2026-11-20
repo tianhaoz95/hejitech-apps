@@ -10,7 +10,6 @@ public struct NoteListView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedDetailNote: VoiceNote? = nil
     @State private var selectedDetailTab: NoteDetailViewModel.DetailTab?
-    @State private var keyboardRecordTrigger: KeyboardRecordTrigger?
     @State private var isSearchExpanded: Bool = false
     @State private var showingWhatsNew: Bool = WhatsNewView.shouldShowAutomatically
     @State private var isSelectMode: Bool = false
@@ -103,9 +102,6 @@ public struct NoteListView: View {
             }
             .sheet(isPresented: $viewModel.showingRecordSheet) {
                 QuickRecordSheet {}
-            }
-            .sheet(item: $keyboardRecordTrigger) { _ in
-                KeyboardRecordSheet()
             }
             .sheet(isPresented: $viewModel.showingSyncStatus) {
                 WatchSyncStatusView(syncService: syncService)
@@ -227,7 +223,6 @@ public struct NoteListView: View {
         viewModel.showingRecordSheet = false
         viewModel.showingSyncStatus = false
         viewModel.showingSettings = false
-        keyboardRecordTrigger = nil
         selectedDetailNote = nil
 
         switch screen {
@@ -252,8 +247,6 @@ public struct NoteListView: View {
             }
         case "record":
             viewModel.showingRecordSheet = true
-        case "keyboardRecord":
-            keyboardRecordTrigger = KeyboardRecordTrigger()
         case "brief":
             collapseSearch()
             showingBrief = true
@@ -850,10 +843,6 @@ public struct NoteListView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-}
-
-private struct KeyboardRecordTrigger: Identifiable {
-    let id = UUID()
 }
 
 /// Liquid Glass where available, matching the toolbar it replaced; material before iOS 26.

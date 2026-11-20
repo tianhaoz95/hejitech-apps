@@ -3,7 +3,6 @@ import UniformTypeIdentifiers
 
 public struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.scenePhase) private var scenePhase
     @AppStorage("use_local_llm_endpoint") private var useLocalLLM: Bool = false
     @AppStorage("local_llm_endpoint_url") private var localLLMUrl: String = "http://127.0.0.1:11434/api/generate"
     @AppStorage(LLMCopywriterService.localLLMModelNameKey) private var localLLMModel: String = LLMCopywriterService.defaultLocalLLMModelName
@@ -27,7 +26,6 @@ public struct SettingsView: View {
     @StateObject private var watchSync = WatchSyncService.shared
     @State private var showingSimulationAlert = false
     @State private var simulatedTitle = ""
-    @State private var keyboardStatus: KeyboardSetupStatus = .notAdded
     @State private var storageUsage: AudioFileManager.StorageUsage = AudioFileManager.shared.calculateStorageUsage()
     @State private var showingPurgeAlert = false
     @State private var purgeResult = ""
@@ -183,32 +181,6 @@ public struct SettingsView: View {
                         }
                     } label: {
                         Label("Test Capture Trigger", systemImage: "play.circle")
-                    }
-                }
-
-                Section(
-                    header: Text("Voxbrief Keyboard"),
-                    footer: Text(keyboardStatusFooter)
-                ) {
-                    Button {
-                        if let url = URL(string: UIApplication.openSettingsURLString) {
-                            UIApplication.shared.open(url)
-                        }
-                    } label: {
-                        HStack(spacing: 12) {
-                            keyboardStatusIcon
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(keyboardStatusTitle)
-                                    .foregroundStyle(.primary)
-                                Text("Tap to open Settings")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
                     }
                 }
 
@@ -524,57 +496,8 @@ public struct SettingsView: View {
             }
             .trackFeedbackScreen("Settings")
             .onAppear {
-                keyboardStatus = KeyboardSetupStatus.current
                 storageUsage = AudioFileManager.shared.calculateStorageUsage()
             }
-            .onChange(of: scenePhase) { _, newPhase in
-                // Refreshes after the user goes to Settings.app to add the keyboard / grant Full
-                // Access and comes back -- this sheet stays alive the whole time (backgrounding
-                // the app doesn't dismiss it), so re-checking only on .onAppear would miss that.
-                if newPhase == .active {
-                    keyboardStatus = KeyboardSetupStatus.current
-                }
-            }
-        }
-    }
-
-    // MARK: - Voxbrief Keyboard Status
-
-    private var keyboardStatusTitle: String {
-        switch keyboardStatus {
-        case .notAdded: return "Add Voxbrief as a Keyboard"
-        case .addedFullAccessUnconfirmed: return "Confirm Full Access"
-        case .ready: return "Voxbrief Keyboard Ready"
-        }
-    }
-
-    private var keyboardStatusFooter: String {
-        switch keyboardStatus {
-        case .notAdded:
-            return "Settings > General > Keyboard > Keyboards > Add New Keyboard > Voxbrief."
-        case .addedFullAccessUnconfirmed:
-            // Deliberately doesn't say "you haven't turned this on" -- there's no API for this
-            // app to check that directly (see KeyboardSetupStatus), so this state also covers
-            // the case where Full Access genuinely is already on but Voxbrief hasn't detected it
-            // yet, which only happens the next time the keyboard itself runs.
-            return "Voxbrief is added as a keyboard, but this app can't yet confirm Full Access is on -- that's a separate switch from just adding the keyboard. If you haven't already, turn it on in Settings > General > Keyboard > Keyboards > Voxbrief > Allow Full Access. Either way, switch to the Voxbrief keyboard in any text field once (tap the globe key) to update this status."
-        case .ready:
-            return "Voxbrief is added as a keyboard with Full Access granted. Switch to it from any text field's globe key, then tap Record."
-        }
-    }
-
-    @ViewBuilder
-    private var keyboardStatusIcon: some View {
-        switch keyboardStatus {
-        case .notAdded:
-            Image(systemName: "keyboard")
-                .foregroundStyle(.red)
-        case .addedFullAccessUnconfirmed:
-            Image(systemName: "questionmark.circle.fill")
-                .foregroundStyle(.orange)
-        case .ready:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
         }
     }
 
