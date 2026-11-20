@@ -47,3 +47,21 @@ python3 -m venv .venv && .venv/bin/pip install mlx-lm   # Apple silicon (Metal)
 ```
 
 Numbers on Metal and on CI's CPU differ slightly for the same seed; compare like with like.
+
+## Ask Voxbrief tool use (`ask_eval.py`)
+
+Ask Voxbrief is a chat in which the model searches the user's notes with one tool,
+`search_notes`, and answers from the passages it read (`AskConversation` in
+`VoxbriefApp/Services/AskService.swift`). `ask_eval.py` runs that loop on the real model with
+Qwen3's native tool format, the same prompt and tool text (keep them in step) and the app's two
+rules: Lite's first reply to each question is started as a search call (it never calls tools
+by itself), and an answer given before any search is redone as one. Ten short conversations
+over seven stand-in notes, follow-ups included, scored by expected words; it prints each
+question's tool calls and answer.
+
+    python ask_eval.py ../../VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit   # Lite
+    python ask_eval.py mlx-community/Qwen3-4B-4bit                           # Flash
+
+First run (2026-11-20): Lite 12 of 13 correct, searching on every question; Flash 13 of 13,
+searching on every new question and answering 3 follow-ups from the conversation. Without the
+first-reply rule Lite searched 0 of 10 times, and Flash 0 of 10 with a softer prompt.

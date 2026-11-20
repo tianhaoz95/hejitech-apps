@@ -1,13 +1,15 @@
 import SwiftUI
 
-/// Ask Voxbrief: questions about the user's own notes, answered on the device by the same model
-/// that writes the notes (see `AskService`). The conversation lives only as long as the sheet.
+/// Ask Voxbrief: a chat about the user's own notes with the on-device model, which searches
+/// them itself (see `AskConversation`). The conversation lives only as long as the sheet.
 struct AskView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var repository: NoteRepository
     @State private var exchanges: [Exchange] = []
     @State private var draft = ""
     @State private var currentTask: Task<Void, Never>?
+    /// The chat: the model sees the earlier questions and answers, so follow-ups work.
+    @State private var conversation = AskConversation()
     @FocusState private var isInputFocused: Bool
 
     private struct Exchange: Identifiable {
@@ -64,7 +66,7 @@ struct AskView: View {
         VStack(alignment: .leading, spacing: 14) {
             Label("Ask about your notes", systemImage: "sparkles")
                 .font(.headline)
-            Text("Answers come from your own notes, written on this iPhone by the same model that writes them. Nothing leaves the device.")
+            Text("The on-device model searches your notes and answers from what it finds. Ask follow-ups; it remembers the conversation until you close it. Nothing leaves the device.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 8) {
@@ -98,11 +100,8 @@ struct AskView: View {
             }
 
             if let answer = exchange.answer {
-                if !answer.keywords.isEmpty {
-                    Label("Searched \(answer.notesSearched) notes for \(answer.keywords.prefix(6).joined(separator: ", "))", systemImage: "magnifyingglass")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                ForEach(Array(answer.searches.enumerated()), id: \.offset) { _, search in
+                    searchLine(search)
                 }
                 answerCard(answer)
             } else if let error = exchange.error {
@@ -114,7 +113,7 @@ struct AskView: View {
             } else {
                 HStack(spacing: 8) {
                     ProgressView()
-                    Text("Reading your notes…")
+                    Text("Searching your notes…")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -128,15 +127,6 @@ struct AskView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(Self.rendered(answer.text))
                 .textSelection(.enabled)
-                .foregroundStyle(answer.notFound ? .secondary : .primary)
-
-            if !answer.points.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(answer.points) { point in
-                        pointRow(point, quoted: answer.kind == .excerpts)
-                    }
-                }
-            }
 
             if !answer.citations.isEmpty {
                 FlowLayout(spacing: 6) {
@@ -147,7 +137,7 @@ struct AskView: View {
             }
 
             Divider()
-            Label(footer(for: answer), systemImage: answer.engine == nil ? "doc.text.magnifyingglass" : "cpu")
+            Label("Answered on this iPhone · \(CleanupEngineLabel.displayName(for: answer.engine))", systemImage: "cpu")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -155,39 +145,15 @@ struct AskView: View {
         .background(Color.appSecondaryBackground, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
-    private func pointRow(_ point: AskAnswer.Point, quoted: Bool) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Image(systemName: quoted ? "quote.opening" : "circle.fill")
-                .font(.system(size: quoted ? 11 : 5))
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(point.text)
-                    .font(.subheadline)
-                    .italic(quoted)
-                    .textSelection(.enabled)
-                HStack(spacing: 6) {
-                    citationChip(point.citation)
-                    if let detail = point.detail {
-                        Text(detail)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(detail == "High" ? .red : .secondary)
-                    }
-                }
-            }
-        }
-    }
-
-    private func footer(for answer: AskAnswer) -> String {
-        switch answer.kind {
-        case .answered:
-            return "Answered on this iPhone · \(CleanupEngineLabel.displayName(for: answer.engine ?? ""))"
-        case .listed:
-            return "Listed from your notes"
-        case .excerpts:
-            return "Quoted from your notes"
-        case .notFound:
-            return answer.notesSearched > 0 ? "Searched \(answer.notesSearched) note\(answer.notesSearched == 1 ? "" : "s")" : "Searched your notes"
-        }
+    /// One line per search the model ran for the answer: what it looked for and what it found.
+    private func searchLine(_ search: AskAnswer.Search) -> some View {
+        let query = search.query.isEmpty ? "your latest notes" : "\u{201C}\(search.query)\u{201D}"
+        let days = search.daysBack.map { " from the last \($0) day\($0 == 1 ? "" : "s")" } ?? ""
+        let found = search.resultCount == 0 ? "nothing found" : "\(search.resultCount) passage\(search.resultCount == 1 ? "" : "s")"
+        return Label("Searched \(query)\(days) · \(found)", systemImage: "magnifyingglass")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(2)
     }
 
     /// The answer with inline Markdown (bold, italics) applied; plain text if it doesn't parse.
@@ -256,7 +222,7 @@ struct AskView: View {
         exchanges.append(exchange)
         currentTask = Task {
             do {
-                let answer = try await AskService.shared.ask(question)
+                let answer = try await conversation.ask(question)
                 update(exchange.id) { $0.answer = answer }
             } catch is CancellationError {
                 // Sheet closed.

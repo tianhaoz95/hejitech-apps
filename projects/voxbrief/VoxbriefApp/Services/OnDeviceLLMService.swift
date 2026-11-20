@@ -435,10 +435,41 @@ public final class OnDeviceLLMService: ObservableObject {
         }
         return try await Self.runGeneration(
             container: container,
-            systemPrompt: systemPrompt,
-            userPrompt: userPrompt,
+            chat: [.system(systemPrompt), .user(userPrompt)],
             maxTokens: maxTokens
         )
+    }
+
+    /// Continues a chat that can call tools (Ask Voxbrief): `messages` as (role, content) with
+    /// roles system, user, assistant and tool, `tools` as JSON-schema function specs, which
+    /// Qwen3's chat template lists in the system turn. Returns the raw reply, tool calls
+    /// included (`<tool_call>{json}</tool_call>`). `prefill` is written as the start of the reply
+    /// and is part of what's returned.
+    public func chat(
+        messages: [(role: String, content: String)],
+        tools: [[String: any Sendable]],
+        prefill: String = "",
+        maxTokens: Int = 400
+    ) async throws -> String {
+        guard Self.isSupportedOnThisDevice else {
+            throw OnDeviceLLMError.unavailableInSimulator
+        }
+        guard Self.isSafeToUseMLXRightNow else {
+            throw OnDeviceLLMError.unavailableWhileBackgrounded
+        }
+        let container = try await bestAvailableContainer()
+        guard Self.isSafeToUseMLXRightNow else {
+            throw OnDeviceLLMError.unavailableWhileBackgrounded
+        }
+        let chat = messages.map { Chat.Message(role: Chat.Message.Role(rawValue: $0.role) ?? .user, content: $0.content) }
+        let reply = try await Self.runGeneration(
+            container: container,
+            chat: chat,
+            tools: tools.isEmpty ? nil : tools.map { $0 as [String: Any] },
+            prefill: prefill,
+            maxTokens: maxTokens
+        )
+        return prefill + reply
     }
 
     private func bestAvailableContainer() async throws -> ModelContainer {
@@ -522,11 +553,11 @@ public final class OnDeviceLLMService: ObservableObject {
 
     private static func runGeneration(
         container: ModelContainer,
-        systemPrompt: String,
-        userPrompt: String,
+        chat: [Chat.Message],
+        tools: [[String: Any]]? = nil,
+        prefill: String = "",
         maxTokens: Int
     ) async throws -> String {
-        let chat: [Chat.Message] = [.system(systemPrompt), .user(userPrompt)]
         // Qwen3's chat template defaults to "thinking mode" -- it opens its own <think>...</think>
         // block and reasons before answering unless told not to -- which silently ate the entire
         // 24-token budget of the template-classification call before it ever reached the actual
@@ -535,11 +566,18 @@ public final class OnDeviceLLMService: ObservableObject {
         // directly by Qwen3's chat template (see LLMUserInputProcessor forwarding
         // `additionalContext` to `tokenizer.applyChatTemplate`), not a generation parameter --
         // there's no equivalent on `GenerateParameters`.
-        let userInput = UserInput(chat: chat, additionalContext: ["enable_thinking": false])
+        let userInput = UserInput(chat: chat, tools: tools, additionalContext: ["enable_thinking": false])
         let parameters = GenerateParameters(maxTokens: maxTokens, temperature: 0.3)
 
         return try await container.perform { (context: ModelContext) -> String in
-            let lmInput = try await context.processor.prepare(input: userInput)
+            var lmInput = try await context.processor.prepare(input: userInput)
+            if !prefill.isEmpty {
+                // The start of the reply, already written: appended after the template's
+                // assistant opening, so the model continues it.
+                let prompt = lmInput.text.tokens.reshaped(-1)
+                let extra = MLXArray(context.tokenizer.encode(text: prefill, addSpecialTokens: false)).asType(prompt.dtype)
+                lmInput = LMInput(tokens: concatenated([prompt, extra]))
+            }
             // The synchronous generate, not the streaming one: it asks before every token whether
             // to go on, and it waits for the GPU (`Stream().synchronize()`) before it returns, so
             // once this returns nothing of ours is left on the GPU. The streaming one runs on a

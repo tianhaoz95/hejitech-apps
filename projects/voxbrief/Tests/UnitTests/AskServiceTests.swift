@@ -1,8 +1,8 @@
 import XCTest
 @testable import Voxbrief
 
-/// Ask Voxbrief: keyword index ranking and the keywords -> search -> answer flow, with a
-/// scripted engine standing in for the on-device model.
+/// Ask Voxbrief: keyword index ranking and the agent loop (the model searching with
+/// `search_notes`, then answering), with a scripted engine standing in for the model.
 @MainActor
 final class AskServiceTests: XCTestCase {
 
@@ -60,153 +60,170 @@ final class AskServiceTests: XCTestCase {
         XCTAssertEqual(hits.first?.passage.noteTitle, "New idea")
     }
 
-    func testAskFlowCitesThePassagesTheModelUsed() async throws {
-        let notes = [
-            note("Q4 roadmap sync", transcript: "I promised Priya the offline spec by Wednesday."),
-            note("Errands", transcript: "Pharmacy pickup and return the drill."),
-        ]
-        let engine = LLMCopywriterService.StageTwoEngine(label: "Test") { system, _, _ in
-            if system.contains("search keywords") {
-                return ##"{"keywords": ["Priya", "promise", "spec"], "days": null}"##
-            }
-            return ##"{"answer": "You promised Priya the offline spec by Wednesday.", "sources": [1], "found": true}"##
+
+    // MARK: - The agent loop
+
+    private final class Script: @unchecked Sendable {
+        private let lock = NSLock()
+        private var calls: [(messages: [AskMessage], tools: Int, prefill: String)] = []
+        func record(_ messages: [AskMessage], _ tools: Int, _ prefill: String) {
+            lock.withLock { calls.append((messages, tools, prefill)) }
         }
-        let answer = try await AskService().ask("What did I promise Priya?", engine: engine, notes: notes, now: now)
+        var all: [(messages: [AskMessage], tools: Int, prefill: String)] { lock.withLock { calls } }
+    }
+
+    private func engine(startsWithSearch: Bool = false, script: Script, reply: @escaping @Sendable ([AskMessage], String) -> String) -> AskEngine {
+        AskEngine(label: "Test", startsWithSearch: startsWithSearch) { messages, tools, prefill, _ in
+            script.record(messages, tools.count, prefill)
+            return prefill + reply(messages, prefill)
+        }
+    }
+
+    private func conversation(_ notes: [VoiceNote]) -> AskConversation {
+        AskConversation(notes: { notes }, engines: { [] }, appleSessionAvailable: { false }, now: { [now] in now })
+    }
+
+    private let roadmap = "I promised Priya the offline spec by Wednesday."
+
+    func testTheModelSearchesThenAnswersCitingWhatItRead() async throws {
+        let ask = conversation([note("Q4 roadmap sync", transcript: roadmap), note("Errands", transcript: "Pharmacy pickup and return the drill.")])
+        let script = Script()
+        let model = engine(script: script) { messages, _ in
+            messages.last?.role == .tool
+                ? "You promised Priya the offline spec by Wednesday [1]."
+                : "<tool_call>\n{\"name\": \"search_notes\", \"arguments\": {\"query\": \"Priya promise\"}}\n</tool_call>"
+        }
+        let answer = try await ask.ask("What did I promise Priya?", engine: model)
+
         XCTAssertEqual(answer.text, "You promised Priya the offline spec by Wednesday.")
-        XCTAssertEqual(answer.citations.map(\.noteTitle), ["Q4 roadmap sync"])
-        XCTAssertEqual(answer.keywords, ["Priya", "promise", "spec"])
-        XCTAssertFalse(answer.notFound)
+        XCTAssertEqual(answer.searches.map(\.query), ["Priya promise"])
+        XCTAssertEqual(answer.citations.first?.noteTitle, "Q4 roadmap sync")
+        let calls = script.all
+        XCTAssertEqual(calls.count, 2)
+        XCTAssertEqual(calls[0].tools, 1, "The model is offered the search tool")
+        XCTAssertTrue(calls[1].messages.last?.content.contains("[1] Note \"Q4 roadmap sync\"") == true, "It reads numbered passages")
+        XCTAssertEqual(ask.history.map(\.role), [.user, .assistant, .tool, .assistant])
     }
 
-    func testNothingFoundSkipsTheAnswerCall() async throws {
-        let calls = Counter()
-        let engine = LLMCopywriterService.StageTwoEngine(label: "Test") { _, _, _ in
-            await calls.increment()
-            return ##"{"keywords": ["volcano"], "days": null}"##
+    func testASmallModelsFirstReplyIsStartedAsASearch() async throws {
+        let ask = conversation([note("Errands", transcript: "Pharmacy pickup and return the drill.")])
+        let script = Script()
+        let model = engine(startsWithSearch: true, script: script) { messages, prefill in
+            prefill.isEmpty ? "You need to return the drill [1]." : "{\"query\": \"drill\"}}\n</tool_call>"
         }
-        let answer = try await AskService().ask("Anything about volcanoes?", engine: engine, notes: [note("Errands", transcript: "milk and eggs")], now: now)
-        XCTAssertTrue(answer.notFound)
-        let count = await calls.value
-        XCTAssertEqual(count, 1)
+        let answer = try await ask.ask("What do I return?", engine: model)
+        XCTAssertEqual(script.all.first?.prefill, AskConversation.searchCallPrefill)
+        XCTAssertEqual(answer.searches.map(\.query), ["drill"], "The model wrote the query itself")
+        XCTAssertEqual(answer.citations.map(\.noteTitle), ["Errands"])
     }
 
-    func testUnparsableKeywordsFallBackToQuestionWords() {
-        XCTAssertNil(AskService.parseKeywords("sure! here are some keywords"))
-        XCTAssertEqual(AskService.contentWords("What did Dana recommend?"), ["Dana", "recommend"])
-    }
-
-    func testProseAnswerIsShownUncited() {
-        let parsed = AskService.parseAnswer("You told Priya Wednesday.")
-        XCTAssertEqual(parsed.answer, "You told Priya Wednesday.")
-        XCTAssertEqual(parsed.sources, [])
-    }
-
-    // MARK: - Answers built from the notes
-
-    func testOpenActionItemsAreListedWithoutTheModel() async throws {
-        var reno = note("Kitchen reno", transcript: "call the contractor")
-        reno.actionItems = ["Call the contractor", "Order tiles"]
-        reno.completedActionItems = ["Order tiles"]
-        reno.actionItemPriorities = ["Call the contractor": "high"]
-        let engine = LLMCopywriterService.StageTwoEngine(label: "Test") { _, _, _ in
-            XCTFail("Listing action items shouldn't call the model")
-            return ""
+    func testAnAnswerBeforeAnySearchIsRetriedAsASearch() async throws {
+        let ask = conversation([note("Errands", transcript: "Pharmacy pickup and return the drill.")])
+        let script = Script()
+        let model = engine(script: script) { messages, prefill in
+            if !prefill.isEmpty { return "{\"query\": \"drill return\"}}\n</tool_call>" }
+            return messages.last?.role == .tool ? "Return the drill [1]." : "Let me search your notes."
         }
-        let answer = try await AskService().ask("What are my open action items?", engine: engine, notes: [reno], now: now)
-        XCTAssertEqual(answer.kind, .listed)
-        XCTAssertEqual(answer.text, "You have 1 open action item, 1 of them high priority.")
-        XCTAssertEqual(answer.points.map(\.text), ["Call the contractor"])
-        XCTAssertEqual(answer.points.first?.detail, "High")
-        XCTAssertEqual(answer.points.first?.citation.noteTitle, "Kitchen reno")
-        XCTAssertNil(answer.engine)
+        let answer = try await ask.ask("What do I return?", engine: model)
+        XCTAssertEqual(script.all.map(\.prefill), ["", AskConversation.searchCallPrefill, ""])
+        XCTAssertEqual(answer.text, "Return the drill.")
     }
 
-    func testNotesFromYesterdayAreListed() {
-        let calendar = Calendar.current
-        let yesterdayNoon = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now))!.addingTimeInterval(12 * 3600)
-        var recent = note("Errands", transcript: "pharmacy pickup")
-        recent.createdAt = yesterdayNoon
-        recent.summary = "Pharmacy pickup and the drill."
-        var older = note("Old", transcript: "something", daysAgo: 5)
-        older.summary = "Old stuff."
-        let answer = AskService.directAnswer("What did I record yesterday?", notes: [recent, older], now: now)
-        XCTAssertEqual(answer?.kind, .listed)
-        XCTAssertEqual(answer?.text, "You recorded 1 note yesterday:")
-        XCTAssertEqual(answer?.points.map(\.citation.noteTitle), ["Errands"])
-        XCTAssertEqual(answer?.points.first?.text, "Pharmacy pickup and the drill.")
-    }
-
-    func testNoNotesInTheRangeSaysSo() {
-        let answer = AskService.directAnswer("What ideas did I have last week?", notes: [note("Old", transcript: "x", daysAgo: 20)], now: now)
-        XCTAssertEqual(answer?.kind, .listed)
-        XCTAssertTrue(answer?.text.hasPrefix("You didn't record any notes in the last 7 days.") == true)
-    }
-
-    func testTopicQuestionsGoToSearch() {
-        XCTAssertNil(AskService.directAnswer("What did I promise Priya last week?", notes: [], now: now))
-        XCTAssertNil(AskService.directAnswer("What did I want to do about the garden?", notes: [], now: now))
-    }
-
-    // MARK: - What the model sends back
-
-    func testPlaceholderAnswerFallsBackToQuotedPassages() async throws {
-        let notes = [note("Q4 roadmap sync", transcript: "I promised Priya the offline spec by Wednesday.")]
-        let engine = LLMCopywriterService.StageTwoEngine(label: "Test") { system, _, _ in
-            system.contains("search keywords")
-                ? ##"{"keywords": ["Priya", "spec"], "days": null}"##
-                : ##"{"answer": "found", "sources": [1], "found": true}"##
+    func testAFollowUpSeesTheEarlierTurnsAndCanAnswerWithoutSearching() async throws {
+        let ask = conversation([note("Q4 roadmap sync", transcript: roadmap)])
+        let script = Script()
+        let model = engine(script: script) { messages, _ in
+            if messages.last?.content == "By when?" { return "By Wednesday [1]." }
+            return messages.last?.role == .tool ? "The offline spec [1]." : "<tool_call>\n{\"name\": \"search_notes\", \"arguments\": {\"query\": \"Priya\"}}\n</tool_call>"
         }
-        let answer = try await AskService().ask("What did I promise Priya?", engine: engine, notes: notes, now: now)
-        XCTAssertEqual(answer.kind, .excerpts)
-        XCTAssertTrue(answer.points.first?.text.contains("Priya the offline spec") == true)
-        XCTAssertNotEqual(answer.text, "found")
+        _ = try await ask.ask("What did I promise Priya?", engine: model)
+        let followUp = try await ask.ask("By when?", engine: model)
+
+        XCTAssertEqual(followUp.text, "By Wednesday.")
+        XCTAssertTrue(followUp.searches.isEmpty)
+        XCTAssertEqual(followUp.citations.map(\.noteTitle), ["Q4 roadmap sync"], "[1] still means the first search's passage")
+        let lastCall = try XCTUnwrap(script.all.last)
+        XCTAssertTrue(lastCall.messages.contains { $0.content == "What did I promise Priya?" })
+        XCTAssertEqual(lastCall.messages.first?.role, .system)
     }
 
-    func testNotFoundWithUnrelatedPassagesSaysNothingWasFound() async throws {
-        let notes = [note("Errands", transcript: "Pharmacy pickup and return the drill.")]
-        let engine = LLMCopywriterService.StageTwoEngine(label: "Test") { system, _, _ in
-            system.contains("search keywords")
-                ? ##"{"keywords": ["dentist", "pharmacy"], "days": null}"##
-                : ##"{"answer": "No answer", "sources": [], "found": false}"##
+    func testSearchesPerQuestionAreCapped() async throws {
+        let ask = conversation([note("Errands", transcript: "milk and eggs")])
+        let script = Script()
+        let model = engine(script: script) { _, _ in
+            "<tool_call>\n{\"name\": \"search_notes\", \"arguments\": {\"query\": \"milk\"}}\n</tool_call>"
         }
-        let answer = try await AskService().ask("When is my dentist appointment?", engine: engine, notes: notes, now: now)
-        XCTAssertEqual(answer.kind, .notFound)
-        XCTAssertEqual(answer.text, "I couldn't find anything about that in your notes.")
+        let answer = try await ask.ask("Groceries?", engine: model)
+        XCTAssertEqual(script.all.count, AskConversation.maxSteps)
+        XCTAssertEqual(script.all.last?.tools, 0, "The last call has to answer")
+        XCTAssertEqual(answer.searches.count, AskConversation.maxSteps - 1)
+        XCTAssertTrue(answer.text.contains("couldn't put together an answer"))
     }
 
-    func testLenientJSON() {
-        let fenced = AskService.parseAnswer("```json\n{\"answer\": \"You said Wednesday.\", \"sources\": [\"1\"], \"found\": \"true\"}\n```")
-        XCTAssertEqual(fenced, AskService.ParsedAnswer(answer: "You said Wednesday.", sources: [1], notFound: false))
-
-        let stringFlag = AskService.parseAnswer(##"{"answer": "Nothing on that.", "sources": [], "found": "false"}"##)
-        XCTAssertTrue(stringFlag.notFound)
-
-        let list = AskService.parseAnswer(##"{"answer": ["Call Sam", "Book the room"], "sources": [2]}"##)
-        XCTAssertEqual(list.answer, "• Call Sam\n• Book the room")
-
-        let cutOff = AskService.parseAnswer(##"{"answer": "You promised Priya the spec by Wed"##)
-        XCTAssertEqual(cutOff.answer, "You promised Priya the spec by Wed")
+    func testOlderQuestionsKeepOnlyTheirQuestionAndAnswer() {
+        var history: [AskMessage] = []
+        for n in 1...3 {
+            history += [
+                AskMessage(role: .user, content: "Q\(n)"),
+                AskMessage(role: .assistant, content: "<tool_call>\n{}\n</tool_call>"),
+                AskMessage(role: .tool, content: "results \(n)"),
+                AskMessage(role: .assistant, content: "A\(n)"),
+            ]
+        }
+        let trimmed = AskConversation.trimmed(history)
+        XCTAssertEqual(trimmed.prefix(2).map(\.content), ["Q1", "A1"])
+        XCTAssertEqual(trimmed.count, 2 + 8)
     }
 
-    func testUnreadableJSONIsNeverShown() {
-        XCTAssertEqual(AskService.parseAnswer(##"{"sources": [1, "found": true"##).answer, "")
+    // MARK: - The search tool
+
+    func testATimeLimitWithNothingInItFallsBackToAllNotes() {
+        let ask = conversation([note("Errands", transcript: "Return the drill.", daysAgo: 30)])
+        let latest = ask.search(query: "", daysBack: 1)
+        XCTAssertTrue(latest.hasPrefix("Nothing in the last 1 day. Older notes:"))
+        XCTAssertTrue(latest.contains("Errands"))
+        // Keyword searches only rank recent notes first (a model often adds a limit the question
+        // didn't ask for), so an older match is still found.
+        XCTAssertTrue(ask.search(query: "drill", daysBack: 1).hasPrefix("[2] Note \"Errands\""))
+    }
+
+    func testAnEmptyQueryReturnsTheLatestNotes() {
+        let ask = conversation([note("Older", transcript: "a", daysAgo: 5), note("Newer", transcript: "b", daysAgo: 1)])
+        let result = ask.search(query: "", daysBack: nil)
+        let newer = try! XCTUnwrap(result.range(of: "Newer"))
+        let older = try! XCTUnwrap(result.range(of: "Older"))
+        XCTAssertLessThan(newer.lowerBound, older.lowerBound)
+    }
+
+    func testPassagesAreNumberedAcrossTheConversation() {
+        let ask = conversation([note("Errands", transcript: "Return the drill."), note("Books", transcript: "Dana recommended Piranesi.")])
+        _ = ask.search(query: "drill", daysBack: nil)
+        let second = ask.search(query: "Piranesi", daysBack: nil)
+        XCTAssertTrue(second.hasPrefix("[\(ask.passages.count)]"))
+        XCTAssertEqual(ask.search(query: "volcano", daysBack: nil), "No notes matched \"volcano\".")
+    }
+
+    func testToolCallsAreReadLeniently() {
+        XCTAssertEqual(
+            AskConversation.toolCall(in: "<tool_call>\n{\"name\": \"search_notes\", \"arguments\": {\"query\": \"budget\", \"days_back\": 0}}"),
+            AskConversation.ToolCall(query: "budget", daysBack: nil), "Cut off, and 0 days is no limit"
+        )
+        XCTAssertEqual(
+            AskConversation.toolCall(in: "<tool_call>{\"name\": \"search_notes\", \"arguments\": \"{\\\"query\\\": \\\"rent\\\", \\\"days\\\": \\\"7\\\"}\"}</tool_call>"),
+            AskConversation.ToolCall(query: "rent", daysBack: 7)
+        )
+        XCTAssertNil(AskConversation.toolCall(in: "You promised Priya the spec."))
     }
 
     func testInlineCitationsBecomeSources() {
-        let parsed = AskService.parseAnswer("You promised Priya the spec [1]. The room is booked (Source 2).")
-        XCTAssertEqual(parsed.answer, "You promised Priya the spec. The room is booked.")
-        XCTAssertEqual(parsed.sources, [1, 2])
+        let (body, sources) = AskConversation.strippingInlineCitations("Due Wednesday [1, 3]. Also (Source 2).")
+        XCTAssertEqual(body, "Due Wednesday. Also.")
+        XCTAssertEqual(sources, [1, 3, 2])
     }
 
-    func testPlaceholderDetection() {
-        for placeholder in ["found", "Found.", "No answer", "No answer provided", "true"] {
-            XCTAssertTrue(AskService.isUnusable(placeholder, question: "What did I promise?", hits: []), placeholder)
-        }
-        XCTAssertFalse(AskService.isUnusable("Wednesday.", question: "When is it due?", hits: []))
+    func testThinkingAndStrayToolTagsAreNotShown() {
+        let ask = conversation([])
+        let answer = ask.finish("<think>hmm</think>\nYou have nothing due.<tool_call>{\"name\"", engine: "Test")
+        XCTAssertEqual(answer.text, "You have nothing due.")
     }
-}
-
-private actor Counter {
-    private(set) var value = 0
-    func increment() { value += 1 }
 }

@@ -1,6 +1,10 @@
 import Foundation
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
 
-/// One answer from Ask Voxbrief.
+/// One answer from Ask Voxbrief: what the model said, the searches it ran to get there, and the
+/// passages it cited.
 struct AskAnswer: Sendable, Equatable {
     struct Citation: Sendable, Equatable, Identifiable {
         let noteId: UUID
@@ -9,38 +13,18 @@ struct AskAnswer: Sendable, Equatable {
         var id: String { "\(noteId)-\(startTime ?? -1)" }
     }
 
-    /// One listed line under the answer: an open action item, a note from the asked-about days,
-    /// or a quoted passage, each linking to its note.
-    struct Point: Sendable, Equatable, Identifiable {
-        let text: String
-        /// A priority or a date, shown as a small badge.
-        let detail: String?
-        let citation: Citation
-        var id: String { "\(citation.id)|\(text)" }
+    /// A `search_notes` call the model made for this answer.
+    struct Search: Sendable, Equatable {
+        let query: String
+        let daysBack: Int?
+        let resultCount: Int
     }
 
-    enum Kind: Sendable, Equatable {
-        /// The model's answer, citing the passages it used.
-        case answered
-        /// Built straight from the notes, no model call: open action items, or the notes
-        /// recorded in the asked-about days. Exact, and what Lite answers worst.
-        case listed
-        /// The model gave nothing usable; the passages that mention the question, quoted.
-        case excerpts
-        case notFound
-    }
-
-    let kind: Kind
     let text: String
-    let points: [Point]
     let citations: [Citation]
-    /// What the passages were found with, shown under the question.
-    let keywords: [String]
-    /// The engine label (`CleanupEngineLabel`) that wrote the answer; nil when no model did.
-    let engine: String?
-    let notesSearched: Int
-
-    var notFound: Bool { kind == .notFound }
+    let searches: [Search]
+    /// The engine label (`CleanupEngineLabel`) that answered.
+    let engine: String
 }
 
 enum AskError: LocalizedError {
@@ -54,427 +38,374 @@ enum AskError: LocalizedError {
     }
 }
 
-/// Ask Voxbrief: answers a question from the user's own notes, on the device, with the same
-/// engine that writes the notes (`LLMCopywriterService.onDeviceEngines`). Two short calls around
-/// a keyword search:
+/// A turn of an Ask conversation as an MLX model sees it (Qwen3's chat roles; a `tool` turn is
+/// a search's results).
+struct AskMessage: Sendable, Equatable {
+    enum Role: String, Sendable { case system, user, assistant, tool }
+    let role: Role
+    let content: String
+}
+
+/// A model that continues a chat with tools: given the conversation and the tool specs, it
+/// returns its raw reply (Qwen3 writes a tool call as `<tool_call>{json}</tool_call>`).
+/// `prefill` is the start of the reply, already written for it (it's part of the reply returned).
+struct AskEngine: Sendable {
+    let label: String
+    /// Small models that don't call tools by themselves (Lite: 0 of 10 questions in the
+    /// prototype) have each question's first reply started as a search call, which they then
+    /// write themselves (query and days).
+    var startsWithSearch = false
+    let respond: @Sendable (_ messages: [AskMessage], _ tools: [[String: any Sendable]], _ prefill: String, _ maxTokens: Int) async throws -> String
+}
+
+/// Ask Voxbrief: a chat about the user's own notes, answered by the on-device model, which
+/// finds what the notes say with one tool, `search_notes` (keyword search over the notes,
+/// `NoteSearchIndex`). The model decides what to search for, can search again, and answers
+/// from the passages it read, citing them as [n]. More tools (dates, to-dos) can be added as
+/// the models get better at using them.
 ///
-/// 1. The question becomes search keywords (with synonyms, since keyword search can't match
-///    "money" to "budget" by itself) and an optional look-back in days ("last week" -> 7).
-/// 2. `NoteSearchIndex` ranks passages; the best few, capped at `maxContextWords` so the prompt
-///    fits Apple Intelligence's 4,096-token context, are numbered and the model answers from them
-///    as JSON naming the passages it used. Our code turns those numbers into citations.
+/// One conversation per Ask sheet: follow-up questions see the earlier turns. Apple
+/// Intelligence runs it with FoundationModels' own tool calling (one session per
+/// conversation); Lite and Flash with Qwen3's native tool format through MLX.
 @MainActor
-final class AskService {
-    static let shared = AskService()
+final class AskConversation {
+    static let maxPassagesPerSearch = 6
+    static let maxResultWords = 900
+    /// Model calls per question: up to three searches and the answer.
+    static let maxSteps = 4
+    /// Earlier questions whose search results stay in the prompt (older ones keep only the
+    /// question and answer), so a long chat doesn't outgrow the context or slow down.
+    static let questionsWithResults = 2
 
-    /// ~2,100 tokens of passages: with the prompt and a 400-token answer, under 4,096.
-    static let maxContextWords = 1_500
-    static let maxPassages = 8
+    private let notes: @MainActor () -> [VoiceNote]
+    private let engines: () async -> [AskEngine]
+    private let appleSessionAvailable: () async -> Bool
+    private let now: () -> Date
 
-    private let repository: NoteRepository
-    private let copywriter: LLMCopywriterService
+    /// Every passage any search returned in this conversation, numbered from 1 in that order,
+    /// so a citation [n] means the same passage all conversation long.
+    private(set) var passages: [NoteSearchIndex.Passage] = []
+    /// The MLX conversation, without its system prompt.
+    private(set) var history: [AskMessage] = []
+    private var searchesThisQuestion: [AskAnswer.Search] = []
+    private var appleSession: AnyObject?
 
-    init(repository: NoteRepository = .shared, copywriter: LLMCopywriterService = .shared) {
-        self.repository = repository
-        self.copywriter = copywriter
+    init(
+        notes: (@MainActor () -> [VoiceNote])? = nil,
+        engines: (() async -> [AskEngine])? = nil,
+        appleSessionAvailable: (() async -> Bool)? = nil,
+        now: @escaping () -> Date = Date.init
+    ) {
+        self.notes = notes ?? { NoteRepository.shared.notes }
+        self.engines = engines ?? { await AskConversation.mlxEngines() }
+        self.appleSessionAvailable = appleSessionAvailable ?? { await OnDeviceLLMService.shared.isUsingAppleFoundationModel }
+        self.now = now
     }
 
-    func ask(_ question: String, now: Date = Date()) async throws -> AskAnswer {
-        if let direct = Self.directAnswer(question, notes: repository.notes, now: now) {
-            return direct
-        }
-        let engines = await copywriter.onDeviceEngines()
-        var lastError: Error = AskError.noEngine
-        for engine in engines {
+    func ask(_ question: String) async throws -> AskAnswer {
+        searchesThisQuestion = []
+        if await appleSessionAvailable() {
             do {
-                return try await ask(question, engine: engine, notes: repository.notes, now: now)
+                return try await askApple(question)
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
-                print("[AskService] \(engine.label) failed, trying the next engine: \(error)")
+                print("[Ask] Apple Intelligence failed, trying MLX: \(error)")
+            }
+        }
+        var lastError: Error = AskError.noEngine
+        for engine in await engines() {
+            do {
+                return try await ask(question, engine: engine)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                print("[Ask] \(engine.label) failed: \(error)")
                 lastError = error
             }
         }
         throw lastError
     }
 
-    /// The whole flow against one engine and a snapshot of notes. `internal` for tests, which
-    /// pass a scripted engine.
-    func ask(_ question: String, engine: LLMCopywriterService.StageTwoEngine, notes: [VoiceNote], now: Date) async throws -> AskAnswer {
-        if let direct = Self.directAnswer(question, notes: notes, now: now) {
-            return direct
-        }
-        let query = await keywords(for: question, engine: engine)
-        let index = NoteSearchIndex(notes: notes)
-        let since = query.days.map { now.addingTimeInterval(-Double($0) * 86_400) }
-        let hits = Self.trimmed(index.search(query.keywords + [question], since: since, limit: Self.maxPassages))
-        let notesSearched = Set(index.passages.map(\.noteId)).count
+    // MARK: - MLX (Qwen3 tool format)
 
-        func notFound() -> AskAnswer {
-            AskAnswer(
-                kind: .notFound, text: "I couldn't find anything about that in your notes.",
-                points: [], citations: [], keywords: query.keywords, engine: engine.label,
-                notesSearched: notesSearched
+    static func mlxEngines() async -> [AskEngine] {
+        let service = OnDeviceLLMService.shared
+        let large = await service.isUsingLargeModel
+        return [AskEngine(
+            label: CleanupEngineLabel.onDeviceLLM(model: await service.mlxModelDisplayName),
+            startsWithSearch: !large
+        ) { messages, tools, prefill, maxTokens in
+            try await service.chat(
+                messages: messages.map { ($0.role.rawValue, $0.content) },
+                tools: tools, prefill: prefill, maxTokens: maxTokens
             )
-        }
-        guard !hits.isEmpty else { return notFound() }
-
-        let raw = try await engine.generate(Self.answerSystemPrompt(now: now), Self.answerUserPrompt(question: question, hits: hits), 400)
-        let parsed = Self.parseAnswer(raw)
-
-        guard !parsed.notFound, !Self.isUnusable(parsed.answer, question: question, hits: hits) else {
-            // Lite often answers "No answer" (or just "found") when the passages do hold it, so
-            // the passages that mention the question's own words are quoted instead.
-            let points = Self.excerpts(for: question, hits: hits)
-            guard !points.isEmpty else { return notFound() }
-            return AskAnswer(
-                kind: .excerpts, text: "I couldn't put together an answer, but these parts of your notes mention it:",
-                points: points, citations: [], keywords: query.keywords, engine: nil,
-                notesSearched: notesSearched
-            )
-        }
-
-        let used = parsed.sources.compactMap { number in hits.indices.contains(number - 1) ? hits[number - 1] : nil }
-        var seen: Set<String> = []
-        let citations = (used.isEmpty ? Array(hits.prefix(1)) : used).compactMap { hit -> AskAnswer.Citation? in
-            let citation = Self.citation(for: hit.passage)
-            return seen.insert(citation.id).inserted ? citation : nil
-        }
-        return AskAnswer(
-            kind: .answered, text: parsed.answer, points: [], citations: citations,
-            keywords: query.keywords, engine: engine.label, notesSearched: notesSearched
-        )
+        }]
     }
 
-    private static func citation(for passage: NoteSearchIndex.Passage) -> AskAnswer.Citation {
-        AskAnswer.Citation(noteId: passage.noteId, noteTitle: passage.noteTitle, startTime: passage.startTime)
-    }
+    static let searchCallPrefill = "<tool_call>\n{\"name\": \"search_notes\", \"arguments\": "
 
-    // MARK: - Answers built from the notes
+    /// The whole loop against one engine. `internal` for tests, which pass a scripted engine.
+    func ask(_ question: String, engine: AskEngine) async throws -> AskAnswer {
+        searchesThisQuestion = []
+        var turn: [AskMessage] = [AskMessage(role: .user, content: question)]
+        var searched = false
 
-    /// The days a question asks about ("yesterday", "last week", "past 3 days").
-    struct TimeRange: Equatable {
-        let start: Date
-        let end: Date
-        /// Reads after "recorded": "yesterday", "in the last 7 days".
-        let label: String
-    }
-
-    static func timeRange(in question: String, now: Date, calendar: Calendar = .current) -> TimeRange? {
-        let text = question.lowercased()
-        let today = calendar.startOfDay(for: now)
-        if text.contains("today") {
-            return TimeRange(start: today, end: now, label: "today")
-        }
-        if text.contains("yesterday") {
-            return TimeRange(start: today.addingTimeInterval(-86_400), end: today, label: "yesterday")
-        }
-        if let match = text.firstMatch(of: /(?:last|past)\s+(\d{1,3})\s+days?/), let days = Int(match.1), days > 0 {
-            return TimeRange(start: now.addingTimeInterval(-Double(days) * 86_400), end: now, label: "in the last \(days) day\(days == 1 ? "" : "s")")
-        }
-        if text.contains(/(?:this|last|past)\s+week/) {
-            return TimeRange(start: now.addingTimeInterval(-7 * 86_400), end: now, label: "in the last 7 days")
-        }
-        if text.contains(/(?:this|last|past)\s+month/) {
-            return TimeRange(start: now.addingTimeInterval(-30 * 86_400), end: now, label: "in the last 30 days")
-        }
-        return nil
-    }
-
-    /// Words that only say "my notes" or "when", stemmed like `NoteSearchIndex.terms`. A question
-    /// made of nothing else asks for a listing, not a search.
-    static let listingWords: Set<String> = [
-        "record", "recorded", "say", "talk", "talked", "idea", "thought", "think", "thinking",
-        "mention", "mentioned", "capture", "captured", "today", "yesterday", "week", "month",
-        "last", "past", "day", "recent", "recently", "lately", "new", "latest", "summary",
-        "summarize", "recap", "happen", "happened", "discuss", "discussed", "cover", "covered",
-        "go", "went", "over", "make", "made", "list", "show", "everything", "anything",
-    ].reduce(into: Set<String>()) { $0.formUnion(NoteSearchIndex.terms(in: $1)) }
-
-    static let actionWords: Set<String> = [
-        "action", "item", "items", "todo", "todos", "task", "tasks", "open", "pending", "outstanding",
-        "left", "remaining", "high", "priority", "urgent", "important", "follow", "up", "due", "list",
-    ].reduce(into: Set<String>()) { $0.formUnion(NoteSearchIndex.terms(in: $1)) }
-
-    /// Open action items, or the notes from the asked-about days, answered from the notes
-    /// themselves. Nil for anything about a topic, which goes to search and the model.
-    static func directAnswer(_ question: String, notes: [VoiceNote], now: Date) -> AskAnswer? {
-        let lowered = question.lowercased()
-        let range = timeRange(in: question, now: now)
-        let terms = Set(NoteSearchIndex.terms(in: question))
-        let asksForActions = ["action item", "to-do", "todo", "to do", "task", "open item"].contains { lowered.contains($0) }
-        let visible = notes.filter { !$0.isArchived && !$0.isLocked && $0.status == .ready }
-
-        if asksForActions, terms.subtracting(actionWords).subtracting(listingWords).isEmpty {
-            var items = DailyBrief.build(notes: visible, since: .distantPast).openItems
-            if let range { items = items.filter { $0.noteDate >= range.start && $0.noteDate < range.end } }
-            let onlyHigh = ["high priority", "urgent", "important"].contains { lowered.contains($0) }
-            if onlyHigh { items = items.filter { $0.priority == "high" } }
-            let scope = range.map { " from notes recorded \($0.label)" } ?? ""
-            let kindLabel = onlyHigh ? "high-priority action item" : "open action item"
-            let text: String
-            if items.isEmpty {
-                text = "You have no \(kindLabel)s\(scope)."
-            } else {
-                let high = items.filter { $0.priority == "high" }.count
-                let highNote = !onlyHigh && high > 0 ? ", \(high) of them high priority" : ""
-                text = "You have \(items.count) \(kindLabel)\(items.count == 1 ? "" : "s")\(scope)\(highNote)."
+        for step in 0..<Self.maxSteps {
+            let last = step == Self.maxSteps - 1
+            let messages = [AskMessage(role: .system, content: Self.systemPrompt(now: now()))]
+                + Self.trimmed(history) + turn
+            // A model that answers before it has read anything is made to search first.
+            var prefill = !searched && step == 0 && engine.startsWithSearch ? Self.searchCallPrefill : ""
+            var reply = try await engine.respond(messages, last ? [] : [Self.searchToolSpec], prefill, 400)
+            if !last, !searched, passages.isEmpty, Self.toolCall(in: reply) == nil, prefill.isEmpty {
+                prefill = Self.searchCallPrefill
+                reply = try await engine.respond(messages, [Self.searchToolSpec], prefill, 400)
             }
-            let points = items.prefix(maxListed).map { item in
-                AskAnswer.Point(
-                    text: item.text, detail: item.priority?.capitalized,
-                    citation: AskAnswer.Citation(noteId: item.noteId, noteTitle: item.noteTitle, startTime: nil)
-                )
+            if !last, let call = Self.toolCall(in: reply) {
+                let result = search(query: call.query, daysBack: call.daysBack)
+                turn.append(AskMessage(role: .assistant, content: Self.normalizedCall(call)))
+                turn.append(AskMessage(role: .tool, content: result))
+                searched = true
+                continue
             }
-            return listed(text + (items.count > maxListed ? " Here are the first \(maxListed)." : ""), points: Array(points))
+            let answer = finish(reply, engine: engine.label)
+            turn.append(AskMessage(role: .assistant, content: answer.text))
+            history += turn
+            return answer
+        }
+        // Only searches, no answer.
+        let answer = finish("", engine: engine.label)
+        history += turn + [AskMessage(role: .assistant, content: answer.text)]
+        return answer
+    }
+
+    /// The conversation so far with only the last `questionsWithResults` questions' searches.
+    static func trimmed(_ history: [AskMessage]) -> [AskMessage] {
+        let questionStarts = history.indices.filter { history[$0].role == .user }
+        guard questionStarts.count > questionsWithResults else { return history }
+        let keepFrom = questionStarts[questionStarts.count - questionsWithResults]
+        let older = history[..<keepFrom].filter { $0.role == .user || ($0.role == .assistant && toolCall(in: $0.content) == nil) }
+        return older + history[keepFrom...]
+    }
+
+    static func normalizedCall(_ call: ToolCall) -> String {
+        var arguments: [String: Any] = ["query": call.query]
+        if let days = call.daysBack { arguments["days_back"] = days }
+        let object: [String: Any] = ["name": "search_notes", "arguments": arguments]
+        let data = (try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])) ?? Data()
+        return "<tool_call>\n\(String(decoding: data, as: UTF8.self))\n</tool_call>"
+    }
+
+    struct ToolCall: Equatable {
+        let query: String
+        let daysBack: Int?
+    }
+
+    /// The first `search_notes` call in a reply, leniently: a missing closing tag (cut off),
+    /// arguments as a JSON string, `days`/`days_back` as a string, 0 days as no limit.
+    static func toolCall(in reply: String) -> ToolCall? {
+        guard let open = reply.range(of: "<tool_call>") else { return nil }
+        let body = String(reply[open.upperBound...])
+        guard let json = LLMCopywriterService.jsonObjectSubstring(in: body),
+              let object = (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: Any] else { return nil }
+        var arguments = object["arguments"] as? [String: Any]
+        if arguments == nil, let string = object["arguments"] as? String,
+           let decoded = (try? JSONSerialization.jsonObject(with: Data(string.utf8))) as? [String: Any] {
+            arguments = decoded
+        }
+        let args = arguments ?? object
+        let query = (args["query"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let rawDays = args["days_back"] ?? args["days"]
+        let days = (rawDays as? Int) ?? (rawDays as? String).flatMap { Int($0) }
+        return ToolCall(query: query, daysBack: days.flatMap { $0 > 0 && $0 <= 3_650 ? $0 : nil })
+    }
+
+    // MARK: - Apple Intelligence (FoundationModels tools)
+
+    private func askApple(_ question: String) async throws -> AskAnswer {
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, macOS 26.0, *) {
+            func newSession() -> LanguageModelSession {
+                let tool = SearchNotesTool { [weak self] query, days in
+                    await MainActor.run { self?.search(query: query, daysBack: days) ?? "No notes matched." }
+                }
+                return LanguageModelSession(tools: [tool], instructions: Self.systemPrompt(now: now()))
+            }
+            let session = (appleSession as? LanguageModelSession) ?? newSession()
+            appleSession = session
+            do {
+                let reply = try await session.respond(to: question).content
+                return finish(reply, engine: CleanupEngineLabel.appleFoundationModel)
+            } catch LanguageModelSession.GenerationError.exceededContextWindowSize(_) {
+                // A long chat: start over with a fresh session (the passages stay numbered).
+                let fresh = newSession()
+                appleSession = fresh
+                searchesThisQuestion = []
+                let reply = try await fresh.respond(to: question).content
+                return finish(reply, engine: CleanupEngineLabel.appleFoundationModel)
+            }
+        }
+        #endif
+        throw AppleFoundationModelError.unsupportedPlatform
+    }
+
+    // MARK: - The search tool
+
+    static let searchToolDescription = "Search the user's voice notes by keywords. Returns numbered passages, each with its note's title and date. An empty query returns the most recent notes."
+    static let queryDescription = "Keywords to look for, with a few synonyms (for \"money\": budget, cost, price)."
+    static let daysDescription = "Only when the question names a time (\"this week\": 7, \"yesterday\": 1). Leave it out otherwise."
+
+    static let searchToolSpec: [String: any Sendable] = [
+        "type": "function",
+        "function": [
+            "name": "search_notes",
+            "description": searchToolDescription,
+            "parameters": [
+                "type": "object",
+                "properties": [
+                    "query": ["type": "string", "description": queryDescription] as [String: any Sendable],
+                    "days_back": ["type": "integer", "description": daysDescription] as [String: any Sendable],
+                ] as [String: any Sendable],
+                "required": ["query"],
+            ] as [String: any Sendable],
+        ] as [String: any Sendable],
+    ]
+
+    /// Runs one search for the model and returns what it reads: numbered passages (numbers
+    /// continue across the conversation). A time limit ranks newer notes first in a keyword
+    /// search (models add limits the question didn't ask for); a query with no searchable words
+    /// returns the latest notes in the limit, or older ones, saying so, when it has none.
+    func search(query: String, daysBack: Int?) -> String {
+        let current = now()
+        let visible = notes().filter { !$0.isArchived && !$0.isLocked && $0.status == .ready }
+        let index = NoteSearchIndex(notes: visible)
+        let since = daysBack.map { current.addingTimeInterval(-Double($0) * 86_400) }
+        let terms = NoteSearchIndex.terms(in: query)
+
+        func run(since: Date?) -> [NoteSearchIndex.Passage] {
+            if terms.isEmpty {
+                return index.passages
+                    .filter { passage in passage.kind == .overview && (since.map { passage.noteDate >= $0 } ?? true) }
+                    .sorted { $0.noteDate > $1.noteDate }
+                    .prefix(Self.maxPassagesPerSearch)
+                    .map { $0 }
+            }
+            return index.search([query], since: since, limit: Self.maxPassagesPerSearch).map(\.passage)
         }
 
-        guard terms.subtracting(listingWords).isEmpty, range != nil || !terms.isEmpty else { return nil }
-        let inRange = visible
-            .filter { note in range.map { note.createdAt >= $0.start && note.createdAt < $0.end } ?? true }
-            .sorted { $0.createdAt > $1.createdAt }
-        let shown = range == nil ? Array(inRange.prefix(5)) : Array(inRange.prefix(maxListed))
-        let text: String
-        if shown.isEmpty {
-            let latest = visible.map(\.createdAt).max()
-            let latestNote = latest.map { " Your latest note is from \($0.formatted(date: .abbreviated, time: .omitted))." } ?? ""
-            text = "You didn't record any notes \(range?.label ?? "yet").\(latestNote)"
-        } else if let range {
-            text = "You recorded \(inRange.count) note\(inRange.count == 1 ? "" : "s") \(range.label)" + (inRange.count > shown.count ? ". Here are the latest \(shown.count):" : ":")
-        } else {
-            text = "Your \(shown.count == 1 ? "latest note" : "latest \(shown.count) notes"):"
+        var found = run(since: since)
+        var header = ""
+        if found.isEmpty, let daysBack {
+            found = run(since: nil)
+            if !found.isEmpty { header = "Nothing in the last \(daysBack) day\(daysBack == 1 ? "" : "s"). Older notes:\n" }
         }
-        let points = shown.map { note in
-            AskAnswer.Point(
-                text: note.summary.isEmpty ? String(note.rawTranscript.prefix(140)) : note.summary,
-                detail: note.createdAt.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
-                citation: AskAnswer.Citation(noteId: note.id, noteTitle: note.title, startTime: nil)
-            )
+        found = Self.cappedByWords(found)
+        searchesThisQuestion.append(AskAnswer.Search(query: query, daysBack: daysBack, resultCount: found.count))
+        guard !found.isEmpty else {
+            return query.isEmpty ? "There are no notes yet." : "No notes matched \"\(query)\"."
         }
-        return listed(text, points: points)
+        let first = passages.count + 1
+        passages += found
+        return header + found.enumerated().map { offset, passage in
+            Self.render(passage, number: first + offset)
+        }.joined(separator: "\n\n")
     }
 
-    static let maxListed = 10
-
-    private static func listed(_ text: String, points: [AskAnswer.Point]) -> AskAnswer {
-        AskAnswer(kind: .listed, text: text, points: points, citations: [], keywords: [], engine: nil, notesSearched: 0)
-    }
-
-    // MARK: - Step 1: keywords
-
-    struct Query: Equatable {
-        let keywords: [String]
-        let days: Int?
-    }
-
-    private struct KeywordsJSON: Decodable {
-        var keywords: [String]?
-        var days: Int?
-    }
-
-    private func keywords(for question: String, engine: LLMCopywriterService.StageTwoEngine) async -> Query {
-        let fallback = Query(keywords: Self.contentWords(question), days: nil)
-        guard let raw = try? await engine.generate(Self.keywordsSystemPrompt, question, 96) else { return fallback }
-        return Self.parseKeywords(raw) ?? fallback
-    }
-
-    static let keywordsSystemPrompt = """
-    You turn a question about the user's own voice notes into search keywords. Include the \
-    important words of the question, names exactly as written, and two or three synonyms or \
-    related words someone might have said instead (for "money": budget, cost, price). If the \
-    question limits time ("last week", "yesterday", "this month"), give how many days back to \
-    look. Respond with ONLY one valid JSON object -- no markdown code fences, no commentary -- \
-    using exactly these keys: "keywords" (array of 3 to 10 short strings), "days" (integer, or \
-    null when the question doesn't limit time).
-    """
-
-    static func parseKeywords(_ raw: String) -> Query? {
-        guard let json = LLMCopywriterService.jsonObjectSubstring(in: raw),
-              let decoded = try? JSONDecoder().decode(KeywordsJSON.self, from: Data(json.utf8)) else { return nil }
-        let keywords = (decoded.keywords ?? [])
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        guard !keywords.isEmpty else { return nil }
-        let days = decoded.days.flatMap { $0 > 0 && $0 <= 3_650 ? $0 : nil }
-        return Query(keywords: Array(keywords.prefix(12)), days: days)
-    }
-
-    static func contentWords(_ text: String) -> [String] {
-        text.split { !$0.isLetter && !$0.isNumber }
-            .map(String.init)
-            .filter { $0.count > 1 && !NoteSearchIndex.stopWords.contains($0.lowercased()) }
-    }
-
-    // MARK: - Step 2: answer
-
-    /// Best hits first, stopping before the passages pass `maxContextWords`.
-    static func trimmed(_ hits: [NoteSearchIndex.Hit]) -> [NoteSearchIndex.Hit] {
+    static func cappedByWords(_ found: [NoteSearchIndex.Passage]) -> [NoteSearchIndex.Passage] {
         var words = 0
-        var result: [NoteSearchIndex.Hit] = []
-        for hit in hits {
-            let count = hit.passage.text.split(whereSeparator: \.isWhitespace).count
-            if !result.isEmpty && words + count > maxContextWords { break }
+        var result: [NoteSearchIndex.Passage] = []
+        for passage in found {
+            let count = passage.text.split(whereSeparator: \.isWhitespace).count
+            if !result.isEmpty && words + count > maxResultWords { break }
             words += count
-            result.append(hit)
+            result.append(passage)
         }
         return result
     }
 
-    static func answerSystemPrompt(now: Date) -> String {
+    static func render(_ passage: NoteSearchIndex.Passage, number: Int) -> String {
+        let date = passage.noteDate.formatted(date: .abbreviated, time: .omitted)
+        let section: String
+        switch passage.kind {
+        case .overview: section = "summary"
+        case .section(let title): section = title
+        case .transcript: section = "transcript"
+        }
+        return "[\(number)] Note \"\(passage.noteTitle)\" (\(date), \(section)): \(passage.text)"
+    }
+
+    // MARK: - The answer
+
+    static func systemPrompt(now: Date) -> String {
         let today = now.formatted(date: .complete, time: .omitted)
         return """
-        You answer a question using only the numbered passages below, which come from the user's \
-        own voice notes. Today is \(today). Speak to the user as "you" ("You told Priya..."). Be \
-        brief: one to four sentences, with specifics (names, dates, amounts) taken from the \
-        passages. If the passages don't contain the answer, say so instead of guessing. Respond \
-        with ONLY one valid JSON object -- no markdown code fences, no commentary -- using exactly \
-        these keys: "answer" (string), "sources" (array of the passage numbers you used), \
-        "found" (true if the passages answer the question, false if not).
+        You are Voxbrief's assistant. You answer questions about the user's own voice notes. \
+        Today is \(today). You can't see the notes. For every new question, your first reply \
+        must be a search_notes call; answer only after you've read its results, and search again \
+        with other words if they don't answer it. Then answer in one to four sentences, speaking \
+        to the user as "you", with specifics (names, dates, amounts) from the passages, and cite \
+        the passages you used like [2]. If the passages don't answer it, say you couldn't find it \
+        in the notes.
         """
     }
 
-    static func answerUserPrompt(question: String, hits: [NoteSearchIndex.Hit]) -> String {
-        let passages = hits.enumerated().map { index, hit -> String in
-            let date = hit.passage.noteDate.formatted(date: .abbreviated, time: .omitted)
-            let section: String
-            switch hit.passage.kind {
-            case .overview: section = "summary"
-            case .section(let title): section = title
-            case .transcript: section = "transcript"
-            }
-            return "[\(index + 1)] Note \"\(hit.passage.noteTitle)\" (\(date), \(section)): \(hit.passage.text)"
-        }.joined(separator: "\n\n")
-        return "Passages:\n\(passages)\n\nQuestion: \(question)"
-    }
-
-    struct ParsedAnswer: Equatable {
-        let answer: String
-        let sources: [Int]
-        let notFound: Bool
-    }
-
-    /// Lenient, because the small models bend the format: fenced or cut-off JSON, `found` as a
-    /// string, sources as strings, the answer as a list, citations written inline as "[2]". JSON
-    /// that can't be read is never shown as the answer.
-    static func parseAnswer(_ raw: String) -> ParsedAnswer {
-        let cleaned = raw
+    /// The model's final reply as the answer: thinking and stray tool tags removed, "[n]"
+    /// citations turned into links to their notes.
+    func finish(_ reply: String, engine: String) -> AskAnswer {
+        var text = reply
             .replacing(/<think>[\s\S]*?<\/think>/, with: "")
+            .replacing(/<tool_call>[\s\S]*?(<\/tool_call>|$)/, with: "")
             .replacingOccurrences(of: "<think>", with: "")
             .replacingOccurrences(of: "</think>", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        if let json = LLMCopywriterService.jsonObjectSubstring(in: cleaned),
-           let object = (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: Any] {
-            let answer = text(from: object["answer"] ?? object["response"] ?? object["text"])
-            let (body, inline) = strippingInlineCitations(answer)
-            return ParsedAnswer(
-                answer: body,
-                sources: numbers(from: object["sources"] ?? object["source"]) + inline,
-                notFound: flag(from: object["found"]) == false
-            )
+        let (body, numbers) = Self.strippingInlineCitations(text)
+        text = body
+        if text.isEmpty {
+            text = searchesThisQuestion.isEmpty
+                ? "I couldn't come up with an answer. Try asking another way."
+                : "I searched your notes but couldn't put together an answer. Try asking another way."
         }
-        // An answer cut off by the token limit: keep the readable part of "answer".
-        if let match = cleaned.firstMatch(of: /"answer"\s*:\s*"((?:[^"\\]|\\.)*)/) {
-            let (body, inline) = strippingInlineCitations(String(match.1).replacingOccurrences(of: "\\\"", with: "\""))
-            return ParsedAnswer(answer: body, sources: inline, notFound: false)
+        var seen: Set<String> = []
+        let citations = numbers.compactMap { number -> AskAnswer.Citation? in
+            guard passages.indices.contains(number - 1) else { return nil }
+            let passage = passages[number - 1]
+            let citation = AskAnswer.Citation(noteId: passage.noteId, noteTitle: passage.noteTitle, startTime: passage.startTime)
+            return seen.insert(citation.id).inserted ? citation : nil
         }
-        if cleaned.hasPrefix("{") || cleaned.hasPrefix("[") || cleaned.hasPrefix("`") {
-            return ParsedAnswer(answer: "", sources: [], notFound: false)
-        }
-        let (body, inline) = strippingInlineCitations(cleaned)
-        return ParsedAnswer(answer: body, sources: inline, notFound: false)
+        return AskAnswer(text: text, citations: citations, searches: searchesThisQuestion, engine: engine)
     }
 
-    private static func text(from value: Any?) -> String {
-        switch value {
-        case let string as String:
-            return string.trimmingCharacters(in: .whitespacesAndNewlines)
-        case let list as [Any]:
-            return list.compactMap { $0 as? String }.map { "• \($0)" }.joined(separator: "\n")
-        default:
-            return ""
-        }
-    }
-
-    private static func numbers(from value: Any?) -> [Int] {
-        switch value {
-        case let list as [Any]:
-            return list.flatMap { numbers(from: $0) }
-        case let number as NSNumber:
-            return CFGetTypeID(number) == CFBooleanGetTypeID() ? [] : [number.intValue]
-        case let string as String:
-            return string.matches(of: /\d+/).compactMap { Int($0.output) }
-        default:
-            return []
-        }
-    }
-
-    private static func flag(from value: Any?) -> Bool? {
-        switch value {
-        case let number as NSNumber:
-            return number.boolValue
-        case let string as String:
-            switch string.lowercased().trimmingCharacters(in: .whitespaces) {
-            case "true", "yes": return true
-            case "false", "no": return false
-            default: return nil
-            }
-        default:
-            return nil
-        }
-    }
-
-    /// "…by Wednesday [1]." / "(Source 2)" become sources, and leave the text.
+    /// "…by Wednesday [1]." / "(Source 2)" become citation numbers, and leave the text.
     static func strippingInlineCitations(_ text: String) -> (String, [Int]) {
         var sources: [Int] = []
-        var body = text
         for match in text.matches(of: /\s*(?:\[(\d+(?:\s*,\s*\d+)*)\]|\((?:[Ss]ources?|[Pp]assages?)\s*(\d+)\))/) {
             let numbers = String(match.1 ?? match.2 ?? "")
             sources += numbers.split(separator: ",").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
         }
-        body = body.replacing(/\s*(?:\[\d+(?:\s*,\s*\d+)*\]|\((?:[Ss]ources?|[Pp]assages?)\s*\d+\))/, with: "")
+        let body = text.replacing(/\s*(?:\[\d+(?:\s*,\s*\d+)*\]|\((?:[Ss]ources?|[Pp]assages?)\s*\d+\))/, with: "")
         return (body.trimmingCharacters(in: .whitespacesAndNewlines), sources)
     }
+}
 
-    /// Replies the small models give in place of an answer.
-    static let placeholderAnswers: Set<String> = [
-        "", "found", "not found", "true", "false", "yes", "no", "none", "null", "nil", "n a",
-        "unknown", "answer", "no answer", "no answer found", "no answer provided", "no information",
-        "not mentioned", "no action items", "no ideas", "no passage related to the question",
-    ]
+#if canImport(FoundationModels)
+/// `search_notes` for Apple Intelligence's own tool calling.
+@available(iOS 26.0, macOS 26.0, *)
+struct SearchNotesTool: Tool {
+    let name = "search_notes"
+    let description = AskConversation.searchToolDescription
+    let run: @Sendable (String, Int?) async -> String
 
-    static func isUnusable(_ answer: String, question: String, hits: [NoteSearchIndex.Hit]) -> Bool {
-        let normalized = answer.lowercased()
-            .map { $0.isLetter || $0.isNumber ? $0 : " " }
-            .reduce(into: "") { $0.append($1) }
-            .split(separator: " ").joined(separator: " ")
-        if placeholderAnswers.contains(normalized) || normalized.hasPrefix("no answer") { return true }
-        let questionWords = question.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber }).joined(separator: " ")
-        if normalized == questionWords { return true }
-        // The prompt's own example, copied back.
-        if normalized.contains("you told priya"), !hits.contains(where: { $0.passage.text.lowercased().contains("priya") }) { return true }
-        return false
+    @Generable
+    struct Arguments {
+        @Guide(description: "Keywords to look for, with a few synonyms (for \"money\": budget, cost, price).")
+        var query: String
+        @Guide(description: "Only when the question names a time (\"this week\": 7, \"yesterday\": 1). Leave it out otherwise.")
+        var daysBack: Int?
     }
 
-    /// Up to four passages that contain the question's own topic words, each cut to a short
-    /// quote around the first match.
-    static func excerpts(for question: String, hits: [NoteSearchIndex.Hit]) -> [AskAnswer.Point] {
-        let topic = Set(NoteSearchIndex.terms(in: question)).subtracting(listingWords)
-        guard !topic.isEmpty else { return [] }
-        var points: [AskAnswer.Point] = []
-        for hit in hits {
-            let words = hit.passage.text.split(whereSeparator: \.isWhitespace).map(String.init)
-            guard let first = words.firstIndex(where: { word in NoteSearchIndex.terms(in: word).contains(where: topic.contains) }) else { continue }
-            let start = max(0, first - 8)
-            let end = min(words.count, start + 30)
-            let quote = (start > 0 ? "…" : "") + words[start..<end].joined(separator: " ") + (end < words.count ? "…" : "")
-            points.append(AskAnswer.Point(
-                text: quote,
-                detail: hit.passage.noteDate.formatted(.dateTime.month(.abbreviated).day()),
-                citation: citation(for: hit.passage)
-            ))
-            if points.count == 4 { break }
-        }
-        return points
+    func call(arguments: Arguments) async throws -> String {
+        await run(arguments.query, arguments.daysBack.flatMap { $0 > 0 ? $0 : nil })
     }
 }
+#endif

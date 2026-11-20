@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.33.3"
+    public static let currentVersion = "1.34.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,34 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.34.0",
+            date: "November 2026",
+            tagline: "Ask, and It Looks",
+            features: [
+                WhatsNewItem(
+                    icon: "sparkle.magnifyingglass",
+                    tint: .purple,
+                    title: "Ask Is Now a Chat With the Model",
+                    description: "Every answer in Ask now comes from the on-device model. It searches your notes itself, searches again if it needs to, and answers from what it found, with links to the notes. Ask a follow-up and it remembers the conversation.",
+                    detailedDescription: "Ask used to answer some questions by listing notes or quoting passages without the model. Now the model leads: it decides what to search for, reads the passages, and writes the answer, citing the notes it used. Each search it ran is shown above its answer, so you can see what it looked for. With Flash downloaded it decides for itself when to search; Lite always starts with a search. It all runs on your iPhone.",
+                    highlights: [
+                        "The model writes its own searches",
+                        "Follow-up questions keep the context",
+                        "See what it searched for, and the notes it used"
+                    ]
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "text.magnifyingglass",
+                    tint: .blue,
+                    title: "Clearer Answers When Nothing Matches",
+                    description: "When your notes don't hold the answer, Ask says so in its own words instead of showing loosely related quotes.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.33.3",
             date: "November 2026",
