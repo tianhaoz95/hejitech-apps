@@ -549,7 +549,9 @@ export function fieldDocs(type: string) {
 /** One JSON-RPC request from an authenticated caller. */
 export async function handleMcp(req: Request, caller: Caller, admin: Db): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
-  if (req.method === "GET") return json({ name: "wee-hours-mcp", transport: "streamable-http" }, 200);
+  // No server-to-client SSE stream: the spec says answer GET with 405. A 200 makes MCP SDK
+  // clients (they open GET with Accept: text/event-stream) reconnect in a tight loop.
+  if (req.method === "GET") return json({ name: "wee-hours-mcp", transport: "streamable-http" }, 405);
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
   let msg: { id?: string | number; method: string; params?: Record<string, unknown> };
