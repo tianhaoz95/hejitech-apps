@@ -47,7 +47,27 @@ final class BackgroundProcessingManager {
     /// Called once at launch.
     func install() {
         VoxbriefNotificationDelegate.shared.install()
-        NoteProcessingPipeline.isAppInBackground = { UIApplication.shared.applicationState == .background }
+        // Not active counts: a generation stopped while leaving the foreground leaves its note
+        // pending, to finish when the app is active again (or in a continued-processing task).
+        NoteProcessingPipeline.isAppInBackground = {
+            UIApplication.shared.applicationState != .active && !OnDeviceLLMService.backgroundGPUGranted
+        }
+
+        // MLX may only submit GPU work in the foreground: close the gate as the app starts to
+        // leave it, before iOS revokes GPU access (see OnDeviceLLMService.gpuGate).
+        OnDeviceLLMService.gpuGate.setForeground(UIApplication.shared.applicationState != .background)
+        NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)
+            .sink { _ in OnDeviceLLMService.gpuGate.setForeground(false) }
+            .store(in: &cancellables)
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            .sink { _ in OnDeviceLLMService.gpuGate.setForeground(false) }
+            .store(in: &cancellables)
+        NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                OnDeviceLLMService.gpuGate.setForeground(true)
+                self?.resumeStoppedWork()
+            }
+            .store(in: &cancellables)
 
         NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)
             .sink { [weak self] _ in self?.unloadModels(reason: "memory warning") }
@@ -88,6 +108,12 @@ final class BackgroundProcessingManager {
         @unknown default:
             break
         }
+    }
+
+    /// Notes whose Stage 2 was stopped while the app was away, picked up again on return.
+    private func resumeStoppedWork() {
+        guard pipeline.activeProcessingCount == 0, !pipeline.interruptedNotes.isEmpty else { return }
+        Task { await pipeline.resumeInterruptedNotes() }
     }
 
     private var hasWork: Bool {

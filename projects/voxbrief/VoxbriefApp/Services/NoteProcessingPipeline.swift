@@ -462,8 +462,8 @@ public final class NoteProcessingPipeline: ObservableObject {
                         let name = brief.partCount > 1 ? "Title & summary (\(brief.partCount) parts)" : "Title & summary"
                         timings.append(ProcessingTiming(name: name, seconds: Self.seconds(since: briefStart)))
                     }
-                } catch is CancellationError {
-                    throw CancellationError()
+                } catch let error where error.stopsStageTwo {
+                    throw error
                 } catch {
                     print("[NoteProcessingPipeline] Brief failed for note \(note.id); kept the cleanup's title and summary: \(error)")
                 }
@@ -481,8 +481,8 @@ public final class NoteProcessingPipeline: ObservableObject {
                     )
                     if cleaned.texts.count == texts.count { texts = cleaned.texts }
                     timings.append(ProcessingTiming(name: "Speaker turns (\(rawTurns.count))", seconds: Self.seconds(since: turnsStart)))
-                } catch is CancellationError {
-                    throw CancellationError()
+                } catch let error where error.stopsStageTwo {
+                    throw error
                 } catch {
                     print("[NoteProcessingPipeline] Turn cleanup failed for note \(note.id); kept the tidied turns: \(error)")
                 }

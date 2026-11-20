@@ -294,6 +294,20 @@ final class NoteProcessingPipelineTests: XCTestCase {
         XCTAssertTrue(saved.processingTimings.map(\.name).contains("Speakers"))
     }
 
+    func testABriefStoppedByBackgroundingLeavesTheNotePending() async throws {
+        mockLLM.stubBriefError = OnDeviceLLMError.unavailableWhileBackgrounded
+        NoteProcessingPipeline.isAppInBackground = { true }
+        defer { NoteProcessingPipeline.isAppInBackground = { false } }
+        let note = VoiceNote(id: UUID(), audioFileName: try audioFile(), status: .syncing)
+        repository.save(note)
+
+        await speakerPipeline(StubSpeakerDetector()).process(note: note, liveTranscript: ("all of it", conversationSegments))
+
+        let saved = try XCTUnwrap(repository.note(withId: note.id))
+        XCTAssertEqual(saved.status, .cleaningLLM, "Finished when the app is back, not saved half done")
+        XCTAssertNil(saved.lightCleanedNote)
+    }
+
     func testDictationSkipsSpeakerDetection() async throws {
         let pipeline = speakerPipeline(twoSpeakers)
         let note = VoiceNote(id: UUID(), audioFileName: try audioFile(), status: .syncing)

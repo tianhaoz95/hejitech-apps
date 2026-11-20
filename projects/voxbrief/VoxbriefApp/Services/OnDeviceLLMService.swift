@@ -1,4 +1,5 @@
 import Foundation
+import os
 import MLX
 import MLXLLM
 import MLXLMCommon
@@ -97,6 +98,11 @@ public enum OnDeviceModelSelection: String, CaseIterable, Identifiable, Sendable
 /// eliminate the risk if backgrounding happens *after* the check passes, mid-generation (MLX
 /// exposes no way to cancel or pause one), but it stops a new generation from ever starting
 /// while already backgrounded, which is the common case this crash was actually hit from.
+/// Since 1.33.1 a generation also stops mid-way: `gpuGate` turns off when the app starts leaving
+/// the foreground (`willResignActive`, before iOS revokes the GPU) unless a continued-processing
+/// task holds the GPU grant, and the token loop checks it before asking MLX for each next token
+/// (a 1.33.0 TestFlight crash: a conversation's many Stage 2 calls were still running when the
+/// app was backgrounded).
 @MainActor
 public final class OnDeviceLLMService: ObservableObject {
     public static let shared = OnDeviceLLMService()
@@ -153,7 +159,7 @@ public final class OnDeviceLLMService: ObservableObject {
     private static var isSafeToUseMLXRightNow: Bool {
         guard isSupportedOnThisDevice else { return false }
         #if os(iOS)
-        return UIApplication.shared.applicationState != .background || backgroundGPUGranted
+        return (UIApplication.shared.applicationState != .background || backgroundGPUGranted) && gpuGate.isOpen
         #else
         return true
         #endif
@@ -162,7 +168,25 @@ public final class OnDeviceLLMService: ObservableObject {
     /// True while a continued-processing background task holds the system's GPU grant (see
     /// `BackgroundProcessingManager`): the one case where generating while backgrounded is
     /// allowed, because the system keeps GPU access for the task instead of revoking it.
-    public static var backgroundGPUGranted = false
+    public static var backgroundGPUGranted: Bool {
+        get { gpuGate.granted }
+        set { gpuGate.setGranted(newValue) }
+    }
+
+    /// Whether MLX may submit GPU work right now, readable from the generation's own thread:
+    /// open while the app is active or a continued-processing task holds the GPU grant.
+    /// `BackgroundProcessingManager` keeps it up to date from the app's lifecycle.
+    nonisolated static let gpuGate = GPUGate()
+
+    final class GPUGate: Sendable {
+        private struct State { var foreground = true; var granted = false }
+        private let state = OSAllocatedUnfairLock(initialState: State())
+
+        var isOpen: Bool { state.withLock { $0.foreground || $0.granted } }
+        var granted: Bool { state.withLock { $0.granted } }
+        func setForeground(_ foreground: Bool) { state.withLock { $0.foreground = foreground } }
+        func setGranted(_ granted: Bool) { state.withLock { $0.granted = granted } }
+    }
 
     /// MLX keeps freed GPU buffers for reuse; without a limit that cache grows to the size of the
     /// largest generation and stays. 128 MB keeps reuse for a note's calls without holding on to
@@ -478,6 +502,11 @@ public final class OnDeviceLLMService: ObservableObject {
 
             var result = ""
             for await item in stream {
+                // Leaving the stream ends the generation before its next token is submitted;
+                // work already on the GPU finishes while the app still has it.
+                guard OnDeviceLLMService.gpuGate.isOpen else {
+                    throw OnDeviceLLMError.unavailableWhileBackgrounded
+                }
                 if let chunk = item.chunk {
                     result += chunk
                 }

@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.33.0"
+    public static let currentVersion = "1.33.1"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,28 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.33.1",
+            date: "November 2026",
+            tagline: "Picks Up Where It Left Off",
+            features: [
+                WhatsNewItem(
+                    icon: "arrow.clockwise.circle.fill",
+                    tint: .blue,
+                    title: "Processing Resumes When You Come Back",
+                    description: "If you switch away while a note is still being cleaned up and your iPhone can't keep working on it in the background, Voxbrief pauses it and finishes it as soon as you open the app again, instead of saving it half done."
+                )
+            ],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "exclamationmark.triangle.fill",
+                    tint: .red,
+                    title: "No More Crash When Leaving the App",
+                    description: "Fixed a crash when Voxbrief went to the background while the on-device model was writing a note, most likely during a long conversation. The model now stops before your iPhone takes its graphics chip away.",
+                    kind: .fix
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.33.0",
             date: "November 2026",

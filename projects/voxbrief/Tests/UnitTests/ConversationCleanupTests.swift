@@ -156,4 +156,42 @@ final class ConversationCleanupTests: XCTestCase {
         let turn = LLMCopywriterService.ConversationTurn(speaker: "Speaker 1", said: Array(repeating: "word", count: 400).joined(separator: " "))
         XCTAssertEqual(LLMCopywriterService.conversationParts([turn, turn, turn, turn]).map(\.count), [2, 2])
     }
+
+    // MARK: - Leaving the foreground
+
+    func testABackgroundStopEndsTheRunInsteadOfFallingBack() async {
+        let service = LLMCopywriterService()
+        let calls = Calls()
+        let engine = LLMCopywriterService.StageTwoEngine(label: "Flash") { system, _, _ in
+            calls.add(system)
+            throw OnDeviceLLMError.unavailableWhileBackgrounded
+        }
+        do {
+            _ = try await service.process(transcript: conversation, mode: .conversation, dictionary: [], templates: [], engine: engine)
+            XCTFail("Expected the stop to propagate")
+        } catch {
+            XCTAssertTrue(error.stopsStageTwo)
+        }
+        XCTAssertEqual(calls.all.count, 1, "No light-cleanup fallback after the GPU was taken away")
+
+        do {
+            _ = try await service.cleanUpTurns(["one turn here", "and another one"], dictionary: [], engine: engine)
+            XCTFail("Expected the stop to propagate")
+        } catch {
+            XCTAssertTrue(error.stopsStageTwo)
+        }
+    }
+
+    func testGPUGate() {
+        let gate = OnDeviceLLMService.GPUGate()
+        XCTAssertTrue(gate.isOpen)
+        gate.setForeground(false)
+        XCTAssertFalse(gate.isOpen, "Closed as soon as the app starts leaving the foreground")
+        gate.setGranted(true)
+        XCTAssertTrue(gate.isOpen, "A continued-processing task's GPU grant keeps it open")
+        gate.setGranted(false)
+        gate.setForeground(true)
+        XCTAssertTrue(gate.isOpen)
+        XCTAssertFalse(OnDeviceLLMError.unavailableInSimulator.stopsStageTwo)
+    }
 }

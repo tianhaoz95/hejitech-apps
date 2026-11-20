@@ -32,6 +32,17 @@ public enum CleanupEngineLabel {
     }
 }
 
+extension Error {
+    /// Whether this error ends the whole Stage 2 run instead of falling back to something
+    /// lesser: a cancellation, or a generation stopped because the app left the foreground
+    /// (`OnDeviceLLMService.gpuGate`), whose note is finished when the app is back.
+    var stopsStageTwo: Bool {
+        if self is CancellationError { return true }
+        if let error = self as? OnDeviceLLMError, case .unavailableWhileBackgrounded = error { return true }
+        return false
+    }
+}
+
 /// Which of the two Stage 2 rewrite styles to produce. Both run through the same engine chain
 /// (Ollama -> on-device LLM -> rule-based fallback), just with a different prompt/transform:
 /// `.full` restructures the transcript into requirements/conditions/action items (today's
@@ -331,8 +342,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         for engine in await onDeviceEngines() {
             do {
                 return try await writeBrief(text, engine: engine)
-            } catch is CancellationError {
-                throw CancellationError()
+            } catch let error where error.stopsStageTwo {
+                throw error
             } catch {
                 print("[LLMCopywriterService] Brief failed on \(engine.label): \(error)")
             }
@@ -359,8 +370,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
                     Self.briefPartMaxTokens
                 )
                 if let summary = parseBriefPart(raw) { summaries.append(summary) }
-            } catch is CancellationError {
-                throw CancellationError()
+            } catch let error where error.stopsStageTwo {
+                throw error
             } catch {
                 print("[LLMCopywriterService] Brief part \(index + 1)/\(sampled.count) failed: \(error)")
             }
@@ -498,8 +509,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         for engine in await onDeviceEngines() {
             do {
                 return try await cleanUpTurns(prepared, dictionary: dictionary, engine: engine)
-            } catch is CancellationError {
-                throw CancellationError()
+            } catch let error where error.stopsStageTwo {
+                throw error
             } catch {
                 print("[LLMCopywriterService] Turn cleanup failed on \(engine.label): \(error)")
             }
@@ -521,8 +532,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
                     let result = try await process(transcript: turns[batch.lowerBound], mode: .light, dictionary: dictionary, templates: [], engine: engine)
                     cleaned[batch.lowerBound] = result.cleanedMarkdown
                     anyCleaned = true
-                } catch is CancellationError {
-                    throw CancellationError()
+                } catch let error where error.stopsStageTwo {
+                    throw error
                 } catch {
                     print("[LLMCopywriterService] Long turn cleanup failed: \(error)")
                 }
@@ -537,8 +548,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
                     }
                     anyCleaned = true
                 }
-            } catch is CancellationError {
-                throw CancellationError()
+            } catch let error where error.stopsStageTwo {
+                throw error
             } catch {
                 print("[LLMCopywriterService] Turn batch failed: \(error)")
             }
@@ -838,8 +849,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
                     try await engine.generate(systemPrompt, longMemoPartUserPrompt(part.text, index: index, count: parts.count, dictionary: dictionary), 1024)
                 }
                 readParts.append((part, try parseGenerationResponse(raw, template: chosenTemplate)))
-            } catch is CancellationError {
-                throw CancellationError()
+            } catch let error where error.stopsStageTwo {
+                throw error
             } catch {
                 print("[LLMCopywriterService] Long memo part \(index + 1)/\(parts.count) failed: \(error)")
             }
@@ -861,8 +872,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
             if let json = Self.extractJSONObject(from: raw) {
                 overview = try? JSONDecoder().decode(GenerationUniversalFields.self, from: Data(json.utf8))
             }
-        } catch is CancellationError {
-            throw CancellationError()
+        } catch let error where error.stopsStageTwo {
+            throw error
         } catch {
             print("[LLMCopywriterService] Long memo overview failed, using the parts' own: \(error)")
         }
@@ -1296,8 +1307,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
                         continue
                     }
                     print("[LLMCopywriterService] Conversation report read like the turns; using the light cleanup for this part")
-                } catch is CancellationError {
-                    throw CancellationError()
+                } catch let error where error.stopsStageTwo {
+                    throw error
                 } catch {
                     print("[LLMCopywriterService] Conversation report failed; using the light cleanup for this part: \(error)")
                 }
@@ -1308,8 +1319,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
                 texts.append(light.cleanedMarkdown)
                 lightResults.append(light)
                 anyModelOutput = true
-            } catch is CancellationError {
-                throw CancellationError()
+            } catch let error where error.stopsStageTwo {
+                throw error
             } catch {
                 texts.append(TranscriptText.paragraphed(stripASRSpecialTokens(sanitizeSpeechTranscript(spoken))))
             }
@@ -1439,8 +1450,8 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
                 let result = try await processLight(transcript: part.text, dictionary: dictionary, engine: engine)
                 results.append(result)
                 texts.append(result.cleanedMarkdown)
-            } catch is CancellationError {
-                throw CancellationError()
+            } catch let error where error.stopsStageTwo {
+                throw error
             } catch {
                 texts.append(TranscriptText.paragraphed(stripASRSpecialTokens(sanitizeSpeechTranscript(part.text))))
             }
