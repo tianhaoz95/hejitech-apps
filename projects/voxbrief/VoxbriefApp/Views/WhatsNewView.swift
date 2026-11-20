@@ -136,6 +136,13 @@ public struct WhatsNewView: View {
                     title: "No Second Transcription",
                     description: "A note interrupted during its cleanup used to be transcribed again from the start. Its transcript is now kept, so only the cleanup runs again.",
                     kind: .improvement
+                ),
+                WhatsNewItem(
+                    icon: "exclamationmark.triangle.fill",
+                    tint: .red,
+                    title: "No More Crash While Processing in the Background",
+                    description: "Fixed a crash, after \"Processing failed\", when you left Voxbrief while a note was being processed. In the background Voxbrief now transcribes and finds speakers; a cleanup by the on-device model pauses, saved, and finishes when you open the app.",
+                    kind: .fix
                 )
             ]
         ),

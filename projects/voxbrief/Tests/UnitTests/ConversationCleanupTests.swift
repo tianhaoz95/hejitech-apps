@@ -194,4 +194,14 @@ final class ConversationCleanupTests: XCTestCase {
         XCTAssertTrue(gate.isOpen)
         XCTAssertFalse(OnDeviceLLMError.unavailableInSimulator.stopsStageTwo)
     }
+
+    func testWaitingForTheGPUToBeIdle() {
+        let gate = OnDeviceLLMService.GPUGate()
+        XCTAssertTrue(gate.waitUntilIdle(timeout: 0.1))
+        gate.beginWork()
+        XCTAssertFalse(gate.waitUntilIdle(timeout: 0.05), "Bounded: gives up when the work doesn't end")
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { gate.endWork() }
+        XCTAssertTrue(gate.waitUntilIdle(timeout: 2), "Returns as soon as the generation is done")
+        XCTAssertTrue(gate.isIdle)
+    }
 }

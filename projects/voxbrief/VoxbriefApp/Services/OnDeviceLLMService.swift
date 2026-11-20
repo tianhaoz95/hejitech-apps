@@ -165,9 +165,12 @@ public final class OnDeviceLLMService: ObservableObject {
         #endif
     }
 
-    /// True while a continued-processing background task holds the system's GPU grant (see
-    /// `BackgroundProcessingManager`): the one case where generating while backgrounded is
-    /// allowed, because the system keeps GPU access for the task instead of revoking it.
+    /// True while a continued-processing background task holds the system's GPU grant: the one
+    /// case where generating while backgrounded would be allowed. Never set since 1.33.3: that
+    /// grant needs the Background GPU Access entitlement (com.apple.developer.background-tasks.
+    /// continued-processing.gpu), which Voxbrief doesn't have, and 1.33.1 took
+    /// `BGTaskScheduler.supportedResources.contains(.gpu)` (what the device supports) as the
+    /// grant, so MLX ran in the background and iOS aborted the app.
     public static var backgroundGPUGranted: Bool {
         get { gpuGate.granted }
         set { gpuGate.setGranted(newValue) }
@@ -178,14 +181,45 @@ public final class OnDeviceLLMService: ObservableObject {
     /// `BackgroundProcessingManager` keeps it up to date from the app's lifecycle.
     nonisolated static let gpuGate = GPUGate()
 
-    final class GPUGate: Sendable {
-        private struct State { var foreground = true; var granted = false }
-        private let state = OSAllocatedUnfairLock(initialState: State())
+    final class GPUGate: @unchecked Sendable {
+        private struct State { var foreground = true; var granted = false; var working = 0 }
+        private let condition = NSCondition()
+        private var state = State()
 
-        var isOpen: Bool { state.withLock { $0.foreground || $0.granted } }
-        var granted: Bool { state.withLock { $0.granted } }
-        func setForeground(_ foreground: Bool) { state.withLock { $0.foreground = foreground } }
-        func setGranted(_ granted: Bool) { state.withLock { $0.granted = granted } }
+        private func locked<T>(_ body: (inout State) -> T) -> T {
+            condition.lock()
+            defer { condition.unlock() }
+            return body(&state)
+        }
+
+        var isOpen: Bool { locked { $0.foreground || $0.granted } }
+        var granted: Bool { locked { $0.granted } }
+        func setForeground(_ foreground: Bool) { locked { $0.foreground = foreground } }
+        func setGranted(_ granted: Bool) { locked { $0.granted = granted } }
+
+        /// A generation is using the GPU (`endWork` once it has returned, GPU work included).
+        func beginWork() { locked { $0.working += 1 } }
+        func endWork() {
+            condition.lock()
+            state.working -= 1
+            condition.broadcast()
+            condition.unlock()
+        }
+        var isIdle: Bool { locked { $0.working == 0 } }
+
+        /// Blocks until no generation is using the GPU, or `timeout` passes. Called with the gate
+        /// already closed, from `willResignActive`: while it waits the app is still inactive,
+        /// not backgrounded, so the GPU work in flight finishes while it's still allowed.
+        @discardableResult
+        func waitUntilIdle(timeout: TimeInterval) -> Bool {
+            let deadline = Date().addingTimeInterval(timeout)
+            condition.lock()
+            defer { condition.unlock() }
+            while state.working > 0 {
+                if !condition.wait(until: deadline) { return state.working == 0 }
+            }
+            return true
+        }
     }
 
     /// MLX keeps freed GPU buffers for reuse; without a limit that cache grows to the size of the
@@ -395,6 +429,10 @@ public final class OnDeviceLLMService: ObservableObject {
             throw OnDeviceLLMError.unavailableWhileBackgrounded
         }
         let container = try await bestAvailableContainer()
+        // Loading takes a moment; the app may have left the foreground meanwhile.
+        guard Self.isSafeToUseMLXRightNow else {
+            throw OnDeviceLLMError.unavailableWhileBackgrounded
+        }
         return try await Self.runGeneration(
             container: container,
             systemPrompt: systemPrompt,
@@ -432,6 +470,8 @@ public final class OnDeviceLLMService: ObservableObject {
 
         let task = Task<ModelContainer, Error> {
             let configuration = largeModelConfiguration
+            Self.gpuGate.beginWork()
+            defer { Self.gpuGate.endWork() }
             return try await LLMModelFactory.shared.loadContainer(configuration: configuration)
         }
         largeLoadTask = task
@@ -463,6 +503,8 @@ public final class OnDeviceLLMService: ObservableObject {
                 throw OnDeviceLLMError.bundledModelMissing
             }
             let configuration = ModelConfiguration(directory: directory)
+            Self.gpuGate.beginWork()
+            defer { Self.gpuGate.endWork() }
             return try await LLMModelFactory.shared.loadContainer(configuration: configuration)
         }
         smallLoadTask = task
@@ -498,20 +540,26 @@ public final class OnDeviceLLMService: ObservableObject {
 
         return try await container.perform { (context: ModelContext) -> String in
             let lmInput = try await context.processor.prepare(input: userInput)
-            let stream = try MLXLMCommon.generate(input: lmInput, parameters: parameters, context: context)
-
-            var result = ""
-            for await item in stream {
-                // Leaving the stream ends the generation before its next token is submitted;
-                // work already on the GPU finishes while the app still has it.
-                guard OnDeviceLLMService.gpuGate.isOpen else {
-                    throw OnDeviceLLMError.unavailableWhileBackgrounded
-                }
-                if let chunk = item.chunk {
-                    result += chunk
-                }
+            // The synchronous generate, not the streaming one: it asks before every token whether
+            // to go on, and it waits for the GPU (`Stream().synchronize()`) before it returns, so
+            // once this returns nothing of ours is left on the GPU. The streaming one runs on a
+            // task of its own that can still submit a token after its consumer stopped -- the
+            // window that crashed 1.33.0 and 1.33.1 in the background.
+            OnDeviceLLMService.gpuGate.beginWork()
+            defer { OnDeviceLLMService.gpuGate.endWork() }
+            guard OnDeviceLLMService.gpuGate.isOpen else {
+                throw OnDeviceLLMError.unavailableWhileBackgrounded
             }
-            return result
+            var stopped = false
+            let result = try MLXLMCommon.generate(input: lmInput, parameters: parameters, context: context) { (_: [Int]) -> GenerateDisposition in
+                guard OnDeviceLLMService.gpuGate.isOpen else {
+                    stopped = true
+                    return .stop
+                }
+                return .more
+            }
+            if stopped { throw OnDeviceLLMError.unavailableWhileBackgrounded }
+            return result.output
         }
     }
 }

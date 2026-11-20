@@ -35,6 +35,16 @@ public final class NoteProcessingPipeline: ObservableObject {
     /// The step each note being processed is on, counted in its pieces or parts, for the
     /// Pipeline tab (see `progress(for:)`).
     @Published public private(set) var chunkProgress: [UUID: ChunkProgress] = [:]
+    /// Notes whose Stage 2 was stopped in the background because its next step needs the
+    /// on-device model's GPU: not retried until the app is active again (`foregroundReturned`),
+    /// or a background task would pick them up and stop them over and over.
+    @Published public private(set) var waitingForForeground: Set<UUID> = []
+
+    /// The app is active again: every note can run.
+    public func foregroundReturned() {
+        waitingForForeground.removeAll()
+    }
+
     /// Notes whose progress is being published (a late update after a run ends is dropped).
     private var progressNoteIds: Set<UUID> = []
 
@@ -237,6 +247,7 @@ public final class NoteProcessingPipeline: ObservableObject {
                 print("[NoteProcessingPipeline] Stage 2 deferred until foreground for note \(note.id): \(error)")
                 pending.status = .cleaningLLM
                 pending.errorMessage = nil
+                waitingForForeground.insert(note.id)
                 if pending.title == "Processing Voice Note...", let title = Self.provisionalTitle(from: pending.rawTranscript) {
                     pending.title = title
                 }
@@ -692,6 +703,7 @@ public final class NoteProcessingPipeline: ObservableObject {
         } catch {
             if Self.isAppInBackground() {
                 repository.updateStatus(for: noteId, status: .cleaningLLM)
+                waitingForForeground.insert(noteId)
             } else {
                 repository.updateStatus(for: noteId, status: .failed, errorMessage: error.localizedDescription)
                 checkpoint.remove()
@@ -714,10 +726,12 @@ public final class NoteProcessingPipeline: ObservableObject {
             in: checkpointDirectory,
             keeping: Set(repository.notes.filter { $0.status.isProcessing }.map(\.id))
         )
+        let inBackground = Self.isAppInBackground()
         for note in interruptedNotes {
             guard let current = repository.note(withId: note.id),
                   current.status.isProcessing,
-                  !inFlightNoteIds.contains(current.id) else { continue }
+                  !inFlightNoteIds.contains(current.id),
+                  !(inBackground && waitingForForeground.contains(current.id)) else { continue }
             if current.status == .cleaningLLM && !current.rawTranscript.isEmpty {
                 inFlightNoteIds.insert(current.id)
                 activeProcessingCount += 1

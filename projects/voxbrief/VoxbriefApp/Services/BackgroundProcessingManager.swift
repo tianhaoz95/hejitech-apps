@@ -55,9 +55,17 @@ final class BackgroundProcessingManager {
 
         // MLX may only submit GPU work in the foreground: close the gate as the app starts to
         // leave it, before iOS revokes GPU access (see OnDeviceLLMService.gpuGate).
-        OnDeviceLLMService.gpuGate.setForeground(UIApplication.shared.applicationState != .background)
+        // Only once the app is active: launched into the background (or prewarmed, inactive),
+        // it may never see willResignActive before iOS takes the GPU.
+        OnDeviceLLMService.gpuGate.setForeground(UIApplication.shared.applicationState == .active)
         NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)
-            .sink { _ in OnDeviceLLMService.gpuGate.setForeground(false) }
+            .sink { _ in
+                OnDeviceLLMService.gpuGate.setForeground(false)
+                // Hold the app in "inactive" (GPU still allowed) until the generation that was
+                // running has stopped and its GPU work is done; it stops before its next token.
+                // Bounded, so a load that won't finish can't hold the app.
+                OnDeviceLLMService.gpuGate.waitUntilIdle(timeout: 2)
+            }
             .store(in: &cancellables)
         NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
             .sink { _ in OnDeviceLLMService.gpuGate.setForeground(false) }
@@ -65,8 +73,16 @@ final class BackgroundProcessingManager {
         NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
             .sink { [weak self] _ in
                 OnDeviceLLMService.gpuGate.setForeground(true)
+                self?.pipeline.foregroundReturned()
                 self?.resumeStoppedWork()
             }
+            .store(in: &cancellables)
+
+        // The continued-processing task shows how far the note in progress has got: the system
+        // ends a task that stops reporting progress, and a long note's parts take minutes.
+        pipeline.$chunkProgress
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateContinuedTaskProgress() }
             .store(in: &cancellables)
 
         NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)
@@ -124,6 +140,12 @@ final class BackgroundProcessingManager {
         NoteRepository.shared.notes.filter { $0.status.isProcessing }.count
     }
 
+    /// Notes that can still move on in the background (not waiting for the app to be open
+    /// because their next step needs the on-device model's GPU).
+    private var runnableCount: Int {
+        NoteRepository.shared.notes.filter { $0.status.isProcessing && !pipeline.waitingForForeground.contains($0.id) }.count
+    }
+
     private func processingCountChanged(_ count: Int) {
         idleUnloadTask?.cancel()
         idleUnloadTask = nil
@@ -134,7 +156,9 @@ final class BackgroundProcessingManager {
         if continuedTask != nil {
             // The in-flight note finished; anything left over that isn't running yet (e.g. a note
             // that was pending Stage 2) is picked up before the task ends.
-            if remainingCount > 0 {
+            // Only notes that can move on here: one waiting for the app to be open would be
+            // picked up, stopped and deferred again, over and over.
+            if runnableCount > 0 {
                 updateContinuedTaskProgress()
                 Task { await pipeline.resumeInterruptedNotes() }
             } else {
@@ -175,9 +199,9 @@ final class BackgroundProcessingManager {
         // Run now or not at all: queued for later, the user would no longer connect it to the
         // memo they just recorded, and the app finishes the work at next launch anyway.
         request.strategy = .fail
-        if BGTaskScheduler.supportedResources.contains(.gpu) {
-            request.requiredResources = .gpu
-        }
+        // No `.gpu` resource: it needs the Background GPU Access entitlement, which Voxbrief
+        // doesn't have (see OnDeviceLLMService.backgroundGPUGranted). In the background the task
+        // transcribes and finds speakers; a cleanup on the on-device model waits for the app.
         do {
             try BGTaskScheduler.shared.submit(request)
             continuedTaskTotal = total
@@ -203,14 +227,14 @@ final class BackgroundProcessingManager {
     @available(iOS 26.0, *)
     private func continuedTaskStarted(_ task: BGContinuedProcessingTask) {
         continuedTask = task
-        OnDeviceLLMService.backgroundGPUGranted = BGTaskScheduler.supportedResources.contains(.gpu)
+        OnDeviceLLMService.backgroundGPUGranted = false
         task.progress.totalUnitCount = Int64(max(continuedTaskTotal, 1))
         task.expirationHandler = { [weak self] in
             Task { @MainActor in self?.finishContinuedTask(success: false) }
         }
         updateContinuedTaskProgress()
         if pipeline.activeProcessingCount == 0 {
-            if remainingCount == 0 {
+            if runnableCount == 0 {
                 finishContinuedTask(success: true)
             } else {
                 Task { await pipeline.resumeInterruptedNotes() }
@@ -222,14 +246,19 @@ final class BackgroundProcessingManager {
         guard #available(iOS 26.0, *), let task = continuedTask as? BGContinuedProcessingTask else { return }
         let total = max(continuedTaskTotal, remainingCount, 1)
         let done = max(0, total - remainingCount)
-        task.progress.totalUnitCount = Int64(total)
-        task.progress.completedUnitCount = Int64(done)
+        // Per note, 100 units, so the part a note is on moves the bar between notes.
+        let partial = pipeline.chunkProgress.values.compactMap(\.fraction).max() ?? 0
+        task.progress.totalUnitCount = Int64(total * 100)
+        task.progress.completedUnitCount = Int64(min(total * 100, done * 100 + Int(partial * 99)))
         task.updateTitle("Processing voice notes", subtitle: Self.subtitle(done: done, total: total))
     }
 
     private func finishContinuedTask(success: Bool) {
         OnDeviceLLMService.backgroundGPUGranted = false
         if #available(iOS 26.0, *), let task = continuedTask as? BGContinuedProcessingTask {
+            if success, !pipeline.waitingForForeground.isEmpty {
+                task.updateTitle("Voice notes waiting", subtitle: "Finishes when you open Voxbrief")
+            }
             task.progress.completedUnitCount = task.progress.totalUnitCount
             task.setTaskCompleted(success: success)
         }
