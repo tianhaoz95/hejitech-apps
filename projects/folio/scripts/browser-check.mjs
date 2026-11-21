@@ -31,6 +31,32 @@ const probe = await f.evaluate(() => ({
 }));
 console.log(JSON.stringify(probe));
 await page.screenshot({ path: `${out}/artifact.png` });
+
+// Comment on a selection: select the heading in the preview, comment from the bar, then jump back
+// to it from the comment's quote.
+await f.evaluate(() => {
+  const r = document.createRange();
+  r.selectNodeContents(document.querySelector("h1"));
+  getSelection().removeAllRanges();
+  getSelection().addRange(r);
+});
+await page.waitForSelector(".ws-selbar:not([hidden]) button");
+await page.screenshot({ path: `${out}/selection-bar.png` });
+const heading = (await f.evaluate(() => document.querySelector("h1").textContent)).trim();
+await page.click(".ws-selbar button");
+await page.waitForSelector(".composer.anchored textarea");
+await page.fill(".composer.anchored textarea", "Make this heading friendlier");
+await page.screenshot({ path: `${out}/selection-composer.png` });
+await page.click('.composer.anchored button[type="submit"]');
+const quote = page.locator(".quote-link", { hasText: heading }).last();
+await quote.waitFor();
+await f.evaluate(() => getSelection().removeAllRanges());
+await quote.click();
+await page.waitForTimeout(800);
+const reselected = await f.evaluate(() => getSelection().toString().trim());
+const barAfterJump = await page.locator(".ws-selbar:not([hidden])").count();
+console.log("selection comment:", JSON.stringify({ heading, reselected, ok: reselected === heading, barAfterJump }));
+await page.screenshot({ path: `${out}/selection-comment.png` });
 for (const tab of ["Suggestions", "History", "Files", "Comments"]) {
   await page.click(`.tab:has-text("${tab}")`);
   await page.waitForTimeout(500);

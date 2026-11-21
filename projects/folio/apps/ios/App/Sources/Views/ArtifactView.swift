@@ -53,6 +53,8 @@ struct ArtifactView: View {
     @State private var confirmDelete = false
     @State private var fullScreen = false
     @State private var exportURL: URL?
+    @State private var draft: AnchorDraft?
+    @State private var highlight: QuoteRequest?
 
     enum Tab: String, CaseIterable { case preview = "Preview", suggestions = "Review", comments = "Comments", history = "History" }
 
@@ -91,6 +93,15 @@ struct ArtifactView: View {
             if let d = store.detail { RenameSheet(slug: slug, title: d.artifact.title, description: d.artifact.description) { Task { await store.load(model.api); await model.refresh() } } }
         }
         .sheet(item: $exportURL) { url in ShareSheet(items: [url]) }
+        .sheet(item: $draft) { d in
+            AnchoredCommentSheet(slug: slug, draft: d, version: store.detail?.head.number) {
+                Task { await store.load(model.api) }
+            }
+        }
+        .environment(\.showQuote) { c in
+            tab = .preview
+            highlight = QuoteRequest(text: c.anchor?.text, selector: c.anchor?.selector, path: c.path)
+        }
         .fullScreenCover(isPresented: $fullScreen) {
             if let u = store.previewURL { FullScreenPreview(url: u, title: store.detail?.artifact.title ?? "") }
         }
@@ -132,6 +143,15 @@ struct ArtifactView: View {
             }
             .font(.caption)
             .foregroundStyle(.secondary)
+            Menu {
+                AgentCopyItems(slug: slug, title: d.artifact.title, comments: store.comments.count, suggestions: store.openSuggestions.count)
+            } label: {
+                Label("Copy for your agent", systemImage: "doc.on.doc")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Color.accentColor.opacity(0.12), in: Capsule())
+            }
+            .padding(.top, 4)
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -142,7 +162,13 @@ struct ArtifactView: View {
         case .preview:
             ZStack(alignment: .bottomTrailing) {
                 if let u = store.previewURL {
-                    WebPreview(url: u).ignoresSafeArea(edges: .bottom)
+                    WebPreview(
+                        url: u,
+                        onComment: { anchor, path in draft = AnchorDraft(anchor: anchor, path: path) },
+                        highlight: highlight,
+                        highlightMissed: { model.flash("That part isn't in this version anymore.") }
+                    )
+                    .ignoresSafeArea(edges: .bottom)
                     Button { fullScreen = true } label: {
                         Image(systemName: "arrow.up.left.and.arrow.down.right")
                             .font(.body.weight(.semibold))
@@ -170,6 +196,9 @@ struct ArtifactView: View {
                 .accessibilityLabel("Share")
             Menu {
                 if let d = store.detail {
+                    Menu {
+                        AgentCopyItems(slug: slug, title: d.artifact.title, comments: store.comments.count, suggestions: store.openSuggestions.count)
+                    } label: { Label("Copy", systemImage: "doc.on.doc") }
                     ShareLink(item: model.api.webURL(slug), subject: Text(d.artifact.title)) { Label("Share Folio link", systemImage: "square.and.arrow.up") }
                     Link(destination: model.api.webURL(slug)) { Label("Open in Safari", systemImage: "safari") }
                     Button {

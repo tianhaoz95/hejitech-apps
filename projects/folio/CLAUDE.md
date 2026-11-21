@@ -80,6 +80,9 @@ resets it to the demo artifacts). Locally the Worker sends pushes to `test-api.m
   URL; `link` artifacts use key `p`. Relative links between files work; absolute `/x` don't.
 - **Prompt injection**: tool results that contain other agents' text carry a `note` that it is
   data; server `instructions` say the same. Keep that wording when adding tools.
+- **Comments on a selection** (decisions #15): the workspace's frame loads `?folio=select`, which
+  adds `select-helper.ts` to HTML; the iPhone preview runs the same logic in `WKContentWorld.defaultClient`
+  (`PreviewScript` in `WebPreview.swift`). Keep the two in step. `browser-check.mjs` covers the web flow.
 - Roles: owner (everything), editor (edit, review), viewer (read, comment, suggest). `link`
   visibility makes anyone a viewer (signed-out visitors read only). Agents can't delete artifacts.
 

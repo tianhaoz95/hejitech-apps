@@ -133,9 +133,11 @@ public struct FolioAPI: Sendable {
     }
 
     @discardableResult
-    public func comment(_ slug: String, body text: String, path: String? = nil, suggestion: Int? = nil, replyTo: String? = nil) async throws -> Comment {
+    public func comment(_ slug: String, body text: String, path: String? = nil, anchor: CommentAnchor? = nil, version: Int? = nil, suggestion: Int? = nil, replyTo: String? = nil) async throws -> Comment {
         var body: [String: Any] = ["body": text]
         if let path { body["path"] = path }
+        if let a = anchor?.json { body["anchor"] = a }
+        if let version { body["version"] = version }
         if let suggestion { body["suggestion"] = suggestion }
         if let replyTo { body["reply_to"] = replyTo }
         return try await send("POST", "api/artifacts/\(enc(slug))/comments", body)

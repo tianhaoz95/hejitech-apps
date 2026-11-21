@@ -145,6 +145,23 @@ public struct CommentAnchor: Codable, Hashable, Sendable {
     public var text: String?
     public var line: Int?
     public var end_line: Int?
+
+    public init(selector: String? = nil, text: String? = nil, line: Int? = nil, end_line: Int? = nil) {
+        self.selector = selector
+        self.text = text
+        self.line = line
+        self.end_line = end_line
+    }
+
+    /// The request body's `anchor`, or nil when there's nothing to point at.
+    public var json: [String: Any]? {
+        var d: [String: Any] = [:]
+        if let selector, !selector.isEmpty { d["selector"] = selector }
+        if let text, !text.isEmpty { d["text"] = text }
+        if let line { d["line"] = line }
+        if let end_line { d["end_line"] = end_line }
+        return d.isEmpty ? nil : d
+    }
 }
 
 public struct Comment: Codable, Hashable, Identifiable, Sendable {
@@ -299,5 +316,19 @@ public enum FolioDate {
         }
         if s.hasSuffix("+00") { s += ":00" }
         return fractional.date(from: s) ?? plain.date(from: s)
+    }
+}
+
+/// Which of an artifact's files a preview page is showing: its URL under the render base
+/// (`…/r/<slug>/<version>/<key>/`), decoded. Nil for the base itself (the entry file) or a page
+/// outside it.
+public enum RenderPath {
+    public static func file(of url: URL, base: URL) -> String? {
+        let b = base.absoluteString, u = url.absoluteString
+        guard u.hasPrefix(b) else { return nil }
+        var rest = String(u.dropFirst(b.count))
+        if let cut = rest.firstIndex(where: { $0 == "?" || $0 == "#" }) { rest = String(rest[..<cut]) }
+        rest = rest.removingPercentEncoding ?? rest
+        return rest.isEmpty ? nil : rest
     }
 }

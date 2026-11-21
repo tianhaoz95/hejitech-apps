@@ -30,6 +30,7 @@ struct HomeView: View {
                     Section {
                         ForEach(needsReview) { a in
                             NavigationLink(value: Destination.artifact(a.slug)) { ArtifactRow(a: a) }
+                                .contextMenu { AgentCopyItems(slug: a.slug, title: a.title, suggestions: a.open_suggestions) }
                         }
                     } header: {
                         Text("Needs your review")
@@ -39,6 +40,7 @@ struct HomeView: View {
                     Section(needsReview.isEmpty ? "" : "Artifacts") {
                         ForEach(rest) { a in
                             NavigationLink(value: Destination.artifact(a.slug)) { ArtifactRow(a: a) }
+                                .contextMenu { AgentCopyItems(slug: a.slug, title: a.title, suggestions: a.open_suggestions) }
                         }
                     }
                 }

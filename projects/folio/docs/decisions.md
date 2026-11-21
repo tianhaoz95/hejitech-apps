@@ -60,3 +60,11 @@
     hand out; every sign-in resets it to two artifacts different agents worked on, an open
     suggestion and comments (`demo.ts`). Delete my Folio data in Settings (never the shared sign-in).
 14. **One version for every surface:** `services/web/package.json`; the TestFlight build ships it.
+15. **Comment on a selection, without loosening the sandbox.** People select part of the preview and
+    comment on it; the comment keeps the quoted text, a CSS selector and the file as its `anchor`
+    (what agents already sent through MCP), and a comment's quote jumps back to that spot. The
+    workspace frames `/r/…?folio=select`, which adds `worker/select-helper.ts` to HTML pages: it
+    posts only the selection to Folio's origin and finds a quote when asked. The page stays in its
+    opaque origin, and a page faking those messages can only fill in a quote in the viewer's own
+    comment box. The iPhone app does the same in an isolated JavaScript world (`WebPreview`), with
+    "Comment" in the selection menu. A quote that's gone from the version shown says so.

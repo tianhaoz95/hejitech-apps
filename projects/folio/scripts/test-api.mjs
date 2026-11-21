@@ -291,8 +291,15 @@ await step("comments: on a suggestion and a file, replies, resolve", async () =>
   const all = await claude.tool("list_comments", { artifact: slug });
   assert.equal(all.comments.length, 3);
   await claude.tool("resolve_comment", { artifact: slug, comment: f.comment.id });
+  // A person comments on a part they selected (web and iPhone): agents get the quote and where.
+  const picked = await call(`/api/artifacts/${slug}/comments`, { method: "POST", auth: owner, body: { body: "Bigger?", path: "index.html", anchor: { text: "Shopping list", selector: "body > h1:nth-of-type(1)" } } });
+  assert.equal(picked.status, 201);
+  const seen = (await claude.tool("list_comments", { artifact: slug })).comments.find((x) => x.body === "Bigger?");
+  assert.deepEqual(seen.anchor, { text: "Shopping list", selector: "body > h1:nth-of-type(1)" });
+  assert.equal(seen.path, "index.html");
+  await claude.tool("resolve_comment", { artifact: slug, comment: seen.id });
   assert.equal((await claude.tool("list_comments", { artifact: slug })).comments.length, 2);
-  assert.equal((await claude.tool("list_comments", { artifact: slug, include_resolved: true })).comments.length, 3);
+  assert.equal((await claude.tool("list_comments", { artifact: slug, include_resolved: true })).comments.length, 4);
 });
 
 await step("review: accept makes a version; reject and stale suggestions", async () => {
@@ -358,7 +365,15 @@ await step("render: sandbox CSP, signed keys for private, link visibility", asyn
   assert.match(page.headers.get("content-security-policy"), /^sandbox allow-scripts/);
   assert.doesNotMatch(page.headers.get("content-security-policy"), /allow-same-origin/);
   assert.match(page.headers.get("content-type"), /text\/html/);
-  assert.match(await page.text(), /Shopping list/);
+  const html = await page.text();
+  assert.match(html, /Shopping list/);
+  assert.doesNotMatch(html, /folio: "find"|kind: "selection"/, "no comment helper unless the workspace asks");
+  const framed = await (await fetch(`${s.render_url}?folio=select`)).text();
+  assert.match(framed, /kind: "selection"/, "the workspace's frame gets the comment helper");
+  assert.ok(framed.includes(`)(${JSON.stringify(new URL(site).origin)});</script>`), "messages only go to Folio's origin");
+  assert.ok(!/<\/body>/i.test(html) || framed.indexOf("<script>(function (origin)") < framed.toLowerCase().lastIndexOf("</body>"), "helper goes before </body>");
+  const cssFramed = await (await fetch(`${s.render_url}style.css?folio=select`)).text();
+  assert.doesNotMatch(cssFramed, /<script>/, "only HTML gets the helper");
   const css = await fetch(`${s.render_url}style.css`);
   assert.match(css.headers.get("content-type"), /text\/css/);
   const png = await fetch(`${s.render_url}img/dot.png`);

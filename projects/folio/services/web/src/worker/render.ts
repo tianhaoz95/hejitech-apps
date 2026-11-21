@@ -10,6 +10,7 @@
 // expiring token (`<exp>.<mac>`) handed out to people and agents who may read it.
 import { contentTypeFor, entryFile, isTextType, SLUG_RE } from "@folio/core";
 import { findArtifact, FolioError, loadTexts, loadVersion, readBytes, suggestionFiles, type ArtifactRow, type SuggestionRow } from "./service.ts";
+import { withSelectHelper } from "./select-helper.ts";
 import { b64url, sha256, type Db, type Env } from "./store.ts";
 
 const TTL = 12 * 3600;
@@ -109,6 +110,10 @@ export async function handleRender(req: Request, env: Env, db: Db, url: URL): Pr
         const t = await loadTexts(db, a.id, [f.hash]);
         body = new TextEncoder().encode(t[f.hash] ?? "");
       } else body = await readBytes(db, a.id, f.hash, f.type);
+    }
+    // Framed by the workspace for commenting on a selection: add the helper (select-helper.ts).
+    if (url.searchParams.get("folio") === "select" && (type || contentTypeFor(path)).startsWith("text/html")) {
+      body = new TextEncoder().encode(withSelectHelper(new TextDecoder().decode(body), new URL(env.PUBLIC_URL).origin));
     }
     const headers = new Headers({
       "Content-Type": type || contentTypeFor(path),

@@ -67,4 +67,18 @@ final class FolioKitTests: XCTestCase {
         XCTAssertEqual(files[2].data, png)
         XCTAssertEqual(ShareDraft(items: [.url(URL(string: "https://www.example.com")!, title: nil)]).title, "example.com")
     }
+
+    func testCommentAnchorBodyAndRenderPath() {
+        XCTAssertNil(CommentAnchor().json)
+        XCTAssertNil(CommentAnchor(selector: "", text: "").json)
+        let a = CommentAnchor(selector: "main > p:nth-of-type(2)", text: "Lunch at Nepenthe").json
+        XCTAssertEqual(a?["text"] as? String, "Lunch at Nepenthe")
+        XCTAssertEqual(a?["selector"] as? String, "main > p:nth-of-type(2)")
+        XCTAssertNil(a?["line"])
+
+        let base = URL(string: "https://folio.example/r/abc234/3/p/")!
+        XCTAssertNil(RenderPath.file(of: base, base: base))
+        XCTAssertEqual(RenderPath.file(of: URL(string: "https://folio.example/r/abc234/3/p/docs/my%20page.html#top")!, base: base), "docs/my page.html")
+        XCTAssertNil(RenderPath.file(of: URL(string: "https://elsewhere.example/x.html")!, base: base))
+    }
 }

@@ -130,6 +130,7 @@ struct CommentThreads: View {
 
 struct CommentBubble: View {
     let c: Comment
+    @Environment(\.showQuote) private var showQuote
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -141,11 +142,102 @@ struct CommentBubble: View {
                 Text(c.created_at, format: .relative(presentation: .named)).font(.caption).foregroundStyle(.secondary)
             }
             if let quote = c.anchor?.text ?? c.anchor?.selector {
-                Text(quote).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(2)
+                let label = Text(quote).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(2)
+                    .multilineTextAlignment(.leading)
                     .padding(.leading, 8)
                     .overlay(alignment: .leading) { Rectangle().fill(.quaternary).frame(width: 2) }
+                if let showQuote {
+                    // Jumps to the quoted part in the preview.
+                    Button { showQuote(c) } label: {
+                        HStack(alignment: .top, spacing: 4) {
+                            label
+                            Image(systemName: "arrow.up.forward.square").font(.caption2).foregroundStyle(Color.accentColor)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Show “\(quote)” in the preview")
+                } else {
+                    label
+                }
             }
             Text(c.body).font(.body).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+/// Shows a comment's quoted part in the artifact's preview; set by `ArtifactView`, nil elsewhere.
+extension EnvironmentValues {
+    @Entry var showQuote: ((Comment) -> Void)? = nil
+}
+
+/// A comment about a part of the preview someone selected, before it's written.
+struct AnchorDraft: Identifiable {
+    let id = UUID()
+    let anchor: CommentAnchor
+    let path: String?
+}
+
+/// Writing a comment about the selected part: the quote on top, then the comment.
+struct AnchoredCommentSheet: View {
+    let slug: String
+    let draft: AnchorDraft
+    let version: Int?
+    let done: () -> Void
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @State private var text = ""
+    @State private var sending = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text(draft.anchor.text ?? "")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(6)
+                        .padding(.leading, 10)
+                        .overlay(alignment: .leading) { Rectangle().fill(Color.accentColor).frame(width: 3) }
+                } header: {
+                    Text(draft.path.map { "Selected in \($0)" } ?? "Selected")
+                }
+                Section {
+                    TextField("What should change here?", text: $text, axis: .vertical)
+                        .lineLimit(3...8)
+                        .focused($focused)
+                } footer: {
+                    Text("Agents see the quoted part with your comment, so they know where to look.")
+                }
+            }
+            .navigationTitle("Comment")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Send", action: send)
+                        .disabled(sending || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .onAppear { focused = true }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func send() {
+        let body = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !body.isEmpty else { return }
+        sending = true
+        Task {
+            do {
+                try await model.api.comment(slug, body: body, path: draft.path, anchor: draft.anchor, version: version)
+                model.flash("Comment added")
+                done()
+                dismiss()
+            } catch {
+                model.flash(error.localizedDescription)
+                sending = false
+            }
         }
     }
 }

@@ -91,7 +91,11 @@ const state = {
   editing: false,
   size: "desktop" as "desktop" | "tablet" | "phone",
   showResolved: false,
+  /** A part of the preview picked to comment on, waiting in the Comments tab's composer. */
+  pendingAnchor: null as Anchor | null,
 };
+
+type Anchor = { text: string; selector?: string; path?: string };
 
 const canEdit = () => state.data?.role === "owner" || state.data?.role === "editor";
 const isOwner = () => state.data?.role === "owner";
@@ -111,7 +115,61 @@ const frame = el("iframe", {
   sandbox: "allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads",
   referrerpolicy: "no-referrer",
 });
-const frameWrap = el("div", { class: "ws-frame-wrap", "data-size": "desktop" }, frame);
+// Commenting on a selection: the framed page runs worker/select-helper.ts, which posts what's
+// selected; a bar over the preview offers to comment on it.
+const selBar = el("div", { class: "ws-selbar", hidden: true });
+const frameWrap = el("div", { class: "ws-frame-wrap", "data-size": "desktop" }, frame, selBar);
+let frameSel: Anchor | null = null;
+let framePath = "";
+let pendingFind: { text: string; selector: string } | null = null;
+
+window.addEventListener("message", (e) => {
+  if (e.source !== frame.contentWindow) return;
+  const d = e.data as { folio?: boolean; kind?: string; text?: unknown; selector?: unknown; path?: unknown; ok?: unknown } | null;
+  if (!d || d.folio !== true) return;
+  if (typeof d.path === "string") framePath = d.path;
+  if (d.kind === "ready" && pendingFind) {
+    frame.contentWindow?.postMessage({ folio: "find", ...pendingFind }, "*");
+    pendingFind = null;
+  } else if (d.kind === "selection") {
+    const text = typeof d.text === "string" ? d.text.slice(0, 500) : "";
+    frameSel = text ? { text, selector: typeof d.selector === "string" && d.selector ? d.selector.slice(0, 300) : undefined, path: framePath || undefined } : null;
+    drawSelBar();
+  } else if (d.kind === "found" && d.ok === false) {
+    toast("That part isn't in this version anymore.");
+  }
+});
+
+function drawSelBar() {
+  const s = state.showing;
+  const can = signedIn() && !!frameSel && s?.kind !== "suggestion";
+  selBar.hidden = !can;
+  if (!can) return;
+  const quote = frameSel!.text.length > 60 ? `${frameSel!.text.slice(0, 57)}…` : frameSel!.text;
+  const b = el("button", { class: "btn primary small", type: "button" }, `Comment on “${quote}”`);
+  b.addEventListener("click", () => {
+    state.pendingAnchor = frameSel;
+    frameSel = null;
+    selBar.hidden = true;
+    state.tab = "comments";
+    side.classList.add("open");
+    drawTabs();
+    void drawSide().then(() => sideBody.querySelector<HTMLTextAreaElement>(".composer.anchored textarea")?.focus());
+  });
+  selBar.replaceChildren(b);
+}
+
+/** Shows a comment's quoted part in the preview (opening its file first when it's another one). */
+function showQuote(c: Comment) {
+  const q = { text: c.anchor?.text ?? "", selector: c.anchor?.selector ?? "" };
+  const base = frame.dataset.url;
+  if (c.path && c.path !== framePath && base) {
+    pendingFind = q;
+    frame.src = `${base}${c.path.split("/").map(encodeURIComponent).join("/")}?folio=select`;
+  } else {
+    frame.contentWindow?.postMessage({ folio: "find", ...q }, "*");
+  }
+}
 const tabs = el("div", { class: "tabs", role: "tablist" });
 const sideBody = el("div", { class: "side-body" });
 const side = el("aside", { class: "ws-side" });
@@ -135,7 +193,10 @@ async function loadFrame(force = false) {
   frameFor = key;
   const q = s.kind === "version" ? `version=${s.n}` : `suggestion=${s.n}`;
   const { url } = await api<{ url: string }>(`${base()}/render?${q}`);
-  frame.src = url + (force ? `#r${Date.now()}` : "");
+  frame.src = `${url}?folio=select` + (force ? `#r${Date.now()}` : "");
+  framePath = "";
+  frameSel = null;
+  drawSelBar();
   frame.dataset.url = url;
 }
 
@@ -464,18 +525,32 @@ function commentBody(c: Comment): DocumentFragment {
   f.append(
     el("div", { class: "head" }, agentBadge(c.agent, c.model), el("span", { class: "meta" }, timeAgo(c.created_at)), c.resolved && el("span", { class: "pill ok" }, "resolved"), tools),
     where ? el("div", { class: "meta mono", style: "margin-top: 4px" }, where) : "",
-    c.anchor?.text ? el("div", { class: "meta", style: "margin-top: 4px; font-style: italic" }, `“${c.anchor.text}”`) : "",
+    c.anchor?.text || c.anchor?.selector ? quoteButton(c) : "",
     el("div", { class: "body" }, c.body)
   );
   return f;
 }
 
+function quoteButton(c: Comment): HTMLElement {
+  const b = el("button", { class: "quote-link", type: "button", title: "Show it in the preview" }, c.anchor?.text ? `“${c.anchor.text}”` : c.anchor!.selector!);
+  b.addEventListener("click", () => showQuote(c));
+  return b;
+}
+
 function composer(extra: { suggestion?: number; reply_to?: string; path?: string }, compact = false): HTMLElement {
   if (!signedIn()) return needSignIn("comment");
+  const anchor = !extra.reply_to && !extra.suggestion ? state.pendingAnchor : null;
   const text = el("textarea", { placeholder: extra.reply_to ? "Reply…" : "Comment for people and agents…", rows: compact ? 2 : 3 });
   const fileSel = el("select", { "aria-label": "About file" }, el("option", { value: "" }, "Whole artifact"), ...state.data!.files.map((f) => el("option", { value: f.path, selected: extra.path === f.path }, f.path)));
   const send = el("button", { class: "btn primary small", type: "submit" }, extra.reply_to ? "Reply" : "Comment");
-  const form = el("form", { class: "composer" }, text, !extra.reply_to && !extra.suggestion && fileSel, el("div", { class: "row tight" }, send));
+  const clear = el("button", { class: "btn ghost small", type: "button", "aria-label": "Don't quote it" }, "×");
+  const quote = anchor && el("div", { class: "anchor-quote" }, el("span", {}, anchor.path ? `${anchor.path}: “${anchor.text}”` : `“${anchor.text}”`), clear);
+  const form = el("form", { class: `composer${anchor ? " anchored" : ""}` }, quote, text, !extra.reply_to && !extra.suggestion && !anchor && fileSel, el("div", { class: "row tight" }, send));
+  clear.addEventListener("click", () => {
+    state.pendingAnchor = null;
+    void drawSide();
+  });
+  if (anchor) text.placeholder = "What should change here?";
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!text.value.trim()) return;
@@ -483,8 +558,16 @@ function composer(extra: { suggestion?: number; reply_to?: string; path?: string
     try {
       await api(`${base()}/comments`, {
         method: "POST",
-        json: { body: text.value, suggestion: extra.suggestion, reply_to: extra.reply_to, path: extra.path ?? (fileSel.value || undefined), version: state.showing?.kind === "version" ? state.showing.n : undefined },
+        json: {
+          body: text.value,
+          suggestion: extra.suggestion,
+          reply_to: extra.reply_to,
+          path: anchor ? anchor.path : extra.path ?? (fileSel.value || undefined),
+          anchor: anchor ? { text: anchor.text, selector: anchor.selector } : undefined,
+          version: state.showing?.kind === "version" ? state.showing.n : undefined,
+        },
       });
+      if (anchor) state.pendingAnchor = null;
       await refresh(true);
       void drawSide();
     } catch (err) {
