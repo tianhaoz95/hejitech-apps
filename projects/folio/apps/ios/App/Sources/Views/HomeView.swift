@@ -8,6 +8,7 @@ struct HomeView: View {
     @State private var showSettings = false
     @State private var showActivity = false
     @State private var showConnect = false
+    @State private var pendingRemoval: ArtifactSummary?
 
     private var filtered: [ArtifactSummary] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -15,7 +16,9 @@ struct HomeView: View {
         return model.artifacts.filter { $0.title.lowercased().contains(q) || $0.description.lowercased().contains(q) }
     }
     private var needsReview: [ArtifactSummary] { filtered.filter { $0.open_suggestions > 0 && $0.role.canReview } }
-    private var rest: [ArtifactSummary] { filtered.filter { !($0.open_suggestions > 0 && $0.role.canReview) } }
+    private var others: [ArtifactSummary] { filtered.filter { !($0.open_suggestions > 0 && $0.role.canReview) } }
+    private var favorites: [ArtifactSummary] { others.filter(\.isFavorite) }
+    private var rest: [ArtifactSummary] { others.filter { !$0.isFavorite } }
 
     var body: some View {
         @Bindable var model = model
@@ -28,24 +31,33 @@ struct HomeView: View {
                 }
                 if !needsReview.isEmpty {
                     Section {
-                        ForEach(needsReview) { a in
-                            NavigationLink(value: Destination.artifact(a.slug)) { ArtifactRow(a: a) }
-                                .contextMenu { AgentCopyItems(slug: a.slug, title: a.title, suggestions: a.open_suggestions) }
-                        }
+                        ForEach(needsReview) { a in row(a) }
                     } header: {
                         Text("Needs your review")
                     }
                 }
+                if !favorites.isEmpty {
+                    Section("Favorites") {
+                        ForEach(favorites) { a in row(a) }
+                    }
+                }
                 if !rest.isEmpty {
-                    Section(needsReview.isEmpty ? "" : "Artifacts") {
-                        ForEach(rest) { a in
-                            NavigationLink(value: Destination.artifact(a.slug)) { ArtifactRow(a: a) }
-                                .contextMenu { AgentCopyItems(slug: a.slug, title: a.title, suggestions: a.open_suggestions) }
-                        }
+                    Section(needsReview.isEmpty && favorites.isEmpty ? "" : "Artifacts") {
+                        ForEach(rest) { a in row(a) }
                     }
                 }
             }
             .listStyle(.insetGrouped)
+            .animation(.default, value: model.artifacts)
+            .confirmationDialog(removalTitle, isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } }), titleVisibility: .visible, presenting: pendingRemoval) { a in
+                Button(a.role == .owner ? "Delete" : "Leave", role: .destructive) {
+                    Task { await model.removeFromList(a) }
+                }
+            } message: { a in
+                Text(a.role == .owner
+                    ? "Every version, suggestion and comment goes with it, for everyone it's shared with. This can't be undone."
+                    : "You and your agents lose access until someone invites you again.")
+            }
             .overlay {
                 if model.loaded && model.artifacts.isEmpty && model.listError == nil {
                     EmptyHome { showConnect = true }
@@ -94,6 +106,37 @@ struct HomeView: View {
     }
 }
 
+extension HomeView {
+    private var removalTitle: String {
+        guard let a = pendingRemoval else { return "" }
+        return a.role == .owner ? "Delete \"\(a.title)\"?" : "Leave \"\(a.title)\"?"
+    }
+
+    /// A row with its swipe actions: favorite from the leading edge, delete (or leave, when it's
+    /// shared with you) from the trailing edge, always confirmed first.
+    private func row(_ a: ArtifactSummary) -> some View {
+        NavigationLink(value: Destination.artifact(a.slug)) { ArtifactRow(a: a) }
+            .contextMenu { AgentCopyItems(slug: a.slug, title: a.title, suggestions: a.open_suggestions) }
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                Button {
+                    Task { await model.toggleFavorite(a) }
+                } label: {
+                    Label(a.isFavorite ? "Unfavorite" : "Favorite", systemImage: a.isFavorite ? "star.slash.fill" : "star.fill")
+                }
+                .tint(.yellow)
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                // Not `role: .destructive`: that animates the row away before the confirmation.
+                Button {
+                    pendingRemoval = a
+                } label: {
+                    Label(a.role == .owner ? "Delete" : "Leave", systemImage: a.role == .owner ? "trash" : "rectangle.portrait.and.arrow.right")
+                }
+                .tint(.red)
+            }
+    }
+}
+
 struct ArtifactRow: View {
     let a: ArtifactSummary
 
@@ -105,7 +148,12 @@ struct ArtifactRow: View {
             }
             .frame(width: 38, height: 38)
             VStack(alignment: .leading, spacing: 3) {
-                Text(a.title).font(.body.weight(.semibold)).lineLimit(2)
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    if a.isFavorite {
+                        Image(systemName: "star.fill").font(.caption).foregroundStyle(.yellow).accessibilityLabel("Favorite")
+                    }
+                    Text(a.title).font(.body.weight(.semibold)).lineLimit(2)
+                }
                 if !a.description.isEmpty {
                     Text(a.description).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
                 }

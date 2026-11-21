@@ -24,8 +24,12 @@ public struct ArtifactSummary: Codable, Hashable, Identifiable, Sendable {
     public var role: Role
     public var head_version: Int
     public var open_suggestions: Int
+    /// Starred by the signed-in person (absent from servers older than 0.2.4).
+    public var favorite: Bool?
     public var updated_at: Date
     public var created_at: Date
+
+    public var isFavorite: Bool { favorite ?? false }
 }
 
 public struct Artifact: Codable, Hashable, Sendable {

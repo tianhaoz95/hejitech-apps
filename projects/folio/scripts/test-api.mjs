@@ -470,6 +470,20 @@ await step("live data: set_data, pages read .folio/data.json, merge, limits, for
   assert.ok(zip.includes(Buffer.from(".folio/data.json")), "the zip carries the data");
 });
 
+await step("favorites: per person, in the list, idempotent", async () => {
+  const find = async (auth) => (await call("/api/artifacts", { auth })).body.find((a) => a.slug === slug);
+  assert.equal((await find(owner)).favorite, false);
+  assert.equal((await call(`/api/artifacts/${slug}/favorite`, { method: "POST", auth: owner })).status, 200);
+  assert.equal((await call(`/api/artifacts/${slug}/favorite`, { method: "POST", auth: owner })).status, 200, "starring twice is fine");
+  assert.equal((await find(owner)).favorite, true);
+  assert.equal((await find(other)).favorite, false, "a favorite is one person's");
+  assert.equal((await call(`/api/artifacts/${slug}/favorite`, { method: "POST", auth: other })).status, 200, "members can star shared artifacts");
+  assert.equal((await find(other)).favorite, true);
+  assert.notEqual((await call("/api/artifacts/zzzzzzzz/favorite", { method: "POST", auth: owner })).status, 200, "unknown artifact");
+  assert.equal((await call(`/api/artifacts/${slug}/favorite`, { method: "DELETE", auth: owner })).status, 200);
+  assert.equal((await find(owner)).favorite, false);
+});
+
 await step("web API: artifact page data, edits by Web, comments, events polling", async () => {
   const d = await call(`/api/artifacts/${slug}`, { auth: owner });
   assert.equal(d.status, 200);

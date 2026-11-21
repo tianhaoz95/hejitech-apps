@@ -522,6 +522,17 @@ export async function deleteArtifact(db: Db, actor: Actor, ref: unknown): Promis
   return { deleted: a.slug };
 }
 
+/** Stars or unstars an artifact for the person (anyone who can open it). Not an event. */
+export async function setFavorite(db: Db, actor: Actor, ref: unknown, on: boolean): Promise<{ favorite: boolean }> {
+  if (!actor.userId) throw new FolioError(401, "auth", "Sign in to keep favorites.");
+  const { a } = await access(db, actor, ref, "read");
+  const { error } = on
+    ? await db.from("favorites").upsert({ user_id: actor.userId, artifact_id: a.id }, { onConflict: "user_id,artifact_id", ignoreDuplicates: true })
+    : await db.from("favorites").delete().eq("user_id", actor.userId).eq("artifact_id", a.id);
+  fail(error, on ? "add the favorite" : "remove the favorite");
+  return { favorite: on };
+}
+
 // ------------------------------------------------------------------ live data
 
 export interface DataInfo {
@@ -615,16 +626,20 @@ export interface ArtifactSummary {
   role: Role;
   head_version: number;
   open_suggestions: number;
+  /** Starred by the person listing (per person, not per artifact). */
+  favorite: boolean;
   updated_at: string;
   created_at: string;
 }
 
 export async function listArtifacts(db: Db, userId: string, query?: unknown, limit = 100): Promise<ArtifactSummary[]> {
-  const [{ data: owned, error: e1 }, { data: memberRows, error: e2 }] = await Promise.all([
+  const [{ data: owned, error: e1 }, { data: memberRows, error: e2 }, { data: favRows, error: e3 }] = await Promise.all([
     db.from("artifacts").select(ARTIFACT_COLS).eq("owner_id", userId).order("updated_at", { ascending: false }).limit(1000),
     db.from("members").select("artifact_id, role").eq("user_id", userId),
+    db.from("favorites").select("artifact_id").eq("user_id", userId),
   ]);
-  fail(e1 ?? e2, "list artifacts");
+  fail(e1 ?? e2 ?? e3, "list artifacts");
+  const favs = new Set((favRows ?? []).map((f) => f.artifact_id as string));
   const roles = new Map<string, Role>((memberRows ?? []).map((m) => [m.artifact_id as string, m.role as Role]));
   let shared: ArtifactRow[] = [];
   if (roles.size) {
@@ -651,6 +666,7 @@ export async function listArtifacts(db: Db, userId: string, query?: unknown, lim
     role,
     head_version: a.head_version,
     open_suggestions: counts.get(a.id) ?? 0,
+    favorite: favs.has(a.id),
     updated_at: a.updated_at,
     created_at: a.created_at,
   }));
@@ -1203,7 +1219,7 @@ export async function setMemberRole(db: Db, actor: Actor, ref: unknown, userId: 
 export async function deleteAccountData(db: Db, userId: string): Promise<void> {
   const { data } = await db.from("artifacts").select("id").eq("owner_id", userId);
   for (const r of data ?? []) await deleteArtifactRow(db, r.id as string);
-  for (const t of ["members", "access_tokens", "push_devices"]) {
+  for (const t of ["members", "access_tokens", "push_devices", "favorites"]) {
     const { error } = await db.from(t).delete().eq("user_id", userId);
     fail(error, `delete ${t}`);
   }

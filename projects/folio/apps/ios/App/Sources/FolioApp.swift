@@ -29,6 +29,11 @@ struct RootView: View {
                 HomeView()
                     .task {
                         if model.pushEnabled { await PushRelay.shared.refreshRegistration() }
+                        #if DEBUG
+                        // `-open <slug>`: straight to an artifact (screenshots, UI checks).
+                        let args = ProcessInfo.processInfo.arguments
+                        if let i = args.firstIndex(of: "-open"), args.indices.contains(i + 1) { model.open(.artifact(args[i + 1])) }
+                        #endif
                         if whatsNewSeen.isEmpty { whatsNewSeen = WhatsNew.currentVersion } else if WhatsNew.shouldShow(seen: whatsNewSeen) { showWhatsNew = true }
                     }
                     .sheet(isPresented: $showWhatsNew, onDismiss: { whatsNewSeen = WhatsNew.currentVersion }) {

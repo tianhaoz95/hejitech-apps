@@ -67,12 +67,7 @@ struct ArtifactView: View {
         VStack(spacing: 0) {
             if let d = store.detail {
                 header(d)
-                Picker("View", selection: $tab) {
-                    ForEach(Tab.allCases, id: \.self) { t in Text(label(t)).tag(t) }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.bottom, 8)
+                tabBar
                 Divider()
                 content
             } else if let e = store.error {
@@ -129,6 +124,71 @@ struct ArtifactView: View {
         }
     }
 
+    /// Preview / Review / Comments / History: Liquid Glass buttons on iOS 26, the selected one
+    /// prominent; a segmented picker before that.
+    @ViewBuilder private var tabBar: some View {
+        if #available(iOS 26, *) {
+            // All four in one row: regular text when it fits, smaller on narrow phones, and
+            // scrolling only as a last resort (large Dynamic Type).
+            ViewThatFits(in: .horizontal) {
+                glassTabs(font: .subheadline.weight(.semibold), spacing: 8)
+                glassTabs(font: .footnote.weight(.semibold), spacing: 6)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    glassTabs(font: .footnote.weight(.semibold), spacing: 6)
+                }
+                .scrollClipDisabled()
+            }
+            .padding(.bottom, 8)
+        } else {
+            Picker("View", selection: $tab) {
+                ForEach(Tab.allCases, id: \.self) { t in Text(label(t)).tag(t) }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+        }
+    }
+
+    @available(iOS 26, *)
+    private func glassTabs(font: Font, spacing: CGFloat) -> some View {
+        GlassEffectContainer(spacing: spacing) {
+            HStack(spacing: spacing) {
+                ForEach(Tab.allCases, id: \.self) { t in
+                    let button = Button {
+                        withAnimation(.snappy) { tab = t }
+                    } label: {
+                        Text(label(t)).font(font).monospacedDigit().lineLimit(1).fixedSize()
+                    }
+                    .accessibilityAddTraits(tab == t ? .isSelected : [])
+                    if tab == t {
+                        button.buttonStyle(.glassProminent)
+                    } else {
+                        button.buttonStyle(.glass)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private func copyForAgent(_ d: ArtifactDetail) -> some View {
+        let menu = Menu {
+            AgentCopyItems(slug: slug, title: d.artifact.title, comments: store.comments.count, suggestions: store.openSuggestions.count)
+        } label: {
+            Label("Copy for your agent", systemImage: "doc.on.doc")
+                .font(.caption.weight(.semibold))
+        }
+        if #available(iOS 26, *) {
+            menu.buttonStyle(.glass).controlSize(.small).tint(.accentColor)
+        } else {
+            menu.labelStyle(.titleAndIcon)
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .background(Color.accentColor.opacity(0.12), in: Capsule())
+        }
+    }
+
     private func header(_ d: ArtifactDetail) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             if !d.artifact.description.isEmpty {
@@ -143,15 +203,8 @@ struct ArtifactView: View {
             }
             .font(.caption)
             .foregroundStyle(.secondary)
-            Menu {
-                AgentCopyItems(slug: slug, title: d.artifact.title, comments: store.comments.count, suggestions: store.openSuggestions.count)
-            } label: {
-                Label("Copy for your agent", systemImage: "doc.on.doc")
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(Color.accentColor.opacity(0.12), in: Capsule())
-            }
-            .padding(.top, 4)
+            copyForAgent(d)
+                .padding(.top, 4)
         }
         .padding(.horizontal)
         .padding(.vertical, 8)

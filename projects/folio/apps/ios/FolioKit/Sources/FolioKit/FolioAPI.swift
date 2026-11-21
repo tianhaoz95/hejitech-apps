@@ -51,6 +51,11 @@ public struct FolioAPI: Sendable {
         let _: Ignored = try await send("DELETE", "api/artifacts/\(enc(slug))", nil)
     }
 
+    /// Stars or unstars an artifact for the signed-in person.
+    public func setFavorite(_ slug: String, _ on: Bool) async throws {
+        let _: Ignored = try await send(on ? "POST" : "DELETE", "api/artifacts/\(enc(slug))/favorite", on ? [:] : nil)
+    }
+
     /// A signed URL that renders a version (or a suggestion's preview) in the sandbox.
     public func renderURL(_ slug: String, version: Int? = nil, suggestion: Int? = nil) async throws -> URL {
         var q: [String: String] = [:]

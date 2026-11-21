@@ -167,6 +167,17 @@ create table folio.push_devices (
 );
 create index push_devices_user on folio.push_devices(user_id);
 
+-- Artifacts a person starred: listed first on their home screen (web and iPhone). Per person,
+-- so a shared artifact can be one member's favorite and not another's. Only the Worker reads or
+-- writes them.
+create table folio.favorites (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  artifact_id uuid not null references folio.artifacts(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, artifact_id)
+);
+create index favorites_artifact on folio.favorites(artifact_id);
+
 -- An artifact's live data: JSON its pages read at .folio/data.json, written by agents (set_data).
 -- Kept outside the version history so a scheduled refresh doesn't make a version each time.
 -- Only the Worker reads or writes it.
@@ -192,6 +203,7 @@ alter table folio.events enable row level security;
 alter table folio.access_tokens enable row level security;
 alter table folio.push_devices enable row level security;
 alter table folio.artifact_data enable row level security;
+alter table folio.favorites enable row level security;
 
 create or replace function folio.is_member(p_artifact uuid)
 returns boolean

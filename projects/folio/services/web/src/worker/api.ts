@@ -29,6 +29,7 @@ import {
   readBytes,
   readFile,
   removeMember,
+  setFavorite,
   resolveComment,
   restoreVersion,
   reviewSuggestion,
@@ -269,6 +270,12 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     if (sub === "/events" && method === "GET") {
       const r = await listEvents(db, actor, ref, num("after") ?? 0, 100);
       return reply({ head_version: r.a.head_version, events: r.events });
+    }
+
+    // favorites (per person)
+    if (sub === "/favorite" && (method === "POST" || method === "DELETE")) {
+      need();
+      return reply(await setFavorite(db, actor, ref, method === "POST"));
     }
 
     // sharing

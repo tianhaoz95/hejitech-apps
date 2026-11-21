@@ -180,6 +180,41 @@ final class AppModel {
         loaded = true
     }
 
+    // MARK: home screen actions
+
+    /// Stars or unstars right away and saves in the background; puts it back if that fails.
+    func toggleFavorite(_ a: ArtifactSummary) async {
+        let on = !a.isFavorite
+        setLocalFavorite(a.slug, on)
+        do {
+            try await api.setFavorite(a.slug, on)
+        } catch {
+            setLocalFavorite(a.slug, !on)
+            flash(error.localizedDescription)
+        }
+    }
+
+    private func setLocalFavorite(_ slug: String, _ on: Bool) {
+        if let i = artifacts.firstIndex(where: { $0.slug == slug }) { artifacts[i].favorite = on }
+    }
+
+    /// Deletes an artifact you own, or leaves one shared with you.
+    func removeFromList(_ a: ArtifactSummary) async {
+        let before = artifacts
+        artifacts.removeAll { $0.slug == a.slug }
+        do {
+            if a.role == .owner {
+                try await api.delete(a.slug)
+            } else if let me = session?.userId {
+                try await api.removeMember(a.slug, userId: me)
+            }
+            flash(a.role == .owner ? "Deleted \"\(a.title)\"" : "Left \"\(a.title)\"")
+        } catch {
+            artifacts = before
+            flash(error.localizedDescription)
+        }
+    }
+
     func markActivitySeen() {
         activitySeenAt = Date()
         defaults.set(activitySeenAt, forKey: "activitySeenAt")
