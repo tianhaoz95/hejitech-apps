@@ -56,4 +56,19 @@ final class TranscriptSegmentTokenTests: XCTestCase {
         XCTAssertEqual(segment("see note [1 for details").parts, [.text("see note [1 for details")])
         XCTAssertEqual(segment("a [b [c] d").parts, [.text("a [b"), .token(.audioEvent("c")), .text("d")])
     }
+
+    func testSpokenTextDropsWhisperTokensForDictation() {
+        XCTAssertEqual(
+            TranscriptText.spokenText([segment("<|startoftranscript|><|0.00|> Help me summarize what is in this note.<|endoftext|>")]),
+            "Help me summarize what is in this note."
+        )
+        XCTAssertEqual(
+            TranscriptText.spokenText([
+                segment("<|startoftranscript|><|en|><|transcribe|><|0.00|> What did we<|2.10|>"),
+                segment("<|2.10|> decide about Friday? [BLANK_AUDIO]<|4.00|><|endoftext|>")
+            ]),
+            "What did we decide about Friday?"
+        )
+        XCTAssertNil(TranscriptText.spokenText([segment("<|startoftranscript|><|0.00|> [BLANK_AUDIO] (silence)<|endoftext|>")]))
+    }
 }

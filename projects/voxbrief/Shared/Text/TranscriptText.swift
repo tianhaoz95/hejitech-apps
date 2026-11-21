@@ -2,6 +2,16 @@ import Foundation
 
 /// Plain-text tidying for transcripts and cleaned text: no model involved.
 public enum TranscriptText {
+    /// What someone said, for text they'll edit and send (Ask's microphone): the segments'
+    /// words without Whisper's control tokens (`<|startoftranscript|>`, `<|0.00|>`,
+    /// `<|endoftext|>`), audio-event tags (`[BLANK_AUDIO]`) or round-bracket notes ("(silence)").
+    /// `nil` when nothing was said.
+    public static func spokenText(_ segments: [TranscriptTimingSegment]) -> String? {
+        let words = removingNonSpeechAnnotations(segments.map(\.displayText).joined(separator: " "))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return words.isEmpty ? nil : words
+    }
+
     /// Removes the notes Whisper writes about non-speech in round brackets, such as
     /// "(speaking in foreign language)", "(silence)" or "(laughs)": a parenthesis of at most six
     /// words. Square-bracket tags are removed elsewhere (`sanitizeSpeechTranscript`). Also drops

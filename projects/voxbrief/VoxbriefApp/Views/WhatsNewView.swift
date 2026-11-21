@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.35.0"
+    public static let currentVersion = "1.35.1"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,21 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.35.1",
+            date: "November 2026",
+            tagline: "Just Your Words",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "text.bubble",
+                    tint: .red,
+                    title: "Clean Questions by Voice",
+                    description: "A question you say in Ask now arrives as just your words, without the speech model's markers or notes like \u{201C}(silence)\u{201D}.",
+                    kind: .fix
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.35.0",
             date: "November 2026",

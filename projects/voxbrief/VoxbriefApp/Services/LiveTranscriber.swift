@@ -163,7 +163,8 @@ final class LiveTranscriber: ObservableObject {
     func finishDictation() async -> String? {
         let result = await finish()
         Self.deactivateSession()
-        return result?.transcript
+        // `transcript` keeps Whisper's raw tokens (recordings store them); a question shouldn't.
+        return result.flatMap { TranscriptText.spokenText($0.segments) }
     }
 
     func cancelDictation() {
