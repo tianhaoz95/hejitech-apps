@@ -3,7 +3,7 @@ import SwiftUI
 /// What's New: `scripts/cut_release.sh folio` refuses an iPhone release until `currentVersion` and
 /// the first `releases` entry describe it.
 enum WhatsNew {
-    static let currentVersion = "0.2.2"
+    static let currentVersion = "0.2.3"
 
     struct Release: Identifiable {
         let version: String
@@ -12,6 +12,9 @@ enum WhatsNew {
     }
 
     static let releases: [Release] = [
+        Release(version: "0.2.3", items: [
+            ("chart.line.uptrend.xyaxis", "Artifacts that stay current", "Your agents can now keep an artifact's numbers fresh, like a dashboard they update every hour, without adding a version each time. The preview always shows the latest, and charts from the usual libraries just work."),
+        ]),
         Release(version: "0.2.2", items: [
             ("text.bubble", "Comment on a selection", "Select part of an artifact's preview and tap Comment in the menu. Your agent sees exactly what you mean, and tapping a comment's quote shows that spot in the preview."),
             ("doc.on.doc", "Copy for your agent", "Copy an artifact's link, title or ID, or a ready-made request for your agent: improve it, work through its comments, or review its suggestions. It's at the top of every artifact, and in the menu when you press and hold one in the list."),
