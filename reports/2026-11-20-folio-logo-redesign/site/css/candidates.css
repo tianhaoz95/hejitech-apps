@@ -1,0 +1,415 @@
+/* Folio logo redesign styling */
+
+.frame.icon {
+  border-radius: 20px;
+  overflow: hidden;
+  background: #f4f2ec;
+  border: 1px solid rgba(28, 28, 26, 0.08);
+}
+.scr {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Main Stage */
+.icon-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.icon-stage.light {
+  background: radial-gradient(circle at 50% 35%, #ffffff 0%, #f7f6f2 62%, #ece9e0 100%);
+}
+.icon-stage.dark {
+  background: radial-gradient(circle at 50% 40%, #222328 0%, #151514 72%, #0c0c0b 100%);
+}
+.icon-stage.thumb {
+  background: radial-gradient(circle at 50% 35%, #ffffff 0%, #f7f6f2 68%, #ebe8df 100%);
+}
+.icon-stage.dark.thumb {
+  background: radial-gradient(circle at 50% 40%, #222328 0%, #151514 75%, #0c0c0b 100%);
+}
+.stage-backdrop {
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(47, 91, 234, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+  filter: blur(26px);
+}
+.icon-stage.dark .stage-backdrop {
+  background: radial-gradient(circle, rgba(125, 155, 255, 0.16) 0%, transparent 70%);
+}
+.stage-center {
+  position: relative;
+  z-index: 2;
+}
+
+/* Web Header & Favicon View */
+.view-web {
+  width: 100%;
+  height: 100%;
+  padding: 20px 18px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+.view-web.light {
+  background: #ece9e1;
+}
+.view-web.dark {
+  background: #0d0d0c;
+}
+.web-card {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(28, 28, 26, 0.1);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+.web-card.is-dark {
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+}
+.web-tabbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 0;
+  background: #e3e0d7;
+}
+.web-card.is-dark .web-tabbar {
+  background: #1d1d1b;
+}
+.web-dots {
+  display: flex;
+  gap: 4px;
+  margin-right: 6px;
+  margin-bottom: 6px;
+}
+.web-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.18);
+  display: block;
+}
+.web-card.is-dark .web-dots i {
+  background: rgba(255, 255, 255, 0.2);
+}
+.web-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px 6px 8px;
+  border-radius: 8px 8px 0 0;
+  background: #f7f6f2;
+  color: #1c1c1a;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: Inter, system-ui, sans-serif;
+}
+.web-card.is-dark .web-tab {
+  background: #151514;
+  color: #ecebe5;
+}
+.web-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #f7f6f2;
+  border-top: 1px solid #e4e1d9;
+}
+.web-card.is-dark .web-header {
+  background: #151514;
+  border-top-color: #2f2e2a;
+}
+.web-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #1c1c1a;
+  font-family: Inter, system-ui, sans-serif;
+}
+.web-card.is-dark .web-brand {
+  color: #ecebe5;
+}
+.web-nav {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6c6b65;
+  font-family: Inter, system-ui, sans-serif;
+}
+.web-card.is-dark .web-nav {
+  color: #a6a59d;
+}
+.web-lbl {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6c6b65;
+  margin-bottom: -10px;
+  padding-left: 2px;
+}
+.view-web.dark .web-lbl {
+  color: #8c8b84;
+}
+
+/* Platforms View */
+.view-platforms {
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.view-platforms.light {
+  background: #f3f1eb;
+}
+.view-platforms.dark {
+  background: #111110;
+}
+.plat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+}
+.plat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.plat-icon-box {
+  width: 140px;
+  height: 126px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+.plat-icon-box.light-box {
+  background: #ffffff;
+}
+.plat-icon-box.dark-box {
+  background: #1c1c1a;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.plat-icon-box.mac-box {
+  background: linear-gradient(160deg, #e7e5dd 0%, #d7d4c9 100%);
+}
+.view-platforms.dark .plat-icon-box.mac-box {
+  background: linear-gradient(160deg, #242422 0%, #171715 100%);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.plat-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5c5b55;
+  letter-spacing: 0.01em;
+}
+.view-platforms.dark .plat-lbl {
+  color: #9b9a93;
+}
+
+/* Tinted Icon Simulation (iOS 18) */
+.fol-tint {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: #0d1326;
+  display: inline-block;
+}
+.fol-tint .fol-svg {
+  filter: grayscale(1) contrast(1.18) brightness(1.08);
+}
+.fol-tint::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #5b84ff;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+/* Ladder View */
+.view-ladder {
+  width: 100%;
+  height: 100%;
+  padding: 20px 16px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.view-ladder.light {
+  background: #f3f1eb;
+}
+.view-ladder.dark {
+  background: #111110;
+}
+.ladder-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 344px;
+  margin: 0 auto;
+}
+.ladder-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid rgba(28, 28, 26, 0.07);
+}
+.view-ladder.dark .ladder-item {
+  background: #1b1b19;
+  border-color: rgba(255, 255, 255, 0.07);
+}
+.ladder-box {
+  width: 118px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.ladder-lbl {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a4944;
+  font-family: Inter, system-ui, sans-serif;
+}
+.view-ladder.dark .ladder-lbl {
+  color: #b5b4ac;
+}
+
+/* Home Screen Context View */
+.view-homescreen {
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.view-homescreen.light {
+  background: #ebe8df;
+}
+.view-homescreen.dark {
+  background: #0b0b0a;
+}
+.hs-mock {
+  width: 100%;
+  max-width: 316px;
+  height: 368px;
+  border-radius: 32px;
+  background: linear-gradient(170deg, #d6e4ff 0%, #ede9fe 48%, #fde7d9 100%);
+  border: 4px solid #d4d1c7;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
+  padding: 10px 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.view-homescreen.dark .hs-mock {
+  background: linear-gradient(175deg, #1b2238 0%, #14151c 55%, #0a0a0d 100%);
+  border-color: #2c2c2e;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+}
+.hs-statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1c1c1a;
+}
+.view-homescreen.dark .hs-statusbar {
+  color: #ffffff;
+}
+.hs-status-icons {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.hs-battery {
+  width: 18px;
+  height: 9px;
+  border: 1.5px solid currentColor;
+  border-radius: 2.5px;
+  padding: 1px;
+  display: flex;
+  align-items: center;
+}
+.hs-bat-lvl {
+  width: 72%;
+  height: 100%;
+  background: currentColor;
+  border-radius: 1px;
+}
+.hs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px 10px;
+  justify-items: center;
+  padding: 6px 0;
+}
+.hs-app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.hs-app span {
+  font-size: 10px;
+  font-weight: 500;
+  color: #1c1c1a;
+}
+.view-homescreen.dark .hs-app span {
+  color: #f3f3ef;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+.hs-app.me span {
+  font-weight: 700;
+  color: #2f5bea;
+}
+.view-homescreen.dark .hs-app.me span {
+  color: #7d9bff;
+}
+.hs-dock {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 6px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(14px);
+  margin-top: 4px;
+}
+.view-homescreen.dark .hs-dock {
+  background: rgba(255, 255, 255, 0.12);
+}

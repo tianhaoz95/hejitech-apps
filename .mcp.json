@@ -3,6 +3,10 @@
     "hq": {
       "type": "http",
       "url": "https://hq.hejitech.workers.dev/mcp"
+    },
+    "folio": {
+      "type": "http",
+      "url": "https://folio.hejitech.workers.dev/mcp"
     }
   }
 }
