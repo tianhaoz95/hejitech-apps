@@ -34,6 +34,9 @@ describe("paths", () => {
   });
   it("rejects traversal and junk", () => {
     expect(() => normalizePath("../x")).toThrow(/\.\./);
+    expect(() => normalizePath(".folio/data.json")).toThrow(/Folio's own folder/);
+    expect(() => normalizePath("./.folio/x.js")).toThrow(/Folio's own folder/);
+    expect(normalizePath("docs/.folio/x.js")).toBe("docs/.folio/x.js");
     expect(() => normalizePath("a/./b")).toThrow();
     expect(() => normalizePath("")).toThrow(/empty/);
     expect(() => normalizePath("dir/")).toThrow(/folder/);

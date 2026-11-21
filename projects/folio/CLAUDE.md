@@ -15,7 +15,7 @@ Live at https://folio.hejitech.workers.dev.
 - `services/web/` (`@folio/web`): one Cloudflare Worker.
   - `src/worker/service.ts`: every read and write (roles, optimistic versions with rebase,
     suggestions, comments, events, sharing, fork, deletion). API and MCP both call it.
-  - `src/worker/mcp.ts`: Streamable HTTP MCP at `/mcp` (21 tools, `show_artifact` carries the MCP
+  - `src/worker/mcp.ts`: Streamable HTTP MCP at `/mcp` (23 tools, `show_artifact` carries the MCP
     Apps UI `ui://folio/viewer.html` from `viewer-app.ts`); `api.ts`: REST for the web app;
     `render.ts`: `/r/<slug>/<version|s<n>>/<key>/<path>` serves artifact files sandboxed;
     `index.ts`: OAuth 2.1 (`@cloudflare/workers-oauth-provider`), `fol_` tokens, routing.
@@ -83,6 +83,10 @@ resets it to the demo artifacts). Locally the Worker sends pushes to `test-api.m
 - **Comments on a selection** (decisions #15): the workspace's frame loads `?folio=select`, which
   adds `select-helper.ts` to HTML; the iPhone preview runs the same logic in `WKContentWorld.defaultClient`
   (`PreviewScript` in `WebPreview.swift`). Keep the two in step. `browser-check.mjs` covers the web flow.
+- **Live data** (decisions #16): `set_data`/`get_data` keep one JSON value per artifact in
+  `folio.artifact_data`, outside the history (no version, no event, no notification). Pages read it at
+  `.folio/data.json` (render.ts, same key rules, `no-store`); `.folio/` is reserved in `normalizePath`.
+  Forks copy it; the export zip includes it. 256 KB.
 - Roles: owner (everything), editor (edit, review), viewer (read, comment, suggest). `link`
   visibility makes anyone a viewer (signed-out visitors read only). Agents can't delete artifacts.
 

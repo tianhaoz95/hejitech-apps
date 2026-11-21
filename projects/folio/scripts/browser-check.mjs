@@ -30,6 +30,9 @@ const probe = await f.evaluate(() => ({
   storage: (() => { try { return localStorage.length; } catch (e) { return "blocked: " + e.name; } })(),
 }));
 console.log(JSON.stringify(probe));
+// The page can read its live data from inside the sandbox (an opaque origin, so this is a CORS fetch).
+const liveData = await f.evaluate(() => fetch(".folio/data.json").then((r) => r.json()).then((d) => ({ ok: true, data: d }), (e) => ({ ok: false, error: String(e) })));
+console.log("live data from the page:", JSON.stringify(liveData));
 await page.screenshot({ path: `${out}/artifact.png` });
 
 // Comment on a selection: select the heading in the preview, comment from the bar, then jump back

@@ -40,7 +40,7 @@ features:
 ```
 create_artifact → get_artifact (head_version) → edit_artifact(base_version, ops)
                                               ↘ suggest_edit → review_suggestion
-comment / list_comments · get_activity (since) · show_artifact (inline view)
+comment / list_comments · set_data / get_data (live data at .folio/data.json) · get_activity (since) · show_artifact (inline view)
 list_versions · diff_versions · restore_version · fork_artifact · share_artifact
 ```
 

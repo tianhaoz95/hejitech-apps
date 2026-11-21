@@ -27,6 +27,8 @@ export const LIMITS = {
   description: 1000,
   message: 500,
   comment: 10_000,
+  /** An artifact's live data (JSON, `.folio/data.json`). */
+  dataBytes: 256 * 1024,
   rationale: 10_000,
   agent: 80,
 } as const;
@@ -91,6 +93,10 @@ export function isTextType(type: string): boolean {
  * Normalizes and validates a file path: relative, `/`-separated, no `.`/`..` segments, no
  * control characters, at most 200 characters. Returns the normalized path or throws.
  */
+/** Where an artifact's pages read its live data (set by agents, outside the version history). */
+export const DATA_DIR = ".folio";
+export const DATA_PATH = ".folio/data.json";
+
 export function normalizePath(input: unknown): string {
   if (typeof input !== "string") throw new Error("path must be a string");
   let p = input.trim().replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/^\/+/, "");
@@ -103,6 +109,7 @@ export function normalizePath(input: unknown): string {
   for (const seg of p.split("/")) {
     if (seg === "." || seg === "..") throw new Error(`path may not contain "${seg}" segments: ${p}`);
   }
+  if (p.split("/")[0] === DATA_DIR) throw new Error(`${DATA_DIR}/ is Folio's own folder (${DATA_PATH} is the artifact's live data, set with set_data); pick another path`);
   return p;
 }
 

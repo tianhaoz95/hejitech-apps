@@ -1,6 +1,6 @@
 // The site's API (/api/*) for the web app. Same service layer as MCP; changes made here are
 // attributed to "Web". Artifacts anyone with the link can view are readable without signing in.
-import { bytesToBase64, isTextType, unifiedDiff, zip } from "@folio/core";
+import { bytesToBase64, DATA_PATH, isTextType, unifiedDiff, zip } from "@folio/core";
 import { resetDemo } from "./demo.ts";
 import { renderBase } from "./render.ts";
 import { reviewSignIn } from "./review.ts";
@@ -39,6 +39,8 @@ import {
   updateArtifact,
   versionFiles,
   webActor,
+  dataRow,
+  getData,
 } from "./service.ts";
 import { admin, json, PREFIX, randomToken, sha256, supabaseUser, type Env } from "./store.ts";
 import { SERVER_VERSION, TOOLS } from "./mcp.ts";
@@ -199,10 +201,17 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
       const entries = await Promise.all(
         Object.entries(v.manifest).map(async ([p, f]) => ({ path: p, data: await readBytes(db, a.id, f.hash, f.type), date: new Date(v.created_at) }))
       );
+      // Live data as it is now, so pages that read it still work from the zip.
+      const live = await dataRow(db, a.id);
+      if (live) entries.push({ path: DATA_PATH, data: new TextEncoder().encode(JSON.stringify(live.data, null, 2)), date: new Date(live.updated_at) });
       const name = `${a.title.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").toLowerCase() || a.slug}-v${v.number}.zip`;
       return new Response(zip(entries) as BodyInit, {
         headers: { ...cors, "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="${name}"`, "Cache-Control": "no-store" },
       });
+    }
+    if (sub === "/data" && method === "GET") {
+      const r = await getData(db, actor, ref);
+      return reply({ data: r.data, set: r.info });
     }
     if (sub === "/bundle" && method === "GET") {
       // Every file of a version in one response (text inline, bytes as base64): the web editor's source view.

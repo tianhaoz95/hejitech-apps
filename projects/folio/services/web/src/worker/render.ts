@@ -9,7 +9,8 @@
 // accepting). <key> is "p" for artifacts anyone with the link can view, else a signed,
 // expiring token (`<exp>.<mac>`) handed out to people and agents who may read it.
 import { contentTypeFor, entryFile, isTextType, SLUG_RE } from "@folio/core";
-import { findArtifact, FolioError, loadTexts, loadVersion, readBytes, suggestionFiles, type ArtifactRow, type SuggestionRow } from "./service.ts";
+import { DATA_PATH } from "@folio/core";
+import { dataRow, findArtifact, FolioError, loadTexts, loadVersion, readBytes, suggestionFiles, type ArtifactRow, type SuggestionRow } from "./service.ts";
 import { withSelectHelper } from "./select-helper.ts";
 import { b64url, sha256, type Db, type Env } from "./store.ts";
 
@@ -78,6 +79,21 @@ export async function handleRender(req: Request, env: Env, db: Db, url: URL): Pr
     path = decodeURIComponent(rest);
   } catch {
     return page(400, "Bad link", "This file path isn't valid.");
+  }
+
+  // The artifact's live data (set_data): the same for every version, never cached.
+  if (path === DATA_PATH) {
+    const row = await dataRow(db, a.id);
+    return new Response(req.method === "HEAD" ? null : JSON.stringify(row?.data ?? null), {
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Security-Policy": SANDBOX_CSP,
+        "X-Content-Type-Options": "nosniff",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-store",
+        ...(row ? { "Last-Modified": new Date(row.updated_at).toUTCString() } : {}),
+      },
+    });
   }
 
   try {

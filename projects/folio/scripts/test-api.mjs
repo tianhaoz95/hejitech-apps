@@ -439,6 +439,37 @@ await step("fork and export", async () => {
   assert.ok(buf.includes(Buffer.from("index.html")));
 });
 
+await step("live data: set_data, pages read .folio/data.json, merge, limits, fork and export", async () => {
+  const before = (await claude.tool("get_artifact", { artifact: slug })).artifact.head_version;
+  const show = await claude.tool("show_artifact", { artifact: slug });
+  const empty = await fetch(`${show.render_url}.folio/data.json`);
+  assert.equal(empty.status, 200);
+  assert.equal(await empty.text(), "null", "null until it's set");
+  const set = await claude.tool("set_data", { artifact: slug, data: { temp: 21, city: "SF", list: [1, 2] } });
+  assert.equal(set.read_at, ".folio/data.json");
+  assert.ok(set.data.bytes > 10);
+  const page = await fetch(`${show.render_url}.folio/data.json`);
+  assert.deepEqual(await page.json(), { temp: 21, city: "SF", list: [1, 2] });
+  assert.equal(page.headers.get("cache-control"), "no-store");
+  assert.match(page.headers.get("content-security-policy"), /^sandbox/);
+  assert.equal((await fetch(`${site}/r/${slug}/1/p/.folio/data.json`)).status, 403, "private data needs a signed key too");
+  await gemini.tool("set_data", { artifact: slug, data: { temp: 22, city: null, wind: 5 }, merge: true });
+  const got = await claude.tool("get_data", { artifact: slug });
+  assert.deepEqual(got.data, { temp: 22, list: [1, 2], wind: 5 });
+  assert.match(got.set.agent, /gemini/i);
+  assert.equal((await claude.tool("get_artifact", { artifact: slug })).artifact.head_version, before, "setting data makes no version");
+  assert.equal((await claude.toolError("set_data", { artifact: slug, data: { big: "x".repeat(300 * 1024) } })).error, "too_large");
+  assert.equal((await claude.toolError("set_data", { artifact: slug, data: [1], merge: true })).error, "data");
+  const reserved = await claude.toolError("edit_artifact", { artifact: slug, base_version: before, ops: [{ op: "write", path: ".folio/data.json", content: "{}" }] });
+  assert.match(reserved.message, /Folio's own folder/);
+  const web = await call(`/api/artifacts/${slug}/data`, { auth: owner });
+  assert.deepEqual(web.body.data, got.data);
+  const f = await claude.tool("fork_artifact", { artifact: slug, title: "Data fork" });
+  assert.deepEqual((await claude.tool("get_data", { artifact: f.artifact.slug })).data, got.data, "a fork keeps the data");
+  const zip = Buffer.from(await (await fetch(`${site}/api/artifacts/${slug}/export.zip`, { headers: { Authorization: `Bearer ${owner}` } })).arrayBuffer());
+  assert.ok(zip.includes(Buffer.from(".folio/data.json")), "the zip carries the data");
+});
+
 await step("web API: artifact page data, edits by Web, comments, events polling", async () => {
   const d = await call(`/api/artifacts/${slug}`, { auth: owner });
   assert.equal(d.status, 200);

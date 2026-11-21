@@ -97,6 +97,8 @@ const state = {
 
 type Anchor = { text: string; selector?: string; path?: string };
 
+const DATA_FILE = ".folio/data.json";
+
 const canEdit = () => state.data?.role === "owner" || state.data?.role === "editor";
 const isOwner = () => state.data?.role === "owner";
 const signedIn = () => !!state.data?.signed_in;
@@ -610,6 +612,33 @@ async function filesTab(): Promise<Node[]> {
     })
   );
   const out: Node[] = [el("div", { class: "row", style: "margin-bottom: 8px" }, el("span", { class: "muted small" }, `${files.length} file${files.length === 1 ? "" : "s"} in v${n}`), el("span", { class: "spacer" }), head && canEdit() && el("button", { class: "btn ghost small", type: "button", onclick: () => newFile() }, "New file")), list];
+  // Live data (set_data): not part of any version, so it's listed apart from the files.
+  const live = await api<{ data: unknown; set: { bytes: number; agent: string; updated_at: string } | null }>(`${base()}/data`).catch(() => null);
+  if (live?.set) {
+    const row = el(
+      "div",
+      { class: `file-row ${state.openFile === DATA_FILE ? "current" : ""}`, title: "Live data agents set with set_data; pages read it at .folio/data.json" },
+      el("span", {}, DATA_FILE),
+      el("span", { class: "size" }, `live · ${live.set.agent} · ${timeAgo(live.set.updated_at)}`)
+    );
+    row.addEventListener("click", () => {
+      state.openFile = DATA_FILE;
+      state.editing = false;
+      void drawSide();
+    });
+    out.push(el("div", { class: "muted small", style: "margin: 12px 0 4px" }, "Live data (not part of a version)"), el("div", { class: "files" }, row));
+    if (state.openFile === DATA_FILE) {
+      const text = JSON.stringify(live.data, null, 2);
+      out.push(
+        el(
+          "div",
+          { class: "side-section" },
+          el("div", { class: "row", style: "margin-bottom: 6px" }, el("strong", { class: "mono small" }, DATA_FILE), el("span", { class: "spacer" }), el("button", { class: "btn ghost small", type: "button", onclick: () => copyText(text) }, "Copy")),
+          el("pre", { class: "source" }, text)
+        )
+      );
+    }
+  }
   const f = files.find((x) => x.path === state.openFile);
   if (f) {
     if (!f.text) out.push(el("p", { class: "muted small", style: "margin-top: 12px" }, `${f.path} is ${f.type}; it isn't shown as text.`));

@@ -167,6 +167,18 @@ create table folio.push_devices (
 );
 create index push_devices_user on folio.push_devices(user_id);
 
+-- An artifact's live data: JSON its pages read at .folio/data.json, written by agents (set_data).
+-- Kept outside the version history so a scheduled refresh doesn't make a version each time.
+-- Only the Worker reads or writes it.
+create table folio.artifact_data (
+  artifact_id uuid primary key references folio.artifacts(id) on delete cascade,
+  data jsonb not null,
+  bytes integer not null,
+  agent text not null,
+  updated_by uuid references auth.users(id) on delete set null,
+  updated_at timestamptz not null default now()
+);
+
 -- ---------------------------------------------------------------- access rules
 
 alter table folio.artifacts enable row level security;
@@ -179,6 +191,7 @@ alter table folio.comments enable row level security;
 alter table folio.events enable row level security;
 alter table folio.access_tokens enable row level security;
 alter table folio.push_devices enable row level security;
+alter table folio.artifact_data enable row level security;
 
 create or replace function folio.is_member(p_artifact uuid)
 returns boolean

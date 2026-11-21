@@ -68,3 +68,10 @@
     opaque origin, and a page faking those messages can only fill in a quote in the viewer's own
     comment box. The iPhone app does the same in an isolated JavaScript world (`WebPreview`), with
     "Comment" in the selection menu. A quote that's gone from the version shown says so.
+16. **Live data outside the history.** An artifact can have one JSON value (`set_data`, 256 KB) that
+    its pages read at `.folio/data.json`, for dashboards and anything an agent refreshes on a
+    schedule. It isn't a version and logs no event, so an hourly refresh doesn't bury the history or
+    notify anyone; the agent and time of the last write are kept on the row. `.folio/` is reserved
+    so no file can shadow it. Nothing runs on Folio's side: the scheduler is the person's agent
+    (a routine, a CI job). Pages still can't write anything: per-viewer state would need its own
+    design (who the viewer is, inside an opaque origin).

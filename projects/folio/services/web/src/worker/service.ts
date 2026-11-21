@@ -18,6 +18,7 @@ import {
   parseOps,
   pathsToLoad,
   sha256Hex,
+  utf8Length,
   type Action,
   type EditOp,
   type FileDiff,
@@ -521,6 +522,61 @@ export async function deleteArtifact(db: Db, actor: Actor, ref: unknown): Promis
   return { deleted: a.slug };
 }
 
+// ------------------------------------------------------------------ live data
+
+export interface DataInfo {
+  bytes: number;
+  agent: string;
+  updated_at: string;
+}
+
+/**
+ * Sets an artifact's live data (what its pages read at .folio/data.json). `merge` updates the
+ * top-level keys of an object instead of replacing it (a null value removes a key). Not a version
+ * and no activity event: a scheduled refresh would otherwise flood both.
+ */
+export async function setData(db: Db, actor: Actor, ref: unknown, input: { data?: unknown; merge?: unknown }): Promise<{ a: ArtifactRow; info: DataInfo }> {
+  const { a } = await access(db, actor, ref, "edit");
+  if (input.data === undefined) throw new FolioError(400, "data", "data is required: any JSON value (usually an object) for the pages to read at .folio/data.json");
+  let value = input.data;
+  if (input.merge === true) {
+    const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+    if (!isObj(value)) throw new FolioError(400, "data", "merge needs data to be an object (its keys update the current data)");
+    const { data: cur } = await db.from("artifact_data").select("data").eq("artifact_id", a.id).maybeSingle();
+    const merged: Record<string, unknown> = isObj(cur?.data) ? { ...(cur!.data as Record<string, unknown>) } : {};
+    for (const [k, v] of Object.entries(value)) {
+      if (v === null) delete merged[k];
+      else merged[k] = v;
+    }
+    value = merged;
+  }
+  const text = JSON.stringify(value);
+  const bytes = utf8Length(text);
+  if (bytes > LIMITS.dataBytes) {
+    throw new FolioError(413, "too_large", `Live data may be at most ${LIMITS.dataBytes / 1024} KB (this is ${Math.ceil(bytes / 1024)} KB). Keep only what the pages show; put larger files in the artifact itself.`);
+  }
+  const updated_at = new Date().toISOString();
+  const { error } = await db
+    .from("artifact_data")
+    .upsert({ artifact_id: a.id, data: value, bytes, agent: actor.agent, updated_by: actor.userId, updated_at }, { onConflict: "artifact_id" });
+  fail(error, "save the data");
+  return { a, info: { bytes, agent: actor.agent, updated_at } };
+}
+
+/** The live data and who last set it (null data when none was ever set). */
+export async function getData(db: Db, actor: Actor, ref: unknown): Promise<{ a: ArtifactRow; data: unknown; info: DataInfo | null }> {
+  const { a } = await access(db, actor, ref, "read");
+  const row = await dataRow(db, a.id);
+  return { a, data: row?.data ?? null, info: row ? { bytes: row.bytes, agent: row.agent, updated_at: row.updated_at } : null };
+}
+
+/** For rendering, export and fork: no access check (the caller did it). */
+export async function dataRow(db: Db, artifactId: string): Promise<{ data: unknown; bytes: number; agent: string; updated_at: string } | null> {
+  const { data, error } = await db.from("artifact_data").select("data, bytes, agent, updated_at").eq("artifact_id", artifactId).maybeSingle();
+  fail(error, "load the data");
+  return (data as { data: unknown; bytes: number; agent: string; updated_at: string } | null) ?? null;
+}
+
 export async function forkArtifact(db: Db, actor: Actor, ref: unknown, input: { title?: unknown; version?: unknown }): Promise<{ a: ArtifactRow; version: number }> {
   const { a } = await access(db, actor, ref, "read");
   if (!actor.userId) throw new FolioError(401, "sign_in", "Sign in to fork.");
@@ -543,6 +599,9 @@ export async function forkArtifact(db: Db, actor: Actor, ref: unknown, input: { 
     message: `Forked from ${a.slug} v${v.number}`,
     forkedFrom: { id: a.id, version: v.number },
   });
+  // A fork of a page that reads live data should work as it did: copy the data too.
+  const d = await dataRow(db, a.id);
+  if (d) await db.from("artifact_data").insert({ artifact_id: out.a.id, data: d.data, bytes: d.bytes, agent: actor.agent, updated_by: actor.userId });
   await logEvent(db, a.id, actor, "forked", `Forked v${v.number} into a new artifact`, { version: v.number });
   return out;
 }
