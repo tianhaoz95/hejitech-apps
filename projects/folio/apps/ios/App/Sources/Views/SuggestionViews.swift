@@ -25,6 +25,7 @@ struct SuggestionList: View {
                 }
             }
         }
+        .paperBackground()
         .listStyle(.insetGrouped)
     }
 }
@@ -108,7 +109,7 @@ struct SuggestionView: View {
                     }
                     .padding()
                 }
-                .background(Color(uiColor: .systemGroupedBackground))
+                .background(Color.paper)
                 .safeAreaInset(edge: .bottom) {
                     if d.suggestion.status == .open && role.canReview { reviewBar(d) }
                 }

@@ -37,7 +37,7 @@ struct CommentThreads: View {
                     .padding()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(uiColor: .systemGroupedBackground))
+            .background(Color.paper)
             .overlay {
                 if comments.isEmpty {
                     ContentUnavailableView("No open comments", systemImage: "bubble.left.and.bubble.right", description: Text("Comments from agents and people show up here. Resolved ones are hidden."))
@@ -210,6 +210,7 @@ struct AnchoredCommentSheet: View {
                     Text("Agents see the quoted part with your comment, so they know where to look.")
                 }
             }
+            .paperBackground()
             .navigationTitle("Comment")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -289,6 +290,7 @@ struct HistoryList: View {
                 .padding(.vertical, 2)
             }
         }
+        .paperBackground()
         .listStyle(.insetGrouped)
     }
 
@@ -340,7 +342,7 @@ struct VersionView: View {
             }
             .padding()
         }
-        .background(Color(uiColor: .systemGroupedBackground))
+        .background(Color.paper)
         .navigationTitle("v\(number)")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

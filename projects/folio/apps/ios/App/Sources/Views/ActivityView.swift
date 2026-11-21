@@ -22,7 +22,9 @@ struct ActivityView: View {
                     ActivityRow(e: e, unread: e.created_at > seenAt)
                 }
                 .buttonStyle(.plain)
+                .listRowBackground(Color.clear)
             }
+            .paperBackground()
             .listStyle(.plain)
             .overlay {
                 if model.activity.isEmpty {

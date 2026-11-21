@@ -47,6 +47,7 @@ struct HomeView: View {
                     }
                 }
             }
+            .paperBackground()
             .listStyle(.insetGrouped)
             .animation(.default, value: model.artifacts)
             .confirmationDialog(removalTitle, isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } }), titleVisibility: .visible, presenting: pendingRemoval) { a in
@@ -123,7 +124,7 @@ extension HomeView {
                 } label: {
                     Label(a.isFavorite ? "Unfavorite" : "Favorite", systemImage: a.isFavorite ? "star.slash.fill" : "star.fill")
                 }
-                .tint(.yellow)
+                .tint(.mustard)
             }
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 // Not `role: .destructive`: that animates the row away before the confirmation.
@@ -150,7 +151,7 @@ struct ArtifactRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     if a.isFavorite {
-                        Image(systemName: "star.fill").font(.caption).foregroundStyle(.yellow).accessibilityLabel("Favorite")
+                        Image(systemName: "star.fill").font(.caption).foregroundStyle(Color.mustard).accessibilityLabel("Favorite")
                     }
                     Text(a.title).font(.body.weight(.semibold)).lineLimit(2)
                 }
@@ -178,7 +179,7 @@ struct ArtifactRow: View {
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(Color.accentColor, in: Capsule())
+                    .background(Color.coral, in: Capsule())
                     .accessibilityLabel("\(a.open_suggestions) open suggestions")
             }
         }

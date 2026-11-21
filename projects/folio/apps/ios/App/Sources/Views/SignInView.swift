@@ -66,6 +66,7 @@ struct SignInView: View {
             }
         }
         .padding(24)
+        .background(Color.paper.ignoresSafeArea())
         .overlay {
             if model.busy {
                 ProgressView().controlSize(.large).frame(maxWidth: .infinity, maxHeight: .infinity).background(.ultraThinMaterial)
@@ -185,7 +186,7 @@ struct EmailSignInSheet: View {
         .padding(24)
         .presentationDetents([.medium])
         .presentationCornerRadius(28)
-        .presentationBackground(Color(uiColor: .systemBackground))
+        .presentationBackground(Color.paper)
         .onAppear { focus = .email }
     }
 

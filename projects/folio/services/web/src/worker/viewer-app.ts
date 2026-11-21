@@ -9,12 +9,12 @@ export const VIEWER_HTML = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Folio</title>
 <style>
-  :root { --bg: #ffffff; --fg: #1d1d1b; --muted: #6b6b66; --line: #e6e4de; --accent: #2f5bea; color-scheme: light; }
-  :root[data-theme="dark"] { --bg: #171716; --fg: #ecebe6; --muted: #a3a29b; --line: #34332f; --accent: #8aa6ff; color-scheme: dark; }
+  :root { --bg: #ffffff; --fg: #1d1d1b; --muted: #6b6b66; --line: #e6e4de; --accent: #1e2a78; color-scheme: light; }
+  :root[data-theme="dark"] { --bg: #171716; --fg: #ecebe6; --muted: #a3a29b; --line: #34332f; --accent: #8f9bff; color-scheme: dark; }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
   header { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); min-height: 40px; }
-  .mark { width: 18px; height: 18px; border-radius: 5px; background: var(--accent); flex: none; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 11px; }
+  .mark { width: 18px; height: 18px; flex: none; display: block; }
   .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .meta { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
   button { font: inherit; color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 4px 9px; cursor: pointer; white-space: nowrap; }
@@ -25,7 +25,7 @@ export const VIEWER_HTML = `<!doctype html>
 </head>
 <body>
 <header>
-  <div class="mark" aria-hidden="true">F</div>
+  <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#f2ede4"/><rect x="17.5" y="13.5" width="11" height="37" rx="1.5" fill="#1e2a78"/><path d="M28.5 29.5v-16a16 16 0 0 1 16 16z" fill="#f25c3b"/><circle cx="35.5" cy="40" r="5.75" fill="#f2b630"/></svg>
   <div class="title" id="title">Folio</div>
   <div class="meta" id="meta"></div>
   <button id="open" type="button" hidden>Open in Folio</button>

@@ -1,16 +1,19 @@
 /* Folio: a quiet paper-and-ink workspace where the artifact is the loudest thing on screen. */
 :root {
-  --bg: #f7f6f2;
-  --surface: #ffffff;
-  --surface-2: #f1efe9;
-  --fg: #1c1c1a;
-  --muted: #6c6b65;
-  --faint: #9b9a93;
-  --line: #e4e1d9;
-  --line-strong: #d3cfc4;
-  --accent: #2f5bea;
+  --bg: #f4f0e8;
+  --surface: #fffdf9;
+  --surface-2: #ede8de;
+  --fg: #1a1c27;
+  --muted: #6a675f;
+  --faint: #9c988e;
+  --line: #e4ded2;
+  --line-strong: #d3cbbb;
+  --accent: #1e2a78;
   --accent-fg: #ffffff;
-  --accent-soft: #e8eefe;
+  --accent-soft: #e5e7f3;
+  --coral: #e2502f;
+  --coral-soft: #fbe5dd;
+  --mustard: #f2b630;
   --ok: #1d7a46;
   --ok-soft: #e4f4ea;
   --warn: #9a5b00;
@@ -30,17 +33,20 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #151514;
-    --surface: #1d1d1b;
-    --surface-2: #252522;
-    --fg: #ecebe5;
-    --muted: #a6a59d;
-    --faint: #75746d;
-    --line: #2f2e2a;
-    --line-strong: #3d3c37;
-    --accent: #7d9bff;
-    --accent-fg: #0d1430;
-    --accent-soft: #1e2645;
+    --bg: #15161c;
+    --surface: #1d1e26;
+    --surface-2: #262732;
+    --fg: #eceae4;
+    --muted: #a5a4ad;
+    --faint: #74737e;
+    --line: #2e2f3b;
+    --line-strong: #3c3d4b;
+    --accent: #8f9bff;
+    --accent-fg: #10142e;
+    --accent-soft: #23284d;
+    --coral: #ff7a5a;
+    --coral-soft: #3d1f18;
+    --mustard: #f2b630;
     --ok: #63c98b;
     --ok-soft: #173223;
     --warn: #e6b45c;
@@ -56,17 +62,20 @@
   }
 }
 :root[data-theme="dark"] {
-  --bg: #151514;
-  --surface: #1d1d1b;
-  --surface-2: #252522;
-  --fg: #ecebe5;
-  --muted: #a6a59d;
-  --faint: #75746d;
-  --line: #2f2e2a;
-  --line-strong: #3d3c37;
-  --accent: #7d9bff;
-  --accent-fg: #0d1430;
-  --accent-soft: #1e2645;
+  --bg: #15161c;
+  --surface: #1d1e26;
+  --surface-2: #262732;
+  --fg: #eceae4;
+  --muted: #a5a4ad;
+  --faint: #74737e;
+  --line: #2e2f3b;
+  --line-strong: #3c3d4b;
+  --accent: #8f9bff;
+  --accent-fg: #10142e;
+  --accent-soft: #23284d;
+  --coral: #ff7a5a;
+  --coral-soft: #3d1f18;
+  --mustard: #f2b630;
   --ok: #63c98b;
   --ok-soft: #173223;
   --warn: #e6b45c;
@@ -105,6 +114,7 @@ pre { background: var(--surface-2); padding: 12px 14px; border-radius: 8px; over
 pre code { background: none; padding: 0; }
 hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 [hidden] { display: none !important; }
+::selection { background: color-mix(in srgb, var(--mustard) 42%, transparent); }
 
 .wrap { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 20px; }
 .wrap.narrow { max-width: 460px; }
@@ -185,6 +195,7 @@ label.field { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
 .empty { padding: 36px 20px; text-align: center; color: var(--muted); }
 .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; line-height: 1; padding: 4px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
 .pill.accent { background: var(--accent-soft); color: var(--accent); }
+.pill.coral { background: var(--coral-soft); color: var(--coral); }
 .pill.ok { background: var(--ok-soft); color: var(--ok); }
 .pill.warn { background: var(--warn-soft); color: var(--warn); }
 .pill.bad { background: var(--bad-soft); color: var(--bad); }
@@ -341,7 +352,7 @@ body.workspace .site-header .wrap { max-width: none; padding: 0 16px; }
 .grid-head[hidden], .section[hidden] { display: none; }
 .card { position: relative; }
 .card .title { padding-right: 30px; }
-.card .fav-star { color: #e0a800; margin-right: 6px; font-size: 14px; }
+.card .fav-star { color: var(--mustard); margin-right: 6px; font-size: 14px; }
 .card-more { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 8px; border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
 .card-more:hover, .card-more[aria-expanded="true"] { background: var(--surface-2); color: var(--fg); }
 .card-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

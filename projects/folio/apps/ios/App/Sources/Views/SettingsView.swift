@@ -73,6 +73,7 @@ struct SettingsView: View {
                     Text("Deleting removes everything Folio keeps for you: your artifacts and their history, your access to artifacts shared with you, agent connections and this device. Your comments and versions on other people's artifacts stay, without your name. Your sign-in is shared with other HEJI apps and isn't affected.")
                 }
             }
+            .paperBackground()
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
@@ -145,6 +146,7 @@ struct ConnectView: View {
                 Link(destination: model.config.site.appendingPathComponent("connect/")) { Label("Full guide on the web", systemImage: "safari") }
             }
         }
+        .paperBackground()
         .navigationTitle("Connect an agent")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -226,6 +228,7 @@ struct TokensView: View {
                 }
             }
         }
+        .paperBackground()
         .navigationTitle("Agent tokens")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }

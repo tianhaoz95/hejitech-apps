@@ -184,7 +184,7 @@ struct ArtifactView: View {
                                 .font(.system(size: 11, weight: .bold)).monospacedDigit()
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 4.5).frame(minWidth: 17, minHeight: 17)
-                                .background(t == .suggestions ? Color.orange : Color.red, in: Capsule())
+                                .background(t == .suggestions ? Color.coral : Color.red, in: Capsule())
                                 .offset(x: 11, y: -5)
                         }
                     }
@@ -374,6 +374,7 @@ struct RenameSheet: View {
                 Section("Title") { TextField("Title", text: $title) }
                 Section("Description") { TextField("What it is", text: $description, axis: .vertical).lineLimit(2...5) }
             }
+            .paperBackground()
             .navigationTitle("Rename")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

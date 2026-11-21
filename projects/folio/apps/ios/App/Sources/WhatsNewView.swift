@@ -3,7 +3,7 @@ import SwiftUI
 /// What's New: `scripts/cut_release.sh folio` refuses an iPhone release until `currentVersion` and
 /// the first `releases` entry describe it.
 enum WhatsNew {
-    static let currentVersion = "0.2.5"
+    static let currentVersion = "0.2.6"
 
     struct Release: Identifiable {
         let version: String
@@ -12,6 +12,9 @@ enum WhatsNew {
     }
 
     static let releases: [Release] = [
+        Release(version: "0.2.6", items: [
+            ("paintpalette", "A new look", "A new icon, an F drawn from a bar, a quarter circle and a dot, and colours to match: navy, coral and mustard on warm paper, in the app and on the web."),
+        ]),
         Release(version: "0.2.5", items: [
             ("dock.rectangle", "Tabs at the bottom", "Preview, Review, Comments and History now float in one glass bar at the bottom of every artifact, in easy reach of your thumb. The page scrolls underneath, and the bar steps aside while you type a comment."),
         ]),
@@ -64,6 +67,7 @@ struct WhatsNewView: View {
                     }
                 }
             }
+            .paperBackground()
             .navigationTitle("What's new")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
