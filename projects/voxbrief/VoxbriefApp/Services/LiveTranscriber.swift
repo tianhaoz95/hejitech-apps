@@ -45,10 +45,12 @@ final class LiveTranscriber: ObservableObject {
 
     /// Starts listening alongside a recording that has just started (the audio session is
     /// already active for recording).
-    func start(vocabulary: [String]) {
+    /// `always` ignores the Live Transcript setting (dictation, where the live pass is the
+    /// only transcript).
+    func start(vocabulary: [String], always: Bool = false) {
         stopEngine()
         reset()
-        guard Self.isEnabled else { return }
+        guard always || Self.isEnabled else { return }
         self.vocabulary = vocabulary
 
         let engine = AVAudioEngine()
@@ -119,6 +121,60 @@ final class LiveTranscriber: ObservableObject {
         loopTask?.cancel()
         loopTask = nil
         reset()
+    }
+
+    // MARK: - Dictation (Ask's microphone)
+
+    enum DictationError: LocalizedError {
+        case microphoneDenied, recordingInProgress, couldNotStart
+
+        var errorDescription: String? {
+            switch self {
+            case .microphoneDenied: return "Voxbrief can't use the microphone. Allow it in Settings → Privacy & Security → Microphone."
+            case .recordingInProgress: return "Finish the recording first, then ask by voice."
+            case .couldNotStart: return "The microphone couldn't start. Try again in a moment."
+            }
+        }
+    }
+
+    /// Listens for a short dictation without a recording: sets up the audio session itself and
+    /// transcribes what's said live. Use a separate instance from `shared`, which belongs to
+    /// recordings.
+    func startDictation() async throws {
+        guard !AudioRecordingService.shared.isRecording else { throw DictationError.recordingInProgress }
+        guard await AudioRecordingService.shared.requestPermission() else { throw DictationError.microphoneDenied }
+        AudioPlaybackService.shared.stop()
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.setActive(true)
+        } catch {
+            throw DictationError.couldNotStart
+        }
+        start(vocabulary: PersonalDictionaryStore.shared.entries.map(\.term), always: true)
+        guard isActive else {
+            Self.deactivateSession()
+            throw DictationError.couldNotStart
+        }
+    }
+
+    /// Stops a dictation and returns what was said, or `nil` when nothing was heard (or the
+    /// speech model couldn't run).
+    func finishDictation() async -> String? {
+        let result = await finish()
+        Self.deactivateSession()
+        return result?.transcript
+    }
+
+    func cancelDictation() {
+        guard isActive else { return }
+        cancel()
+        Self.deactivateSession()
+    }
+
+    private static func deactivateSession() {
+        guard !AudioRecordingService.shared.isRecording else { return }
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     private func transcribeWindow(final: Bool) async {

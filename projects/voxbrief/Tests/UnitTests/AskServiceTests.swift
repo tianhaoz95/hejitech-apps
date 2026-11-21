@@ -218,6 +218,56 @@ final class AskServiceTests: XCTestCase {
         XCTAssertEqual(trimmed.count, 2 + 8)
     }
 
+    // MARK: - Attached notes
+
+    func testAnAttachedNoteIsReadWithoutASearchAndCanBeCited() async throws {
+        let roadmapNote = note("Q4 roadmap sync", transcript: roadmap)
+        let script = Script()
+        let model = engine(startsWithSearch: true, label: "CHAT", script: script) { messages, prefill in
+            XCTAssertTrue(prefill.isEmpty, "Not made to search first: the note is already in the prompt")
+            return "You owe Priya the offline spec by Wednesday [2]."
+        }
+        let ask = AskConversation(notes: { [roadmapNote] }, engines: { [model] }, appleSessionAvailable: { false }, now: { [now] in now })
+        let answer = try await ask.ask("What do I owe?", attached: roadmapNote)
+
+        XCTAssertTrue(script.checks.isEmpty, "No small-talk check for a question about an attached note")
+        XCTAssertEqual(script.all.count, 1)
+        let prompt = script.all[0].messages.last?.content ?? ""
+        XCTAssertTrue(prompt.contains("attached their note \"Q4 roadmap sync\""))
+        XCTAssertTrue(prompt.contains("Passage 2, from \"Q4 roadmap sync\""))
+        XCTAssertTrue(prompt.hasSuffix("Question: What do I owe?"))
+        XCTAssertEqual(answer.searches.count, 0)
+        XCTAssertEqual(answer.citations.map(\.noteTitle), ["Q4 roadmap sync"])
+        XCTAssertEqual(ask.history.first?.question, "What do I owe?")
+    }
+
+    func testALongAttachedNoteIsCut() {
+        let long = (1...3_000).map { "word\($0)" }.joined(separator: " ")
+        let ask = conversation([])
+        let context = ask.attachedContext(note("Long", transcript: long))
+        XCTAssertTrue(context.contains("search_notes finds the rest"))
+        let words = ask.passages.map { $0.text.split(separator: " ").count }.reduce(0, +)
+        XCTAssertLessThanOrEqual(words, AskConversation.maxAttachedWords)
+    }
+
+    func testOlderQuestionsDropTheirAttachedNote() {
+        var history: [AskMessage] = [
+            AskMessage(role: .user, content: "Passages… Question: Q1", question: "Q1"),
+            AskMessage(role: .assistant, content: "A1"),
+        ]
+        for n in 2...3 {
+            history += [AskMessage(role: .user, content: "Q\(n)"), AskMessage(role: .assistant, content: "A\(n)")]
+        }
+        XCTAssertEqual(AskConversation.trimmed(history).map(\.content), ["Q1", "A1", "Q2", "A2", "Q3", "A3"])
+    }
+
+    func testOnlySearchableNotesCanBeAttached() {
+        var archived = note("Archived", transcript: "x")
+        archived.isArchived = true
+        let notes = [note("Old", transcript: "a", daysAgo: 5), note("Locked", transcript: "b", locked: true), archived, note("New", transcript: "c", daysAgo: 1)]
+        XCTAssertEqual(AskView.attachableNotes(notes).map(\.title), ["New", "Old"])
+    }
+
     // MARK: - The search tool
 
     func testATimeLimitWithNothingInItFallsBackToAllNotes() {

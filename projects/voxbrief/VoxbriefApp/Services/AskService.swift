@@ -44,6 +44,9 @@ struct AskMessage: Sendable, Equatable {
     enum Role: String, Sendable { case system, user, assistant, tool }
     let role: Role
     let content: String
+    /// A question sent with an attached note: the question alone, which is what older turns
+    /// keep (`AskConversation.trimmed`), so an attachment doesn't stay in the prompt for good.
+    var question: String? = nil
 }
 
 /// A model that continues a chat with tools: given the conversation and the tool specs, it
@@ -102,11 +105,15 @@ final class AskConversation {
         self.now = now
     }
 
-    func ask(_ question: String) async throws -> AskAnswer {
+    /// `attached`: a note the user picked as context for this question (the Ask sheet's
+    /// paperclip). Its passages go in with the question, numbered like search results, so the
+    /// answer can cite them.
+    func ask(_ question: String, attached: VoiceNote? = nil) async throws -> AskAnswer {
         searchesThisQuestion = []
+        let context = attached.map(attachedContext)
         if await appleSessionAvailable() {
             do {
-                return try await askApple(question)
+                return try await askApple(question, context: context)
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
@@ -116,7 +123,7 @@ final class AskConversation {
         var lastError: Error = AskError.noEngine
         for engine in await engines() {
             do {
-                return try await ask(question, engine: engine)
+                return try await ask(question, engine: engine, context: context)
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
@@ -146,14 +153,19 @@ final class AskConversation {
     static let searchCallPrefill = "<tool_call>\n{\"name\": \"search_notes\", \"arguments\": "
 
     /// The whole loop against one engine. `internal` for tests, which pass a scripted engine.
-    func ask(_ question: String, engine: AskEngine) async throws -> AskAnswer {
+    /// `context` is an attached note's passages (`attachedContext`): the model has read them,
+    /// so it isn't made to search first, and the question isn't checked for small talk.
+    func ask(_ question: String, engine: AskEngine, context: String? = nil) async throws -> AskAnswer {
         searchesThisQuestion = []
-        var turn: [AskMessage] = [AskMessage(role: .user, content: question)]
-        var searched = false
+        var turn: [AskMessage] = [
+            context.map { AskMessage(role: .user, content: Self.withContext($0, question), question: question) }
+                ?? AskMessage(role: .user, content: question)
+        ]
+        var searched = context != nil
 
         // Lite would otherwise search for "Hi" too (every first reply is a search): small talk
         // gets a short reply instead.
-        if engine.startsWithSearch, try await Self.isSmallTalk(question, engine: engine) {
+        if context == nil, engine.startsWithSearch, try await Self.isSmallTalk(question, engine: engine) {
             return try await chat(turn, engine: engine)
         }
 
@@ -192,7 +204,9 @@ final class AskConversation {
 
     /// A reply to small talk: the conversation's questions and answers (no searches) and no tools.
     private func chat(_ turn: [AskMessage], engine: AskEngine) async throws -> AskAnswer {
-        let said = history.filter { $0.role == .user || ($0.role == .assistant && Self.toolCall(in: $0.content) == nil) }
+        let said = history
+            .filter { $0.role == .user || ($0.role == .assistant && Self.toolCall(in: $0.content) == nil) }
+            .map(Self.withoutAttachment)
         let reply = try await engine.respond(
             [AskMessage(role: .system, content: Self.chatPrompt)] + said + turn, [], "", 200
         )
@@ -209,8 +223,53 @@ final class AskConversation {
         let questionStarts = history.indices.filter { history[$0].role == .user }
         guard questionStarts.count > questionsWithResults else { return history }
         let keepFrom = questionStarts[questionStarts.count - questionsWithResults]
-        let older = history[..<keepFrom].filter { $0.role == .user || ($0.role == .assistant && toolCall(in: $0.content) == nil) }
+        let older = history[..<keepFrom]
+            .filter { $0.role == .user || ($0.role == .assistant && toolCall(in: $0.content) == nil) }
+            .map(withoutAttachment)
         return older + history[keepFrom...]
+    }
+
+    static func withoutAttachment(_ message: AskMessage) -> AskMessage {
+        message.question.map { AskMessage(role: message.role, content: $0) } ?? message
+    }
+
+    // MARK: - Attached notes
+
+    /// Words of an attached note the model reads (Lite's context and speed are the limit); a
+    /// longer note is cut, and the model is told it can search the rest.
+    static let maxAttachedWords = 1_200
+
+    /// An attached note as the model reads it: its passages (overview, template sections,
+    /// transcript windows, as the search index cuts it), numbered after every passage so far.
+    func attachedContext(_ note: VoiceNote) -> String {
+        let all = NoteSearchIndex.makePassages(for: note)
+        var words = 0
+        var kept: [NoteSearchIndex.Passage] = []
+        for passage in all {
+            let count = passage.text.split(whereSeparator: \.isWhitespace).count
+            if !kept.isEmpty && words + count > Self.maxAttachedWords { break }
+            words += count
+            kept.append(passage)
+        }
+        let first = passages.count + 1
+        passages += kept
+        let date = note.createdAt.formatted(date: .abbreviated, time: .omitted)
+        var text = "The user attached their note \"\(note.title)\" (\(date)) to this question. Its passages:\n\n"
+            + kept.enumerated().map { Self.render($1, number: first + $0) }.joined(separator: "\n\n")
+        if kept.count < all.count {
+            text += "\n\n(The note is longer; search_notes finds the rest.)"
+        }
+        return text
+    }
+
+    /// The question after its attached note, told to answer from the note.
+    static func withContext(_ context: String, _ question: String) -> String {
+        """
+        \(context)
+
+        Answer from these passages (search_notes only if they don't answer it), citing them like [2].
+        Question: \(question)
+        """
     }
 
     static func normalizedCall(_ call: ToolCall) -> String {
@@ -247,7 +306,8 @@ final class AskConversation {
 
     // MARK: - Apple Intelligence (FoundationModels tools)
 
-    private func askApple(_ question: String) async throws -> AskAnswer {
+    private func askApple(_ question: String, context: String?) async throws -> AskAnswer {
+        let prompt = context.map { Self.withContext($0, question) } ?? question
         #if canImport(FoundationModels)
         if #available(iOS 26.0, macOS 26.0, *) {
             func newSession() -> LanguageModelSession {
@@ -259,14 +319,14 @@ final class AskConversation {
             let session = (appleSession as? LanguageModelSession) ?? newSession()
             appleSession = session
             do {
-                let reply = try await session.respond(to: question).content
+                let reply = try await session.respond(to: prompt).content
                 return finish(reply, engine: CleanupEngineLabel.appleFoundationModel)
             } catch LanguageModelSession.GenerationError.exceededContextWindowSize(_) {
                 // A long chat: start over with a fresh session (the passages stay numbered).
                 let fresh = newSession()
                 appleSession = fresh
                 searchesThisQuestion = []
-                let reply = try await fresh.respond(to: question).content
+                let reply = try await fresh.respond(to: prompt).content
                 return finish(reply, engine: CleanupEngineLabel.appleFoundationModel)
             }
         }

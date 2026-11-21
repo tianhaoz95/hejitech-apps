@@ -11,10 +11,19 @@ struct AskView: View {
     /// The chat: the model sees the earlier questions and answers, so follow-ups work.
     @State private var conversation = AskConversation()
     @FocusState private var isInputFocused: Bool
+    /// The note the next question is about (the paperclip); cleared once it's sent.
+    @State private var attached: VoiceNote?
+    @State private var showingNotePicker = false
+    /// Asking by voice: its own live transcriber (`shared` belongs to recordings).
+    @StateObject private var dictation = LiveTranscriber()
+    @State private var isStartingDictation = false
+    @State private var isFinishingDictation = false
+    @State private var dictationError: String?
 
     private struct Exchange: Identifiable {
         let id = UUID()
         let question: String
+        var attachedTitle: String?
         var answer: AskAnswer?
         var error: String?
     }
@@ -58,15 +67,35 @@ struct AskView: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .onDisappear { currentTask?.cancel() }
+            .onDisappear {
+                currentTask?.cancel()
+                dictation.cancelDictation()
+            }
+            .sheet(isPresented: $showingNotePicker) {
+                AskNotePicker(notes: Self.attachableNotes(repository.notes)) { note in
+                    attached = note
+                }
+            }
+            .alert("Ask by Voice", isPresented: Binding(get: { dictationError != nil }, set: { if !$0 { dictationError = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(dictationError ?? "")
+            }
         }
+    }
+
+    /// Notes the model may read: what search sees (ready, not archived, not locked), newest first.
+    static func attachableNotes(_ notes: [VoiceNote]) -> [VoiceNote] {
+        notes
+            .filter { !$0.isArchived && !$0.isLocked && $0.status == .ready }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
     private var intro: some View {
         VStack(alignment: .leading, spacing: 14) {
             Label("Ask about your notes", systemImage: "sparkles")
                 .font(.headline)
-            Text("The on-device model searches your notes and answers from what it finds. Ask follow-ups; it remembers the conversation until you close it. Nothing leaves the device.")
+            Text("The on-device model searches your notes and answers from what it finds. Ask follow-ups; it remembers the conversation until you close it. Tap the microphone to ask out loud, or the paperclip to ask about one note. Nothing leaves the device.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 8) {
@@ -92,11 +121,19 @@ struct AskView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Spacer(minLength: 48)
-                Text(exchange.question)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 9)
-                    .foregroundStyle(.white)
-                    .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                VStack(alignment: .trailing, spacing: 4) {
+                    if let title = exchange.attachedTitle {
+                        Label(title, systemImage: "paperclip")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Text(exchange.question)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .foregroundStyle(.white)
+                        .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
             }
 
             if let answer = exchange.answer {
@@ -189,23 +226,60 @@ struct AskView: View {
         }
     }
 
+    private var isListening: Bool { dictation.isActive || isStartingDictation || isFinishingDictation }
+
     private var inputBar: some View {
-        HStack(spacing: 8) {
-            TextField("Ask about your notes…", text: $draft, axis: .vertical)
-                .lineLimit(1...4)
-                .focused($isInputFocused)
-                .submitLabel(.send)
-                .onSubmit { send(draft) }
-            Button {
-                send(draft)
-            } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 30))
+        VStack(alignment: .leading, spacing: 6) {
+            if let attached {
+                attachmentChip(attached)
             }
-            .disabled(isAsking || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .accessibilityLabel("Ask")
+            HStack(alignment: .bottom, spacing: 4) {
+                Button {
+                    showingNotePicker = true
+                } label: {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 19, weight: .medium))
+                        .frame(width: 34, height: 34)
+                }
+                .disabled(isListening)
+                .accessibilityLabel(attached == nil ? "Attach a note" : "Attach a different note")
+
+                if isListening {
+                    listeningText
+                        .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
+                } else {
+                    TextField(attached == nil ? "Ask about your notes…" : "Ask about this note…", text: $draft, axis: .vertical)
+                        .lineLimit(1...4)
+                        .focused($isInputFocused)
+                        .submitLabel(.send)
+                        .onSubmit { send(draft) }
+                        .frame(minHeight: 34)
+                }
+
+                Button {
+                    toggleDictation()
+                } label: {
+                    Image(systemName: dictation.isActive ? "stop.circle.fill" : "mic.fill")
+                        .font(.system(size: dictation.isActive ? 30 : 19, weight: .medium))
+                        .foregroundStyle(dictation.isActive ? Color.red : Color.accentColor)
+                        .frame(width: 34, height: 34)
+                }
+                .disabled(isAsking || isStartingDictation || isFinishingDictation)
+                .accessibilityLabel(dictation.isActive ? "Stop listening" : "Ask by voice")
+
+                if !isListening {
+                    Button {
+                        send(draft)
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 30))
+                    }
+                    .disabled(isAsking || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityLabel("Ask")
+                }
+            }
         }
-        .padding(.leading, 16)
+        .padding(.leading, 8)
         .padding(.trailing, 6)
         .padding(.vertical, 6)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -213,16 +287,89 @@ struct AskView: View {
         .padding(.bottom, 8)
     }
 
+    /// What's been heard so far: confirmed words solid, the still-changing tail grey.
+    private var listeningText: some View {
+        Group {
+            if isFinishingDictation {
+                HStack(spacing: 6) {
+                    ProgressView()
+                    Text("Transcribing…").foregroundStyle(.secondary)
+                }
+            } else if dictation.confirmedText.isEmpty && dictation.tentativeText.isEmpty {
+                Label("Listening…", systemImage: "waveform")
+                    .symbolEffect(.variableColor.iterative, isActive: dictation.isActive)
+                    .foregroundStyle(.secondary)
+            } else {
+                (Text(dictation.confirmedText) + Text(dictation.confirmedText.isEmpty ? "" : " ")
+                    + Text(dictation.tentativeText).foregroundColor(.secondary))
+                    .lineLimit(4)
+            }
+        }
+        .font(.body)
+    }
+
+    private func attachmentChip(_ note: VoiceNote) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "doc.text")
+            Text(note.title.isEmpty ? "Untitled note" : note.title)
+                .lineLimit(1)
+            Button {
+                attached = nil
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Remove attached note")
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(Color.accentColor)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Color.accentColor.opacity(0.12), in: Capsule())
+        .padding(.leading, 4)
+        .padding(.top, 2)
+    }
+
+    private func toggleDictation() {
+        if dictation.isActive {
+            isFinishingDictation = true
+            Task {
+                let heard = await dictation.finishDictation()
+                isFinishingDictation = false
+                guard let heard, !heard.isEmpty else {
+                    dictationError = "Didn't catch anything. Tap the microphone and try again."
+                    return
+                }
+                let current = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+                draft = current.isEmpty ? heard : current + " " + heard
+            }
+        } else {
+            isInputFocused = false
+            isStartingDictation = true
+            Task {
+                do {
+                    try await dictation.startDictation()
+                } catch {
+                    dictationError = error.localizedDescription
+                }
+                isStartingDictation = false
+            }
+        }
+    }
+
     private func send(_ text: String) {
         let question = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !question.isEmpty, !isAsking else { return }
+        guard !question.isEmpty, !isAsking, !isListening else { return }
         draft = ""
         isInputFocused = false
-        let exchange = Exchange(question: question)
+        let note = attached
+        attached = nil
+        let exchange = Exchange(question: question, attachedTitle: note.map { $0.title.isEmpty ? "Untitled note" : $0.title })
         exchanges.append(exchange)
         currentTask = Task {
             do {
-                let answer = try await conversation.ask(question)
+                let answer = try await conversation.ask(question, attached: note)
                 update(exchange.id) { $0.answer = answer }
             } catch is CancellationError {
                 // Sheet closed.
@@ -283,5 +430,67 @@ private struct FlowLayout: Layout {
             rows[rows.count - 1] = row
         }
         return rows
+    }
+}
+
+/// Picks the note a question is about: newest first, searchable by title and summary.
+struct AskNotePicker: View {
+    @Environment(\.dismiss) private var dismiss
+    let notes: [VoiceNote]
+    let onPick: (VoiceNote) -> Void
+    @State private var query = ""
+
+    private var filtered: [VoiceNote] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return notes }
+        return notes.filter { $0.title.localizedCaseInsensitiveContains(q) || $0.summary.localizedCaseInsensitiveContains(q) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List(filtered) { note in
+                Button {
+                    onPick(note)
+                    dismiss()
+                } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(note.title.isEmpty ? "Untitled note" : note.title)
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        if !note.summary.isEmpty {
+                            Text(note.summary)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                        Text(note.createdAt.formatted(date: .abbreviated, time: .shortened))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            .overlay {
+                if filtered.isEmpty {
+                    ContentUnavailableView(
+                        notes.isEmpty ? "No Notes Yet" : "No Matches",
+                        systemImage: "doc.text.magnifyingglass",
+                        description: Text(notes.isEmpty ? "Notes appear here once they're processed." : "Try another word.")
+                    )
+                }
+            }
+            .searchable(text: $query, prompt: "Search notes")
+            .navigationTitle("Attach a Note")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }

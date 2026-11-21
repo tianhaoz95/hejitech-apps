@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.34.2"
+    public static let currentVersion = "1.35.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,32 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.35.0",
+            date: "November 2026",
+            tagline: "Ask Out Loud",
+            features: [
+                WhatsNewItem(
+                    icon: "mic.fill",
+                    tint: .red,
+                    title: "Ask by Voice",
+                    description: "Tap the microphone in Ask and say your question. The words appear as you speak; tap stop, check them, and send.",
+                    detailedDescription: "Ask now listens as well as reads. Your question is transcribed on your iPhone by the same speech model that transcribes your notes, with your personal dictionary, so names come out right. Nothing is recorded or kept: only the text lands in the question field, where you can fix a word before you send it.",
+                    highlights: [
+                        "Live words while you speak",
+                        "Transcribed on your iPhone",
+                        "Edit before you send"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "paperclip",
+                    tint: .blue,
+                    title: "Ask About One Note",
+                    description: "Tap the paperclip in Ask to attach a note. The model reads that note before it answers, so questions like \u{201C}what did we decide?\u{201D} are about the note you mean."
+                )
+            ],
+            improvementsAndFixes: []
+        ),
         ReleaseHistoryItem(
             version: "1.34.2",
             date: "November 2026",
