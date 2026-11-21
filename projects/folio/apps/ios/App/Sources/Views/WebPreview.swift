@@ -14,6 +14,9 @@ struct WebPreview: UIViewRepresentable {
     var onComment: ((CommentAnchor, String?) -> Void)? = nil
     var highlight: QuoteRequest? = nil
     var highlightMissed: (() -> Void)? = nil
+    /// Room to leave under the page for something floating over its bottom edge (the artifact's
+    /// tab bar), so the end of the page can still scroll into view.
+    var bottomInset: CGFloat = 0
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -32,6 +35,8 @@ struct WebPreview: UIViewRepresentable {
         web.allowsBackForwardNavigationGestures = true
         context.coordinator.base = url
         context.coordinator.web = web
+        web.scrollView.contentInset.bottom = bottomInset
+        web.scrollView.verticalScrollIndicatorInsets.bottom = bottomInset
         web.load(URLRequest(url: url))
         return web
     }
@@ -41,6 +46,10 @@ struct WebPreview: UIViewRepresentable {
         c.onComment = onComment
         c.highlightMissed = highlightMissed
         web.onComment = onComment == nil ? nil : { [weak c] in c?.commentOnSelection() }
+        if web.scrollView.contentInset.bottom != bottomInset {
+            web.scrollView.contentInset.bottom = bottomInset
+            web.scrollView.verticalScrollIndicatorInsets.bottom = bottomInset
+        }
         if c.base != url {
             c.base = url
             web.load(URLRequest(url: url))

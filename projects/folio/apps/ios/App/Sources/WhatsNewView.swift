@@ -3,7 +3,7 @@ import SwiftUI
 /// What's New: `scripts/cut_release.sh folio` refuses an iPhone release until `currentVersion` and
 /// the first `releases` entry describe it.
 enum WhatsNew {
-    static let currentVersion = "0.2.4"
+    static let currentVersion = "0.2.5"
 
     struct Release: Identifiable {
         let version: String
@@ -12,6 +12,9 @@ enum WhatsNew {
     }
 
     static let releases: [Release] = [
+        Release(version: "0.2.5", items: [
+            ("dock.rectangle", "Tabs at the bottom", "Preview, Review, Comments and History now float in one glass bar at the bottom of every artifact, in easy reach of your thumb. The page scrolls underneath, and the bar steps aside while you type a comment."),
+        ]),
         Release(version: "0.2.4", items: [
             ("star", "Favorites", "Swipe right on an artifact to favorite it. Favorites stay at the top of your list, on the web too."),
             ("trash", "Delete or leave from the list", "Swipe left to delete an artifact you own, or to leave one someone shared with you. Folio asks before anything goes."),

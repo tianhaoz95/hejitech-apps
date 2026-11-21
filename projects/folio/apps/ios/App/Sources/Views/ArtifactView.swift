@@ -55,8 +55,22 @@ struct ArtifactView: View {
     @State private var exportURL: URL?
     @State private var draft: AnchorDraft?
     @State private var highlight: QuoteRequest?
+    @State private var tabBarHeight: CGFloat = 0
+    @State private var keyboardShown = false
+    @Namespace private var tabSelection
 
-    enum Tab: String, CaseIterable { case preview = "Preview", suggestions = "Review", comments = "Comments", history = "History" }
+    enum Tab: String, CaseIterable {
+        case preview = "Preview", suggestions = "Review", comments = "Comments", history = "History"
+
+        var icon: String {
+            switch self {
+            case .preview: return "eye"
+            case .suggestions: return "checklist"
+            case .comments: return "bubble.left.and.bubble.right"
+            case .history: return "clock.arrow.circlepath"
+            }
+        }
+    }
 
     init(slug: String) {
         self.slug = slug
@@ -67,9 +81,16 @@ struct ArtifactView: View {
         VStack(spacing: 0) {
             if let d = store.detail {
                 header(d)
-                tabBar
                 Divider()
                 content
+                    // The tabs float over the bottom of the content, which scrolls underneath them.
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        if !keyboardShown {
+                            tabBar
+                                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { tabBarHeight = $0 }
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+                    }
             } else if let e = store.error {
                 ContentUnavailableView("Can't open this artifact", systemImage: "exclamationmark.triangle", description: Text(e))
             } else {
@@ -114,63 +135,75 @@ struct ArtifactView: View {
             Text("Every version, suggestion and comment goes with it, for everyone it's shared with. This can't be undone.")
         }
         .onChange(of: model.path.count) { _, _ in Task { await store.load(model.api) } }
+        // The comment composer sits just above the tabs; while typing, the tabs step aside so
+        // they don't ride up on the keyboard.
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            withAnimation(.snappy) { keyboardShown = true }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            withAnimation(.snappy) { keyboardShown = false }
+        }
     }
 
-    private func label(_ t: Tab) -> String {
+    private func count(_ t: Tab) -> Int {
         switch t {
-        case .suggestions: return store.openSuggestions.isEmpty ? "Review" : "Review \(store.openSuggestions.count)"
-        case .comments: return store.comments.isEmpty ? "Comments" : "Comments \(store.comments.count)"
-        default: return t.rawValue
+        case .suggestions: return store.openSuggestions.count
+        case .comments: return store.comments.count
+        default: return 0
         }
     }
 
-    /// Preview / Review / Comments / History: Liquid Glass buttons on iOS 26, the selected one
-    /// prominent; a segmented picker before that.
-    @ViewBuilder private var tabBar: some View {
-        if #available(iOS 26, *) {
-            // All four in one row: regular text when it fits, smaller on narrow phones, and
-            // scrolling only as a last resort (large Dynamic Type).
-            ViewThatFits(in: .horizontal) {
-                glassTabs(font: .subheadline.weight(.semibold), spacing: 8)
-                glassTabs(font: .footnote.weight(.semibold), spacing: 6)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    glassTabs(font: .footnote.weight(.semibold), spacing: 6)
-                }
-                .scrollClipDisabled()
-            }
-            .padding(.bottom, 8)
-        } else {
-            Picker("View", selection: $tab) {
-                ForEach(Tab.allCases, id: \.self) { t in Text(label(t)).tag(t) }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.bottom, 8)
+    /// Preview / Review / Comments / History: one floating capsule over the bottom of the
+    /// content, Liquid Glass on iOS 26 (a material before), so the page shows through it instead
+    /// of a bar taking a strip of the screen.
+    private var tabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(Tab.allCases, id: \.self) { t in tabButton(t) }
         }
+        .padding(4)
+        .modifier(FloatingCapsule())
+        .frame(maxWidth: 440)
+        .padding(.horizontal, 20)
+        .padding(.top, 6)
+        .padding(.bottom, 2)
     }
 
-    @available(iOS 26, *)
-    private func glassTabs(font: Font, spacing: CGFloat) -> some View {
-        GlassEffectContainer(spacing: spacing) {
-            HStack(spacing: spacing) {
-                ForEach(Tab.allCases, id: \.self) { t in
-                    let button = Button {
-                        withAnimation(.snappy) { tab = t }
-                    } label: {
-                        Text(label(t)).font(font).monospacedDigit().lineLimit(1).fixedSize()
+    private func tabButton(_ t: Tab) -> some View {
+        let selected = tab == t
+        let n = count(t)
+        return Button {
+            withAnimation(.snappy) { tab = t }
+        } label: {
+            VStack(spacing: 2) {
+                Image(systemName: t.icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(height: 22)
+                    .overlay(alignment: .topTrailing) {
+                        if n > 0 {
+                            Text(n > 99 ? "99+" : "\(n)")
+                                .font(.system(size: 11, weight: .bold)).monospacedDigit()
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 4.5).frame(minWidth: 17, minHeight: 17)
+                                .background(t == .suggestions ? Color.orange : Color.red, in: Capsule())
+                                .offset(x: 11, y: -5)
+                        }
                     }
-                    .accessibilityAddTraits(tab == t ? .isSelected : [])
-                    if tab == t {
-                        button.buttonStyle(.glassProminent)
-                    } else {
-                        button.buttonStyle(.glass)
-                    }
+                Text(t.rawValue).font(.caption2.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(selected ? Color.accentColor : Color.primary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background {
+                if selected {
+                    Capsule().fill(Color.primary.opacity(0.09))
+                        .matchedGeometryEffect(id: "selected", in: tabSelection)
                 }
             }
+            .contentShape(Capsule())
         }
-        .padding(.horizontal)
-        .padding(.vertical, 2)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .buttonStyle(.plain)
+        .accessibilityLabel(n > 0 ? "\(t.rawValue), \(n)" : t.rawValue)
+        .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
     }
 
     @ViewBuilder private func copyForAgent(_ d: ArtifactDetail) -> some View {
@@ -219,7 +252,8 @@ struct ArtifactView: View {
                         url: u,
                         onComment: { anchor, path in draft = AnchorDraft(anchor: anchor, path: path) },
                         highlight: highlight,
-                        highlightMissed: { model.flash("That part isn't in this version anymore.") }
+                        highlightMissed: { model.flash("That part isn't in this version anymore.") },
+                        bottomInset: tabBarHeight
                     )
                     .ignoresSafeArea(edges: .bottom)
                     Button { fullScreen = true } label: {
@@ -277,6 +311,21 @@ struct ArtifactView: View {
                 }
             } label: { Image(systemName: "ellipsis.circle") }
             .accessibilityLabel("More")
+        }
+    }
+}
+
+/// The floating tab bar's surface: interactive Liquid Glass on iOS 26, a thin material with a
+/// soft shadow before it.
+private struct FloatingCapsule: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content.glassEffect(.regular.interactive(), in: .capsule)
+        } else {
+            content
+                .background(.regularMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08)))
+                .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
         }
     }
 }
