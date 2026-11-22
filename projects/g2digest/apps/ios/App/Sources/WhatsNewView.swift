@@ -35,6 +35,7 @@ public struct WhatsNewView: View {
     public static let releases: [ReleaseNotes] = [
         ReleaseNotes(version: "0.5.2", date: "November 2026", items: [
             WhatsNewItem(icon: "checkmark.seal", title: "One Pro, everywhere", description: "G2 Digest Pro now belongs to your account: buy it once, here or on the web, and it works on the web, this iPhone and your glasses wherever you sign in. Already have it? Sign in and it's there."),
+            WhatsNewItem(icon: "hammer", title: "Ready for iOS 27", description: "G2 Digest is now built with the iOS 27 SDK."),
         ]),
         ReleaseNotes(version: "0.5.1", date: "November 2026", items: [
             WhatsNewItem(icon: "sparkles", title: "A new Pro screen", description: "The G2 Digest Pro screen is redesigned: it opens over a glimpse of the app, your plans in one list and one clear button for the one you pick."),

@@ -17,10 +17,17 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.24"
+    static let currentVersion = "0.1.25"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.25", date: "November 2026", items: [
+            WhatsNewItem(
+                icon: "hammer",
+                title: "Ready for iOS 27",
+                description: "Tether is now built with the iOS 27 SDK."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.24", date: "October 2026", items: [
             WhatsNewItem(
                 icon: "character.cursor.ibeam",

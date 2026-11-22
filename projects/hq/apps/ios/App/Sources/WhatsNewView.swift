@@ -18,8 +18,11 @@ struct ReleaseNotes: Identifiable {
 /// refuses until `currentVersion` and the top release entry describe the version being released
 /// (projects/hq/release.env).
 enum WhatsNew {
-    static let currentVersion = "0.4.1"
+    static let currentVersion = "0.4.2"
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.4.2", date: "November 2026", items: [
+            WhatsNewItem(icon: "hammer", title: "Ready for iOS 27", description: "HQ is now built with the iOS 27 SDK."),
+        ]),
         ReleaseNotes(version: "0.4.1", date: "November 2026", items: [
             WhatsNewItem(icon: "sparkles", title: "What's New, any time", description: "Every release's changes, with a clearer look, now open from Settings too."),
         ]),

@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.37.0"
+    public static let currentVersion = "1.37.1"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,21 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.37.1",
+            date: "November 2026",
+            tagline: "Ready for iOS 27",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "hammer",
+                    tint: .blue,
+                    title: "Ready for iOS 27",
+                    description: "Voxbrief is now built with the iOS 27 SDK.",
+                    kind: .improvement
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.37.0",
             date: "November 2026",

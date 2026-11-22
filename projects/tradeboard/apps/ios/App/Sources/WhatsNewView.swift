@@ -29,10 +29,13 @@ public struct ReleaseNotes: Identifiable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.1.13"
+    public static let currentVersion = "0.1.14"
     public static let lastSeenVersionKey = "last_seen_whats_new_version_tradeboard"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.14", date: "November 2026", items: [
+            WhatsNewItem(icon: "hammer", title: "Ready for iOS 27", description: "The Trading Plan Board app is now built with the iOS 27 SDK.")
+        ]),
         ReleaseNotes(version: "0.1.13", date: "November 2026", items: [
             WhatsNewItem(icon: "square.grid.2x2", title: "Cleaner Plan Tabs", description: "A plan's Thesis, Discussion, Receipts and Audit tabs are now icons, so they fit on any iPhone."),
             WhatsNewItem(icon: "laptopcomputer", title: "Robinhood Stays on Your Computer", description: "Robinhood on This iPhone is gone. Your executor on a computer (the Mac app or the command line) connects to Robinhood; the iPhone app is for your board and approvals. Any Robinhood sign-in the preview left on this iPhone is deleted.")
