@@ -1,4 +1,5 @@
 {
   "farm":   {"play": ["cow", "dog", "rain", "thunder", "knock", "cat"], "never": ["horse"], "stop": ["rain"]},
-  "jungle": {"play": ["monkey", "tiger", "dinosaur", "frog", "wolf"], "never": ["elephant", "dragon", "owl"]}
+  "jungle": {"play": ["monkey", "tiger", "dinosaur", "frog", "wolf"], "never": ["elephant", "dragon", "owl"]},
+  "town":   {"play": ["bicycle", "tractor", "siren", "pig", "rooster", "sneeze", "creak", "robot", "cheer", "yawn"], "never": ["duck", "fire", "truck", "crow"]}
 }

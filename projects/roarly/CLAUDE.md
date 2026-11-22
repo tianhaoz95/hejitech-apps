@@ -107,7 +107,11 @@ end, or the last final never comes), copy it into Documents, run `-language <id>
   a closure formed in a `@MainActor` method and run on the audio thread trips isolation checks.
 - **Sounds**: every catalog file must exist (RoarlyKit `SoundFileTests`). Add a sound in
   `tools/build_sounds.py` (with its credit) and the cue's `files`; keep the watch app under 75 MB
-  (it bundles the same Sounds folder, ~4 MB now).
+  (it bundles the same Sounds folder, ~7 MB now). `python3 tools/build_sounds.py <sources> <name>…`
+  rebuilds only those sounds (the sources folder isn't committed; get each file from the URL in
+  its credit). Only CC0, public domain and CC BY: never SA or NC. Wikimedia's file server answers
+  429 for ~10 min after a few downloads; wait it out rather than retry fast. Pick clip windows with
+  `tools/classify_sound.swift`, and check the built file with it too.
 - **Voice processing posts a configuration change ~0.4 s after the engine starts.** Rebuilding the
   engine in response re-enables voice processing and loops ("Getting ready" ↔ "Listening", 0.1.0).
   `AudioHub.handleConfigurationChange` resumes the same engine in place; full restarts are capped.

@@ -1,45 +1,104 @@
 Roarly's sounds come from people who share their recordings freely. Thank you!
 
-Public domain and CC0 recordings need no credit; we list them anyway. CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+Public domain and CC0 recordings need no credit; we list them anyway. CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ CC BY 3.0: https://creativecommons.org/licenses/by/3.0/
 Some sounds were changed (trimmed, pitched, looped, mixed). A few are synthesized for Roarly.
 
+airplane: "Airplane, Boeing, flyby, right to left (freesound 428086)" by InspectorJ (via Wikimedia Commons). CC BY 4.0. https://commons.wikimedia.org/wiki/File:428086_inspectorj_airplane-boeing-flyby-right-to-left-a.wav
+alien: "UFO beam" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/ufo-beam
+baby: "Crying newborn baby" by the_yura (Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Crying_newborn_baby.ogg
 bear: "Grizzly bear sound effect" by Zagz (Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Grizzly_bear_sound_effect.wav
+bee, fly: "Bombus buzz" by Mysid (Wikimedia Commons). Public domain. https://commons.wikimedia.org/wiki/File:Bombus_buzz.ogg
 bell: "Bell dings/chimes" by PWL (OpenGameArt). CC0 1.0. https://opengameart.org/content/bell-dingschimes
+bicycle: "Bicycle sounds" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/bicycle-sounds
+bicycle: "Bicycle bell 1" by Soundscape_Leuphana (Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Bicycle-bell-1.wav
 bird: "Bird chirping sounds" by syncopika (OpenGameArt). CC0 1.0. https://opengameart.org/content/bird-chirping-sounds
+boat: "Original foghorn at East Brother Island Lighthouse" by Elwood P. Dowd (Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Original_foghorn_at_East_Brother_Island_Lighthouse.ogg
 boing: "Boing" by Aeva (OpenGameArt). CC0 1.0. https://opengameart.org/content/boing
 car: "Car sound effects pack" by GGBotNet (OpenGameArt). CC0 1.0. https://opengameart.org/content/car-sound-effects-pack-low-quality
+car: "NSU Prinz 1200 C engine" by Work With Sounds / Technical Museum of Slovenia. CC BY 4.0. https://commons.wikimedia.org/wiki/File:WWS_CarPrinzNSU1200Cengine.ogg
 cat: "Meow of a Siamese cat" by freemaster2 (via Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Meow_of_a_Siamese_cat_-_freemaster2.wav
 cat: "Cat purr & meow" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/cat-purr-meow
+cave: "Dripping water loop" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/dripping-water-loop
+cheer: "Applause in a large hall or church" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/applause-in-a-large-hall-or-church
+chicken: "Hen announcing she's lain an egg" by alys (Wikimedia Commons). Public domain. https://commons.wikimedia.org/wiki/File:Hen_announcing_shes_lain_an_egg.ogg
+city: "High traffic road sounds" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/high-traffic-road-sounds
 clock: "Ticking clock" by bart (OpenGameArt). CC0 1.0. https://opengameart.org/content/ticking-clock
+creak: "Door open, door close set" by qubodup (OpenGameArt). CC0 1.0. https://opengameart.org/content/door-open-door-close-set
+creak: "Creaky door hinge (spooky)" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/creaky-door-hinge-spooky
+crow: "Crow caw" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/crow-caw
+digger: "Back-up beeper" by Ke4roh (Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Back-up_beeper.ogg
 dog: "Dog barking (mono)" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/dog-barking-mono
 dog: "Dog sounds" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/dog-sounds
+dolphin: "Dolphin screaming underwater, Caribbean Sea (freesound 161691)" by Felix Blume (via Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:161691_felixblume_dolphin-screaming-underwater-in-caribbean-sea-mexico.wav
+donkey: "A donkey is braying in his enclosure (freesound 157763)" by Felix Blume (via Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:157763_felix-blume_a-donkey-is-braying-in-his-enclosure-in-south-of-france.wav
 doorbell: "Doorbell" by frosty ham (OpenGameArt). CC0 1.0. https://opengameart.org/content/doorbell
+drum: "Horde war drums loop" by William Hector (OpenGameArt). CC0 1.0. https://opengameart.org/content/horde-war-drums-loop
+duck: "Ducks snatching" by Bert76 (Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Ducks_snatching.ogg
+elephant: "Elephant voice, trumpeting" by தகவலுழவன் (Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Elephant_voice_-_trumpeting.ogg
+farm: "Cattle shed" by Work With Sounds / Museum of Municipal Engineering. CC BY 4.0. https://commons.wikimedia.org/wiki/File:WWS_Cattleshed.ogg
 fire: "Fireplace sound loop" by PagDev (OpenGameArt). CC0 1.0. https://opengameart.org/content/fireplace-sound-loop
+fireworks: "25 CC0 bang / firework SFX" by rubberduck (OpenGameArt). CC0 1.0. https://opengameart.org/content/25-cc0-bang-firework-sfx
+flush: "Toilet flush" by ᐃᓄᒃᑎᑐᑦ (Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Toilet_flush.flac
 footsteps: "Footsteps" by GboxMikeFozzy (OpenGameArt). CC0 1.0. https://opengameart.org/content/footsteps-0
 forest: "Forest bird sounds" by pauliuw (OpenGameArt). CC0 1.0. https://opengameart.org/content/forest-bird-sounds
 frog: "Frog croaks" by EZduzziteh (OpenGameArt). CC0 1.0. https://opengameart.org/content/frog-croaks
+ghost: "Ghost / monster voice moaning" by qubodup (OpenGameArt). CC0 1.0. https://opengameart.org/content/ghost-monster-voice-moaning-growling
+giant: "Mech stomp step sound" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/mech-stomp-step-sound
 giggle: "Group giggling" by Nocturnal_Vanguard (OpenGameArt). CC0 1.0. https://opengameart.org/content/group-giggling
+goat: "Herd of goats bleating" by stephan (Wikimedia Commons). Public domain. https://commons.wikimedia.org/wiki/File:Herd_of_goats_bleating.ogg
+helicopter: "Helicopter sounds" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/helicopter-sounds
 horse: "Horse trotting" by EZduzziteh (OpenGameArt). CC0 1.0. https://opengameart.org/content/horse-trotting
+kiss: "Kiss Pop" by Nathan Smith (Wikimedia Commons). Public domain. https://commons.wikimedia.org/wiki/File:Kiss_Pop.ogg
 knock: "Knock on door" by Wikimedia Commons contributor. CC0 1.0. https://commons.wikimedia.org/wiki/File:Knock_on_door.wav
+laser: "50 CC0 sci-fi SFX" by rubberduck (OpenGameArt). CC0 1.0. https://opengameart.org/content/50-cc0-sci-fi-sfx
 lion: "Lion sound effect" by Zagz (Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Lion_sound_effect.wav
 magic: "Magic spell SFX" by JaggedStone (OpenGameArt). CC0 1.0. https://opengameart.org/content/magic-spell-sfx
 magic: "Fantasy magic spell" by Almitory (OpenGameArt). CC0 1.0. https://opengameart.org/content/fantasy-magic-spell
 monkey: "Gorilla Sounds" by AntumDeluge (OpenGameArt). CC0 1.0. https://opengameart.org/content/gorilla-sounds
+monster: "Big scary troll sounds" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/big-scary-troll-sounds
+monster: "80 CC0 creature SFX #2" by rubberduck (OpenGameArt). CC0 1.0. https://opengameart.org/content/80-cc0-creture-sfx-2
+motorcycle: "Motorbike 4" by ezwa (Wikimedia Commons). Public domain. https://commons.wikimedia.org/wiki/File:Motorbike_4.ogg
+munch: "7 eating crunches" by Tito (OpenGameArt). CC0 1.0. https://opengameart.org/content/7-eating-crunches
+munch: "Apple bite" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/apple-bite
 night: "Crickets ambient noise (loopable)" by Wolfgang_ (OpenGameArt). CC0 1.0. https://opengameart.org/content/crickets-ambient-noise-loopable
 ocean: "Beach ocean waves (from jasinski's alkaibeach, freesound CC0)" by qubodup (OpenGameArt). CC0 1.0. https://opengameart.org/content/beach-ocean-waves
+phone: "Telephone ringing" by Work With Sounds / Technical Museum of Slovenia. CC BY 4.0. https://commons.wikimedia.org/wiki/File:WWS_Telephone8211ringing.ogg
+pig, goat, chicken, cow: "Baby animals sounds pack" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/baby-animals-sounds-pack
+pig: "Pig grunt" by Erdie (Wikimedia Commons). CC BY 3.0. https://commons.wikimedia.org/wiki/File:Pig_grunt_-_Erdie.ogg
 pop: "Balloon sounds" by AntumDeluge (OpenGameArt). CC0 1.0. https://opengameart.org/content/balloon-sounds
 rain: "Ambient rain loop" by Kresiek The Furry (OpenGameArt). CC0 1.0. https://opengameart.org/content/amb-rain-loop-1
 river: "Water trickle" by fractalstudios (freesound, via Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:363120_fractalstudios_water-trickle.wav
 rocket: "Rocket launch" by qubodup (OpenGameArt). CC0 1.0. https://opengameart.org/content/rocket-launch
+rooster: "Medium rooster crowing" by alys (Wikimedia Commons). Public domain. https://commons.wikimedia.org/wiki/File:Medium_rooster_crowing.ogg
 seagull: "European Herring Gull (XC707075)" by xeno-canto recordist (via Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:XC707075_-_European_Herring_Gull_-_Larus_argentatus.mp3
 sheep: "Sheep baa" by AntumDeluge (OpenGameArt). CC0 1.0. https://opengameart.org/content/sheep-baa
+siren: "Sirens and alarm noise" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/sirens-and-alarm-noise
+siren: "American police siren" by lezer (Wikimedia Commons). Public domain. https://commons.wikimedia.org/wiki/File:American_police_siren_i.ogg
+slam: "100 CC0 SFX" by rubberduck (OpenGameArt). CC0 1.0. https://opengameart.org/content/100-cc0-sfx
+slurp: "Liquid, bottle and drink set" by qubodup (OpenGameArt). CC0 1.0. https://opengameart.org/content/liquid-bottle-drink-set
 snake: "Steam release sounds" by bart (OpenGameArt). CC0 1.0. https://opengameart.org/content/steam-release-sounds
+sneeze: "Genuine sneeze sound" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/genuine-sneeze-sound
 splash: "6 short water splashes" by qubodup (OpenGameArt). CC0 1.0. https://opengameart.org/content/6-short-water-splashes
+sword: "20 sword sound effects" by starninjas (OpenGameArt). CC0 1.0. https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes
 thunder: "Nosferatu thunderclap" by Richard Humphries. CC BY 4.0. https://commons.wikimedia.org/wiki/File:Nosferatu_thunderclap_-_Richard_Humphries.wav
 tiger: "Tiger sound effect" by Zagz (Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:Tiger_sound_effect.wav
 tiger: "Angry tiger" by schots (freesound, via Wikimedia Commons). CC0 1.0. https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav
+tractor, digger: "John Deere tractor" by Work With Sounds / Werstas. CC BY 4.0. https://commons.wikimedia.org/wiki/File:WWS_JohnDeereTractor.ogg
+tractor: "Lanz Bulldog HL12 tractor driving" by Work With Sounds / Museum of Municipal Engineering. CC BY 4.0. https://commons.wikimedia.org/wiki/File:WWS_TractorLanzBuldogHL12driving.ogg
+train: "Steam engine" by aradlaw (Wikimedia Commons). Public domain. https://commons.wikimedia.org/wiki/File:Steam_engine.ogg
+train: "Parovoz sound" by Alex Alex Lep (Wikimedia Commons). Public domain. https://commons.wikimedia.org/wiki/File:Parovoz_sound.ogg
+treasure: "Coin drop" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/coin-drop
+treasure: "12 coin sound effects" by starninjas (OpenGameArt). CC0 1.0. https://opengameart.org/content/12-coin-sound-effects
+truck: "FSR Tarpan 239D van driving" by Work With Sounds / Museum of Municipal Engineering. CC BY 4.0. https://commons.wikimedia.org/wiki/File:WWS_FSRTarpan239Dvandriving.ogg
+truck, train: "American train horn (Nathan Airchime K5LA)" by WeenyBeany (Wikimedia Commons). CC BY 4.0. https://commons.wikimedia.org/wiki/File:Sound_of_American_Train_Horn_Nathan_Airchime_K5LA.ogg
+trumpet: "Classic fanfare lick" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/classic-fanfare-lick
+turkey: "Gobbler" by bod (Wikimedia Commons). Public domain. https://commons.wikimedia.org/wiki/File:Gobbler.ogg
+underwater: "Underwater sound of a river" by Thomas Bresson (Wikimedia Commons). CC BY 4.0. https://commons.wikimedia.org/wiki/File:Underwater_sound_of_a_river.mp3
 whale: "52 Hz Whale (normal speed)" by Wikimedia Commons contributor. CC0 1.0. https://commons.wikimedia.org/wiki/File:52_Hz_Whale_Normal_Speed.wav
+whistle: "Police whistle" by Work With Sounds / Konrad Gutkowski. CC BY 4.0. https://commons.wikimedia.org/wiki/File:WWS_Policewhistle.ogg
 whoosh: "Air whoosh" by pyranostudios (OpenGameArt). CC0 1.0. https://opengameart.org/content/air-whoosh
+witch: "Witch cackle" by OpenGameArt contributor. CC0 1.0. https://opengameart.org/content/witch-cackle
 wolf, snore: "80 CC0 creature SFX" by rubberduck (OpenGameArt). CC0 1.0. https://opengameart.org/content/80-cc0-creature-sfx
+yawn: "Yawning 1" by ezwa (Wikimedia Commons). Public domain. https://commons.wikimedia.org/wiki/File:Yawning_1.ogg
 
-Synthesized for Roarly: dinosaur, dragon, bee, boat, wind, train, airplane, elephant, owl, cow
+Synthesized for Roarly: mouse, owl, robot, wind.

@@ -32,6 +32,19 @@
     {"lines": ["Aquí no hay dragones, solo ovejas amistosas."], "never": ["dragon"]},
     {"lines": ["La abeja zumbó alrededor de las flores."], "play": ["bee"]},
     {"lines": ["el leon rugio muy fuerte"], "play": ["lion"]},
-    {"lines": ["Los leones llegaron al río."], "play": ["lion"]}
+    {"lines": ["Los leones llegaron al río."], "play": ["lion"]},
+    {"lines": ["El granjero se subió a su tractor rojo."], "suggest": ["tractor"]},
+    {"lines": ["Llegó un camión enorme por el camino."], "play": ["truck"], "never": ["car"]},
+    {"lines": ["¡Ni no ni no! Llega el camión de bomberos."], "play": ["siren"], "never": ["fire", "truck"]},
+    {"lines": ["El cerdito dijo oinc oinc."], "play": ["pig"]},
+    {"lines": ["El patito dijo cuac cuac."], "play": ["duck"]},
+    {"lines": ["El gallo cantó quiquiriquí."], "play": ["rooster"]},
+    {"lines": ["El burro rebuznó muy fuerte."], "play": ["donkey"]},
+    {"lines": ["Vieron un pavo real en el jardín."], "never": ["turkey"]},
+    {"lines": ["Entonces estornudó: ¡achís!"], "play": ["sneeze"]},
+    {"lines": ["La bruja se rió y removió su caldero."], "play": ["witch"], "never": ["magic"]},
+    {"lines": ["Un fantasma apareció en la casa. ¡Buu!"], "play": ["ghost"]},
+    {"lines": ["El robot dijo bip bup."], "play": ["robot"]},
+    {"lines": ["Empezó a caer nieve."], "play": ["wind"]}
   ]
 }

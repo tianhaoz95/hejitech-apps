@@ -3,7 +3,7 @@ import SwiftUI
 /// What changed in each version. `scripts/cut_release.sh roarly` refuses a release until
 /// `currentVersion` and the top entry describe it.
 struct WhatsNewView: View {
-    static let currentVersion = "0.1.3"
+    static let currentVersion = "0.2.0"
     static let seenKey = "whatsNewSeen"
 
     struct Release: Identifiable {
@@ -13,6 +13,11 @@ struct WhatsNewView: View {
     }
 
     static let releases: [Release] = [
+        Release(version: "0.2.0", items: [
+            ("🚜", "Twice the sounds", "Tractors, bikes, trucks, sirens, diggers and helicopters; pigs, ducks, roosters and donkeys; creaky doors, sneezes, yawns and hoorays; ghosts, robots, giants and treasure. 91 sounds in all."),
+            ("🌊", "New places", "A farmyard, a busy city, under the sea and a dripping cave play softly under the story."),
+            ("🐘", "Truer sounds", "The car, train, boat, cow, elephant and bee are real recordings now."),
+        ]),
         Release(version: "0.1.3", items: [
             ("🌏", "中文 and Español", "Tell stories in Mandarin or Spanish too. Pick the story language in Settings; every sound has its words in all three."),
         ]),

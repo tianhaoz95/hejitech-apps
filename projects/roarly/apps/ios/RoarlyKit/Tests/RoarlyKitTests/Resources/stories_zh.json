@@ -36,6 +36,19 @@
     {"lines": ["過了一會兒，獅子大吼一聲！"], "play": ["lion"]},
     {"lines": ["没想到，一只老虎跳了出来！"], "play": ["tiger"]},
     {"lines": ["不好了，狼来了！"], "play": ["wolf"]},
-    {"lines": ["过了五分钟，他们到了。"], "never": ["clock"]}
+    {"lines": ["过了五分钟，他们到了。"], "never": ["clock"]},
+    {"lines": ["农民爷爷开着拖拉机来了。"], "play": ["tractor"]},
+    {"lines": ["她骑着自行车，叮铃铃！"], "play": ["bicycle"]},
+    {"lines": ["一辆大卡车开过来了。"], "play": ["truck"], "never": ["car"]},
+    {"lines": ["呜哇呜哇，消防车来了！"], "play": ["siren"], "never": ["fire", "car"]},
+    {"lines": ["小猪哼哼地叫。"], "play": ["pig"]},
+    {"lines": ["大公鸡喔喔喔地打鸣。"], "play": ["rooster"], "never": ["chicken"]},
+    {"lines": ["小老鼠吱吱地叫。"], "play": ["mouse"]},
+    {"lines": ["她打了个喷嚏，阿嚏！"], "play": ["sneeze"]},
+    {"lines": ["小熊打了个哈欠。"], "play": ["yawn"]},
+    {"lines": ["机器人说哔哔哔。"], "play": ["robot"]},
+    {"lines": ["他坐在马桶上。"], "suggest": ["flush"], "never": ["horse"]},
+    {"lines": ["白雪公主住在森林里。"], "never": ["wind"]},
+    {"lines": ["外面下雪了。"], "suggest": ["wind"]}
   ]
 }
