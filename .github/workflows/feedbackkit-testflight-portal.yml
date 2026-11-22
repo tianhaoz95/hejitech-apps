@@ -29,7 +29,7 @@ jobs:
   release:
     name: Build & Upload FeedbackPortal to TestFlight
     if: github.event_name != 'release' || (startsWith(github.event.release.tag_name, 'feedbackkit-') && !startsWith(github.event.release.tag_name, 'feedbackkit-beta-') && !startsWith(github.event.release.tag_name, 'feedbackkit-react-native-') && !startsWith(github.event.release.tag_name, 'feedbackkit-desktop-') && !startsWith(github.event.release.tag_name, 'feedbackkit-mac-demo-') && !startsWith(github.event.release.tag_name, 'feedbackkit-cli-') && !startsWith(github.event.release.tag_name, 'feedbackkit-skills-') && !startsWith(github.event.release.tag_name, 'feedbackkit-web-sdk-') && !startsWith(github.event.release.tag_name, 'feedbackkit-portal-mac-'))
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 45
     environment:
       name: testflight-portal
@@ -45,7 +45,7 @@ jobs:
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "latest-stable"
+          xcode-version: "27.2"
 
       - name: Install XcodeGen
         run: brew install xcodegen

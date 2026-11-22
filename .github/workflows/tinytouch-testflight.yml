@@ -28,7 +28,7 @@ jobs:
   ios:
     name: Build & upload iOS
     if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'tinytouch-v')
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 60
     environment:
       name: TestFlight
@@ -36,11 +36,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # App Store Connect requires the iOS 26 SDK (Xcode 26+).
+      # App Store Connect requires the iOS 27 SDK (Xcode 27+) from April 2027 (ITMS-90725).
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "26"
+          xcode-version: "27.2"
 
       - name: Version matches the release tag
         env:

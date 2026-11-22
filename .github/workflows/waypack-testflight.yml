@@ -24,18 +24,17 @@ jobs:
   ios:
     name: Build & upload iOS
     if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'waypack-v')
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 60
     environment:
       name: TestFlight
       url: https://testflight.apple.com
     steps:
       - uses: actions/checkout@v4
-      - name: Select the newest Xcode (local releases build with the newest too)
-        run: |
-          XCODE="$(find /Applications -maxdepth 1 -name "Xcode_*.app" | sort -V | tail -1)"
-          sudo xcode-select -s "$XCODE"
-          xcodebuild -version
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "27.2"
       - uses: ./.github/actions/waypack-toolchain
       - uses: ./.github/actions/apple-signing
         with:

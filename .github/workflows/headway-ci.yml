@@ -84,7 +84,7 @@ jobs:
 
   ios:
     name: iPhone app (HeadwayKit tests, simulator build)
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 30
     defaults:
       run:
@@ -94,7 +94,7 @@ jobs:
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "26"
+          xcode-version: "27.2"
       - run: brew install xcodegen
       - name: HeadwayKit tests
         working-directory: projects/headway/apps/ios/HeadwayKit
