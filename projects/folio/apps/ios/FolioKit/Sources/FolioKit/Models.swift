@@ -24,12 +24,18 @@ public struct ArtifactSummary: Codable, Hashable, Identifiable, Sendable {
     public var role: Role
     public var head_version: Int
     public var open_suggestions: Int
+    /// The agent of the newest open suggestion (absent from servers older than 0.2.7).
+    public var review_agent: String?
+    /// Comments not yet resolved, replies included (absent from servers older than 0.2.7).
+    public var unresolved_comments: Int?
     /// Starred by the signed-in person (absent from servers older than 0.2.4).
     public var favorite: Bool?
     public var updated_at: Date
     public var created_at: Date
 
     public var isFavorite: Bool { favorite ?? false }
+    /// Open suggestions the signed-in person can accept or reject (viewers can't review).
+    public var needsReview: Bool { open_suggestions > 0 && role.canReview }
 }
 
 public struct Artifact: Codable, Hashable, Sendable {

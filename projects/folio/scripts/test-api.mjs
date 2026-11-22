@@ -593,6 +593,11 @@ await step("review sign-in: wrong password 401; demo data on every sign-in, same
   assert.deepEqual(list.map((a) => a.title).sort(), ["Big Sur weekend", "Standing desks under $600"]);
   const trip = list.find((a) => a.title === "Big Sur weekend");
   assert.equal(trip.open_suggestions, 1);
+  assert.equal(trip.review_agent, "Gemini", "the list says which agent asked for review");
+  assert.equal(trip.unresolved_comments, 1);
+  const desks = list.find((a) => a.title !== "Big Sur weekend");
+  assert.equal(desks.review_agent, null);
+  assert.equal(desks.unresolved_comments, 0);
   const versions = (await call(`/api/artifacts/${trip.slug}/versions`, { auth: r.body.access_token })).body;
   assert.deepEqual(versions.map((v) => v.agent), ["Gemini", "Claude"]);
   // The reviewer deletes things; the next sign-in brings the demo back for the same user.

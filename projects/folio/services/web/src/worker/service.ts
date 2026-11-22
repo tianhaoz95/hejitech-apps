@@ -626,6 +626,10 @@ export interface ArtifactSummary {
   role: Role;
   head_version: number;
   open_suggestions: number;
+  /** Who asked for review: the agent of the newest open suggestion, null when there is none. */
+  review_agent: string | null;
+  /** Comments not yet resolved, replies included (the same count as the artifact's own view). */
+  unresolved_comments: number;
   /** Starred by the person listing (per person, not per artifact). */
   favorite: boolean;
   updated_at: string;
@@ -653,9 +657,20 @@ export async function listArtifacts(db: Db, userId: string, query?: unknown, lim
   rows.sort((x, y) => y.a.updated_at.localeCompare(x.a.updated_at));
   rows = rows.slice(0, limit);
   const counts = new Map<string, number>();
+  const reviewAgents = new Map<string, string>();
+  const comments = new Map<string, number>();
   if (rows.length) {
-    const { data } = await db.from("suggestions").select("artifact_id").eq("status", "open").in("artifact_id", rows.map((r) => r.a.id));
-    for (const r of data ?? []) counts.set(r.artifact_id as string, (counts.get(r.artifact_id as string) ?? 0) + 1);
+    const ids = rows.map((r) => r.a.id);
+    const [{ data: sugg }, { data: open }] = await Promise.all([
+      db.from("suggestions").select("artifact_id, agent").eq("status", "open").in("artifact_id", ids).order("created_at", { ascending: false }),
+      db.from("comments").select("artifact_id").eq("resolved", false).in("artifact_id", ids).limit(10000),
+    ]);
+    for (const r of sugg ?? []) {
+      const id = r.artifact_id as string;
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+      if (!reviewAgents.has(id)) reviewAgents.set(id, r.agent as string);
+    }
+    for (const r of open ?? []) comments.set(r.artifact_id as string, (comments.get(r.artifact_id as string) ?? 0) + 1);
   }
   return rows.map(({ a, role }) => ({
     id: a.id,
@@ -666,6 +681,8 @@ export async function listArtifacts(db: Db, userId: string, query?: unknown, lim
     role,
     head_version: a.head_version,
     open_suggestions: counts.get(a.id) ?? 0,
+    review_agent: reviewAgents.get(a.id) ?? null,
+    unresolved_comments: comments.get(a.id) ?? 0,
     favorite: favs.has(a.id),
     updated_at: a.updated_at,
     created_at: a.created_at,

@@ -3,7 +3,7 @@ import SwiftUI
 /// What's New: `scripts/cut_release.sh folio` refuses an iPhone release until `currentVersion` and
 /// the first `releases` entry describe it.
 enum WhatsNew {
-    static let currentVersion = "0.2.6"
+    static let currentVersion = "0.2.7"
 
     struct Release: Identifiable {
         let version: String
@@ -12,6 +12,9 @@ enum WhatsNew {
     }
 
     static let releases: [Release] = [
+        Release(version: "0.2.7", items: [
+            ("rectangle.grid.1x2", "A more compact home", "Your list now opens with what matters today: how many suggestions wait for you, what changed today and how many comments are open. Then what to review and which agent asked, your favorites as chips, and everything else in tighter rows by day, so far more fits on the screen."),
+        ]),
         Release(version: "0.2.6", items: [
             ("paintpalette", "A new look", "A new icon, an F drawn from a bar, a quarter circle and a dot, and colours to match: navy, coral and mustard on warm paper, in the app and on the web."),
         ]),
