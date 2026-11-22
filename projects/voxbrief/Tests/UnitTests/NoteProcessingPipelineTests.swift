@@ -104,6 +104,25 @@ fileprivate final class MockLLMCopywriterService: LLMCopywriterServiceProtocol, 
     }
 }
 
+/// Passes every call to `base`, except that the second `processTranscript` fails.
+fileprivate final class FailingSecondCallLLM: LLMCopywriterServiceProtocol, @unchecked Sendable {
+    let base: MockLLMCopywriterService
+    private var calls = 0
+    init(base: MockLLMCopywriterService) { self.base = base }
+
+    func processTranscript(_ rawTranscript: String, mode: RewriteMode, dictionary: [DictionaryEntry], templates: [NoteTemplate]) async throws -> LLMProcessingResult {
+        calls += 1
+        if calls == 2 { throw LLMCopywriterError.unparsableResponse }
+        return try await base.processTranscript(rawTranscript, mode: mode, dictionary: dictionary, templates: templates)
+    }
+
+    func warmUp() async {}
+
+    func writeBrief(cleanedText: String) async throws -> NoteBrief? {
+        cleanedText == "mock light" ? NoteBrief(title: "Topic", summary: "Summary.") : nil
+    }
+}
+
 fileprivate struct StubSpeakerDetector: SpeakerDetecting {
     var spans: [SpeakerSpan] = []
     var error: Error?
@@ -243,6 +262,71 @@ final class NoteProcessingPipelineTests: XCTestCase {
         XCTAssertEqual(mockLLM.briefInputs, ["mock light"])
         XCTAssertEqual(saved.title, "Itching Follow-up")
         XCTAssertEqual(saved.processingTimings.map(\.name), ["Transcribe (live)", "Speakers", "Clean up", "Title & summary", "Speaker turns (3)"])
+    }
+
+    // MARK: - Topics
+
+    private var dayOfTalk: [TranscriptTimingSegment] {
+        TopicTranscriptFixture.segments(TopicTranscriptFixture.cooking, sentences: 120, start: 0, seed: 1)
+            + TopicTranscriptFixture.segments(TopicTranscriptFixture.car, sentences: 120, start: 600, seed: 2)
+            + TopicTranscriptFixture.segments(TopicTranscriptFixture.budget, sentences: 120, start: 1200, seed: 3)
+    }
+
+    func testALongRecordingIsCleanedUpAndTitledTopicByTopic() async throws {
+        mockLLM.stubBrief = NoteBrief(title: "Topic Title", summary: "Topic summary.", tags: ["#day"])
+        let createdAt = Date(timeIntervalSince1970: 1_763_712_000)
+        let note = VoiceNote(id: UUID(), createdAt: createdAt, duration: 4 * 3600, audioFileName: "day.m4a", status: .syncing)
+        repository.save(note)
+
+        await pipeline.process(note: note, liveTranscript: ("the whole day", dayOfTalk))
+
+        let saved = try XCTUnwrap(repository.note(withId: note.id))
+        XCTAssertEqual(saved.status, .ready)
+        XCTAssertEqual(saved.topics.count, 3)
+        XCTAssertEqual(saved.topics.map(\.start), [0, 600, 1200])
+        XCTAssertEqual(saved.title, NoteTopics.dateTitle(for: createdAt), "A note of many topics is titled with its date")
+        XCTAssertEqual(saved.summary, "3 topics: Topic Title · Topic Title · Topic Title")
+        XCTAssertEqual(mockLLM.receivedModes, [.light, .light, .light], "One cleanup per topic")
+        XCTAssertTrue(mockLLM.receivedTranscripts[1].contains("Engine") || mockLLM.receivedTranscripts[1].lowercased().contains("brake"))
+        XCTAssertFalse(mockLLM.receivedTranscripts[1].lowercased().contains("garlic"), "A topic's cleanup reads only its own part")
+        XCTAssertEqual(mockLLM.briefInputs, ["mock light", "mock light", "mock light"])
+        XCTAssertEqual(saved.cleanedText, NoteTopics.markdown(of: saved.topics, recordingStart: createdAt))
+        XCTAssertEqual(saved.cleanedNote, saved.cleanedText, "Exports and search read the topics too")
+        XCTAssertEqual(saved.tags, ["#light", "#day"])
+        XCTAssertEqual(saved.processingTimings.map(\.name), ["Transcribe (live)", "Topics (3)", "Clean up", "Title & summary (3 topics)"])
+    }
+
+    func testAShortRecordingOfManySubjectsStaysOneNote() async throws {
+        let note = VoiceNote(id: UUID(), duration: 30 * 60, audioFileName: "short.m4a", status: .syncing)
+        repository.save(note)
+
+        await pipeline.process(note: note, liveTranscript: ("half an hour", dayOfTalk))
+
+        let saved = try XCTUnwrap(repository.note(withId: note.id))
+        XCTAssertEqual(saved.topics, [])
+        XCTAssertEqual(saved.title, "Light Title")
+        XCTAssertEqual(mockLLM.receivedModes, [.light])
+    }
+
+    func testATopicWhoseCleanupFailsKeepsItsTranscript() async throws {
+        let note = VoiceNote(id: UUID(), duration: 2 * 3600, audioFileName: "day.m4a", status: .syncing)
+        repository.save(note)
+
+        // Fails only the second topic's cleanup.
+        let failing = FailingSecondCallLLM(base: mockLLM)
+        let pipeline = NoteProcessingPipeline(
+            asrService: mockASR, llmService: failing, repository: repository,
+            audioFileManager: AudioFileManager(), dictionaryStore: dictionaryStore, templateStore: templateStore
+        )
+        await pipeline.process(note: note, liveTranscript: ("the whole day", dayOfTalk))
+
+        let saved = try XCTUnwrap(repository.note(withId: note.id))
+        XCTAssertEqual(saved.status, .ready)
+        XCTAssertEqual(saved.topics.count, 3)
+        XCTAssertEqual(saved.topics[0].text, "mock light")
+        XCTAssertNotEqual(saved.topics[1].text, "mock light")
+        XCTAssertTrue(saved.topics[1].text.lowercased().contains("brake") || saved.topics[1].text.lowercased().contains("engine"))
+        XCTAssertEqual(saved.topics[1].title, "Topic 2", "No brief: a numbered title")
     }
 
     func testWhisperTokensNeverReachTheTurns() async throws {

@@ -340,6 +340,10 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     public var speakerTurns: [SpeakerTurn] = []
     /// Names the user gave speakers, by speaker number ("0", "1", ...).
     public var speakerNames: [String: String] = [:]
+    /// A long recording's topics (see `NoteTopics`), in order; empty for a note about one thing.
+    /// A note with topics is titled with its date, and its cleaned text is the topics' texts
+    /// under headings.
+    public var topics: [NoteTopic] = []
 
     public init(
         id: UUID = UUID(),
@@ -448,6 +452,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         speakerCount = try container.decodeIfPresent(Int.self, forKey: .speakerCount)
         speakerTurns = try container.decodeIfPresent([SpeakerTurn].self, forKey: .speakerTurns) ?? []
         speakerNames = try container.decodeIfPresent([String: String].self, forKey: .speakerNames) ?? [:]
+        topics = try container.decodeIfPresent([NoteTopic].self, forKey: .topics) ?? []
     }
 
     // MARK: - Conversations
@@ -482,6 +487,11 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         cleanedNote = replaced(cleanedNote)
         summary = replaced(summary)
         title = replaced(title)
+        for index in topics.indices {
+            topics[index].title = replaced(topics[index].title)
+            topics[index].summary = replaced(topics[index].summary)
+            topics[index].text = replaced(topics[index].text)
+        }
     }
 
     /// `name` as a whole word or phrase ("Speaker 1" but not "Speaker 10").

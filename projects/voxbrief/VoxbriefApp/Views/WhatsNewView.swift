@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.35.1"
+    public static let currentVersion = "1.36.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,27 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.36.0",
+            date: "November 2026",
+            tagline: "Your Day, by Topic",
+            features: [
+                WhatsNewItem(
+                    icon: "list.bullet.indent",
+                    tint: .indigo,
+                    title: "All-Day Recordings by Topic",
+                    description: "A recording of an hour or more is split where the subject changes. Each topic gets its own title, summary and cleaned text, and the note is titled with the day.",
+                    detailedDescription: "A day on your wrist covers many subjects, and one title and summary can't say it all. Voxbrief now finds where a long recording moves on, from changes in the words you use and from long silences, then cleans up and summarizes each topic on its own. The Cleaned Text tab starts with a list of the day's topics with the time each began; tap a time to play from there. It all runs on your iPhone.",
+                    highlights: [
+                        "Recordings of an hour or more",
+                        "A title, summary and text per topic",
+                        "Tap a topic's time to play it",
+                        "Exports and search include every topic"
+                    ]
+                )
+            ],
+            improvementsAndFixes: []
+        ),
         ReleaseHistoryItem(
             version: "1.35.1",
             date: "November 2026",

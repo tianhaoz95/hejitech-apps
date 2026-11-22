@@ -383,6 +383,10 @@ public final class NoteDetailViewModel: ObservableObject {
         var updated = note
         let trimmedTitle = editedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         updated.title = trimmedTitle.isEmpty ? note.title : trimmedTitle
+        // The topics are the cleaned text in sections; an edit to it replaces them.
+        if !note.topics.isEmpty, editedCleanedNote != (isEditingCleanedTextOnly ? note.cleanedText : note.cleanedNote) {
+            updated.topics = []
+        }
         if isEditingCleanedTextOnly {
             updated.lightCleanedNote = editedCleanedNote
             repository.save(updated)

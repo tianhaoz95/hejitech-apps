@@ -98,6 +98,7 @@
 		61F408C2E43D4E8D9B0D1C27 /* VoxbriefWatchWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48925CE7621616AF282F7CAF /* VoxbriefWatchWidgets.swift */; };
 		62427C132EE7CB38ADC23F1F /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9472F9FA01AA08FE884B78EB /* AppGroup.swift */; };
 		63BC7A37BED88DE7F24A4EEE /* DailyBriefSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4DEA392C84B36408EE59E0A /* DailyBriefSnapshot.swift */; };
+		63F5235EC3050441DBC98E0A /* NoteTopics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067A4108EBDB4F9E5EE0F739 /* NoteTopics.swift */; };
 		64449EC42EE8123A116A08EB /* TemplateEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B14742A80B04804C7A613CF4 /* TemplateEditView.swift */; };
 		65B4281350BF78246279DA3F /* NoteBriefTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD0324A16BEFB23E75F23E50 /* NoteBriefTests.swift */; };
 		67642845892E3B515B0D78D2 /* AudioConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988E0BDCC158250481339E11 /* AudioConstants.swift */; };
@@ -123,6 +124,7 @@
 		7DBE9FCF2D032BE952A13944 /* SpeakerTurns.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE8F9D1667BC9302E520008 /* SpeakerTurns.swift */; };
 		7DEB4CF9354BCA4B561DBAD1 /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9472F9FA01AA08FE884B78EB /* AppGroup.swift */; };
 		7E9166A08700C0771C66EE6D /* VoxbriefLogoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEAB8ED548C10EF91501EFE9 /* VoxbriefLogoView.swift */; };
+		7EE2657FCD6C350EBBE8431B /* NoteTopics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067A4108EBDB4F9E5EE0F739 /* NoteTopics.swift */; };
 		7F41AF3BB8FD3A30117A83DA /* WatchSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B6F47AE17245B344D9D2391 /* WatchSyncService.swift */; };
 		80650E05F1C3663BC7FE7915 /* TemplateDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8F69D56A035DF1728B39998 /* TemplateDetailView.swift */; };
 		811785C3AB29046CEE31D3F2 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 229AFE98228CC08425BD323C /* WhisperKit */; };
@@ -173,6 +175,7 @@
 		ADB6871DEBDFCDD7C91574C0 /* RemindersExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8172E2275DD7247F30084A5 /* RemindersExportService.swift */; };
 		AF051E0DA4FAE480AFD3E810 /* AskServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5CDF159F713F6245D1F4C78 /* AskServiceTests.swift */; };
 		B251DF3E962992EACB6E51B7 /* NoteTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4670A66832BC3EDB51D04C99 /* NoteTemplate.swift */; };
+		B270F2EADAF943F8ED091053 /* NoteTopicsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8E9BFBCCFA3FEB14C55D0A /* NoteTopicsTests.swift */; };
 		B31BAFA3116C01975E3C6AFC /* NoteRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CBD578AD77C823CEBF8C5B8 /* NoteRepositoryTests.swift */; };
 		B38865822A27C98C60C233A9 /* DailyBriefWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC9595E1BFBE6BF8F12CCB9E /* DailyBriefWidget.swift */; };
 		B3D2E5CCE28D62709F3D12D5 /* WatchSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D2678B30255AFCCA761999 /* WatchSyncService.swift */; };
@@ -238,6 +241,7 @@
 		EFABD30DCB5816DAF0AC2723 /* AllDayRecording.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77295B60F21DA08D173E6904 /* AllDayRecording.swift */; };
 		F39F847D156570E22EC28858 /* NoteDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85FA4EC385ED9D0FC96F7955 /* NoteDetailViewModel.swift */; };
 		F5C9810D4553F163281C72F5 /* VoiceNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17FEE0D93589E948738A6156 /* VoiceNote.swift */; };
+		F63937096F8F8E2E385FBF26 /* NoteTopics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067A4108EBDB4F9E5EE0F739 /* NoteTopics.swift */; };
 		F82AE5C04961809E357B5B9E /* VoiceNoteStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7875C4076C495328336A671 /* VoiceNoteStatsTests.swift */; };
 		FA66D9682EE62937A5BDEEBB /* QuickRecordSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26D9161722A62F745EEBA731 /* QuickRecordSheet.swift */; };
 		FA6CACB143D1EFD970F7F47B /* NotesBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68109B867643A9EC95BA83A /* NotesBrowserView.swift */; };
@@ -332,6 +336,7 @@
 /* Begin PBXFileReference section */
 		015D2CED079AC4D35BFD7889 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		03F942BDF0E561E09CD54BC4 /* PersonalDictionaryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalDictionaryStore.swift; sourceTree = "<group>"; };
+		067A4108EBDB4F9E5EE0F739 /* NoteTopics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteTopics.swift; sourceTree = "<group>"; };
 		08AD128A0393EA1A8AF64CFF /* AudioRecordingServicePauseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecordingServicePauseTests.swift; sourceTree = "<group>"; };
 		0BFF1B48591E606188875EF7 /* FormattingExtensionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattingExtensionsTests.swift; sourceTree = "<group>"; };
 		0D89A21E4C1860041659DB14 /* WatchBatteryLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchBatteryLogView.swift; sourceTree = "<group>"; };
@@ -415,6 +420,7 @@
 		8C20D11D5E1327FBD57ADC9F /* AudioStorageManagementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioStorageManagementTests.swift; sourceTree = "<group>"; };
 		8CEECC0352AAD60D2E540189 /* LLMPromptExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMPromptExportTests.swift; sourceTree = "<group>"; };
 		8D816BE4FBE91E1B52B14A93 /* MicrophonePermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicrophonePermissionManager.swift; sourceTree = "<group>"; };
+		8D8E9BFBCCFA3FEB14C55D0A /* NoteTopicsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteTopicsTests.swift; sourceTree = "<group>"; };
 		8E16EF8E03690A86F8E50308 /* AudioPlaybackServiceExtendedTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlaybackServiceExtendedTests.swift; sourceTree = "<group>"; };
 		917D0366004B01DE5CC2CEA7 /* CaptureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureCoordinator.swift; sourceTree = "<group>"; };
 		91DB9C8B41B64EF6818E14D5 /* PDFExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFExportService.swift; sourceTree = "<group>"; };
@@ -678,6 +684,7 @@
 			children = (
 				C4DEA392C84B36408EE59E0A /* DailyBriefSnapshot.swift */,
 				4670A66832BC3EDB51D04C99 /* NoteTemplate.swift */,
+				067A4108EBDB4F9E5EE0F739 /* NoteTopics.swift */,
 				1DE8F9D1667BC9302E520008 /* SpeakerTurns.swift */,
 				196C6F6CC1AAC7FF5E616A8D /* SyncPayload.swift */,
 				17FEE0D93589E948738A6156 /* VoiceNote.swift */,
@@ -949,6 +956,7 @@
 				28512E25F720540CC78E0532 /* NoteRepositoryExtendedTests.swift */,
 				9CBD578AD77C823CEBF8C5B8 /* NoteRepositoryTests.swift */,
 				F25310C14F1AD2D04EE8A5BF /* NoteStoreBenchmarkTests.swift */,
+				8D8E9BFBCCFA3FEB14C55D0A /* NoteTopicsTests.swift */,
 				97AB4E8DC194919B938B0739 /* PersonalDictionaryStoreTests.swift */,
 				40806AC30A349F73B4D8D64F /* PipelineTimelineTests.swift */,
 				AF5F170EF1162FEC24F8FE87 /* ProcessingCheckpointTests.swift */,
@@ -1312,6 +1320,7 @@
 				0C5993A5339E44F47299C1BE /* NoteRepositoryExtendedTests.swift in Sources */,
 				B31BAFA3116C01975E3C6AFC /* NoteRepositoryTests.swift in Sources */,
 				880825FABEFE75FA9C0A66F6 /* NoteStoreBenchmarkTests.swift in Sources */,
+				B270F2EADAF943F8ED091053 /* NoteTopicsTests.swift in Sources */,
 				4BF2DE9581C4EB5E0BA69348 /* PersonalDictionaryStoreTests.swift in Sources */,
 				5AC9C3AE693768EABCB36D4F /* PipelineTimelineTests.swift in Sources */,
 				31AE32711F1CEB030F781491 /* ProcessingCheckpointTests.swift in Sources */,
@@ -1339,6 +1348,7 @@
 				87478723C6F1041048676D05 /* ExtensionDelegate.swift in Sources */,
 				DE23A3F2D3F700A37D4AA4FC /* FormattingExtensions.swift in Sources */,
 				9B57A74F93E88D5B0C0714C9 /* NoteTemplate.swift in Sources */,
+				7EE2657FCD6C350EBBE8431B /* NoteTopics.swift in Sources */,
 				BEF45FAE6603F74BC55AD5E6 /* SharedImportInbox.swift in Sources */,
 				E6572743C4092107A9A3CEB3 /* SpeakerTurns.swift in Sources */,
 				E820F921C0CB44339F74C770 /* SyncPayload.swift in Sources */,
@@ -1417,6 +1427,7 @@
 				8A33B8791FF0B81B31C2EB69 /* NoteRowView.swift in Sources */,
 				44A7147B33E3F534E5B755D4 /* NoteSearchIndex.swift in Sources */,
 				B251DF3E962992EACB6E51B7 /* NoteTemplate.swift in Sources */,
+				F63937096F8F8E2E385FBF26 /* NoteTopics.swift in Sources */,
 				B6AC1161972BFA9EB301A4B9 /* OnDeviceLLMService.swift in Sources */,
 				2338B06275B314ABB2F489C3 /* OnboardingView.swift in Sources */,
 				5948B0407125AC64174F54CD /* PDFExportService.swift in Sources */,
@@ -1496,6 +1507,7 @@
 				0B587A31DFB9C2203516E112 /* NoteRepository.swift in Sources */,
 				A155FBBE8E8FF88CE47060DE /* NoteRowView.swift in Sources */,
 				83F6880BB0A3B7957B94806A /* NoteTemplate.swift in Sources */,
+				63F5235EC3050441DBC98E0A /* NoteTopics.swift in Sources */,
 				FA6CACB143D1EFD970F7F47B /* NotesBrowserView.swift in Sources */,
 				107D5004793FF7D2587620AF /* OnDeviceLLMService.swift in Sources */,
 				12A0247B2F72CDDDB6B61ABF /* OverlayView.swift in Sources */,
@@ -1762,7 +1774,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.35.0;
+				MARKETING_VERSION = 1.35.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1862,7 +1874,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.35.0;
+				MARKETING_VERSION = 1.35.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

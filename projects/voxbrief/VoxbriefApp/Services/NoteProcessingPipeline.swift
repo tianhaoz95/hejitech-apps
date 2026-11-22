@@ -496,39 +496,46 @@ public final class NoteProcessingPipeline: ObservableObject {
         if reuseLightCleanup, let existing = note.cleanedText {
             note.lightCleanedNote = existing
         } else {
-            // The cleaned text: a light cleanup of a memo, or for a conversation a readable,
-            // lightly condensed account of it (the turns are read with who said them).
             let conversation = !rawTurns.isEmpty
-            let input = conversation
-                ? rawTurns.map { "Speaker \($0.speaker + 1): \(DictionaryCorrector.apply(to: $0.text, entries: dictionary))" }.joined(separator: "\n\n")
-                : transcript
-            let start = ContinuousClock.now
-            ProcessingCheckpoint.report(step: LLMCopywriterService.cleanupStep, done: 0, total: 1)
-            let light = try await llmService.processTranscript(input, mode: conversation ? .conversation : .light, dictionary: dictionary, templates: [])
-            timings.append(ProcessingTiming(name: "Clean up", seconds: Self.seconds(since: start)))
-            note.title = light.title
-            note.summary = light.summary
-            note.tags = light.tags
-            note.lightCleanedNote = light.cleanedMarkdown
-            note.lightCleanupEngine = light.engine
+            if let spans = topicSpans(for: note) {
+                // A long recording about many things: each topic cleaned up and titled on its own.
+                timings += try await cleanUpByTopic(on: &note, spans: spans, turns: rawTurns, dictionary: dictionary)
+                keepsSummary = true
+            } else {
+                note.topics = []
+                // The cleaned text: a light cleanup of a memo, or for a conversation a readable,
+                // lightly condensed account of it (the turns are read with who said them).
+                let input = conversation
+                    ? rawTurns.map { "Speaker \($0.speaker + 1): \(DictionaryCorrector.apply(to: $0.text, entries: dictionary))" }.joined(separator: "\n\n")
+                    : transcript
+                let start = ContinuousClock.now
+                ProcessingCheckpoint.report(step: LLMCopywriterService.cleanupStep, done: 0, total: 1)
+                let light = try await llmService.processTranscript(input, mode: conversation ? .conversation : .light, dictionary: dictionary, templates: [])
+                timings.append(ProcessingTiming(name: "Clean up", seconds: Self.seconds(since: start)))
+                note.title = light.title
+                note.summary = light.summary
+                note.tags = light.tags
+                note.lightCleanedNote = light.cleanedMarkdown
+                note.lightCleanupEngine = light.engine
 
-            // The brief: title and one-line summary from the cleaned text, in a step of their
-            // own. When it can't run, the light cleanup's stay.
-            if !briefSkippedNoteIds.contains(note.id) {
-                let briefStart = ContinuousClock.now
-                ProcessingCheckpoint.report(step: LLMCopywriterService.briefStep, done: 0, total: 1)
-                do {
-                    if let brief = try await llmService.writeBrief(cleanedText: light.cleanedMarkdown) {
-                        if light.explicitTitle == nil { note.title = brief.title }
-                        note.summary = brief.summary
-                        keepsSummary = true
-                        let name = brief.partCount > 1 ? "Title & summary (\(brief.partCount) parts)" : "Title & summary"
-                        timings.append(ProcessingTiming(name: name, seconds: Self.seconds(since: briefStart)))
+                // The brief: title and one-line summary from the cleaned text, in a step of their
+                // own. When it can't run, the light cleanup's stay.
+                if !briefSkippedNoteIds.contains(note.id) {
+                    let briefStart = ContinuousClock.now
+                    ProcessingCheckpoint.report(step: LLMCopywriterService.briefStep, done: 0, total: 1)
+                    do {
+                        if let brief = try await llmService.writeBrief(cleanedText: light.cleanedMarkdown) {
+                            if light.explicitTitle == nil { note.title = brief.title }
+                            note.summary = brief.summary
+                            keepsSummary = true
+                            let name = brief.partCount > 1 ? "Title & summary (\(brief.partCount) parts)" : "Title & summary"
+                            timings.append(ProcessingTiming(name: name, seconds: Self.seconds(since: briefStart)))
+                        }
+                    } catch let error where error.stopsStageTwo {
+                        throw error
+                    } catch {
+                        print("[NoteProcessingPipeline] Brief failed for note \(note.id); kept the cleanup's title and summary: \(error)")
                     }
-                } catch let error where error.stopsStageTwo {
-                    throw error
-                } catch {
-                    print("[NoteProcessingPipeline] Brief failed for note \(note.id); kept the cleanup's title and summary: \(error)")
                 }
             }
 
@@ -602,6 +609,108 @@ public final class NoteProcessingPipeline: ObservableObject {
         return timings
     }
 
+    // MARK: - Topics
+
+    /// Where a long recording's subject changes (see `NoteTopics`), or nil for a note to clean
+    /// up as one: shorter than `NoteTopics.minimumDuration`, several recordings joined (their
+    /// timings don't line up), a dictation capture, or one topic throughout.
+    private func topicSpans(for note: VoiceNote) -> [NoteTopics.Span]? {
+        guard note.duration >= NoteTopics.minimumDuration,
+              note.segments.count <= 1,
+              !briefSkippedNoteIds.contains(note.id),
+              !note.transcriptSegments.isEmpty else { return nil }
+        return NoteTopics.split(note.transcriptSegments)
+    }
+
+    /// The cleanup and brief of a long recording, topic by topic: each topic's transcript (its
+    /// turns, when two or more people speak in it) gets the light cleanup, then its own title
+    /// and summary, with the same prompts as a note. The note is titled with its date, and its
+    /// cleaned text is the topics under headings. A topic whose cleanup fails keeps its tidied
+    /// transcript; Stage 2 fails only when none could be cleaned.
+    private func cleanUpByTopic(
+        on note: inout VoiceNote,
+        spans: [NoteTopics.Span],
+        turns: [SpeakerTurn],
+        dictionary: [DictionaryEntry]
+    ) async throws -> [ProcessingTiming] {
+        var timings = [ProcessingTiming(name: "Topics (\(spans.count))", seconds: 0)]
+        let segments = note.transcriptSegments
+
+        let cleanupStart = ContinuousClock.now
+        var cleaned: [(text: String, result: LLMProcessingResult?)] = []
+        var lastError: Error?
+        for (index, span) in spans.enumerated() {
+            try Task.checkCancellation()
+            ProcessingCheckpoint.report(step: LLMCopywriterService.cleanupStep, done: index, total: spans.count)
+            let nextStart = index + 1 < spans.count ? spans[index + 1].start : .infinity
+            let topicTurns = turns.filter { $0.start >= (index == 0 ? -.infinity : span.start) && $0.start < nextStart }
+            let raw = DictionaryCorrector.apply(to: NoteTopics.text(of: span, in: segments), entries: dictionary)
+            let conversation = Set(topicTurns.map(\.speaker)).count >= 2
+            let input = conversation
+                ? topicTurns.map { "Speaker \($0.speaker + 1): \(DictionaryCorrector.apply(to: $0.text, entries: dictionary))" }.joined(separator: "\n\n")
+                : raw
+            do {
+                let result = try await ProcessingCheckpoint.$reportsProgress.withValue(false) {
+                    try await llmService.processTranscript(input, mode: conversation ? .conversation : .light, dictionary: dictionary, templates: [])
+                }
+                cleaned.append((result.cleanedMarkdown, result))
+            } catch let error where error.stopsStageTwo || Self.isEngineUnavailable(error) {
+                throw error
+            } catch {
+                print("[NoteProcessingPipeline] Topic \(index + 1)/\(spans.count) cleanup failed for note \(note.id); kept its transcript: \(error)")
+                lastError = error
+                cleaned.append((TranscriptText.paragraphed(TranscriptText.removingFillerSounds(raw)), nil))
+            }
+        }
+        if cleaned.allSatisfy({ $0.result == nil }), let lastError { throw lastError }
+        timings.append(ProcessingTiming(name: "Clean up", seconds: Self.seconds(since: cleanupStart)))
+
+        let briefStart = ContinuousClock.now
+        var briefs = 0
+        var topics: [NoteTopic] = []
+        var tags: [[String]] = []
+        for (index, (span, topic)) in zip(spans, cleaned).enumerated() {
+            try Task.checkCancellation()
+            ProcessingCheckpoint.report(step: LLMCopywriterService.briefStep, done: index, total: spans.count)
+            var title = topic.result?.title ?? ""
+            var summary = topic.result?.summary ?? ""
+            if let result = topic.result { tags.append(result.tags) }
+            do {
+                let brief = try await ProcessingCheckpoint.$reportsProgress.withValue(false) {
+                    try await llmService.writeBrief(cleanedText: topic.text)
+                }
+                if let brief {
+                    title = brief.title
+                    summary = brief.summary
+                    tags.append(brief.tags)
+                    briefs += 1
+                }
+            } catch let error where error.stopsStageTwo {
+                throw error
+            } catch {
+                print("[NoteProcessingPipeline] Topic \(index + 1)/\(spans.count) brief failed for note \(note.id): \(error)")
+            }
+            if title.isEmpty { title = "Topic \(index + 1)" }
+            topics.append(NoteTopic(start: span.start, end: span.end, title: title, summary: summary, text: topic.text))
+        }
+        if briefs > 0 {
+            timings.append(ProcessingTiming(name: "Title & summary (\(spans.count) topics)", seconds: Self.seconds(since: briefStart)))
+        }
+
+        note.topics = topics
+        note.title = NoteTopics.dateTitle(for: note.createdAt)
+        note.summary = NoteTopics.summary(of: topics)
+        note.tags = LLMCopywriterService.mergedTags(tags)
+        note.lightCleanedNote = NoteTopics.markdown(of: topics, recordingStart: note.createdAt)
+        note.lightCleanupEngine = cleaned.lazy.compactMap { $0.result?.engine }.first
+        return timings
+    }
+
+    private static func isEngineUnavailable(_ error: Error) -> Bool {
+        if let error = error as? LLMCopywriterError, case .aiEngineUnavailable = error { return true }
+        return false
+    }
+
     /// The templates a structured rewrite chooses from, or nil for the light cleanup alone. A
     /// template that has since been deleted falls back to auto-detection.
     private func templatesToTry(for choice: TemplateChoice) -> [NoteTemplate]? {
@@ -665,6 +774,7 @@ public final class NoteProcessingPipeline: ObservableObject {
 
     static let transcribeStep = "Transcribing"
     static let speakersStep = "Finding speakers"
+    static let topicsStep = "Finding topics"
 
     /// The note's checkpoint, publishing its progress while the note is processed.
     private func makeCheckpoint(for noteId: UUID) -> ProcessingCheckpoint {

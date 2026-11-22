@@ -5,13 +5,14 @@ import Foundation
 /// and, for the step running now, its parts.
 struct PipelineTimelineStep: Identifiable, Equatable {
     enum Kind: String, CaseIterable {
-        case transcribe, speakers, cleanup, brief, turns, structure
+        case transcribe, speakers, topics, cleanup, brief, turns, structure
 
         /// The step name `ChunkProgress` reports for it.
         var progressStep: String {
             switch self {
             case .transcribe: return NoteProcessingPipeline.transcribeStep
             case .speakers: return NoteProcessingPipeline.speakersStep
+            case .topics: return NoteProcessingPipeline.topicsStep
             case .cleanup: return LLMCopywriterService.cleanupStep
             case .brief: return LLMCopywriterService.briefStep
             case .turns: return LLMCopywriterService.turnsStep
@@ -37,6 +38,8 @@ struct PipelineTimelineStep: Identifiable, Equatable {
     var progress: ChunkProgress?
     /// The note is a conversation (two or more speakers): the cleanup writes an account of it.
     var isConversation = false
+    /// The note is split into topics: the cleanup and the brief run once per topic.
+    var hasTopics = false
 
     var id: Kind { kind }
 
@@ -44,6 +47,7 @@ struct PipelineTimelineStep: Identifiable, Equatable {
         switch kind {
         case .transcribe: return "Transcribe"
         case .speakers: return "Find Speakers"
+        case .topics: return "Find Topics"
         case .cleanup: return isConversation ? "Write the Account" : "Clean Up"
         case .brief: return "Title & Summary"
         case .turns: return "Speaker Turns"
@@ -55,11 +59,12 @@ struct PipelineTimelineStep: Identifiable, Equatable {
         switch kind {
         case .transcribe: return "Turns the recording into a word-for-word transcript."
         case .speakers: return "Works out who spoke when."
+        case .topics: return "Splits a long recording where the subject changes."
         case .cleanup:
             return isConversation
                 ? "Writes a readable account of the conversation."
                 : "Fixes typos, grammar and filler words, keeping your wording."
-        case .brief: return "Writes the note's title and one-line summary."
+        case .brief: return hasTopics ? "Writes each topic's title and one-line summary." : "Writes the note's title and one-line summary."
         case .turns: return "Proofreads what each person said, for the chat view."
         case .structure: return "Rewrites the note into its format's sections."
         }
@@ -69,6 +74,7 @@ struct PipelineTimelineStep: Identifiable, Equatable {
         switch kind {
         case .transcribe: return "waveform"
         case .speakers: return "person.2.wave.2"
+        case .topics: return "list.bullet.indent"
         case .cleanup: return "sparkles"
         case .brief: return "text.badge.star"
         case .turns: return "bubble.left.and.bubble.right"
@@ -112,6 +118,7 @@ enum PipelineTimeline {
         let known: [(PipelineTimelineStep.Kind, (String) -> Bool)] = [
             (.transcribe, { $0.hasPrefix("Transcribe") }),
             (.speakers, { $0 == NoteProcessingPipeline.speakerTimingName }),
+            (.topics, { $0.hasPrefix("Topics") }),
             (.cleanup, { $0 == "Clean up" }),
             (.brief, { $0.hasPrefix("Title & summary") }),
             (.turns, { $0.hasPrefix("Speaker turns") }),
@@ -127,6 +134,8 @@ enum PipelineTimeline {
         var kinds: [PipelineTimelineStep.Kind] = [.transcribe]
         let speakersRun = !skipsBrief && (processing || note.speakerCount != nil || seconds[.speakers] != nil)
         if speakersRun || progressKind == .speakers { kinds.append(.speakers) }
+        let hasTopics = !note.topics.isEmpty || seconds[.topics] != nil
+        if hasTopics || progressKind == .topics { kinds.append(.topics) }
         kinds.append(.cleanup)
         if (!skipsBrief && processing) || seconds[.brief] != nil || progressKind == .brief { kinds.append(.brief) }
         if conversation || seconds[.turns] != nil || progressKind == .turns { kinds.append(.turns) }
@@ -135,7 +144,7 @@ enum PipelineTimeline {
         }
 
         var steps = kinds.map { kind in
-            PipelineTimelineStep(kind: kind, state: .pending, seconds: seconds[kind], isConversation: conversation)
+            PipelineTimelineStep(kind: kind, state: .pending, seconds: seconds[kind], isConversation: conversation, hasTopics: hasTopics)
         }
 
         func mark(upTo index: Int, as state: PipelineTimelineStep.State) {

@@ -1089,7 +1089,11 @@ public struct NoteDetailView: View {
                 copyButton(text: viewModel.note.cleanedText ?? "", field: .lightCleanup)
             }
 
-            if !viewModel.note.speakerTurns.isEmpty {
+            if !viewModel.note.topics.isEmpty {
+                Text("A long recording, split where the subject changed: \(viewModel.note.topics.count) topics, each cleaned up and summarized on its own. Tap a time to play from there.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if !viewModel.note.speakerTurns.isEmpty {
                 Text("A readable account of a conversation between \(speakerCountLabel): small talk and repetition dropped, the details kept. Who said what is in the Transcript tab.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -1099,7 +1103,9 @@ public struct NoteDetailView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if let lightNote = viewModel.note.cleanedText {
+            if !viewModel.note.topics.isEmpty {
+                topicSections
+            } else if let lightNote = viewModel.note.cleanedText {
                 MarkdownLiteText(lightNote)
                     .foregroundStyle(.primary)
             } else if viewModel.isGeneratingLightCleanup {
@@ -1128,6 +1134,69 @@ public struct NoteDetailView: View {
         }
         .padding(16)
         .background(Color.appSecondaryBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    /// A topic note's cleaned text (`VoiceNote.topics`): a list of the topics up top, then each
+    /// topic with its start time, title, summary and text. Tapping a time plays from there, for a
+    /// note with its audio.
+    private var topicSections: some View {
+        let topics = viewModel.note.topics
+        let canSeek = viewModel.hasAudio
+        return VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(topics) { topic in
+                    Button {
+                        viewModel.seek(toTime: topic.start)
+                    } label: {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(NoteTopics.clockTime(of: topic, recordingStart: viewModel.note.createdAt))
+                                .font(.subheadline.weight(.semibold).monospacedDigit())
+                                .foregroundStyle(canSeek ? Color.accentColor : .secondary)
+                                .frame(minWidth: 64, alignment: .leading)
+                            Text(topic.title)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                                .multilineTextAlignment(.leading)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canSeek)
+                }
+            }
+            .padding(14)
+            .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            ForEach(topics) { topic in
+                VStack(alignment: .leading, spacing: 6) {
+                    Button {
+                        viewModel.seek(toTime: topic.start)
+                    } label: {
+                        Label(
+                            "\(NoteTopics.clockTime(of: topic, recordingStart: viewModel.note.createdAt)) · \(max(1, Int(((topic.end - topic.start) / 60).rounded()))) min",
+                            systemImage: canSeek ? "play.circle" : "clock"
+                        )
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(canSeek ? Color.accentColor : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canSeek)
+                    Text(topic.title)
+                        .font(.headline)
+                    if !topic.summary.isEmpty {
+                        Text(topic.summary)
+                            .font(.subheadline.italic())
+                            .foregroundStyle(.secondary)
+                    }
+                    MarkdownLiteText(topic.text)
+                        .foregroundStyle(.primary)
+                        .padding(.top, 2)
+                }
+                if topic.id != topics.last?.id {
+                    Divider()
+                }
+            }
+        }
     }
 
     private enum ItemMarker {
