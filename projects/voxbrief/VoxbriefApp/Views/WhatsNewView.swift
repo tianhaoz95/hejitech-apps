@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.36.0"
+    public static let currentVersion = "1.37.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,25 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.37.0",
+            date: "November 2026",
+            tagline: "Stay Awake",
+            features: [
+                WhatsNewItem(
+                    icon: "sun.max",
+                    tint: .orange,
+                    title: "Keep Screen On While Processing",
+                    description: "A new setting keeps your iPhone from locking while notes are processing, so long recordings finish in one go. Off by default; turn it on in Settings → Processing.",
+                    highlights: [
+                        "Opt in from Settings → Processing",
+                        "Only while a note is processing",
+                        "The screen locks as usual when it's done"
+                    ]
+                )
+            ],
+            improvementsAndFixes: []
+        ),
         ReleaseHistoryItem(
             version: "1.36.0",
             date: "November 2026",

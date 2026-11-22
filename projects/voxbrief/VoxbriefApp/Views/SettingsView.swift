@@ -12,6 +12,7 @@ public struct SettingsView: View {
     @AppStorage(LiveTranscriber.enabledKey) private var liveTranscriptEnabled: Bool = true
     @AppStorage(FeedbackSettings.shakeEnabledKey) private var feedbackShakeEnabled: Bool = true
     @AppStorage("playback_trim_silence") private var trimSilence: Bool = false
+    @AppStorage(BackgroundProcessingManager.keepScreenOnKey) private var keepScreenOn: Bool = false
     @StateObject private var llmService = OnDeviceLLMService.shared
     @StateObject private var dictionaryStore = PersonalDictionaryStore.shared
     @StateObject private var templateStore = TemplateStore.shared
@@ -77,6 +78,13 @@ public struct SettingsView: View {
                     footer: Text("Automatically skip long pauses and silence (>1.2s) during playback. Can be toggled off at any time.")
                 ) {
                     Toggle("Trim Silence in Playback", isOn: $trimSilence)
+                }
+
+                Section(
+                    header: Text("Processing"),
+                    footer: Text("Keeps your iPhone from locking while Voxbrief is processing notes, so long recordings finish without waiting for you to open the app again. The screen locks as usual once processing is done. Uses more battery while on.")
+                ) {
+                    Toggle("Keep Screen On While Processing", isOn: $keepScreenOn)
                 }
 
                 Section(

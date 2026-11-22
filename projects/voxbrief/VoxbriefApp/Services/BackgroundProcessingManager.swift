@@ -31,6 +31,11 @@ final class BackgroundProcessingManager {
     /// a few memos in a row doesn't reload the model for each.
     static let idleUnloadDelay: Duration = .seconds(180)
 
+    /// Settings → Processing: keep the screen from locking while notes are processing, so a long
+    /// note's Stage 2 (which needs the app in the foreground) isn't stopped by auto-lock. Off by
+    /// default.
+    static let keepScreenOnKey = "keep_screen_on_while_processing"
+
     private let pipeline: NoteProcessingPipeline
     private var cancellables: Set<AnyCancellable> = []
     private var idleUnloadTask: Task<Void, Never>?
@@ -94,6 +99,12 @@ final class BackgroundProcessingManager {
             .sink { [weak self] count in self?.processingCountChanged(count) }
             .store(in: &cancellables)
 
+        // The Keep Screen On setting can change while a note is processing.
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateScreenAwake() }
+            .store(in: &cancellables)
+
         // The Daily Brief widget's snapshot follows every note change (ticked items, new notes).
         NoteRepository.shared.$notes
             .debounce(for: .seconds(1), scheduler: RunLoop.main)
@@ -149,6 +160,7 @@ final class BackgroundProcessingManager {
     private func processingCountChanged(_ count: Int) {
         idleUnloadTask?.cancel()
         idleUnloadTask = nil
+        updateScreenAwake()
         if count > 0 {
             updateContinuedTaskProgress()
             return
@@ -174,6 +186,15 @@ final class BackgroundProcessingManager {
             try? await Task.sleep(for: Self.idleUnloadDelay)
             guard !Task.isCancelled else { return }
             self?.unloadModels(reason: "idle")
+        }
+    }
+
+    /// Disables auto-lock only while the opt-in setting is on and a note is processing, and gives
+    /// it back as soon as either stops.
+    private func updateScreenAwake() {
+        let keepOn = UserDefaults.standard.bool(forKey: Self.keepScreenOnKey) && pipeline.activeProcessingCount > 0
+        if UIApplication.shared.isIdleTimerDisabled != keepOn {
+            UIApplication.shared.isIdleTimerDisabled = keepOn
         }
     }
 
