@@ -166,10 +166,138 @@ SOUNDS.update({
               ("Mech stomp step sound", "OpenGameArt contributor", C0, OGA + "mech-stomp-step-sound")),
     "alien": ("oga/ufo-beam/Beam.ogg", 0.0, 3.5, "", "shot", ("UFO beam", "OpenGameArt contributor", C0, OGA + "ufo-beam")),
 })
+
+BY2 = "CC BY 2.0"
+# 2026-11-22 additions: 50 new sounds across all 8 categories (141 cues total).
+SOUNDS.update({
+    # Wild animals
+    "seal": ("commons/Arctocephalus forsteri - sound.ogg", 25.5, 3.0, "", "shot", ("Arctocephalus forsteri sound", "Department of Conservation (Wikimedia Commons)", BY4, WM + "Arctocephalus_forsteri_-_sound.ogg")),
+    "penguin": ("commons/20091121 Little Penguin calls at St Kilda Breakwater.ogg", 27.5, 3.0, "", "shot", ("Little Penguin calls at St Kilda Breakwater", "Mikeybear (Wikimedia Commons)", BY3, WM + "20091121_Little_Penguin_calls_at_St_Kilda_Breakwater.ogg")),
+    "fox": ("commons/Fennec Singing.ogg", 2.5, 2.8, "", "shot", ("Fennec Singing", "Eosin-Y (Wikimedia Commons)", PD, WM + "Fennec_Singing.ogg")),
+    "hyena": ("@mix", 0, 2.1, [
+        ("commons/Giggling call of a spotted hyena (Crocuta crocuta) - 1472-6785-10-9-S1.oga", 0.0, 1.0, 0, "", False),
+        ("commons/Giggling call of a spotted hyena (Crocuta crocuta) - 1472-6785-10-9-S1.oga", 0.0, 1.0, 1020, "asetrate=44100*0.95,aresample=44100", False),
+    ], "shot", ("Giggling call of a spotted hyena", "Mathevon et al. (Wikimedia Commons)", BY2, WM + "Giggling_call_of_a_spotted_hyena_(Crocuta_crocuta)_-_1472-6785-10-9-S1.oga")),
+    "hippo": ("commons/Hippopotamus sound effect.wav", 35.5, 3.2, "", "shot", ("Hippopotamus sound effect", "Zagzav12 (Wikimedia Commons)", C0, WM + "Hippopotamus_sound_effect.wav")),
+    "eagle": ("commons/Screaming Hawk.wav", 0.0, 2.8, "", "shot", ("Screaming Hawk", "PsychoBird (Wikimedia Commons)", BY3, WM + "Screaming_Hawk.wav")),
+    "crocodile": ("commons/27alligator2bellow.ogg", 12.5, 3.2, "", "shot", ("Alligator bellow", "Wikimedia Commons contributor", PD, WM + "27alligator2bellow.ogg")),
+    "peacock": ("commons/Pavo cristatus (call).ogg", 0.0, 2.8, "", "shot", ("Pavo cristatus call", "Ke4roh (Wikimedia Commons)", PD, WM + "Pavo_cristatus_(call).ogg")),
+    # Farm friends
+    "goose": ("commons/Branta canadensis.ogg", 0.0, 2.8, "", "shot", ("Branta canadensis", "Wikimedia Commons contributor", PD, WM + "Branta_canadensis.ogg")),
+    "hooves": ("commons/Six Horses Galloping By.ogg", 13.0, 3.5, "", "shot", ("Six Horses Galloping By", "Freesound Community (via Wikimedia Commons)", C0, WM + "Six_Horses_Galloping_By.ogg")),
+    "guinea_pig": ("commons/Guinea Pig Feeding Wheek.ogg", 0.0, 2.6, "", "shot", ("Guinea Pig Feeding Wheek", "Wikimedia Commons contributor", PD, WM + "Guinea_Pig_Feeding_Wheek.ogg")),
+    # Little critters
+    "parrot": ("commons/Talking Parrot (Psittacula krameri).ogg", 3.5, 2.8, "", "shot", ("Talking Parrot (Psittacula krameri)", "Amada44 (Wikimedia Commons)", BY3, WM + "Talking_Parrot_(Psittacula_krameri).ogg")),
+    "woodpecker": ("commons/Woodpecker tapping.ogg", 7.5, 2.6, "", "shot", ("Woodpecker tapping", "U.S. Fish and Wildlife Service (Wikimedia Commons)", PD, WM + "Woodpecker_tapping.ogg")),
+    "bat": ("commons/Hoary bat chirp recording.wav", 17.5, 2.4, "", "shot", ("Hoary bat chirp recording", "Kaldari (Wikimedia Commons)", C0, WM + "Hoary_bat_chirp_recording.wav")),
+    "cicada": ("commons/Cicadas in Greece.ogg", 0.5, 22.0, "", "bed", ("Cicadas in Greece", "Channel R (Wikimedia Commons)", PD, WM + "Cicadas_in_Greece.ogg")),
+    "pigeon": ("commons/Dove cooing.ogg", 0.0, 3.0, "", "shot", ("Dove cooing", "mary905 (Wikimedia Commons)", PD, WM + "Dove_cooing.ogg")),
+    # Rapid chattering squirrel chirps.
+    "squirrel": ("@synth", 0, 1.5, "aevalsrc=0.45*(exp(-pow((t-0.12)/0.03\\,2))+exp(-pow((t-0.28)/0.028\\,2))+exp(-pow((t-0.44)/0.032\\,2))+exp(-pow((t-0.78)/0.03\\,2))+exp(-pow((t-0.96)/0.035\\,2)))*(sin(2*PI*(2500-700*mod(t\\,0.16))*t)+0.4*sin(2*PI*(5000-1400*mod(t\\,0.16))*t)):s=44100:d=1.5,bandpass=f=2400:w=2200", "shot", None),
+    "cuckoo": ("commons/Great Spotted Cuckoo call (Clamator glandarius).ogg", 0.0, 2.8, "", "shot", ("Great Spotted Cuckoo call", "João Tomás (Wikimedia Commons)", BY4, WM + "Great_Spotted_Cuckoo_call_(Clamator_glandarius).ogg")),
+    # Weather
+    "hail": ("@mix", 0, 24.0, [
+        ("oga/amb-rain-loop-1/amb_rain_loop_1.wav", 2.0, 28.0, 0, "highpass=f=500,volume=0.8", True),
+        ("@hail", 0, 28.0, 0, "volume=0.55", False),
+    ], "bed", ("Ambient rain loop", "Kresiek The Furry (OpenGameArt)", C0, OGA + "amb-rain-loop-1")),
+    "snow_crunch": ("commons/Crunchy Snow Walking Sound Effect - Human Sounds.opus", 1.0, 3.0, "", "shot", ("Crunchy Snow Walking Sound Effect", "Spanac (via Wikimedia Commons)", BY3, WM + "Crunchy_Snow_Walking_Sound_Effect_-_Human_Sounds.opus")),
+    # Gentle pentatonic metallic wind chimes.
+    "wind_chimes": ("@synth", 0, 3.0, "aevalsrc=0.22*(gt(t\\,0.05)*exp(-(t-0.05)*1.7)*sin(2*PI*1046.5*t)+gt(t\\,0.28)*exp(-(t-0.28)*1.6)*sin(2*PI*1318.5*t)+gt(t\\,0.52)*exp(-(t-0.52)*1.5)*sin(2*PI*1568*t)+gt(t\\,0.85)*exp(-(t-0.85)*1.6)*sin(2*PI*1760*t)+gt(t\\,1.15)*exp(-(t-1.15)*1.5)*sin(2*PI*2093*t)+gt(t\\,1.55)*exp(-(t-1.55)*1.8)*sin(2*PI*1568*t)):s=44100:d=3.0,aecho=0.8:0.7:120:0.35", "shot", None),
+    "storm": ("@mix", 0, 28.0, [
+        ("oga/amb-rain-loop-1/amb_rain_loop_1.wav", 0.0, 32.0, 0, "volume=0.85", True),
+        ("@stormwind", 0, 32.0, 0, "volume=0.75", False),
+        ("commons/Nosferatu thunderclap - Richard Humphries.wav", 0.8, 4.2, 6500, "lowpass=f=600,volume=0.45", False),
+        ("commons/Nosferatu thunderclap - Richard Humphries.wav", 0.8, 4.2, 19500, "lowpass=f=500,volume=0.35", False),
+    ], "bed", [
+        ("Ambient rain loop", "Kresiek The Furry (OpenGameArt)", C0, OGA + "amb-rain-loop-1"),
+        ("Nosferatu thunderclap", "Richard Humphries", BY4, WM + "Nosferatu_thunderclap_-_Richard_Humphries.wav"),
+    ]),
+    "drip": ("@mix", 0, 18.0, [
+        ("oga/dripping-water/Dripping Water.wav", 0.0, 22.0, 0, "", True),
+    ], "bed", ("Dripping water", "WolfTech (OpenGameArt)", BY3, OGA + "dripping-water")),
+    # Places (beds)
+    "jungle": ("commons/404114 felix-blume toucans-singing-in-the-amazonian-rainforest-brazil.ogg", 10.0, 28.0, "", "bed", ("Toucans singing in the Amazonian rainforest (freesound 404114)", "Felix Blume (via Wikimedia Commons)", C0, WM + "404114_felix-blume_toucans-singing-in-the-amazonian-rainforest-brazil.ogg")),
+    "playground": ("commons/209901 foongaz city-playground-boxhagenerplatz-berlin.wav", 55.0, 26.0, "", "bed", ("City playground Boxhagenerplatz Berlin (freesound 209901)", "foongaz (via Wikimedia Commons)", C0, WM + "209901_foongaz_city-playground-boxhagenerplatz-berlin.wav")),
+    "space": ("oga/underwater-or-space-engine-rumble/underwater_or_space_engine_0.ogg", 2.0, 26.0, "lowpass=f=900", "bed", ("Underwater or space engine rumble", "OpenGameArt contributor", C0, OGA + "underwater-or-space-engine-rumble")),
+    "castle": ("oga/loopable-dungeon-ambience/dungeon_ambient_1_0.ogg", 2.0, 26.0, "", "bed", ("Loopable dungeon ambience", "OpenGameArt contributor", C0, OGA + "loopable-dungeon-ambience")),
+    "train_ride": ("commons/Steam engine.ogg", 5.0, 26.0, "", "bed", ("Steam engine", "aradlaw (Wikimedia Commons)", PD, WM + "Steam_engine.ogg")),
+    "meadow": ("@mix", 0, 24.0, [
+        ("oga/bird-chirping-sounds/birdchirping071414.wav", 0.0, 28.0, 0, "volume=0.45", True),
+        ("@breeze", 0, 28.0, 0, "volume=0.45", False),
+    ], "bed", ("Bird chirping sounds", "syncopika (OpenGameArt)", C0, OGA + "bird-chirping-sounds")),
+    "fairground": ("commons/Street parade carnival people yelling kamelle kamelle.ogg", 35.0, 26.0, "", "bed", ("Street parade carnival", "stephan (Wikimedia Commons)", PD, WM + "Street_parade_carnival_people_yelling_kamelle_kamelle.ogg")),
+    # Things that go
+    "submarine": ("oga/sonar-ping/sonar_ping_0.mp3", 0.0, 2.6, "", "shot", ("Sonar ping", "OpenGameArt contributor", C0, OGA + "sonar-ping")),
+    "cannon": ("oga/25-cc0-bang-firework-sfx/unz/cannon_02.ogg", 0.0, 1.8, "", "shot", ("25 CC0 bang / firework SFX", "rubberduck (OpenGameArt)", C0, OGA + "25-cc0-bang-firework-sfx")),
+    "hot_air_balloon": ("commons/Pressurized fire.ogg", 0.0, 1.8, "", "shot", ("Pressurized fire", "gregoryweir (Wikimedia Commons)", PD, WM + "Pressurized_fire.ogg")),
+    # Rolling wheels on pavement with rhythmic sidewalk cracks.
+    "skateboard": ("@synth", 0, 2.6, "anoisesrc=color=brown:r=44100:d=2.6:a=0.55,bandpass=f=320:w=420,volume='0.75+0.25*exp(-pow((mod(t\\,0.55)-0.08)/0.02\\,2))+0.25*exp(-pow((mod(t\\,0.55)-0.13)/0.02\\,2))':eval=frame", "shot", None),
+    "sleigh": ("commons/Sleigh bells.wav", 0.5, 2.8, "", "shot", ("Sleigh bells", "The Midnite Wolf (Wikimedia Commons)", C0, WM + "Sleigh_bells.wav")),
+    "anchor": ("oga/chain-winch-sounds/unz/winch - Marker #8.wav", 0.0, 3.2, "", "shot", ("Chain winch sounds", "HaelDB (OpenGameArt)", C0, OGA + "chain-winch-sounds")),
+    # Around the house
+    "bath": ("commons/Faucet water into sink.ogg", 16.0, 3.0, "", "shot", ("Faucet water into sink", "stephan (Wikimedia Commons)", PD, WM + "Faucet_water_into_sink.ogg")),
+    "zipper": ("oga/zipper/zipper-1.wav", 0.0, 0.8, "", "shot", ("Zipper", "OpenGameArt contributor", C0, OGA + "zipper")),
+    "page_turn": ("oga/100-cc0-sfx/unz/paper_04.ogg", 0.0, 0.6, "", "shot", ("100 CC0 SFX", "rubberduck (OpenGameArt)", C0, OGA + "100-cc0-sfx")),
+    # Cute quick double hiccup.
+    "hiccup": ("@synth", 0, 1.2, "aevalsrc=0.55*(exp(-pow((t-0.16)/0.045\\,2))*sin(2*PI*(320+900*(t-0.12))*t)+0.85*exp(-pow((t-0.78)/0.045\\,2))*sin(2*PI*(340+850*(t-0.74))*t)):s=44100:d=1.2,bandpass=f=700:w=900", "shot", None),
+    "tummy_rumble": ("oga/gastric-distress/gastricdistress_bylfa_0.wav", 10.5, 2.6, "", "shot", ("Gastric distress", "cheese2135 (OpenGameArt)", C0, OGA + "gastric-distress")),
+    # Soft breathy "shhh!"
+    "shush": ("@synth", 0, 1.5, "anoisesrc=color=white:r=44100:d=1.5:a=0.45,bandpass=f=3400:w=2200,volume='exp(-pow((t-0.65)/0.38\\,2))':eval=frame", "shot", None),
+    # Gentle tinkling music-box lullaby loop (C-C-G-G-A-A-G, F-F-E-E-D-D-C).
+    "music_box": ("@synth", 0, 19.0, "aevalsrc=0.22*("
+        "gt(mod(t\\,8)\\,0.0)*lt(mod(t\\,8)\\,0.6)*exp(-mod(t\\,0.5)*5)*sin(2*PI*523.25*t)+"
+        "gt(mod(t\\,8)\\,0.5)*lt(mod(t\\,8)\\,1.1)*exp(-(mod(t\\,8)-0.5)*5)*sin(2*PI*523.25*t)+"
+        "gt(mod(t\\,8)\\,1.0)*lt(mod(t\\,8)\\,1.6)*exp(-(mod(t\\,8)-1.0)*5)*sin(2*PI*783.99*t)+"
+        "gt(mod(t\\,8)\\,1.5)*lt(mod(t\\,8)\\,2.1)*exp(-(mod(t\\,8)-1.5)*5)*sin(2*PI*783.99*t)+"
+        "gt(mod(t\\,8)\\,2.0)*lt(mod(t\\,8)\\,2.6)*exp(-(mod(t\\,8)-2.0)*5)*sin(2*PI*880.0*t)+"
+        "gt(mod(t\\,8)\\,2.5)*lt(mod(t\\,8)\\,3.1)*exp(-(mod(t\\,8)-2.5)*5)*sin(2*PI*880.0*t)+"
+        "gt(mod(t\\,8)\\,3.0)*lt(mod(t\\,8)\\,4.0)*exp(-(mod(t\\,8)-3.0)*3)*sin(2*PI*783.99*t)+"
+        "gt(mod(t\\,8)\\,4.0)*lt(mod(t\\,8)\\,4.6)*exp(-(mod(t\\,8)-4.0)*5)*sin(2*PI*698.46*t)+"
+        "gt(mod(t\\,8)\\,4.5)*lt(mod(t\\,8)\\,5.1)*exp(-(mod(t\\,8)-4.5)*5)*sin(2*PI*698.46*t)+"
+        "gt(mod(t\\,8)\\,5.0)*lt(mod(t\\,8)\\,5.6)*exp(-(mod(t\\,8)-5.0)*5)*sin(2*PI*659.25*t)+"
+        "gt(mod(t\\,8)\\,5.5)*lt(mod(t\\,8)\\,6.1)*exp(-(mod(t\\,8)-5.5)*5)*sin(2*PI*659.25*t)+"
+        "gt(mod(t\\,8)\\,6.0)*lt(mod(t\\,8)\\,6.6)*exp(-(mod(t\\,8)-6.0)*5)*sin(2*PI*587.33*t)+"
+        "gt(mod(t\\,8)\\,6.5)*lt(mod(t\\,8)\\,7.1)*exp(-(mod(t\\,8)-6.5)*5)*sin(2*PI*587.33*t)+"
+        "gt(mod(t\\,8)\\,7.0)*lt(mod(t\\,8)\\,8.0)*exp(-(mod(t\\,8)-7.0)*3)*sin(2*PI*523.25*t)"
+        "):s=44100:d=19.0,aecho=0.8:0.7:90:0.3", "bed", None),
+    "crash": ("@mix", 0, 1.2, [
+        ("oga/100-cc0-sfx/unz/glass_05.ogg", 0.0, 1.0, 0, "", False),
+        ("oga/100-cc0-sfx/unz/dishes_01.ogg", 0.0, 0.8, 120, "volume=0.8", False),
+    ], "shot", ("100 CC0 SFX", "rubberduck (OpenGameArt)", C0, OGA + "100-cc0-sfx")),
+    # Magic & silly
+    "toot": ("oga/synthetic-farts/unz/whoopee_2.wav", 0.0, 1.4, "", "shot", ("Synthetic farts", "PFNienow (OpenGameArt)", BY3, OGA + "synthetic-farts")),
+    "slide_whistle": ("oga/slide-whistle-down/79671__joedeshon__slide-whistle-down-01.wav", 0.0, 1.2, "", "shot", ("Slide whistle down", "joedeshon (OpenGameArt)", BY3, OGA + "slide-whistle-down")),
+    # Delicate ascending fairy harp/celesta glissando.
+    "fairy": ("@synth", 0, 2.2, "aevalsrc=0.25*("
+        "gt(t\\,0.00)*exp(-t*3.2)*sin(2*PI*1046.5*t)+"
+        "gt(t\\,0.10)*exp(-(t-0.10)*3.2)*sin(2*PI*1174.7*t)+"
+        "gt(t\\,0.20)*exp(-(t-0.20)*3.2)*sin(2*PI*1318.5*t)+"
+        "gt(t\\,0.30)*exp(-(t-0.30)*3.2)*sin(2*PI*1568.0*t)+"
+        "gt(t\\,0.40)*exp(-(t-0.40)*3.0)*sin(2*PI*1760.0*t)+"
+        "gt(t\\,0.50)*exp(-(t-0.50)*2.8)*sin(2*PI*2093.0*t)+"
+        "gt(t\\,0.62)*exp(-(t-0.62)*2.4)*sin(2*PI*2637.0*t)"
+        "):s=44100:d=2.2,aecho=0.8:0.8:70:0.4", "shot", None),
+    "cauldron": ("@mix", 0, 16.0, [
+        ("oga/bubble-sound-effects/bubbles-loop1-amp.wav", 0.0, 20.0, 0, "lowpass=f=1800", True),
+    ], "bed", ("Bubble sound effects", "OpenGameArt contributor", C0, OGA + "bubble-sound-effects")),
+    "heartbeat": ("@mix", 0, 16.0, [
+        ("oga/heartbeat-sounds/heartbeat_slow_0.wav", 0.0, 20.0, 0, "", True),
+    ], "bed", ("Heartbeat sounds", "estevinho (OpenGameArt)", C0, OGA + "heartbeat-sounds")),
+    "clown_horn": ("@mix", 0, 1.3, [
+        ("oga/bicycle-horn/bicycle-horn-1.wav", 0.0, 0.65, 0, "", False),
+        ("oga/bicycle-horn/bicycle-horn-1.wav", 0.0, 0.65, 440, "asetrate=44100*1.08,aresample=44100", False),
+    ], "shot", ("Bicycle horn", "OpenGameArt contributor", C0, OGA + "bicycle-horn")),
+})
 # Building blocks for "@mix" parts.
 PARTS = {
     # A rocket's rising whistle.
     "@whizz": "aevalsrc=0.25*sin(2*PI*(900+1100*t/{dur})*t)*min(1\\,t*8)+0.05*(random(0)-0.5):s=44100:d={dur},highpass=f=600",
+    # Crisp ice-pellet clicks for hail.
+    "@hail": "anoisesrc=color=white:r=44100:d={dur}:a=0.5,highpass=f=2200,lowpass=f=7000,tremolo=f=17:d=0.85",
+    # Howling storm wind.
+    "@stormwind": "anoisesrc=color=pink:r=44100:d={dur}:a=0.65,lowpass=f=850,highpass=f=110,volume='0.55+0.35*sin(2*PI*0.14*t)+0.15*sin(2*PI*0.41*t)':eval=frame",
+    # Gentle summer meadow breeze.
+    "@breeze": "anoisesrc=color=pink:r=44100:d={dur}:a=0.35,lowpass=f=500,highpass=f=80,volume='0.6+0.3*sin(2*PI*0.09*t)':eval=frame",
 }
 
 
@@ -278,7 +406,7 @@ def main():
     lines = [
         "Roarly's sounds come from people who share their recordings freely. Thank you!",
         "",
-        "Public domain and CC0 recordings need no credit; we list them anyway. CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ CC BY 3.0: https://creativecommons.org/licenses/by/3.0/",
+        "Public domain and CC0 recordings need no credit; we list them anyway. CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ CC BY 3.0: https://creativecommons.org/licenses/by/3.0/ CC BY 2.0: https://creativecommons.org/licenses/by/2.0/",
         "Some sounds were changed (trimmed, pitched, looped, mixed). A few are synthesized for Roarly.",
         "",
     ]

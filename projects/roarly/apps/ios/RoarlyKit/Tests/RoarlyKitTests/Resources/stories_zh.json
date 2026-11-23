@@ -49,6 +49,9 @@
     {"lines": ["机器人说哔哔哔。"], "play": ["robot"]},
     {"lines": ["他坐在马桶上。"], "suggest": ["flush"], "never": ["horse"]},
     {"lines": ["白雪公主住在森林里。"], "never": ["wind"]},
-    {"lines": ["外面下雪了。"], "suggest": ["wind"]}
+    {"lines": ["外面下雪了。"], "suggest": ["wind"]},
+    {"lines": ["一只大河马从河里钻出来了！"], "play": ["hippo"], "never": ["horse"]},
+    {"lines": ["小松鼠跳上了树枝。"], "play": ["squirrel"], "never": ["mouse"]},
+    {"lines": ["海盗船开炮了，轰隆！"], "play": ["cannon"]}
   ]
 }

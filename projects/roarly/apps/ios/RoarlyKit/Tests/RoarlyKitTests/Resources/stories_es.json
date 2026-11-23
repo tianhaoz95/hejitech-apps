@@ -45,6 +45,9 @@
     {"lines": ["La bruja se rió y removió su caldero."], "play": ["witch"], "never": ["magic"]},
     {"lines": ["Un fantasma apareció en la casa. ¡Buu!"], "play": ["ghost"]},
     {"lines": ["El robot dijo bip bup."], "play": ["robot"]},
-    {"lines": ["Empezó a caer nieve."], "play": ["wind"]}
+    {"lines": ["Empezó a caer nieve."], "play": ["wind"]},
+    {"lines": ["De repente apareció un pavo real."], "play": ["peacock"], "never": ["turkey"]},
+    {"lines": ["El pirata disparó el cañón."], "play": ["cannon"]},
+    {"lines": ["El loro gritó en la selva."], "play": ["parrot"]}
   ]
 }

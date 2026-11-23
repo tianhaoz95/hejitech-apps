@@ -68,6 +68,14 @@ public enum SoundCatalog {
         Cue(id: "snake", name: "Snake", emoji: "🐍", category: .small, loudness: 0.3),
         Cue(id: "whale", name: "Whale", emoji: "🐋", category: .wild, loudness: 0.4),
         Cue(id: "dolphin", name: "Dolphin", emoji: "🐬", category: .wild, loudness: 0.4),
+        Cue(id: "seal", name: "Seal", emoji: "🦭", category: .wild, loudness: 0.6),
+        Cue(id: "penguin", name: "Penguin", emoji: "🐧", category: .wild, loudness: 0.4),
+        Cue(id: "fox", name: "Fox", emoji: "🦊", category: .wild, loudness: 0.5),
+        Cue(id: "hyena", name: "Hyena", emoji: "🐾", category: .wild, loudness: 0.6),
+        Cue(id: "hippo", name: "Hippo", emoji: "🦛", category: .wild, loudness: 0.7),
+        Cue(id: "eagle", name: "Eagle", emoji: "🦅", category: .wild, loudness: 0.6),
+        Cue(id: "crocodile", name: "Crocodile", emoji: "🐊", category: .wild, loudness: 0.7),
+        Cue(id: "peacock", name: "Peacock", emoji: "🦚", category: .wild, loudness: 0.6),
 
         // Farm
         Cue(id: "dog", name: "Dog", emoji: "🐶", category: .farm, loudness: 0.6, isFree: true, files: ["dog", "dog_2"]),
@@ -82,6 +90,9 @@ public enum SoundCatalog {
         Cue(id: "goat", name: "Goat", emoji: "🐐", category: .farm, loudness: 0.5, files: ["goat", "goat_2"]),
         Cue(id: "donkey", name: "Donkey", emoji: "🫏", category: .farm, loudness: 0.7),
         Cue(id: "turkey", name: "Turkey", emoji: "🦃", category: .farm, loudness: 0.5),
+        Cue(id: "goose", name: "Goose", emoji: "🪿", category: .farm, loudness: 0.5),
+        Cue(id: "hooves", name: "Clip-clop", emoji: "🐎", category: .farm, loudness: 0.5),
+        Cue(id: "guinea_pig", name: "Guinea pig", emoji: "🐹", category: .farm, loudness: 0.3),
 
         // Little critters
         Cue(id: "owl", name: "Owl", emoji: "🦉", category: .small, loudness: 0.3, isFree: true),
@@ -92,11 +103,23 @@ public enum SoundCatalog {
         Cue(id: "mouse", name: "Mouse", emoji: "🐭", category: .small, loudness: 0.2),
         Cue(id: "crow", name: "Crow", emoji: "🐦‍⬛", category: .small, loudness: 0.5),
         Cue(id: "fly", name: "Fly", emoji: "🪰", category: .small, loudness: 0.2),
+        Cue(id: "parrot", name: "Parrot", emoji: "🦜", category: .small, loudness: 0.5),
+        Cue(id: "woodpecker", name: "Woodpecker", emoji: "🪵", category: .small, loudness: 0.4),
+        Cue(id: "bat", name: "Bat", emoji: "🦇", category: .small, loudness: 0.3),
+        Cue(id: "cicada", name: "Cicada", emoji: "🪲", kind: .ambient, category: .small, loudness: 0.3),
+        Cue(id: "pigeon", name: "Pigeon", emoji: "🕊️", category: .small, loudness: 0.2),
+        Cue(id: "squirrel", name: "Squirrel", emoji: "🐿️", category: .small, loudness: 0.3),
+        Cue(id: "cuckoo", name: "Cuckoo", emoji: "🐦", category: .small, loudness: 0.4),
 
         // Weather (ambient beds and big moments)
         Cue(id: "rain", name: "Rain", emoji: "🌧️", kind: .ambient, category: .weather, loudness: 0.4, isFree: true),
         Cue(id: "thunder", name: "Thunder", emoji: "⛈️", category: .weather, loudness: 1.0, isFree: true),
         Cue(id: "wind", name: "Wind", emoji: "🌬️", kind: .ambient, category: .weather, loudness: 0.4),
+        Cue(id: "hail", name: "Hail", emoji: "🧊", kind: .ambient, category: .weather, loudness: 0.5),
+        Cue(id: "snow_crunch", name: "Crunching snow", emoji: "❄️", category: .weather, loudness: 0.3),
+        Cue(id: "wind_chimes", name: "Wind chimes", emoji: "🎐", category: .weather, loudness: 0.2),
+        Cue(id: "storm", name: "Storm", emoji: "🌩️", kind: .ambient, category: .weather, loudness: 0.6),
+        Cue(id: "drip", name: "Dripping", emoji: "💧", kind: .ambient, category: .weather, loudness: 0.2),
 
         // Places (ambient)
         Cue(id: "ocean", name: "Ocean", emoji: "🌊", kind: .ambient, category: .places, loudness: 0.4, isFree: true),
@@ -109,6 +132,13 @@ public enum SoundCatalog {
         Cue(id: "city", name: "City", emoji: "🏙️", kind: .ambient, category: .places, loudness: 0.3),
         Cue(id: "underwater", name: "Underwater", emoji: "🫧", kind: .ambient, category: .places, loudness: 0.3),
         Cue(id: "cave", name: "Cave", emoji: "🪨", kind: .ambient, category: .places, loudness: 0.3),
+        Cue(id: "jungle", name: "Jungle", emoji: "🌴", kind: .ambient, category: .places, loudness: 0.3),
+        Cue(id: "playground", name: "Playground", emoji: "🛝", kind: .ambient, category: .places, loudness: 0.3),
+        Cue(id: "space", name: "Outer space", emoji: "🌌", kind: .ambient, category: .places, loudness: 0.2),
+        Cue(id: "castle", name: "Castle", emoji: "🏰", kind: .ambient, category: .places, loudness: 0.3),
+        Cue(id: "train_ride", name: "On the train", emoji: "🚃", kind: .ambient, category: .places, loudness: 0.4),
+        Cue(id: "meadow", name: "Meadow", emoji: "🌼", kind: .ambient, category: .places, loudness: 0.2),
+        Cue(id: "fairground", name: "Fairground", emoji: "🎡", kind: .ambient, category: .places, loudness: 0.4),
 
         // Things
         Cue(id: "knock", name: "Knock knock", emoji: "🚪", category: .things, loudness: 0.5, isFree: true),
@@ -127,6 +157,12 @@ public enum SoundCatalog {
         Cue(id: "helicopter", name: "Helicopter", emoji: "🚁", category: .things, loudness: 0.7),
         Cue(id: "siren", name: "Siren", emoji: "🚨", category: .things, loudness: 0.9, files: ["siren", "siren_2"]),
         Cue(id: "digger", name: "Digger", emoji: "🚧", category: .things, loudness: 0.5),
+        Cue(id: "submarine", name: "Sonar ping", emoji: "🫧", category: .things, loudness: 0.4),
+        Cue(id: "cannon", name: "Cannon", emoji: "💣", category: .things, loudness: 0.9),
+        Cue(id: "hot_air_balloon", name: "Hot air balloon", emoji: "🎈", category: .things, loudness: 0.5),
+        Cue(id: "skateboard", name: "Skateboard", emoji: "🛹", category: .things, loudness: 0.4),
+        Cue(id: "sleigh", name: "Sleigh bells", emoji: "🛷", category: .things, loudness: 0.4),
+        Cue(id: "anchor", name: "Anchor", emoji: "⚓", category: .things, loudness: 0.6),
 
         // Around the house
         Cue(id: "creak", name: "Creaky door", emoji: "🏚️", category: .home, loudness: 0.4, files: ["creak", "creak_2"]),
@@ -144,6 +180,14 @@ public enum SoundCatalog {
         Cue(id: "trumpet", name: "Trumpet", emoji: "🎺", category: .home, loudness: 0.7),
         Cue(id: "whistle", name: "Whistle", emoji: "😗", category: .home, loudness: 0.7),
         Cue(id: "fireworks", name: "Fireworks", emoji: "🎆", category: .home, loudness: 0.9, files: ["fireworks", "fireworks_2"]),
+        Cue(id: "bath", name: "Bath splash", emoji: "🛁", category: .home, loudness: 0.4),
+        Cue(id: "zipper", name: "Zipper", emoji: "🧥", category: .home, loudness: 0.3),
+        Cue(id: "page_turn", name: "Page turn", emoji: "📖", category: .home, loudness: 0.2),
+        Cue(id: "hiccup", name: "Hiccup", emoji: "🤭", category: .home, loudness: 0.3),
+        Cue(id: "tummy_rumble", name: "Tummy rumble", emoji: "😋", category: .home, loudness: 0.3),
+        Cue(id: "shush", name: "Shhh", emoji: "🤫", category: .home, loudness: 0.2),
+        Cue(id: "music_box", name: "Music box", emoji: "🎶", kind: .ambient, category: .home, loudness: 0.2),
+        Cue(id: "crash", name: "Crash", emoji: "🫙", category: .home, loudness: 0.8),
 
         // Magic & silly
         Cue(id: "magic", name: "Magic", emoji: "✨", category: .magic, loudness: 0.4, isFree: true, files: ["magic", "magic_2"]),
@@ -163,6 +207,12 @@ public enum SoundCatalog {
         Cue(id: "witch", name: "Witch", emoji: "🧙‍♀️", category: .magic, loudness: 0.6),
         Cue(id: "giant", name: "Giant", emoji: "🦶", category: .magic, loudness: 0.9),
         Cue(id: "alien", name: "UFO", emoji: "🛸", category: .magic, loudness: 0.5),
+        Cue(id: "toot", name: "Toot", emoji: "💨", category: .magic, loudness: 0.5),
+        Cue(id: "slide_whistle", name: "Slide whistle", emoji: "🎢", category: .magic, loudness: 0.4),
+        Cue(id: "fairy", name: "Fairy twinkle", emoji: "🧚", category: .magic, loudness: 0.2),
+        Cue(id: "cauldron", name: "Bubbling potion", emoji: "🧪", kind: .ambient, category: .magic, loudness: 0.3),
+        Cue(id: "heartbeat", name: "Heartbeat", emoji: "💓", kind: .ambient, category: .magic, loudness: 0.3),
+        Cue(id: "clown_horn", name: "Clown horn", emoji: "🤡", category: .magic, loudness: 0.6),
     ]
 
     public static let byID: [String: Cue] = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })

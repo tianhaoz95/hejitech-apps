@@ -71,6 +71,14 @@
     {"lines": ["A flying saucer landed in the field."], "suggest": ["alien"]},
     {"lines": ["The fireworks went bang bang!"], "play": ["fireworks"]},
     {"lines": ["Once upon a time Snow White lived in the forest."], "never": ["wind"]},
-    {"lines": ["It started snowing outside."], "play": ["wind"]}
+    {"lines": ["It started snowing outside."], "play": ["wind"]},
+    {"lines": ["A big seal popped out of the water."], "play": ["seal"]},
+    {"lines": ["The pirate ship fired the cannon, kaboom!"], "play": ["cannon"]},
+    {"lines": ["The guinea pig went wheek wheek."], "play": ["guinea_pig"], "never": ["pig"]},
+    {"lines": ["He swung his baseball bat."], "never": ["bat"]},
+    {"lines": ["Suddenly he slipped on a banana peel!"], "play": ["slide_whistle"]},
+    {"lines": ["The silly bear farted loudly!"], "play": ["toot"]},
+    {"lines": ["Shhh, be quiet, said the fox."], "play": ["shush", "fox"]},
+    {"lines": ["The parrot perched in the jungle."], "suggest": ["parrot", "jungle"]}
   ]
 }
