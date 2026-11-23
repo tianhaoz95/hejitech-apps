@@ -3,7 +3,7 @@ import SwiftUI
 /// What's New: `scripts/cut_release.sh folio` refuses an iPhone release until `currentVersion` and
 /// the first `releases` entry describe it.
 enum WhatsNew {
-    static let currentVersion = "0.3.0"
+    static let currentVersion = "0.3.1"
 
     struct Release: Identifiable {
         let version: String
@@ -12,6 +12,9 @@ enum WhatsNew {
     }
 
     static let releases: [Release] = [
+        Release(version: "0.3.1", items: [
+            ("info.circle", "More room for the page", "An artifact now opens straight to its page. Its description, latest version and Copy for your agent are one tap away under the info button at the top."),
+        ]),
         Release(version: "0.3.0", items: [
             ("text.magnifyingglass", "Search inside artifacts", "Search now looks through every file of your artifacts, not just their titles. Matches show the file and the words around them. Your agents can search the same way, so \"the page with the Q3 numbers\" finds it."),
             ("link", "Links that show what they are", "A view-only link pasted into Messages, Slack or a doc now shows the artifact's title and a picture of the page. Private artifacts still show nothing but Folio's name."),
