@@ -43,7 +43,7 @@
     "test:icecap": "npm test -w projects/icecap/packages -w projects/icecap/services --if-present",
     "typecheck:icecap": "npm run typecheck -w projects/icecap/packages -w projects/icecap/apps -w projects/icecap/services --if-present",
     "build:folio": "npm run build -w @folio/web",
-    "test:folio": "npm test -w projects/folio/packages --if-present",
+    "test:folio": "npm test -w projects/folio/packages -w projects/folio/services --if-present",
     "typecheck:folio": "npm run typecheck -w projects/folio/packages -w projects/folio/services --if-present",
     "hq": "node projects/hq/apps/cli/bin/hq.mjs",
     "pages:dev": "node scripts/pages_sync.mjs && vitepress dev pages",

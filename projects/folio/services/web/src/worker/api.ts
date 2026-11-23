@@ -42,7 +42,12 @@ import {
   webActor,
   dataRow,
   getData,
+  searchArtifacts,
 } from "./service.ts";
+import { checkout, offers, portal, StripeError } from "./billing.ts";
+import { recordTransactions } from "./appstore.ts";
+import { FREE, planFor, PRO_LIMITS } from "./plan.ts";
+import { createWebhook, deleteWebhook, listWebhooks, testWebhook, WEBHOOK_KINDS } from "./webhooks.ts";
 import { admin, json, PREFIX, randomToken, sha256, supabaseUser, type Env } from "./store.ts";
 import { SERVER_VERSION, TOOLS } from "./mcp.ts";
 
@@ -115,6 +120,65 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     const { a, version } = await createArtifact(db, actor, { title: b.title, description: b.description, files: b.files, message: b.message, visibility: b.visibility });
     return reply({ slug: a.slug, id: a.id, version }, 201);
   }
+  if (path === "/api/search" && method === "GET") {
+    need();
+    return reply(await searchArtifacts(db, actor.userId!, url.searchParams.get("q") ?? "", Number(url.searchParams.get("limit")) || 30));
+  }
+
+  // ---------------------------------------------------------------- Pro (billing.ts, appstore.ts, plan.ts)
+  if (path === "/api/pro" && method === "GET") {
+    const u = need();
+    const { status, limits } = await planFor(db, u.id, u.email);
+    const { count } = await db.from("artifacts").select("id", { count: "exact", head: true }).eq("owner_id", u.id);
+    return reply({
+      ...status,
+      email: u.email ?? null,
+      limits,
+      free: FREE,
+      pro_limits: PRO_LIMITS,
+      artifacts: count ?? 0,
+      // The iPhone app sells through the App Store; only the web shows Stripe's prices.
+      offers: req.headers.get("X-Folio-Client") === "iPhone" ? [] : await offers(env).catch(() => []),
+    });
+  }
+  if (path === "/api/appstore/transactions" && method === "POST") {
+    const u = need();
+    const b = await body(req);
+    const r = await recordTransactions(db, u.id, b.transactions);
+    return reply({ ...r, ...(await planFor(db, u.id, u.email)).status });
+  }
+  if ((path === "/api/billing/checkout" || path === "/api/billing/portal") && method === "POST") {
+    const u = need();
+    try {
+      const b = await body(req);
+      const who = { userId: u.id, email: u.email };
+      return reply({ url: path.endsWith("checkout") ? await checkout(env, db, who, b.plan) : await portal(env, db, who) });
+    } catch (e) {
+      if (e instanceof StripeError) return reply({ error: e.message }, e.status);
+      throw e;
+    }
+  }
+
+  // ---------------------------------------------------------------- webhooks (people only; webhooks.ts)
+  if (path === "/api/webhooks" && method === "GET") {
+    need();
+    return reply({ webhooks: await listWebhooks(db, actor.userId!), kinds: WEBHOOK_KINDS });
+  }
+  if (path === "/api/webhooks" && method === "POST") {
+    need();
+    const b = await body(req);
+    return reply(await createWebhook(db, env, actor, b, (ref) => access(db, actor, ref, "read").then((r) => r.a)), 201);
+  }
+  const wh = path.match(/^\/api\/webhooks\/([0-9a-f-]{36})(\/test)?$/);
+  if (wh && !wh[2] && method === "DELETE") {
+    need();
+    return reply(await deleteWebhook(db, actor.userId!, wh[1]));
+  }
+  if (wh && wh[2] && method === "POST") {
+    need();
+    return reply(await testWebhook(db, env, actor.userId!, wh[1]));
+  }
+
   if (path === "/api/activity" && method === "GET") {
     need();
     return reply(await activityAcross(db, actor.userId!, url.searchParams.get("since") ?? undefined, 100));

@@ -25,6 +25,13 @@ export interface Env {
   /** App Review's demo account (secrets; scripts/review_account.sh folio). */
   REVIEW_EMAIL?: string;
   REVIEW_PASSWORD_SHA256?: string;
+  /** Folio Pro on the web (secrets; scripts/stripe_pro.mjs folio). Unset: the web sells nothing. */
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  STRIPE_PRICE_ANNUAL?: string;
+  STRIPE_PRICE_LIFETIME?: string;
+  /** Cloudflare Browser Rendering: screenshots for link previews (og.ts). Unset: a plain card. */
+  BROWSER?: Fetcher;
 }
 
 export const SCHEMA = "folio";
@@ -100,4 +107,12 @@ export async function emailsFor(db: Db, ids: string[]): Promise<Record<string, s
     })
   );
   return out;
+}
+
+/** Pro given by email (scripts/grant_pro.sh folio), or null. */
+export async function proGrant(db: Db, email: string | undefined, now = Date.now()): Promise<{ until: string | null } | null> {
+  if (!email) return null;
+  const { data } = await db.from("pro_grants").select("until").eq("email", email.trim().toLowerCase()).maybeSingle();
+  if (!data || (data.until && Date.parse(data.until) <= now)) return null;
+  return { until: data.until ?? null };
 }

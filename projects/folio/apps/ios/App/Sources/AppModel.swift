@@ -34,6 +34,10 @@ final class AppModel {
     var signInError: String?
     var busy = false
     var toast: String?
+    /// The account's plan (GET /api/pro); nil until loaded or on servers before 0.3.0.
+    var pro: ProStatus?
+    /// Debug `-search <words>`: the home screen opens searching for them.
+    var debugSearch: String?
 
     // Notifications
     var pushPrefs: PushPrefs
@@ -68,6 +72,23 @@ final class AppModel {
         }
         let saved = SessionVault().load()
         session = saved?.site == cfg.site.absoluteString ? saved : nil
+        configurePurchases()
+    }
+
+    /// Purchases are made for the signed-in account (appAccountToken) and handed to the Worker.
+    private func configurePurchases() {
+        let store = ProPurchases.shared
+        store.userId = { [weak self] in self?.session.flatMap { UUID(uuidString: $0.userId) } }
+        store.sendToServer = { [weak self] jws in
+            guard let self, self.session != nil else { return }
+            let status = try await self.api.sendTransactions(jws)
+            await MainActor.run { self.pro = status }
+        }
+    }
+
+    func refreshPro() async {
+        guard signedIn, let p = try? await api.pro() else { return }
+        pro = p
     }
 
     var signedIn: Bool { session != nil }
@@ -132,6 +153,7 @@ final class AppModel {
         session = await auth.current
         path = NavigationPath()
         await refresh()
+        await ProPurchases.shared.syncToServer()
         if pushEnabled { await PushRelay.shared.refreshRegistration() }
     }
 
@@ -139,6 +161,7 @@ final class AppModel {
         if let t = pushToken { try? await api.unregisterPush(token: t) }
         await auth.signOut()
         session = nil
+        pro = nil
         artifacts = []
         activity = []
         loaded = false

@@ -174,15 +174,70 @@ async function render() {
         ? rest.map(card)
         : favs.length
           ? []
-          : [el("div", { class: "empty", style: "grid-column: 1 / -1" }, items_.length ? "Nothing matches." : "No artifacts yet. Ask a connected agent to make one, or start a blank one.")])
+          : [el("div", { class: "empty", style: "grid-column: 1 / -1" }, items_.length ? "No titles or descriptions match." : "No artifacts yet. Ask a connected agent to make one, or start a blank one.")])
     );
   };
   draw();
 
-  const search = el("input", { type: "search", placeholder: "Search artifacts", value: query, style: "max-width: 260px" });
+  // Words inside the artifacts' files: the server searches every current version (search_artifacts).
+  const fileHits = el("section", { class: "section", hidden: true });
+  const highlight = (text: string, words: string[]) => {
+    const out: (string | HTMLElement)[] = [];
+    const lower = text.toLowerCase();
+    let i = 0;
+    while (i < text.length) {
+      let at = -1;
+      let len = 0;
+      for (const w of words) {
+        const j = lower.indexOf(w, i);
+        if (j >= 0 && (at < 0 || j < at)) { at = j; len = w.length; }
+      }
+      if (at < 0) { out.push(text.slice(i)); break; }
+      out.push(text.slice(i, at), el("mark", {}, text.slice(at, at + len)));
+      i = at + len;
+    }
+    return out;
+  };
+  let searchTimer = 0;
+  let searchSeq = 0;
+  const searchFiles = () => {
+    clearTimeout(searchTimer);
+    const q = query.trim();
+    if (q.length < 2) { fileHits.hidden = true; return; }
+    searchTimer = window.setTimeout(async () => {
+      const seq = ++searchSeq;
+      try {
+        const hits = await api<{ artifact: Summary; matched_in: string[]; files: { path: string; excerpt: string }[] }[]>(`/api/search?q=${encodeURIComponent(q)}`);
+        if (seq !== searchSeq) return;
+        const inFiles = hits.filter((h) => h.files.length);
+        const words = q.toLowerCase().split(/\s+/).map((w) => w.replace(/"/g, "")).filter(Boolean);
+        fileHits.hidden = !inFiles.length;
+        fileHits.replaceChildren(
+          el("h2", {}, "Found inside artifacts"),
+          el(
+            "div",
+            { class: "search-hits" },
+            inFiles.map((h) =>
+              el(
+                "a",
+                { class: "panel flat search-hit", href: `/a/${h.artifact.slug}` },
+                el("strong", {}, h.artifact.title),
+                h.files.map((f) => el("div", { class: "file" }, el("code", {}, f.path), " · ", ...highlight(f.excerpt, words)))
+              )
+            )
+          )
+        );
+      } catch {
+        fileHits.hidden = true;
+      }
+    }, 300);
+  };
+
+  const search = el("input", { type: "search", placeholder: "Search titles and contents", value: query, style: "max-width: 260px" });
   search.addEventListener("input", () => {
     query = search.value;
     draw();
+    searchFiles();
   });
 
   const create = el("button", { class: "btn primary", type: "button" }, "New artifact");
@@ -223,6 +278,7 @@ async function render() {
       favSection,
       allHead,
       grid,
+      fileHits,
       el("section", { class: "section", style: "margin-top: 36px" }, el("div", { class: "row" }, el("h2", { style: "margin: 0" }, "Recent activity"), el("span", { class: "spacer" }), el("a", { href: "/connect/", class: "small" }, "Connect another agent")), el("div", { style: "margin-top: 10px" }, feed))
     )
   );

@@ -75,3 +75,33 @@
     so no file can shadow it. Nothing runs on Folio's side: the scheduler is the person's agent
     (a routine, a CI job). Pages still can't write anything: per-viewer state would need its own
     design (who the viewer is, inside an opaque origin).
+
+## 0.3.0 (2026-11-22, owner picked from five suggestions: search, webhooks, Pro, link previews)
+
+17. **Folio Pro raises limits; it doesn't gate features people already use.** Free: 25 artifacts,
+    10 MB per version, no webhooks. Pro: 1,000 artifacts, 25 MB per version, 10 webhooks. Everything
+    else (agents, history, review, search, live data, sharing, previews) stays free. The artifact
+    owner's plan counts, whoever edits; a 402 `pro_required` says what and links to `/pro/`. A lapsed
+    plan deletes nothing: past the limit you just can't add more. Sold as yearly ($19.99, a free week
+    the first time, once per account across stores) or lifetime ($49.99), in the iPhone app with
+    StoreKit (the user id as appAccountToken; the Worker verifies Apple's JWS itself, `appstore.ts`)
+    and on the web with Stripe Checkout (`billing.ts`), one answer in GET /api/pro, grants by email
+    (`scripts/grant_pro.sh folio`). Prices were picked by the agent in the owner's "build it
+    autonomously" round, next to FitLoop's ($19.99/$39.99): lifetime higher because storage is ongoing.
+18. **Search covers files, not just titles.** `search_files` (SQL) scans the current version's text
+    blobs of the artifacts the person can open for every term (lower-case `strpos`, no index: the
+    corpus is small, and the caller passes only accessible ids). Excerpts strip markup only in
+    pages. MCP `search_artifacts`, GET /api/search, the web dashboard and the iPhone home screen.
+19. **Hearing about activity: wait for agents, webhooks for people's routines.** `wait_for_activity`
+    holds an MCP call up to 25 s (polls every 2.5 s, inside the Workers' 50-subrequest cap) and by
+    default skips agents' own changes, so an agent answering comments doesn't wake itself. Webhooks
+    (Pro) are created only by people in Settings, never by agents: a webhook sends activity to a URL,
+    and a prompt-injected agent must not be able to point it elsewhere. Signed like Stripe
+    (`Folio-Signature: t=,v1=` HMAC-SHA256), sent inline with a 5 s timeout, paused after 25
+    failures in a row (a successful Test resumes), skipped while the owner has no Pro.
+20. **Link previews only for link-shared artifacts.** `/a/<slug>` gets Open Graph tags through
+    HTMLRewriter; private artifacts get Folio's generic card so a pasted private link never leaks a
+    title. The picture is a 1200×630 Browser Rendering screenshot of the version, cached in the bucket
+    at `<artifact>/og-v<n>.png` (deleted with the artifact), and `/og/<slug>/<n>.png` URLs change with
+    each version so unfurl caches refresh.
+

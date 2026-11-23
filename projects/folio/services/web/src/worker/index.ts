@@ -6,7 +6,12 @@ import { handleApi } from "./api.ts";
 import { handleMcp, type Caller } from "./mcp.ts";
 import { notifyEvent } from "./push.ts";
 import { handleRender } from "./render.ts";
+import { handleNotification } from "./appstore.ts";
+import { handleStripeWebhook } from "./billing.ts";
+import { handleOg, withPreview } from "./og.ts";
 import { setNotifier } from "./service.ts";
+import { setSiteUrl } from "./plan.ts";
+import { deliverEvent } from "./webhooks.ts";
 import { admin, json, PREFIX, resolveAgentToken, supabaseUser, type Env as BaseEnv } from "./store.ts";
 
 export interface Env extends BaseEnv {
@@ -127,6 +132,14 @@ const app = {
     const url = new URL(req.url);
     if (url.pathname === "/authorize") return authorize(req, env);
     if (url.pathname.startsWith("/r/")) return handleRender(req, env, admin(env), url);
+    if (url.pathname.startsWith("/og/") && req.method === "GET") return handleOg(req, env, admin(env), url);
+    // The stores tell us about renewals, cancellations and refunds (billing.ts, appstore.ts).
+    if (url.pathname === "/stripe/webhook" && req.method === "POST") return handleStripeWebhook(env, admin(env), req);
+    if (url.pathname === "/appstore/notifications" && req.method === "POST") {
+      const r = await handleNotification(admin(env), await req.json().catch(() => null));
+      console.log("appstore notification", r.result);
+      return json({ ok: r.status === 200, result: r.result }, r.status);
+    }
     if (url.pathname === "/api/grants" || url.pathname.startsWith("/api/grants/")) return grants(req, env, url);
     if (url.pathname === "/api/account" && req.method === "DELETE") {
       const user = await supabaseUser(env, req);
@@ -141,7 +154,8 @@ const app = {
       const h = new Headers(res.headers);
       h.set("Cache-Control", "no-cache");
       h.delete("ETag");
-      return new Response(res.body, { status: res.status, headers: h });
+      // Link previews (og.ts): what Slack, iMessage and friends show for a pasted link.
+      return withPreview(env, admin(env), url.pathname.split("/")[2], new Response(res.body, { status: res.status, headers: h }));
     }
     return env.ASSETS.fetch(req);
   },
@@ -179,7 +193,8 @@ function getProvider(env: Env): OAuthProvider<Env> {
 
 export default {
   fetch: (req: Request, env: Env, ctx: ExecutionContext) => {
-    setNotifier((e) => notifyEvent(env, admin(env), e));
+    setSiteUrl(env.PUBLIC_URL);
+    setNotifier((e) => Promise.all([notifyEvent(env, admin(env), e), deliverEvent(env, admin(env), e)]));
     return getProvider(env).fetch(req, env, ctx);
   },
 } satisfies ExportedHandler<Env>;

@@ -53,6 +53,25 @@ projects/folio/scripts/setup_push.sh       # APNS_TEAM_ID, APNS_KEY_ID, APNS_PRI
 scripts/review_account.sh folio            # REVIEW_EMAIL, REVIEW_PASSWORD_SHA256 + App Store Connect
 ```
 
+Folio Pro (once; decisions #17). Products and prices live in the stores; the Worker reads them:
+
+```sh
+source ~/.config/heji/machine-env.zsh
+S=.claude/skills/heji-app-store-iap/iap.mjs                                  # App Store products
+node $S subscription com.hejitech.folio --group "Folio Pro" --product com.hejitech.folio.pro.annual \
+  --name "Folio Pro Yearly" --display "Folio Pro (Yearly)" --description "1,000 artifacts, 25 MB pages, webhooks" \
+  --period ONE_YEAR --price 19.99 --trial ONE_WEEK --note "Settings › Plan › Folio Pro; demo account below"
+node $S nonconsumable com.hejitech.folio --product com.hejitech.folio.pro.lifetime --name "Folio Pro Lifetime" \
+  --display "Folio Pro (Lifetime)" --description "Folio Pro for good, one payment" --price 49.99 --note "…"
+node $S notifications com.hejitech.folio https://folio.hejitech.workers.dev/appstore/notifications
+node scripts/stripe_pro.mjs folio --live      # web: product, prices, webhook → Worker secrets STRIPE_*
+scripts/grant_pro.sh folio <email>             # Pro for an address (testers, the owner)
+```
+
+Link previews (og.ts) take screenshots with Cloudflare Browser Rendering: the `browser` binding in
+`wrangler.jsonc` (production). Without it previews fall back to the plain card (`public/og.png`,
+rendered by `brand/render-icons.mjs`).
+
 ## 4. Releases
 
 `scripts/cut_release.sh folio --dry-run`, then `scripts/cut_release.sh folio`: bumps

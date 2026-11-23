@@ -13,7 +13,7 @@
     "binding": "ASSETS",
     "not_found_handling": "404-page",
     "html_handling": "auto-trailing-slash",
-    "run_worker_first": ["/mcp", "/mcp/*", "/authorize", "/token", "/register", "/.well-known/*", "/api/*", "/r/*", "/a/*"]
+    "run_worker_first": ["/mcp", "/mcp/*", "/authorize", "/token", "/register", "/.well-known/*", "/api/*", "/r/*", "/a/*", "/og/*", "/stripe/*", "/appstore/*"]
   },
   "vars": {
     "PUBLIC_URL": "http://127.0.0.1:8801",
@@ -41,8 +41,11 @@
       },
       // Secrets (wrangler secret put --env production): SUPABASE_SERVICE_ROLE_KEY, RENDER_SECRET,
       // APNS_TEAM_ID, APNS_KEY_ID, APNS_PRIVATE_KEY (scripts/setup_push.sh), REVIEW_EMAIL,
-      // REVIEW_PASSWORD_SHA256 (scripts/review_account.sh folio).
-      "kv_namespaces": [{ "binding": "OAUTH_KV" }]
+      // REVIEW_PASSWORD_SHA256 (scripts/review_account.sh folio), STRIPE_SECRET_KEY,
+      // STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_ANNUAL, STRIPE_PRICE_LIFETIME (scripts/stripe_pro.mjs folio).
+      "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+      // Screenshots for link previews (src/worker/og.ts). Not bound locally: previews use the plain card.
+      "browser": { "binding": "BROWSER" }
     }
   }
 }

@@ -38,6 +38,49 @@ public struct ArtifactSummary: Codable, Hashable, Identifiable, Sendable {
     public var needsReview: Bool { open_suggestions > 0 && role.canReview }
 }
 
+/// One search result: the artifact, where the words matched, and excerpts from its files.
+public struct SearchHit: Codable, Hashable, Identifiable, Sendable {
+    public struct FileMatch: Codable, Hashable, Sendable {
+        public var path: String
+        public var excerpt: String
+    }
+    public var artifact: ArtifactSummary
+    public var matched_in: [String]
+    public var files: [FileMatch]
+    public var id: String { artifact.id }
+}
+
+/// The account's plan (GET /api/pro): Pro from the App Store, the web or an invite, and its limits.
+public struct ProStatus: Codable, Hashable, Sendable {
+    public struct Limits: Codable, Hashable, Sendable {
+        public var artifacts: Int
+        public var versionBytes: Int
+        public var webhooks: Int
+    }
+    public var pro: Bool
+    /// app_store, stripe or grant; nil without Pro.
+    public var source: String?
+    /// annual or lifetime.
+    public var plan: String?
+    public var until: Date?
+    /// Where it's managed: app_store or stripe.
+    public var manage: String?
+    public var had_purchase: Bool
+    public var limits: Limits?
+    public var free: Limits?
+    public var pro_limits: Limits?
+    public var artifacts: Int?
+
+    public init(pro: Bool, source: String? = nil, plan: String? = nil, until: Date? = nil, manage: String? = nil, had_purchase: Bool = false) {
+        self.pro = pro
+        self.source = source
+        self.plan = plan
+        self.until = until
+        self.manage = manage
+        self.had_purchase = had_purchase
+    }
+}
+
 public struct Artifact: Codable, Hashable, Sendable {
     public var id: String
     public var slug: String

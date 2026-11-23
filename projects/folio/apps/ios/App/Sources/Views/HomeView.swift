@@ -4,7 +4,8 @@ import SwiftUI
 /// The home screen (the "Today strip" design, reports/2026-11-21-folio-home-redesign, candidate 03):
 /// three counts at the top, what waits for your review and which agent asked, favorites as chips,
 /// then everything else in compact rows by when it changed (Today, This week, Earlier). Search
-/// replaces all of it with a flat list of matches. The grouping is `HomeSections` in FolioKit.
+/// replaces all of it with a flat list of matches: titles and descriptions right away, then what
+/// the server finds inside the artifacts' files. The grouping is `HomeSections` in FolioKit.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     @State private var query = ""
@@ -14,6 +15,8 @@ struct HomeView: View {
     @State private var showActivity = false
     @State private var showConnect = false
     @State private var pendingRemoval: ArtifactSummary?
+    /// Artifacts whose files contain the words (GET /api/search), minus the title matches above.
+    @State private var fileHits: [SearchHit] = []
 
     private var matches: [ArtifactSummary] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -31,6 +34,10 @@ struct HomeView: View {
                 if searching {
                     searchField
                     ForEach(matches) { a in row(a) { CompactRow(a: a) } }
+                    if !insideHits.isEmpty {
+                        header("Found inside artifacts")
+                        ForEach(insideHits) { h in row(h.artifact) { FileHitRow(hit: h, words: searchWords) } }
+                    }
                 } else if !model.artifacts.isEmpty {
                     strip(HomeSections(model.artifacts))
                 }
@@ -53,7 +60,7 @@ struct HomeView: View {
                     EmptyHome { showConnect = true }
                 } else if !model.loaded {
                     ProgressView()
-                } else if searching && matches.isEmpty && !query.isEmpty {
+                } else if searching && matches.isEmpty && insideHits.isEmpty && !query.isEmpty {
                     ContentUnavailableView.search(text: query)
                 }
             }
@@ -70,7 +77,11 @@ struct HomeView: View {
                 }
             }
         }
-        .task { await model.refresh() }
+        .task {
+            await model.refresh()
+            if let q = model.debugSearch { searching = true; query = q; model.debugSearch = nil }
+        }
+        .task(id: query) { await searchFiles() }
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showActivity) { ActivityView() }
         .sheet(isPresented: $showConnect) { NavigationStack { ConnectView(showsDone: true) } }
@@ -118,10 +129,30 @@ struct HomeView: View {
         .accessibilityAddTraits(.isHeader)
     }
 
+    private var searchWords: [String] {
+        query.lowercased().replacingOccurrences(of: "\"", with: "").split(separator: " ").map(String.init)
+    }
+
+    private var insideHits: [SearchHit] {
+        let shown = Set(matches.map(\.id))
+        return fileHits.filter { !$0.files.isEmpty && !shown.contains($0.artifact.id) }
+    }
+
+    /// Asks the server once typing pauses (it searches every file of every current version).
+    private func searchFiles() async {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard searching, q.count >= 2 else { fileHits = []; return }
+        try? await Task.sleep(for: .milliseconds(350))
+        guard !Task.isCancelled else { return }
+        let hits = (try? await model.api.search(q)) ?? []
+        guard !Task.isCancelled else { return }
+        fileHits = hits
+    }
+
     private var searchField: some View {
         HStack(spacing: 7) {
             Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-            TextField("Search artifacts", text: $query)
+            TextField("Search titles and contents", text: $query)
                 .focused($searchFocused)
                 .submitLabel(.search)
                 .autocorrectionDisabled()
@@ -398,5 +429,41 @@ private struct EmptyHome: View {
         } actions: {
             Button("Connect an agent", action: connect).buttonStyle(.borderedProminent)
         }
+    }
+}
+
+/// A search result found inside an artifact's files: the title, then each file with the words
+/// highlighted in its excerpt.
+struct FileHitRow: View {
+    let hit: SearchHit
+    let words: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(hit.artifact.title).font(.body.weight(.semibold)).lineLimit(1)
+            ForEach(hit.files.prefix(2), id: \.path) { f in
+                (Text(f.path).font(.caption.monospaced()).foregroundStyle(.secondary) + Text("  ") + highlighted(f.excerpt))
+                    .font(.caption)
+                    .lineLimit(3)
+            }
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func highlighted(_ text: String) -> Text {
+        var s = AttributedString(text)
+        let lower = text.lowercased()
+        for w in words where !w.isEmpty {
+            var from = lower.startIndex
+            while let r = lower.range(of: w, range: from..<lower.endIndex) {
+                if let lo = AttributedString.Index(r.lowerBound, within: s), let hi = AttributedString.Index(r.upperBound, within: s) {
+                    s[lo..<hi].backgroundColor = Color.mustard.opacity(0.55)
+                    s[lo..<hi].foregroundColor = .primary
+                }
+                from = r.upperBound
+            }
+        }
+        return Text(s).foregroundColor(.secondary)
     }
 }

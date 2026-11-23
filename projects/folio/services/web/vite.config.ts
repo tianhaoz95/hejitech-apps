@@ -10,6 +10,7 @@ const pages = {
   connect: "connect/index.html",
   login: "login/index.html",
   settings: "settings/index.html",
+  pro: "pro/index.html",
   consent: "oauth/consent/index.html",
   invite: "invite/index.html",
   privacy: "privacy/index.html",

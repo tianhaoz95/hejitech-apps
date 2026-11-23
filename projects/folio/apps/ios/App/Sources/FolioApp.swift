@@ -22,6 +22,7 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @AppStorage("whatsNewSeen") private var whatsNewSeen = ""
     @State private var showWhatsNew = false
+    @State private var showPro = false
 
     var body: some View {
         Group {
@@ -33,12 +34,17 @@ struct RootView: View {
                         // `-open <slug>`: straight to an artifact (screenshots, UI checks).
                         let args = ProcessInfo.processInfo.arguments
                         if let i = args.firstIndex(of: "-open"), args.indices.contains(i + 1) { model.open(.artifact(args[i + 1])) }
+                        // `-showPro`: the Folio Pro screen (App Review's purchase screenshot).
+                        if args.contains("-showPro") { showPro = true; whatsNewSeen = WhatsNew.currentVersion; return }
+                        // `-search <words>`: the home screen searching for them.
+                        if let i = args.firstIndex(of: "-search"), args.indices.contains(i + 1) { model.debugSearch = args[i + 1]; whatsNewSeen = WhatsNew.currentVersion; return }
                         #endif
                         if whatsNewSeen.isEmpty { whatsNewSeen = WhatsNew.currentVersion } else if WhatsNew.shouldShow(seen: whatsNewSeen) { showWhatsNew = true }
                     }
                     .sheet(isPresented: $showWhatsNew, onDismiss: { whatsNewSeen = WhatsNew.currentVersion }) {
                         WhatsNewView()
                     }
+                    .sheet(isPresented: $showPro) { NavigationStack { ProView() } }
             } else {
                 SignInView()
             }

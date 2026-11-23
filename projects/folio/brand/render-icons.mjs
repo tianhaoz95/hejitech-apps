@@ -18,4 +18,13 @@ for (const [s, size, radius, out] of jobs) {
   await p.close();
   console.log("wrote", out);
 }
+
+// The link-preview card (1200×630) for the site and for artifacts that aren't shared by link.
+{
+  const p = await b.newPage({ viewport: { width: 1200, height: 630 } });
+  await p.setContent(`<style>html,body{margin:0}body{width:1200px;height:630px;background:#f2ede4;font-family:-apple-system,"Helvetica Neue",Arial,sans-serif;color:#1e2a78;display:flex;align-items:center;gap:72px;padding:0 96px;box-sizing:border-box}svg{width:300px;height:300px;flex:none;border-radius:66px}h1{font-size:92px;margin:0 0 18px;letter-spacing:-2px}p{font-size:38px;line-height:1.3;margin:0;color:#3a3f5c;max-width:620px}</style>${svg("icon.svg")}<div><h1>Folio</h1><p>Artifacts every AI agent can share: one page, its whole history, and who changed what.</p></div>`);
+  await p.screenshot({ path: "services/web/public/og.png" });
+  await p.close();
+  console.log("wrote services/web/public/og.png");
+}
 await b.close();

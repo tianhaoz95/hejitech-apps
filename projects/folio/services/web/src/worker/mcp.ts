@@ -34,6 +34,8 @@ import {
   type ArtifactRow,
   getData,
   setData,
+  searchArtifacts,
+  waitForActivity,
 } from "./service.ts";
 import { VIEWER_HTML } from "./viewer-app.ts";
 import pkg from "../../package.json";
@@ -119,6 +121,21 @@ export const TOOLS = [
     description: "Lists the artifacts the person owns or that are shared with them, newest change first, with their role and open suggestion count.",
     inputSchema: { type: "object", properties: { query: { type: "string", description: "Optional text to filter titles and descriptions." } } },
     annotations: { title: "List artifacts", ...RO },
+  },
+  {
+    name: "search_artifacts",
+    title: "Search artifacts",
+    description:
+      "Finds the person's artifacts (owned or shared) whose title, description or current files contain every word of the query, case-insensitive (\"quoted phrases\" stay together). Each hit has where it matched and short excerpts from the files. Use it to find the artifact the person means (\"the pricing page\", \"where did we put the Q3 numbers\") before reading it with get_artifact.",
+    inputSchema: {
+      type: "object",
+      required: ["query"],
+      properties: {
+        query: { type: "string", description: "Words to look for, e.g. pricing table or \"launch checklist\"." },
+        limit: { type: "integer", minimum: 1, maximum: 50, description: "Most hits to return (default 10)." },
+      },
+    },
+    annotations: { title: "Search artifacts", ...RO },
   },
   {
     name: "create_artifact",
@@ -353,6 +370,24 @@ export const TOOLS = [
     annotations: { title: "Get activity", ...RO },
   },
   {
+    name: "wait_for_activity",
+    title: "Wait for activity",
+    description:
+      "Waits (up to 25 seconds) until someone comments, suggests or changes something on the person's artifacts (or one artifact), and returns those events as soon as they happen. Use it when the person asked you to stay and respond to their comments: call it again with after = last_event_id to keep listening. By default it skips changes agents made (yours included); pass include_agents to see them too.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        artifact: { ...ref, description: "Only this artifact (default: all the person's artifacts)." },
+        after: { type: "integer", minimum: 0, description: "Return events after this id (last_event_id from the previous call). Default: only what happens from now." },
+        since: { type: "string", description: "Instead of after: events after this ISO time." },
+        seconds: { type: "integer", minimum: 1, maximum: 25, description: "How long to wait at most (default 25)." },
+        kinds: { type: "array", items: { type: "string" }, description: "Only these kinds, e.g. [\"commented\", \"suggested\"]." },
+        include_agents: { type: "boolean", description: "Also return changes agents made (default false)." },
+      },
+    },
+    annotations: { title: "Wait for activity", ...RO },
+  },
+  {
     name: "fork_artifact",
     title: "Fork an artifact",
     description: "Copies an artifact (any version you can read) into a new one the person owns, to take it in a different direction without touching the original.",
@@ -425,6 +460,37 @@ async function callTool(name: string, args: Record<string, unknown>, actor: Acto
         structured: {
           artifacts: rows.map((r) => ({ ...r, url: `${env.PUBLIC_URL}/a/${r.slug}` })),
           ...(rows.length ? {} : { hint: "No artifacts yet. create_artifact makes one." }),
+        },
+      };
+    }
+    case "search_artifacts": {
+      const hits = await searchArtifacts(db, actor.userId!, args.query, Number(args.limit) || 10);
+      return {
+        structured: {
+          query: args.query,
+          hits: hits.map((h) => ({
+            slug: h.artifact.slug,
+            title: h.artifact.title,
+            description: h.artifact.description,
+            role: h.artifact.role,
+            head_version: h.artifact.head_version,
+            updated_at: h.artifact.updated_at,
+            url: `${env.PUBLIC_URL}/a/${h.artifact.slug}`,
+            matched_in: h.matched_in,
+            files: h.files,
+          })),
+          ...(hits.length ? {} : { hint: "Nothing matched every word. Try fewer or different words, or list_artifacts." }),
+          note: UNTRUSTED,
+        },
+      };
+    }
+    case "wait_for_activity": {
+      const r = await waitForActivity(db, actor, args);
+      return {
+        structured: {
+          ...r,
+          next: r.timed_out ? `Nothing yet. Call again with after ${r.last_event_id} to keep waiting.` : `Call again with after ${r.last_event_id} for what comes next.`,
+          note: UNTRUSTED,
         },
       };
     }
@@ -622,10 +688,11 @@ async function callTool(name: string, args: Record<string, unknown>, actor: Acto
 const INSTRUCTIONS = `Folio keeps artifacts (HTML pages, small apps, reports, documents: one or more files) that the person and all of their AI agents share. Another agent (Claude, Gemini, ChatGPT, Codex, …) may have made or changed what you see; every change is attributed.
 
 How to work:
-- Find artifacts with list_artifacts, or take the Folio URL the person pastes. Read with get_artifact; note head_version.
+- Find artifacts with search_artifacts (words in titles, descriptions and files) or list_artifacts, or take the Folio URL the person pastes. Read with get_artifact; note head_version.
 - Change with edit_artifact (base_version = the version you read), using small replace ops where possible. On a 409 "stale" error, read the changed files again and retry on the new head_version.
 - When you only have view access, or the change is a judgment call, or the person wants a review, use suggest_edit; editors accept or reject with review_suggestion.
-- Discuss with comment / list_comments. Catch up with get_activity.
+- Discuss with comment / list_comments. Catch up with get_activity. When the person wants you to stay and answer their comments, loop on wait_for_activity.
+- A 402 "pro_required" error means the owner's free plan doesn't allow it (more artifacts, larger versions): tell the person and give them the url; don't retry.
 - After creating or changing something the person should see, call show_artifact (it renders inline where supported) or give them the url.
 - Pass agent (your own name, e.g. "Gemini CLI") on changes so the history shows who did what.
 - Link files relatively inside an artifact (style.css, not /style.css). Pages run sandboxed: no cookies or storage from Folio, no access to the person's session.

@@ -27,10 +27,12 @@ import {
   type Visibility,
   type WorkingFile,
 } from "@folio/core";
+import { FREE, planFor, proUrl } from "./plan.ts";
+import { PRO } from "./pro-config.ts";
 import type { PushEvent } from "./push.ts";
 import { BUCKET, emailsFor, PREFIX, randomToken, sha256, type Db } from "./store.ts";
 
-/** Sends iPhone notifications for events (set per request by the Worker; tests leave it unset). */
+/** Sends iPhone notifications and webhooks for events (set per request by the Worker; tests leave it unset). */
 let notifier: ((e: PushEvent) => Promise<unknown>) | null = null;
 export function setNotifier(fn: ((e: PushEvent) => Promise<unknown>) | null): void {
   notifier = fn;
@@ -203,8 +205,24 @@ export async function readBytes(db: Db, artifactId: string, hash: string, type: 
   return new Uint8Array(await data.arrayBuffer());
 }
 
+/** The 402 for a limit only Pro lifts. */
+export function proNeeded(what: string): FolioError {
+  return new FolioError(402, "pro_required", `${what} ${PRO.name} lifts this: ${proUrl()}`, { url: proUrl() });
+}
+
+/** A version larger than the free plan allows needs the artifact owner's Pro. */
+async function checkVersionSize(db: Db, ownerId: string, manifest: Manifest): Promise<void> {
+  const total = Object.values(manifest).reduce((n, f) => n + f.size, 0);
+  if (total <= FREE.versionBytes) return;
+  const { limits } = await planFor(db, ownerId);
+  if (total > limits.versionBytes) {
+    const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`;
+    throw proNeeded(`All files of one version may be at most ${mb(limits.versionBytes)} on the owner's plan (this is ${mb(total)}).`);
+  }
+}
+
 /** Stores the contents of changed files and returns the manifest of the whole file set. */
-async function saveBlobs(db: Db, artifactId: string, files: Record<string, WorkingFile>): Promise<Manifest> {
+async function saveBlobs(db: Db, artifactId: string, files: Record<string, WorkingFile>, ownerId: string): Promise<Manifest> {
   const manifest: Manifest = {};
   const fresh: { hash: string; size: number; text?: string; bytes?: Uint8Array; type: string }[] = [];
   for (const [path, f] of Object.entries(files)) {
@@ -218,6 +236,7 @@ async function saveBlobs(db: Db, artifactId: string, files: Record<string, Worki
   }
   const problems = checkManifest(manifest);
   if (problems.length) throw new FolioError(422, "limits", problems.join("; "));
+  await checkVersionSize(db, ownerId, manifest);
   if (!fresh.length) return manifest;
   const { data: have } = await db.from("blobs").select("hash").eq("artifact_id", artifactId).in("hash", [...new Set(fresh.map((f) => f.hash))]);
   const existing = new Set((have ?? []).map((r) => r.hash as string));
@@ -285,16 +304,21 @@ async function logEvent(
   summary: string,
   extra: { version?: number; suggestion_number?: number; comment_id?: string } = {}
 ): Promise<void> {
-  await db.from("events").insert({
-    artifact_id: artifactId,
-    kind,
-    summary: summary.slice(0, 500),
-    actor_id: actor.userId,
-    agent: actor.agent,
-    via: actor.via,
-    ...extra,
-  });
-  if (notifier && !actor.quiet) await notifier({ artifactId, kind, summary, agent: actor.agent, via: actor.via, actorId: actor.userId, ...extra }).catch(() => undefined);
+  const { data } = await db
+    .from("events")
+    .insert({
+      artifact_id: artifactId,
+      kind,
+      summary: summary.slice(0, 500),
+      actor_id: actor.userId,
+      agent: actor.agent,
+      via: actor.via,
+      ...extra,
+    })
+    .select("id")
+    .maybeSingle();
+  const id = (data?.id as number | undefined) ?? undefined;
+  if (notifier && !actor.quiet) await notifier({ id, artifactId, kind, summary, agent: actor.agent, via: actor.via, actorId: actor.userId, ...extra }).catch(() => undefined);
 }
 
 /** Paths whose contents differ between two manifests. */
@@ -402,7 +426,13 @@ export async function createArtifact(
   }
   const ops = parseOpsOrThrow((input.files as Record<string, unknown>[]).map((f) => ({ ...f, op: "write" })));
   const { count } = await db.from("artifacts").select("id", { count: "exact", head: true }).eq("owner_id", actor.userId);
-  if ((count ?? 0) >= LIMITS.artifacts) throw new FolioError(422, "limits", `You have ${count} artifacts, the most one person can own. Delete some first.`);
+  if ((count ?? 0) >= FREE.artifacts) {
+    const { status, limits } = await planFor(db, actor.userId);
+    if ((count ?? 0) >= limits.artifacts) {
+      if (status.pro) throw new FolioError(422, "limits", `You have ${count} artifacts, the most one person can own. Delete some first.`);
+      throw proNeeded(`You have ${count} artifacts, the most the free plan keeps (${FREE.artifacts}). Delete some, or get Pro for up to ${LIMITS.artifacts}.`);
+    }
+  }
   let built: { files: Record<string, WorkingFile>; changed: string[] };
   try {
     built = applyOps({}, ops, {});
@@ -432,7 +462,7 @@ export async function createArtifact(
   }
   if (!row) throw new FolioError(500, "database", "couldn't pick a unique link; try again.");
   try {
-    const manifest = await saveBlobs(db, row.id, built.files);
+    const manifest = await saveBlobs(db, row.id, built.files, row.owner_id);
     const version = await commit(db, row, 0, manifest, actor, {
       message: clampText(input.message, LIMITS.message) || (input.forkedFrom ? "Forked" : "Created"),
       kind: input.forkedFrom ? "fork" : "create",
@@ -455,7 +485,7 @@ export async function editArtifact(
   const ops = parseOpsOrThrow(input.ops);
   const base = Number(input.base_version);
   const r = await applyRebased(db, a, base, ops);
-  const manifest = await saveBlobs(db, a.id, r.files);
+  const manifest = await saveBlobs(db, a.id, r.files, a.owner_id);
   const head = await loadVersion(db, a, r.onto);
   if (sameManifest(manifest, head.manifest)) throw new FolioError(422, "no_change", "That edit leaves every file as it is; nothing to save.");
   const message = clampText(input.message, LIMITS.message) || describeOps(ops);
@@ -512,6 +542,9 @@ export async function updateArtifact(
 async function deleteArtifactRow(db: Db, id: string): Promise<void> {
   const { data } = await db.from("blobs").select("hash").eq("artifact_id", id).eq("in_storage", true);
   const paths = (data ?? []).map((r) => `${id}/${r.hash}`);
+  // Link-preview pictures (og.ts) live beside the blobs.
+  const { data: shots } = await db.storage.from(BUCKET).list(id, { search: "og-", limit: 1000 });
+  for (const f of shots ?? []) paths.push(`${id}/${f.name}`);
   for (let i = 0; i < paths.length; i += 100) await db.storage.from(BUCKET).remove(paths.slice(i, i + 100));
   await db.from("artifacts").delete().eq("id", id);
 }
@@ -947,7 +980,7 @@ export async function reviewSuggestion(
     return { a, suggestion: data as SuggestionRow };
   }
   const r = await applyRebased(db, a, s.base_version, s.ops);
-  const manifest = await saveBlobs(db, a.id, r.files);
+  const manifest = await saveBlobs(db, a.id, r.files, a.owner_id);
   const head = await loadVersion(db, a, r.onto);
   if (sameManifest(manifest, head.manifest)) throw new FolioError(422, "no_change", `Suggestion #${s.number} changes nothing on the current version (already applied?). Reject or withdraw it instead.`);
   const version = await commit(db, a, r.onto, manifest, actor, {
@@ -1145,6 +1178,148 @@ export async function activityAcross(db: Db, userId: string, since?: unknown, li
   });
 }
 
+/**
+ * Waits up to `seconds` for something new on the person's artifacts (or one artifact) after a
+ * point, and returns as soon as there is: an agent's way to hear about a comment without polling
+ * every few seconds itself. Polls the events table every 2.5 s (Workers count each query, so the
+ * wait is capped at 25 s; call again to keep waiting).
+ */
+export async function waitForActivity(
+  db: Db,
+  actor: Actor,
+  input: { artifact?: unknown; after?: unknown; since?: unknown; seconds?: unknown; kinds?: unknown; include_agents?: unknown }
+): Promise<{ events: Record<string, unknown>[]; waited: number; last_event_id: number; timed_out: boolean }> {
+  if (!actor.userId) throw new FolioError(401, "sign_in", "Sign in first.");
+  const seconds = Math.min(25, Math.max(1, Number(input.seconds) || 25));
+  let ids: string[];
+  let byId: Map<string, { slug: string; title: string }>;
+  if (input.artifact) {
+    const { a } = await access(db, actor, input.artifact, "read");
+    ids = [a.id];
+    byId = new Map([[a.id, { slug: a.slug, title: a.title }]]);
+  } else {
+    const mine = await listArtifacts(db, actor.userId, undefined, 500);
+    ids = mine.map((a) => a.id);
+    byId = new Map(mine.map((a) => [a.id, { slug: a.slug, title: a.title }]));
+  }
+  // Start after an event id, else after a time, else from now (only what happens while waiting).
+  let after = Number(input.after) || 0;
+  if (!after) {
+    const since = typeof input.since === "string" && !Number.isNaN(Date.parse(input.since)) ? new Date(input.since).toISOString() : null;
+    if (since && ids.length) {
+      const { data } = await db.from("events").select("id").in("artifact_id", ids).lte("created_at", since).order("id", { ascending: false }).limit(1);
+      after = (data?.[0]?.id as number | undefined) ?? 0;
+      if (!after) after = -1; // everything since then is new
+    } else {
+      const { data } = await db.from("events").select("id").order("id", { ascending: false }).limit(1);
+      after = (data?.[0]?.id as number | undefined) ?? 0;
+    }
+  }
+  const kinds = Array.isArray(input.kinds) ? input.kinds.filter((k): k is string => typeof k === "string").slice(0, 20) : [];
+  const started = Date.now();
+  if (!ids.length) return { events: [], waited: 0, last_event_id: Math.max(0, after), timed_out: true };
+  for (;;) {
+    let q = db.from("events").select("id, artifact_id, kind, version, suggestion_number, comment_id, agent, via, summary, created_at").in("artifact_id", ids).gt("id", after);
+    if (kinds.length) q = q.in("kind", kinds);
+    if (input.include_agents !== true) q = q.neq("via", "mcp");
+    const { data, error } = await q.order("id").limit(50);
+    fail(error, "wait for activity");
+    const rows = (data ?? []) as Record<string, unknown>[];
+    const waited = Math.round((Date.now() - started) / 1000);
+    if (rows.length) {
+      return {
+        events: rows.map(({ artifact_id, ...e }) => ({ ...e, artifact: byId.get(artifact_id as string) })),
+        waited,
+        last_event_id: rows[rows.length - 1].id as number,
+        timed_out: false,
+      };
+    }
+    if (Date.now() - started + 2500 > seconds * 1000) return { events: [], waited, last_event_id: Math.max(0, after), timed_out: true };
+    await new Promise((r) => setTimeout(r, 2500));
+  }
+}
+
+// ------------------------------------------------------------------ search
+
+export interface SearchHit {
+  artifact: ArtifactSummary;
+  /** Where the words were found: the title, the description and/or files. */
+  matched_in: ("title" | "description" | "files")[];
+  files: { path: string; excerpt: string }[];
+  score: number;
+}
+
+/** Lower-case words of a query, quoted phrases kept together, at most 6. */
+export function searchTerms(query: unknown): string[] {
+  const q = typeof query === "string" ? query.toLowerCase().trim().slice(0, 200) : "";
+  const terms: string[] = [];
+  for (const m of q.matchAll(/"([^"]+)"|(\S+)/g)) {
+    const t = (m[1] ?? m[2]).trim();
+    if (t && !terms.includes(t)) terms.push(t);
+  }
+  return terms.slice(0, 6);
+}
+
+/** Readable text around the first match: tags and scripts removed, whitespace folded. */
+export function excerpt(raw: string, term: string, width = 160, markup = true): string {
+  // The window may start inside a <style> or <script>: drop everything up to its end tag.
+  const close = markup ? raw.search(/<\/(style|script)>/i) : -1;
+  const open = markup ? raw.search(/<(style|script)\b/i) : -1;
+  const cut = close >= 0 && (open < 0 || close < open) ? raw.slice(raw.indexOf(">", close) + 1) : raw;
+  const stripped = markup
+    ? cut
+        .replace(/^[^<]*?>/, " ")
+        .replace(/<(script|style)\b[^>]*>[\s\S]*?(<\/\1>|$)/gi, " ")
+        .replace(/<[^>]*>?/g, " ")
+    : raw;
+  const text = stripped
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+  const at = text.toLowerCase().indexOf(term);
+  if (at < 0) return text.slice(0, width);
+  const start = Math.max(0, at - Math.floor(width / 3));
+  return `${start > 0 ? "…" : ""}${text.slice(start, start + width).trim()}${start + width < text.length ? "…" : ""}`;
+}
+
+/**
+ * Finds artifacts the person can open whose title, description or current files contain every
+ * word of the query (case-insensitive; "quoted phrases" stay together). Best first: title hits,
+ * then description, then files, newer first among equals.
+ */
+export async function searchArtifacts(db: Db, userId: string, query: unknown, limit = 20): Promise<SearchHit[]> {
+  const terms = searchTerms(query);
+  if (!terms.length) throw new FolioError(400, "query", "query is required: the words to look for.");
+  const all = await listArtifacts(db, userId, undefined, 1000);
+  if (!all.length) return [];
+  const has = (s: string) => terms.every((t) => s.toLowerCase().includes(t));
+  const { data, error } = await db.rpc("search_files", { p_artifacts: all.map((a) => a.id), p_terms: terms, p_limit: 100 });
+  fail(error, "search");
+  const files = new Map<string, { path: string; excerpt: string }[]>();
+  for (const r of (data ?? []) as { artifact_id: string; path: string; excerpt: string }[]) {
+    if (r.path.startsWith(".folio/")) continue;
+    const list = files.get(r.artifact_id) ?? [];
+    // Tags are stripped from pages only: in scripts and styles a "<" is code, not markup.
+    if (list.length < 3) list.push({ path: r.path, excerpt: excerpt(r.excerpt, terms[0], 160, /\.(html?|svg|xml)$/i.test(r.path)) });
+    files.set(r.artifact_id, list);
+  }
+  const hits: SearchHit[] = [];
+  for (const a of all) {
+    const matched_in: SearchHit["matched_in"] = [];
+    if (has(a.title) || a.slug === terms.join(" ")) matched_in.push("title");
+    if (has(a.description)) matched_in.push("description");
+    if (files.has(a.id)) matched_in.push("files");
+    if (!matched_in.length) continue;
+    const score = (matched_in.includes("title") ? 4 : 0) + (matched_in.includes("description") ? 2 : 0) + (files.get(a.id)?.length ?? 0) * 0.5 + (a.favorite ? 0.25 : 0);
+    hits.push({ artifact: a, matched_in, files: files.get(a.id) ?? [], score });
+  }
+  hits.sort((x, y) => y.score - x.score || y.artifact.updated_at.localeCompare(x.artifact.updated_at));
+  return hits.slice(0, Math.min(50, Math.max(1, limit)));
+}
+
 // ------------------------------------------------------------------ sharing
 
 export async function createInvite(db: Db, actor: Actor, ref: unknown, role: unknown, expiresDays?: unknown): Promise<{ a: ArtifactRow; token: string; role: string; expires_at: string | null }> {
@@ -1236,7 +1411,7 @@ export async function setMemberRole(db: Db, actor: Actor, ref: unknown, userId: 
 export async function deleteAccountData(db: Db, userId: string): Promise<void> {
   const { data } = await db.from("artifacts").select("id").eq("owner_id", userId);
   for (const r of data ?? []) await deleteArtifactRow(db, r.id as string);
-  for (const t of ["members", "access_tokens", "push_devices", "favorites"]) {
+  for (const t of ["members", "access_tokens", "push_devices", "favorites", "webhooks"]) {
     const { error } = await db.from(t).delete().eq("user_id", userId);
     fail(error, `delete ${t}`);
   }

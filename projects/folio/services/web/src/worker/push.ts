@@ -47,6 +47,8 @@ const PREF: Record<string, "notify_suggestions" | "notify_comments" | "notify_ed
 };
 
 export interface PushEvent {
+  /** The event's id in folio.events (webhook payloads carry it). */
+  id?: number;
   artifactId: string;
   kind: string;
   summary: string;

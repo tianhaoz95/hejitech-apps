@@ -29,6 +29,21 @@ public struct FolioAPI: Sendable {
         try await get("api/artifacts", query.map { ["q": $0] } ?? [:])
     }
 
+    /// Artifacts whose title, description or current files contain every word (server 0.3.0+).
+    public func search(_ query: String) async throws -> [SearchHit] {
+        try await get("api/search", ["q": query])
+    }
+
+    // MARK: Pro
+
+    /// The account's plan, from every store and grants (server 0.3.0+).
+    public func pro() async throws -> ProStatus { try await get("api/pro") }
+
+    /// Hands App Store transactions (JWS) to the account; returns the plan afterwards.
+    public func sendTransactions(_ jws: [String]) async throws -> ProStatus {
+        try await send("POST", "api/appstore/transactions", ["transactions": jws])
+    }
+
     public func artifact(_ slug: String) async throws -> ArtifactDetail {
         try await get("api/artifacts/\(enc(slug))")
     }

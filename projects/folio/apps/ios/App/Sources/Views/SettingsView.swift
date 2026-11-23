@@ -31,6 +31,20 @@ struct SettingsView: View {
                 }
                 .onChange(of: model.pushPrefs) { _, _ in Task { await model.savePushPrefs() } }
 
+                Section {
+                    NavigationLink { ProView() } label: {
+                        LabeledContent {
+                            Text(model.pro.map { $0.pro ? "Pro" : "Free" } ?? "")
+                        } label: {
+                            Label("Folio Pro", systemImage: "seal")
+                        }
+                    }
+                } header: {
+                    Text("Plan")
+                } footer: {
+                    Text("Webhooks (Pro) are set up on Folio's site, in Settings.")
+                }
+
                 Section("Agents") {
                     NavigationLink { ConnectView() } label: { Label("Connect an agent", systemImage: "point.3.connected.trianglepath.dotted") }
                     NavigationLink { TokensView() } label: { Label("Agent tokens", systemImage: "key") }
@@ -78,6 +92,7 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .sheet(isPresented: $showWhatsNew) { WhatsNewView() }
+            .task { await model.refreshPro() }
             .confirmationDialog("Sign out of Folio?", isPresented: $confirmSignOut, titleVisibility: .visible) {
                 Button("Sign out", role: .destructive) {
                     Task {

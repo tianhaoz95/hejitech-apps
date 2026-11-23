@@ -190,6 +190,28 @@ create table folio.artifact_data (
   updated_at timestamptz not null default now()
 );
 
+-- Webhooks a person set up (in the web or iPhone app, never by an agent) so their own routines,
+-- CI jobs or agents hear about comments and suggestions as they happen instead of polling. Each
+-- delivery is a POST signed with `secret` (HMAC-SHA256, header Folio-Signature). `artifact_id` null
+-- = every artifact the person can open. Only the Worker reads or writes them. A Pro feature.
+create table folio.webhooks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  url text not null,
+  secret text not null,
+  artifact_id uuid references folio.artifacts(id) on delete cascade,
+  kinds text[] not null default '{commented,suggested,suggestion_revised}',
+  -- Also fire for changes agents made (off by default, so an agent answering a comment doesn't
+  -- wake itself up again).
+  include_agents boolean not null default false,
+  last_status integer,
+  last_error text,
+  last_sent_at timestamptz,
+  failures integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create index webhooks_user on folio.webhooks(user_id);
+
 -- ---------------------------------------------------------------- access rules
 
 alter table folio.artifacts enable row level security;
@@ -204,6 +226,7 @@ alter table folio.access_tokens enable row level security;
 alter table folio.push_devices enable row level security;
 alter table folio.artifact_data enable row level security;
 alter table folio.favorites enable row level security;
+alter table folio.webhooks enable row level security;
 
 create or replace function folio.is_member(p_artifact uuid)
 returns boolean
@@ -277,6 +300,26 @@ end;
 $$;
 revoke all on function folio.commit_version(uuid, integer, jsonb, text, uuid, text, text, text, text, uuid, integer) from public, anon, authenticated;
 grant execute on function folio.commit_version(uuid, integer, jsonb, text, uuid, text, text, text, text, uuid, integer) to service_role;
+
+-- Text files of the artifacts' current versions that contain every term (lower-case), with the
+-- position of the first term, for search. The caller passes only artifacts the person can open.
+create or replace function folio.search_files(p_artifacts uuid[], p_terms text[], p_limit integer default 60)
+returns table (artifact_id uuid, path text, pos integer, excerpt text)
+language sql stable security definer set search_path = folio as $$
+  select a.id, f.key, strpos(lower(b.text), p_terms[1]),
+         substr(b.text, greatest(1, strpos(lower(b.text), p_terms[1]) - 200), 500)
+  from artifacts a
+  join versions v on v.artifact_id = a.id and v.number = a.head_version
+  cross join lateral jsonb_each(v.manifest) f
+  join blobs b on b.artifact_id = a.id and b.hash = f.value->>'hash'
+  where a.id = any(p_artifacts)
+    and b.text is not null
+    and not exists (select 1 from unnest(p_terms) t where strpos(lower(b.text), t) = 0)
+  order by a.updated_at desc, f.key
+  limit p_limit
+$$;
+revoke all on function folio.search_files(uuid[], text[], integer) from public, anon, authenticated;
+grant execute on function folio.search_files(uuid[], text[], integer) to service_role;
 
 -- Hands out the next suggestion number for an artifact.
 create or replace function folio.next_suggestion_number(p_artifact uuid)

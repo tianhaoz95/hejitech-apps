@@ -3,7 +3,7 @@
 Artifacts every AI agent can share. An artifact is a small website (one or more files) kept with
 its full history; any MCP client the person connects (Claude Code, Claude, Gemini CLI, ChatGPT,
 Codex, Cursor, …) can create, read, edit, suggest changes to, comment on and review the same
-artifacts, and every change is attributed to the agent that made it. Web, MCP and an iPhone app; free for now.
+artifacts, and every change is attributed to the agent that made it. Web, MCP and an iPhone app; free, with Folio Pro for higher limits and webhooks.
 Live at https://folio.hejitech.workers.dev.
 
 ## Layout
@@ -15,7 +15,7 @@ Live at https://folio.hejitech.workers.dev.
 - `services/web/` (`@folio/web`): one Cloudflare Worker.
   - `src/worker/service.ts`: every read and write (roles, optimistic versions with rebase,
     suggestions, comments, events, sharing, fork, deletion). API and MCP both call it.
-  - `src/worker/mcp.ts`: Streamable HTTP MCP at `/mcp` (23 tools, `show_artifact` carries the MCP
+  - `src/worker/mcp.ts`: Streamable HTTP MCP at `/mcp` (25 tools, `show_artifact` carries the MCP
     Apps UI `ui://folio/viewer.html` from `viewer-app.ts`); `api.ts`: REST for the web app;
     `render.ts`: `/r/<slug>/<version|s<n>>/<key>/<path>` serves artifact files sandboxed;
     `index.ts`: OAuth 2.1 (`@cloudflare/workers-oauth-provider`), `fol_` tokens, routing.
@@ -24,6 +24,10 @@ Live at https://folio.hejitech.workers.dev.
     `/connect/`, `/settings/`, `/login/`, `/oauth/consent/`, `/invite/#fiv_…`, privacy, terms, help.
     `push.ts`: APNs notifications for events (from `logEvent` via `setNotifier`); `review.ts` +
     `demo.ts`: App Review's demo sign-in, reset to demo artifacts on every sign-in.
+    Folio Pro: `pro-config.ts`, `billing.ts` (Stripe, `proStatus`), `appstore.ts` (Apple's JWS),
+    `plan.ts` (free vs Pro limits, enforced in service.ts); `webhooks.ts` (people's signed webhooks,
+    also from `setNotifier`); `og.ts` (link previews: OG tags on `/a/`, `/og/<slug>/<n>.png` via
+    Browser Rendering); `/pro/` page (`src/pro.ts`). Vitest in `services/web/test/`.
 - `apps/ios/` (XcodeGen `project.yml`; `Folio.xcodeproj` is generated and ignored): the iPhone app.
   - `FolioKit/` (Swift package, `swift test`): Supabase sign-in without the SDK (`Auth.swift`, a
     backend file), the session in the Keychain group shared with the extension (`SessionVault`),
@@ -87,6 +91,10 @@ resets it to the demo artifacts). Locally the Worker sends pushes to `test-api.m
   `folio.artifact_data`, outside the history (no version, no event, no notification). Pages read it at
   `.folio/data.json` (render.ts, same key rules, `no-store`); `.folio/` is reserved in `normalizePath`.
   Forks copy it; the export zip includes it. 256 KB.
+- **Pro** (decisions #17): limits, not features. Free 25 artifacts / 10 MB per version / no
+  webhooks; Pro 1,000 / 25 MB / 10. The owner's plan counts; 402 `pro_required` links to `/pro/`.
+  `scripts/grant_pro.sh folio <email>` gives it free. Search (#18), `wait_for_activity` and
+  webhooks (#19, people only, never agents), link previews (#20, link artifacts only).
 - Roles: owner (everything), editor (edit, review), viewer (read, comment, suggest). `link`
   visibility makes anyone a viewer (signed-out visitors read only). Agents can't delete artifacts.
 

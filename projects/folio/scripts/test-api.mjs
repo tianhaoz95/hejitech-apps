@@ -691,6 +691,187 @@ await step("RLS: members read rows through PostgREST, others don't", async () =>
   assert.ok(write.status >= 400 || (await write.json()).length === 0, "clients can't write directly");
 });
 
+// ---- search, waiting for activity, Pro, webhooks, link previews (0.3.0)
+const rest = (path, init = {}) =>
+  fetch(`${supabase}/rest/v1/${path}`, {
+    ...init,
+    headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, "Content-Profile": "folio", "Accept-Profile": "folio", "Content-Type": "application/json", Prefer: "resolution=merge-duplicates", ...(init.headers ?? {}) },
+  });
+const grantPro = (email) => rest("pro_grants", { method: "POST", body: JSON.stringify({ email, note: "test-api" }) });
+const revokePro = (email) => rest(`pro_grants?email=eq.${encodeURIComponent(email)}`, { method: "DELETE" });
+
+await step("search: titles, descriptions and file contents, phrases, excerpts", async () => {
+  const word = `zebrafish${Date.now()}`;
+  const made = await claude.tool("create_artifact", {
+    title: "Aquarium notes",
+    description: "Tank setup for the office",
+    files: [
+      { path: "index.html", content: `<!doctype html><title>Aquarium notes</title><style>.x{color:red}</style><h1>Fish</h1><p>Feed the ${word} twice a day with flakes.</p>` },
+      { path: "data/plan.md", content: `# Plan\n\nBuy a heater. The ${word} like warm water.\n` },
+    ],
+  });
+  const s = made.artifact.slug;
+  const r = await claude.tool("search_artifacts", { query: word });
+  const hit = r.hits.find((h) => h.slug === s);
+  assert.ok(hit, "found by a word in its files");
+  assert.deepEqual(hit.matched_in, ["files"]);
+  assert.deepEqual(hit.files.map((f) => f.path).sort(), ["data/plan.md", "index.html"]);
+  const html = hit.files.find((f) => f.path === "index.html").excerpt;
+  assert.ok(html.includes(`Feed the ${word} twice`) && !html.includes("<p>") && !html.includes("color:red"), `readable excerpt: ${html}`);
+  // Every word must match, in any file; a quoted phrase stays together.
+  assert.ok((await claude.tool("search_artifacts", { query: `${word} heater` })).hits.some((h) => h.slug === s));
+  assert.ok(!(await claude.tool("search_artifacts", { query: `${word} submarine` })).hits.some((h) => h.slug === s));
+  assert.ok(!(await claude.tool("search_artifacts", { query: `"heater ${word}"` })).hits.some((h) => h.slug === s));
+  // Titles rank first and say where they matched.
+  const t = await claude.tool("search_artifacts", { query: "aquarium" });
+  assert.equal(t.hits[0].slug, s);
+  assert.ok(t.hits[0].matched_in.includes("title"));
+  // The web dashboard's search, and nothing for people who can't open it.
+  const web = await call(`/api/search?q=${word}`, { auth: owner });
+  assert.equal(web.status, 200);
+  assert.equal(web.body[0].artifact.slug, s);
+  const stranger = await makeUser(`folio-search-${Date.now()}@example.com`, "search-pass-1");
+  assert.equal((await call(`/api/search?q=${word}`, { auth: stranger })).body.length, 0);
+  assert.equal((await claude.toolError("search_artifacts", { query: "  " })).error, "query");
+});
+
+await step("wait_for_activity: a person's comment arrives while waiting; agents' are skipped", async () => {
+  const started = Date.now();
+  const waiting = claude.tool("wait_for_activity", { artifact: slug, seconds: 15 });
+  await new Promise((r) => setTimeout(r, 1200));
+  await gemini.tool("comment", { artifact: slug, body: "An agent's note (skipped by default)" });
+  await new Promise((r) => setTimeout(r, 600));
+  await call(`/api/artifacts/${slug}/comments`, { method: "POST", auth: owner, body: { body: "Can you make the heading bigger?" } });
+  const r = await waiting;
+  assert.equal(r.timed_out, false);
+  assert.ok(Date.now() - started < 12000, "returned soon after the comment");
+  assert.equal(r.events.length, 1, JSON.stringify(r.events));
+  assert.equal(r.events[0].kind, "commented");
+  assert.equal(r.events[0].via, "web");
+  assert.equal(r.events[0].artifact.slug, slug);
+  // Keep listening from there: include agents, and a quiet wait times out.
+  const again = await claude.tool("wait_for_activity", { after: r.last_event_id - 2, include_agents: true, seconds: 3 });
+  assert.ok(again.events.some((e) => e.via === "mcp"));
+  const quiet = await claude.tool("wait_for_activity", { artifact: slug, seconds: 3 });
+  assert.equal(quiet.timed_out, true);
+  assert.ok(quiet.next.includes(String(quiet.last_event_id)));
+});
+
+await step("Pro: free limits with a 402 and a link; a grant lifts them; one answer in /api/pro", async () => {
+  const email = `folio-free-${Date.now()}@example.com`;
+  const free = await makeUser(email, "free-pass-1");
+  const pro0 = await call("/api/pro", { auth: free });
+  assert.equal(pro0.body.pro, false);
+  assert.equal(pro0.body.limits.artifacts, 25);
+  assert.equal(pro0.body.limits.webhooks, 0);
+  // One version larger than the free plan's 10 MB needs Pro.
+  const big = Buffer.alloc(5.5 * 1024 * 1024, 7).toString("base64");
+  const tooBig = await call("/api/artifacts", { method: "POST", auth: free, body: { title: "Big", files: [{ path: "index.html", content: "<p>big</p>" }, { path: "a.bin", base64: big }, { path: "b.bin", base64: big }] } });
+  assert.equal(tooBig.status, 402, tooBig.text.slice(0, 200));
+  assert.equal(tooBig.body.code, "pro_required");
+  assert.ok(tooBig.body.url.endsWith("/pro/"));
+  for (let i = 0; i < 25; i++) {
+    const r = await call("/api/artifacts", { method: "POST", auth: free, body: { title: `Note ${i}`, files: [{ path: "index.html", content: `<p>${i}</p>` }] } });
+    assert.equal(r.status, 201, r.text);
+  }
+  const over = await call("/api/artifacts", { method: "POST", auth: free, body: { title: "One more", files: [{ path: "index.html", content: "<p>26</p>" }] } });
+  assert.equal(over.status, 402);
+  assert.match(over.body.error, /free plan/);
+  assert.equal((await grantPro(email)).status, 201);
+  const pro1 = await call("/api/pro", { auth: free });
+  assert.equal(pro1.body.pro, true);
+  assert.equal(pro1.body.source, "grant");
+  assert.equal(pro1.body.artifacts, 25);
+  assert.equal((await call("/api/artifacts", { method: "POST", auth: free, body: { title: "One more", files: [{ path: "index.html", content: "<p>26</p>" }] } })).status, 201);
+  assert.equal((await call("/api/artifacts", { method: "POST", auth: free, body: { title: "Big", files: [{ path: "index.html", content: "<p>big</p>" }, { path: "a.bin", base64: big }, { path: "b.bin", base64: big }] } })).status, 201);
+  await revokePro(email);
+  await call("/api/account", { method: "DELETE", auth: free });
+});
+
+await step("webhooks: people only, Pro only, signed deliveries, agents' changes skipped", async () => {
+  const hits = [];
+  const recv = createServer((req, res) => {
+    let b = "";
+    req.on("data", (c) => (b += c));
+    req.on("end", () => {
+      hits.push({ headers: req.headers, body: b });
+      res.writeHead(200).end("ok");
+    });
+  });
+  await new Promise((r) => recv.listen(8852, "127.0.0.1", r));
+  const hookUrl = "http://127.0.0.1:8852/hook";
+  try {
+    const me = (await call("/api/me", { auth: owner })).body;
+    await revokePro(me.email);
+    const noPro = await call("/api/webhooks", { method: "POST", auth: owner, body: { url: hookUrl } });
+    assert.equal(noPro.status, 402);
+    await grantPro(me.email);
+    assert.equal((await call("/api/webhooks", { method: "POST", auth: owner, body: { url: "ftp://nope" } })).status, 400);
+    const made = await call("/api/webhooks", { method: "POST", auth: owner, body: { url: hookUrl, artifact: slug } });
+    assert.equal(made.status, 201, made.text);
+    assert.ok(made.body.secret.startsWith("fwh_"));
+    assert.deepEqual(made.body.kinds, ["commented", "suggested", "suggestion_revised"]);
+    // An agent's comment doesn't fire it (include_agents is off); a person's does, signed.
+    await gemini.tool("comment", { artifact: slug, body: "agent says hi" });
+    await call(`/api/artifacts/${slug}/comments`, { method: "POST", auth: owner, body: { body: "Please shorten the intro" } });
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(hits.length, 1, JSON.stringify(hits.map((h) => h.body)));
+    const h = hits[0];
+    const payload = JSON.parse(h.body);
+    assert.equal(h.headers["folio-event"], "commented");
+    assert.equal(payload.kind, "commented");
+    assert.equal(payload.artifact.slug, slug);
+    assert.ok(payload.id > 0 && payload.comment);
+    const [, t, v1] = h.headers["folio-signature"].match(/^t=(\d+),v1=([0-9a-f]{64})$/);
+    const { createHmac } = await import("node:crypto");
+    assert.equal(createHmac("sha256", made.body.secret).update(`${t}.${h.body}`).digest("hex"), v1);
+    // Kinds it didn't ask for don't fire; the list shows how the last delivery went.
+    await claude.tool("set_data", { artifact: slug, data: { x: 1 } });
+    const list = await call("/api/webhooks", { auth: owner });
+    assert.equal(list.body.webhooks[0].last_status, 200);
+    assert.equal(list.body.webhooks[0].artifact, slug);
+    const test = await call(`/api/webhooks/${made.body.id}/test`, { method: "POST", auth: owner });
+    assert.equal(test.body.ok, true);
+    assert.equal(hits.at(-1).headers["folio-event"], "ping");
+    // Agents can't set one up: there's no tool, and their token can't reach the web API.
+    assert.ok(!(await claude.rpc("tools/list")).body.result.tools.some((t) => /webhook/.test(t.name)));
+    assert.equal((await call("/api/webhooks", { method: "POST", auth: DEV_TOKEN, body: { url: hookUrl } })).status, 401);
+    // Without Pro, nothing is sent.
+    await revokePro(me.email);
+    const before = hits.length;
+    await call(`/api/artifacts/${slug}/comments`, { method: "POST", auth: owner, body: { body: "after the plan ended" } });
+    assert.equal(hits.length, before);
+    assert.equal((await call(`/api/webhooks/${made.body.id}`, { method: "DELETE", auth: owner })).status, 200);
+    assert.equal((await call("/api/webhooks", { auth: owner })).body.webhooks.length, 0);
+  } finally {
+    recv.close();
+  }
+});
+
+await step("link previews: link artifacts unfurl with their title and a picture; private ones don't", async () => {
+  const page = async () => (await fetch(`${site}/a/${slug}`)).text();
+  const meta = (html, prop) => html.match(new RegExp(`<meta property="${prop}" content="([^"]*)"`))?.[1];
+  const title = (await call(`/api/artifacts/${slug}`, { auth: owner })).body.artifact.title;
+  await call(`/api/artifacts/${slug}`, { method: "PATCH", auth: owner, body: { visibility: "private" } });
+  const priv = await page();
+  assert.equal(meta(priv, "og:title"), "An artifact on Folio");
+  assert.ok(!priv.includes(title), "a private title never leaks");
+  await call(`/api/artifacts/${slug}`, { method: "PATCH", auth: owner, body: { visibility: "link" } });
+  const pub = await page();
+  assert.equal(meta(pub, "og:title"), title.replace(/&/g, "&amp;"));
+  const img = meta(pub, "og:image");
+  assert.match(img, new RegExp(`/og/${slug}/\\d+\\.png$`));
+  assert.match(pub, new RegExp(`<title>${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} · Folio</title>`));
+  const png = await fetch(img.replace(/^https?:\/\/[^/]+/, site));
+  assert.equal(png.status, 200);
+  assert.equal(png.headers.get("content-type"), "image/png");
+  const bytes = new Uint8Array(await png.arrayBuffer());
+  assert.deepEqual([...bytes.slice(1, 4)], [0x50, 0x4e, 0x47]);
+  // Unknown or private: the plain card, never an error.
+  assert.equal((await fetch(`${site}/og/nosuchslug2/1.png`)).status, 200);
+  await call(`/api/artifacts/${slug}`, { method: "PATCH", auth: owner, body: { visibility: "private" } });
+});
+
 await step("leaving, and deleting a person's data", async () => {
   await call(`/api/artifacts/${slug}/members/${shared.userId}`, { method: "DELETE", auth: other });
   assert.equal((await shared.otherAgent.toolError("get_artifact", { artifact: slug })).error, "not_found");
