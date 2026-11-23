@@ -208,4 +208,28 @@ describe("@tether/core pane tree manager (PRD §6, §7, §8)", () => {
     expect(shouldPassCtrlKeyToTerminal("w")).toBe(true);
     expect(shouldPassCtrlKeyToTerminal("w", true)).toBe(false);
   });
+
+  it("prevents duplicate pane IDs on presets, validates NaN/case-variant secrets, and handles about:home", () => {
+    // Regression: closing pane-2 leaving [pane-1, pane-3] then applying 3-pane preset must not duplicate pane-3
+    let tree = createDefaultTree();
+    tree = splitFocusedPane(tree, "horizontal").tree; // pane-1, pane-3, pane-2
+    tree = closePane(tree, "pane-2").tree; // [pane-1, pane-3]
+    const three = applyLayoutPreset(tree, "three_columns");
+    const ids = listPanes(three.root).map((p) => p.id);
+    expect(new Set(ids).size).toBe(3);
+    expect(validatePaneTree(three)).toEqual([]);
+
+    // Regression: case-variant secret keys & NaN ratios are rejected
+    expect(validateSshHost({ id: "h1", host: "a.com", port: 22, username: "u", auth: "key", Password: "x" }).length).toBeGreaterThan(0);
+    expect(validatePaneTree({ ...createDefaultTree(), root: { ...createDefaultTree().root, ratio: Number.NaN } }).length).toBeGreaterThan(0);
+
+    // Regression: about:home & dangerous schemes & non-finite terminal grid
+    expect(resolveAddressBarInput("about:home")).toBe("about:home");
+    expect(resolveAddressBarInput("javascript://alert(1)")).toContain("duckduckgo.com");
+    expect(computeTerminalGrid(Number.NaN, Number.NaN, Number.NaN, Number.NaN)).toEqual({ cols: 20, rows: 5 });
+
+    // Regression: formatTabTitle does not double-append SSH status suffix
+    const ssh = createSshTab("s1", "h1");
+    expect(formatTabTitle(ssh, { sshState: "Connecting" })).toBe("SSH (connecting...)");
+  });
 });

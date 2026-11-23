@@ -149,6 +149,10 @@ public final class WorkspaceStore: ObservableObject {
     /// Most recently focused pane prior to the current one (for instant MRU flip jump-back).
     public private(set) var previousFocusedPaneId: String?
 
+    /// Stack of recently closed tabs (most recent last) for Reopen Closed Tab (Cmd+Shift+T).
+    public private(set) var closedTabsHistory: [(tab: Tab, paneId: String)] = []
+    private static let maxClosedTabsHistory = 20
+
     public let secureStore: SecureStore
     public let backend: Backend
     private let storageURL: URL
@@ -187,11 +191,16 @@ public final class WorkspaceStore: ObservableObject {
 
         if let data = try? Data(contentsOf: self.storageURL),
            let decoded = try? JSONDecoder().decode(WorkspaceSnapshot.self, from: data) {
-            let initialWorkspaces: [Workspace]
+            let rawWorkspaces: [Workspace]
             if let decodedWs = decoded.workspaces, !decodedWs.isEmpty {
-                initialWorkspaces = decodedWs
+                rawWorkspaces = decodedWs
             } else {
-                initialWorkspaces = [Workspace(id: "ws-1", name: "Space 1", tree: decoded.tree)]
+                rawWorkspaces = [Workspace(id: "ws-1", name: "Space 1", tree: decoded.tree)]
+            }
+            let initialWorkspaces = rawWorkspaces.map { ws -> Workspace in
+                var copy = ws
+                copy.tree = Self.repairTree(ws.tree)
+                return copy
             }
             let initialIndex = min(max(0, decoded.activeWorkspaceIndex ?? 0), initialWorkspaces.count - 1)
             self.workspaces = initialWorkspaces
@@ -286,8 +295,17 @@ public final class WorkspaceStore: ObservableObject {
 
     public func removeWorkspace(at index: Int) {
         guard workspaces.count > 1, workspaces.indices.contains(index) else { return }
+        if workspaces.indices.contains(activeWorkspaceIndex) {
+            workspaces[activeWorkspaceIndex].tree = tree
+        }
+        let prevActive = activeWorkspaceIndex
         workspaces.remove(at: index)
-        let nextIndex = min(activeWorkspaceIndex, workspaces.count - 1)
+        let nextIndex: Int
+        if index < prevActive {
+            nextIndex = prevActive - 1
+        } else {
+            nextIndex = min(prevActive, workspaces.count - 1)
+        }
         activeWorkspaceIndex = nextIndex
         self.tree = workspaces[nextIndex].tree
     }
@@ -331,10 +349,12 @@ public final class WorkspaceStore: ObservableObject {
     }
 
     public func focusPane(_ paneId: String) {
-        if tree.focusedPaneId != paneId {
-            previousFocusedPaneId = tree.focusedPaneId
+        let oldFocused = tree.focusedPaneId
+        let nextTree = PaneTreeOps.focusPane(tree, paneId: paneId)
+        if nextTree.focusedPaneId != oldFocused {
+            previousFocusedPaneId = oldFocused
         }
-        tree = PaneTreeOps.focusPane(tree, paneId: paneId)
+        tree = nextTree
     }
 
     public func focusPreviousPane() {
@@ -403,30 +423,86 @@ public final class WorkspaceStore: ObservableObject {
         tree = PaneTreeOps.openTab(tree, tab: tab, inPaneId: inPaneId)
     }
 
+    public static func repairTree(_ tree: PaneTree) -> PaneTree {
+        let allPanes = PaneTreeOps.collectPanes(tree.root)
+        guard let firstPane = allPanes.first else {
+            return PaneTreeOps.createDefaultPaneTree()
+        }
+        var copy = tree
+        if !allPanes.contains(where: { $0.id == copy.focusedPaneId }) {
+            copy.focusedPaneId = firstPane.id
+        }
+        if let maxId = copy.maximisedPaneId, !allPanes.contains(where: { $0.id == maxId }) {
+            copy.maximisedPaneId = nil
+        }
+        return copy
+    }
+
     public func closeTab(paneId: String? = nil, tabId: String? = nil) {
+        let targetPaneId = paneId ?? tree.focusedPaneId
+        if let pane = PaneTreeOps.findPane(tree.root, paneId: targetPaneId) {
+            let targetTabId = tabId ?? pane.activeTabId
+            if let closing = pane.tabs.first(where: { $0.id == targetTabId }) {
+                closedTabsHistory.append((tab: closing, paneId: targetPaneId))
+                if closedTabsHistory.count > Self.maxClosedTabsHistory {
+                    closedTabsHistory.removeFirst(closedTabsHistory.count - Self.maxClosedTabsHistory)
+                }
+                sshStates.removeValue(forKey: closing.id)
+                pausedSshTabs.remove(closing.id)
+                pendingTerminalInsert.removeValue(forKey: closing.id)
+            }
+        }
         tree = PaneTreeOps.closeTab(tree, paneId: paneId, tabId: tabId)
+    }
+
+    @discardableResult
+    public func reopenLastClosedTab() -> Bool {
+        guard let entry = closedTabsHistory.popLast() else { return false }
+        var restored = entry.tab
+        // Assign a fresh ID if a tab with the same ID still exists
+        let openIds = Set(panes.flatMap(\.tabs).map(\.id))
+        if openIds.contains(restored.id) {
+            restored.id = "tab-\(UUID().uuidString.lowercased().prefix(8))"
+        }
+        let targetPaneId = PaneTreeOps.findPane(tree.root, paneId: entry.paneId) != nil
+            ? entry.paneId
+            : tree.focusedPaneId
+        tree = PaneTreeOps.openTab(tree, tab: restored, inPaneId: targetPaneId)
+        return true
+    }
+
+    public func moveActiveTabToNextPane() {
+        guard let focused = focusedPane, let active = focused.activeTab else { return }
+        tree = PaneTreeOps.moveTabToNextPane(tree, paneId: focused.id, tabId: active.id)
     }
 
     /// Inserts a shell-escaped file path into the focused (or first active) SSH terminal tab without executing (PRD §11.3).
     @discardableResult
     public func insertPathIntoTerminal(_ path: String) -> String? {
         let quoted = FileBrowserSort.shellQuotedPath(path)
+        func enqueueInsert(tabId: String) {
+            if let existing = pendingTerminalInsert[tabId], !existing.isEmpty {
+                pendingTerminalInsert[tabId] = "\(existing) \(quoted)"
+            } else {
+                pendingTerminalInsert[tabId] = quoted
+            }
+        }
         let allPanes = panes
         if let focused = focusedPane,
            let active = focused.activeTab,
            active.type == .ssh {
-            pendingTerminalInsert[active.id] = quoted
+            enqueueInsert(tabId: active.id)
             return active.id
         }
         for pane in allPanes {
             if let active = pane.activeTab, active.type == .ssh {
                 tree = PaneTreeOps.focusPane(tree, paneId: pane.id)
-                pendingTerminalInsert[active.id] = quoted
+                enqueueInsert(tabId: active.id)
                 return active.id
             }
             if let sshTab = pane.tabs.first(where: { $0.type == .ssh }) {
                 tree = PaneTreeOps.selectTab(tree, paneId: pane.id, tabId: sshTab.id)
-                pendingTerminalInsert[sshTab.id] = quoted
+                enqueueInsert(tabId: sshTab.id)
                 return sshTab.id
             }
         }

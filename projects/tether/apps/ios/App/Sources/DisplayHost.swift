@@ -31,7 +31,10 @@ public final class DisplayHost: NSObject {
         applyTheme(store.settings.theme, to: window)
         refreshExternalDisplayState()
 
-        if phoneControllerVC == nil {
+        if let existing = phoneControllerVC {
+            existing.setWorkspaceVC(externalWorkspaceVC)
+            window.rootViewController = existing
+        } else {
             let controller = PhoneControllerViewController(store: store, workspaceVC: externalWorkspaceVC)
             self.phoneControllerVC = controller
             if externalWorkspaceVC == nil {
@@ -44,8 +47,19 @@ public final class DisplayHost: NSObject {
         return window
     }
 
-    public func attachExternal(windowScene: UIWindowScene) {
+    @discardableResult
+    public func attachExternal(windowScene: UIWindowScene) -> UIWindow {
+        if let existing = externalWindow, existing.windowScene === windowScene {
+            return existing
+        }
+        if externalWindow != nil {
+            externalWindow?.isHidden = true
+            externalWindow = nil
+            externalWorkspaceVC = nil
+        }
+
         let extWin = UIWindow(windowScene: windowScene)
+        extWin.frame = windowScene.coordinateSpace.bounds
         let workspace = TilingWorkspaceViewController(store: store)
         extWin.rootViewController = workspace
         applyTheme(store.settings.theme, to: extWin)
@@ -65,6 +79,7 @@ public final class DisplayHost: NSObject {
         let bounds = windowScene.screen.nativeBounds
         let desc = "External Display (\(Int(bounds.width))×\(Int(bounds.height)))"
         store.handleExternalDisplayChanged(connected: true, description: desc)
+        return extWin
     }
 
     public func detachExternal() {
@@ -176,7 +191,7 @@ public final class DisplayHost: NSObject {
         let extScreen = UIScreen.screens.first(where: { $0 != UIScreen.main })
 
         if let extScene {
-            if externalWindow == nil {
+            if externalWindow?.windowScene !== extScene {
                 attachExternal(windowScene: extScene)
             }
         } else if let extScreen {
@@ -248,12 +263,14 @@ final class TetherAppDelegate: UIResponder, UIApplicationDelegate {
         configurationForConnecting connectingSceneSession: UISceneSession,
         options: UIScene.ConnectionOptions
     ) -> UISceneConfiguration {
-        let config = UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+        let name = connectingSceneSession.role == .windowApplication ? "Default Configuration" : "External Display"
+        let config = UISceneConfiguration(name: name, sessionRole: connectingSceneSession.role)
         config.delegateClass = TetherSceneDelegate.self
         return config
     }
 
     func applicationDidEnterBackground(_ application: UIApplication) {
+        DisplayHost.shared.store.saveImmediately()
         backgroundTaskId = application.beginBackgroundTask(withName: "TetherSSHKeepAlive") { [weak self] in
             if let id = self?.backgroundTaskId, id != .invalid {
                 application.endBackgroundTask(id)
@@ -282,13 +299,14 @@ final class TetherSceneDelegate: UIResponder, UIWindowSceneDelegate {
         if session.role == .windowApplication {
             self.window = DisplayHost.shared.attach(to: windowScene)
         } else {
-            DisplayHost.shared.attachExternal(windowScene: windowScene)
+            self.window = DisplayHost.shared.attachExternal(windowScene: windowScene)
         }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
         if let windowScene = scene as? UIWindowScene, windowScene.session.role != .windowApplication {
             DisplayHost.shared.detachExternal()
+            self.window = nil
         }
     }
 

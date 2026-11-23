@@ -607,10 +607,10 @@ public enum PaneTreeOps {
         switch tab.type {
         case .web:
             let trimmed = (tab.title).trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty && trimmed != "Web" && !trimmed.hasPrefix("Web: ") {
+            if !trimmed.isEmpty && trimmed != "Web" && trimmed != "New Tab" && !trimmed.hasPrefix("Web: ") {
                 return "Web: \(trimmed)"
             }
-            if trimmed.hasPrefix("Web: ") {
+            if trimmed.hasPrefix("Web: ") && trimmed != "Web: New Tab" {
                 return trimmed
             }
             if let urlStr = tab.url, let u = URL(string: urlStr), let host = u.host, !host.isEmpty {
@@ -1088,6 +1088,15 @@ public enum PaneTreeOps {
         case .twoByTwo: targetCount = 4
         }
 
+        var usedTabIds = Set(allTabs.map(\.id))
+        func nextUniqueTabId(prefix: String, start: Int) -> String {
+            var n = start
+            while usedTabIds.contains("\(prefix)-\(n)") { n += 1 }
+            let id = "\(prefix)-\(n)"
+            usedTabIds.insert(id)
+            return id
+        }
+
         var buckets: [[Tab]] = Array(repeating: [], count: targetCount)
         if existingPanes.count >= targetCount {
             for i in 0..<existingPanes.count {
@@ -1104,14 +1113,23 @@ public enum PaneTreeOps {
                     buckets[b] = [movedTab]
                 } else {
                     let fallbackType: TabType = (b == 1) ? .ssh : (b == 2 ? .files : .web)
-                    buckets[b] = [createDefaultTab(type: fallbackType, id: "tab-preset-\(b + 1)", hosts: hosts)]
+                    buckets[b] = [createDefaultTab(type: fallbackType, id: nextUniqueTabId(prefix: "tab-preset", start: b + 1), hosts: hosts)]
                 }
             }
         }
 
+        var usedPaneIds = Set(existingPanes.prefix(targetCount).map(\.id))
+        func nextUniquePaneId(start: Int) -> String {
+            var n = start
+            while usedPaneIds.contains("pane-\(n)") { n += 1 }
+            let id = "pane-\(n)"
+            usedPaneIds.insert(id)
+            return id
+        }
+
         let panes: [PaneNode] = buckets.enumerated().map { idx, tabs in
-            let safeTabs = tabs.isEmpty ? [createDefaultTab(type: .web, id: "tab-safe-\(idx + 1)", hosts: hosts)] : tabs
-            let preservedId = idx < existingPanes.count ? existingPanes[idx].id : "pane-\(idx + 1)"
+            let safeTabs = tabs.isEmpty ? [createDefaultTab(type: .web, id: nextUniqueTabId(prefix: "tab-safe", start: idx + 1), hosts: hosts)] : tabs
+            let preservedId = idx < existingPanes.count ? existingPanes[idx].id : nextUniquePaneId(start: idx + 1)
             let prevActive = idx < existingPanes.count ? existingPanes[idx].activeTabId : safeTabs[0].id
             let activeId = safeTabs.contains(where: { $0.id == prevActive }) ? prevActive : safeTabs[0].id
             return PaneNode(id: preservedId, tabs: safeTabs, activeTabId: activeId)
@@ -1203,7 +1221,8 @@ public enum PaneTreeOps {
             copy.activeTabId = tab.id
             return copy
         }
-        return PaneTree(version: 1, root: nextRoot, focusedPaneId: targetId, maximisedPaneId: tree.maximisedPaneId)
+        let nextMax = (tree.maximisedPaneId == targetId) ? tree.maximisedPaneId : nil
+        return PaneTree(version: 1, root: nextRoot, focusedPaneId: targetId, maximisedPaneId: nextMax)
     }
 
     public static func closeTab(_ tree: PaneTree, paneId: String? = nil, tabId: String? = nil) -> PaneTree {
@@ -1242,7 +1261,8 @@ public enum PaneTreeOps {
             copy.activeTabId = tabId
             return copy
         }
-        return PaneTree(version: 1, root: nextRoot, focusedPaneId: paneId, maximisedPaneId: tree.maximisedPaneId)
+        let nextMax = (tree.maximisedPaneId == paneId) ? tree.maximisedPaneId : nil
+        return PaneTree(version: 1, root: nextRoot, focusedPaneId: paneId, maximisedPaneId: nextMax)
     }
 
     public static func selectNextTab(_ tree: PaneTree, reverse: Bool = false) -> PaneTree {
@@ -1304,6 +1324,9 @@ public enum PaneTreeOps {
         if trimmed.range(of: #"^[a-zA-Z][a-zA-Z0-9+.-]*://"#, options: .regularExpression) != nil {
             return trimmed
         }
+        if trimmed.lowercased().hasPrefix("about:") {
+            return trimmed
+        }
         let looksLikeHostOrIp = !trimmed.contains(" ") && (
             trimmed.contains(".") ||
             trimmed.hasPrefix("localhost") ||
@@ -1313,7 +1336,9 @@ public enum PaneTreeOps {
             let scheme = trimmed.hasPrefix("localhost") ? "http" : "https"
             return "\(scheme)://\(trimmed)"
         }
-        let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed
+        var queryValueAllowed = CharacterSet.urlQueryAllowed
+        queryValueAllowed.remove(charactersIn: "&=+#")
+        let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: queryValueAllowed) ?? trimmed
         if searchEngineUrl.contains("%s") {
             return searchEngineUrl.replacingOccurrences(of: "%s", with: encoded)
         }

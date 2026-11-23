@@ -48,6 +48,10 @@ public enum GlobalShortcutDispatcher {
                     vc.dismissAllModals()
                     return true
                 }
+                if let web = vc.activeWebTabController(), web.isFindBarVisible {
+                    web.dismissFindBar()
+                    return true
+                }
                 if let web = vc.activeWebTabController(), web.isAddressBarActive {
                     web.deactivateAddressBar()
                     return true
@@ -198,8 +202,9 @@ public enum GlobalShortcutDispatcher {
             workspaceVC?.openTabPalette()
             return true
         }
-        // General Command Palette: Cmd+K or Ctrl+K
-        if (isCmd && !isAlt && char == "k") || (isCtrl && !isAlt && char == "k") {
+        // General Command Palette: Cmd+K (or Ctrl+K when NOT in SSH terminal, preserving PRD §13.2 Ctrl+K passthrough)
+        let isSshFocused = (store.focusedPane?.activeTab?.type == .ssh)
+        if (isCmd && !isAlt && char == "k") || (isCtrl && !isAlt && !isSshFocused && char == "k") {
             workspaceVC?.openCommandPalette()
             return true
         }
@@ -272,14 +277,14 @@ public enum GlobalShortcutDispatcher {
             }
         }
 
-        // 14. Workspace Next / Prev
+        // 14. Workspace Next / Prev (Ctrl+Left/Right, or Ctrl+Option+[/])
         if (isCtrl && !isAlt && code == .keyboardRightArrow) ||
-            (isCmd && isAlt && code == .keyboardRightArrow) {
+            (isCtrl && isAlt && key.characters == "]") {
             store.nextWorkspace()
             return true
         }
         if (isCtrl && !isAlt && code == .keyboardLeftArrow) ||
-            (isCmd && isAlt && code == .keyboardLeftArrow) {
+            (isCtrl && isAlt && key.characters == "[") {
             store.prevWorkspace()
             return true
         }
@@ -369,17 +374,24 @@ public enum GlobalShortcutDispatcher {
             store.openTab(type: .web)
             return true
         }
-        // Close Tab: Cmd+W
+        // Reopen Closed Tab: Cmd+Shift+T
+        if isCmd && !isAlt && isShift && char == "t" {
+            _ = store.reopenLastClosedTab()
+            return true
+        }
+        // Close Tab: Cmd+W (confirms if live SSH)
         if isCmd && !isAlt && !isShift && char == "w" {
             if workspaceVC?.activeCommandPalette != nil {
                 workspaceVC?.activeCommandPalette?.dismissPalette()
+            } else if let vc = workspaceVC {
+                vc.requestCloseTab()
             } else {
                 store.closeTab()
             }
             return true
         }
 
-        // 20. Browser / Web Tab Controls:
+        // 20. Browser / Web Tab & Zoom Controls:
         if isCmd && !isAlt && !isShift && char == "l" {
             if let web = workspaceVC?.activeWebTabController() {
                 web.focusAddressBar()
@@ -391,6 +403,36 @@ public enum GlobalShortcutDispatcher {
                 web.reloadCurrentPage()
                 return true
             }
+        }
+        if isCmd && !isAlt && !isShift && char == "f" {
+            if let web = workspaceVC?.activeWebTabController() {
+                web.toggleFindBar()
+                return true
+            }
+        }
+        if isCmd && !isAlt && !isShift && key.characters == "[" {
+            if let web = workspaceVC?.activeWebTabController() {
+                web.navigateBack()
+                return true
+            }
+        }
+        if isCmd && !isAlt && !isShift && key.characters == "]" {
+            if let web = workspaceVC?.activeWebTabController() {
+                web.navigateForward()
+                return true
+            }
+        }
+        if isCmd && !isAlt && !isCtrl && (key.characters == "=" || key.characters == "+") {
+            workspaceVC?.zoomInKey()
+            return true
+        }
+        if isCmd && !isAlt && !isCtrl && key.characters == "-" {
+            workspaceVC?.zoomOutKey()
+            return true
+        }
+        if isCmd && !isAlt && !isCtrl && char == "0" {
+            workspaceVC?.resetZoomKey()
+            return true
         }
 
         // 21. Terminal Ctrl Keys (PRD §13.2)
@@ -467,10 +509,15 @@ public enum GlobalShortcutDispatcher {
 
             // Tab & Workspace actions
             UIKeyCommand(title: "New Tab", action: #selector(TilingWorkspaceViewController.newTabKey), input: "t", modifierFlags: [.command]),
+            UIKeyCommand(title: "Reopen Closed Tab", action: #selector(TilingWorkspaceViewController.reopenClosedTabKey), input: "t", modifierFlags: [.command, .shift]),
             UIKeyCommand(title: "Close Tab", action: #selector(TilingWorkspaceViewController.closeActiveTabKey), input: "w", modifierFlags: [.command]),
             UIKeyCommand(title: "Close Space", action: #selector(TilingWorkspaceViewController.closeActiveWorkspaceKey), input: "w", modifierFlags: [.command, .alternate]),
             UIKeyCommand(title: "Focus Address Bar", action: #selector(TilingWorkspaceViewController.focusAddressBarKey), input: "l", modifierFlags: [.command]),
+            UIKeyCommand(title: "Find in Page", action: #selector(TilingWorkspaceViewController.findInPageKey), input: "f", modifierFlags: [.command]),
             UIKeyCommand(title: "Reload Page", action: #selector(TilingWorkspaceViewController.reloadWebKey), input: "r", modifierFlags: [.command]),
+            UIKeyCommand(title: "Zoom In", action: #selector(TilingWorkspaceViewController.zoomInKey), input: "=", modifierFlags: [.command]),
+            UIKeyCommand(title: "Zoom Out", action: #selector(TilingWorkspaceViewController.zoomOutKey), input: "-", modifierFlags: [.command]),
+            UIKeyCommand(title: "Reset Zoom", action: #selector(TilingWorkspaceViewController.resetZoomKey), input: "0", modifierFlags: [.command]),
 
             // Settings & Hosts
             UIKeyCommand(title: "Open Settings", action: #selector(TilingWorkspaceViewController.openSettingsTapped), input: ",", modifierFlags: [.command]),

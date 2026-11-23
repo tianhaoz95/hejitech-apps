@@ -2,7 +2,15 @@ import { currentSession, signInView } from "./supabase.ts";
 
 const root = document.getElementById("app")!;
 const next = new URLSearchParams(location.search).get("next") ?? "/settings/";
-const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/settings/";
+let safeNext = "/settings/";
+if (next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")) {
+  try {
+    const parsed = new URL(next, location.origin);
+    if (parsed.origin === location.origin) safeNext = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    safeNext = "/settings/";
+  }
+}
 
 async function render() {
   if (await currentSession()) return location.replace(safeNext);

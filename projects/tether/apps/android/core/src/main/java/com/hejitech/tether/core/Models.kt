@@ -6,6 +6,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import java.security.MessageDigest
+import java.time.Instant
 import java.util.Base64
 import java.util.UUID
 import kotlin.math.abs
@@ -139,7 +140,7 @@ data class KnownHostKey(
     val port: Int,
     val keyType: String,
     val sha256Fingerprint: String,
-    val firstSeenAt: String = "2026-10-27T00:00:00Z"
+    val firstSeenAt: String = Instant.now().toString()
 )
 
 sealed class HostKeyVerificationResult {
@@ -162,7 +163,7 @@ data class Bookmark(
     val id: String = "bm-${UUID.randomUUID().toString().take(8)}",
     val title: String,
     val url: String,
-    val createdAt: String = "2026-10-27T00:00:00Z"
+    val createdAt: String = Instant.now().toString()
 )
 
 @Serializable
@@ -195,7 +196,7 @@ data class WorkspaceSnapshot(
     val settings: TetherSettings,
     val hosts: List<SshHost> = emptyList(),
     val bookmarks: List<Bookmark> = emptyList(),
-    val updatedAt: String = "2026-10-27T00:00:00Z"
+    val updatedAt: String = Instant.now().toString()
 )
 
 enum class FocusDirection { LEFT, RIGHT, UP, DOWN }
@@ -380,12 +381,33 @@ object PaneTreeOps {
         return tree.copy(root = update(tree.root))
     }
 
+    fun adjustSplitRatio(tree: PaneTree, splitId: String, delta: Double): PaneTree {
+        fun update(node: TreeNode): TreeNode = when (node) {
+            is TreeNode.Pane -> node
+            is TreeNode.Split -> node.copy(
+                ratio = if (node.id == splitId) clampSplitRatio(node.ratio + delta) else node.ratio,
+                first = update(node.first),
+                second = update(node.second)
+            )
+        }
+        return tree.copy(root = update(tree.root))
+    }
+
     fun applyLayoutPreset(
         tree: PaneTree,
         preset: LayoutPresetId,
         hosts: List<SshHost> = emptyList()
     ): PaneTree {
         val existingPanes = collectPanes(tree.root)
+        val usedTabIds = existingPanes.flatMap { it.tabs }.map { it.id }.toMutableSet()
+        fun nextUniqueTabId(prefix: String, start: Int): String {
+            var n = start
+            while (usedTabIds.contains("$prefix-$n")) n++
+            val id = "$prefix-$n"
+            usedTabIds.add(id)
+            return id
+        }
+
         val targetCount = when (preset) {
             LayoutPresetId.SINGLE -> 1
             LayoutPresetId.TWO_COLUMN -> 2
@@ -411,14 +433,23 @@ object PaneTreeOps {
                         2 -> TabType.FILES
                         else -> TabType.WEB
                     }
-                    buckets[b].add(createDefaultTab(fallbackType, id = "tab-preset-${b + 1}", hosts = hosts))
+                    buckets[b].add(createDefaultTab(fallbackType, id = nextUniqueTabId("tab-preset", b + 1), hosts = hosts))
                 }
             }
         }
 
+        val usedPaneIds = existingPanes.take(targetCount).map { it.id }.toMutableSet()
+        fun nextUniquePaneId(start: Int): String {
+            var n = start
+            while (usedPaneIds.contains("pane-$n")) n++
+            val id = "pane-$n"
+            usedPaneIds.add(id)
+            return id
+        }
+
         val panes = buckets.mapIndexed { idx, tabs ->
-            val safeTabs = tabs.ifEmpty { listOf(createDefaultTab(TabType.WEB, id = "tab-safe-${idx + 1}", hosts = hosts)) }
-            val paneId = existingPanes.getOrNull(idx)?.id ?: "pane-${idx + 1}"
+            val safeTabs = tabs.ifEmpty { listOf(createDefaultTab(TabType.WEB, id = nextUniqueTabId("tab-safe", idx + 1), hosts = hosts)) }
+            val paneId = existingPanes.getOrNull(idx)?.id ?: nextUniquePaneId(idx + 1)
             val prevActive = existingPanes.getOrNull(idx)?.activeTabId
             val activeId = if (safeTabs.any { it.id == prevActive }) prevActive!! else safeTabs.first().id
             TreeNode.Pane(id = paneId, tabs = safeTabs, activeTabId = activeId)
@@ -455,13 +486,13 @@ object PaneTreeOps {
                     direction = SplitDirection.VERTICAL,
                     ratio = 0.5,
                     first = panes[0],
-                    second = panes[2]
+                    second = panes[1]
                 ),
                 second = TreeNode.Split(
                     id = "split-right",
                     direction = SplitDirection.VERTICAL,
                     ratio = 0.5,
-                    first = panes[1],
+                    first = panes[2],
                     second = panes[3]
                 )
             )
@@ -485,7 +516,8 @@ object PaneTreeOps {
         val nextRoot = mapPane(tree.root, inPaneId) { p ->
             p.copy(tabs = p.tabs + tab, activeTabId = tab.id)
         }
-        return tree.copy(root = nextRoot, focusedPaneId = inPaneId)
+        val nextMax = if (tree.maximisedPaneId != null && tree.maximisedPaneId != inPaneId) null else tree.maximisedPaneId
+        return tree.copy(root = nextRoot, focusedPaneId = inPaneId, maximisedPaneId = nextMax)
     }
 
     fun closeTab(tree: PaneTree, paneId: String = tree.focusedPaneId, tabId: String? = null): PaneTree {
@@ -515,7 +547,8 @@ object PaneTreeOps {
         val pane = findPane(tree.root, paneId) ?: return tree
         if (pane.tabs.none { it.id == tabId }) return tree
         val nextRoot = mapPane(tree.root, paneId) { p -> p.copy(activeTabId = tabId) }
-        return tree.copy(root = nextRoot, focusedPaneId = paneId)
+        val nextMax = if (tree.maximisedPaneId != null && tree.maximisedPaneId != paneId) null else tree.maximisedPaneId
+        return tree.copy(root = nextRoot, focusedPaneId = paneId, maximisedPaneId = nextMax)
     }
 
     fun updateTab(tree: PaneTree, paneId: String, tabId: String, transform: (Tab) -> Tab): PaneTree {
@@ -531,13 +564,13 @@ object PaneTreeOps {
     ): String {
         val trimmed = rawInput.trim()
         if (trimmed.isEmpty()) return TetherConstants.DEFAULT_WEB_HOME_URL
-        if (Regex("^[a-zA-Z][a-zA-Z0-9+.-]*://").containsMatchIn(trimmed)) return trimmed
-        val looksLikeHost = !trimmed.contains(" ") && (
-            trimmed.contains(".") || trimmed.startsWith("localhost") ||
-                Regex("^\\d{1,3}(\\.\\d{1,3}){3}(:\\d+)?(/.*)?$").matches(trimmed)
-        )
+        if (Regex("^about:(home|blank)$", RegexOption.IGNORE_CASE).matches(trimmed)) return trimmed.lowercase()
+        if (Regex("^https?://", RegexOption.IGNORE_CASE).containsMatchIn(trimmed)) return trimmed
+        val isLocalhost = Regex("^localhost(:\\d+)?(/|$)", RegexOption.IGNORE_CASE).containsMatchIn(trimmed)
+        val isIpv4 = Regex("^\\d{1,3}(\\.\\d{1,3}){3}(:\\d+)?(/.*)?$").matches(trimmed)
+        val looksLikeHost = !trimmed.contains(" ") && (trimmed.contains(".") || isLocalhost || isIpv4)
         if (looksLikeHost) {
-            val scheme = if (trimmed.startsWith("localhost")) "http" else "https"
+            val scheme = if (isLocalhost || isIpv4) "http" else "https"
             return "$scheme://$trimmed"
         }
         val encoded = java.net.URLEncoder.encode(trimmed, "UTF-8").replace("+", "%20")
@@ -546,6 +579,11 @@ object PaneTreeOps {
         } else {
             "$searchEngineUrl$encoded"
         }
+    }
+
+    fun shellQuotedPath(path: String): String {
+        if (Regex("^[A-Za-z0-9_./-]+$").matches(path)) return path
+        return "'" + path.replace("'", "'\\''") + "'"
     }
 
     fun calculateTerminalGrid(

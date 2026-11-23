@@ -124,15 +124,23 @@ public final class VirtualCursorOverlayView: UIView {
                 return
             }
 
-            // 1b. Text View (e.g. Terminal): do not trigger UIKit text selection or auto-scrolling
-            if let _ = findAncestor(of: hitView, matching: { $0 is UITextView }) as? UITextView {
+            // 1b. Text View (e.g. Terminal): focus its SSH pane without triggering UIKit text selection
+            if let textView = findAncestor(of: hitView, matching: { $0 is UITextView }) as? UITextView {
+                var responder: UIResponder? = textView
+                while let r = responder, !(r is SshTabViewController) { responder = r.next }
+                if let sshTab = responder as? SshTabViewController {
+                    sshTab.focusTerminalInput()
+                }
                 return
             }
 
             // 2. Buttons
             if let button = findAncestor(of: hitView, matching: { $0 is UIButton }) as? UIButton {
-                button.sendActions(for: .touchUpInside)
-                button.sendActions(for: .primaryActionTriggered)
+                if button.allControlEvents.contains(.touchUpInside) {
+                    button.sendActions(for: .touchUpInside)
+                } else {
+                    button.sendActions(for: .primaryActionTriggered)
+                }
                 return
             }
 
@@ -202,19 +210,38 @@ public final class VirtualCursorOverlayView: UIView {
     }
 
     public func performScroll(deltaX: CGFloat, deltaY: CGFloat) {
-        guard let canvas = targetCanvas ?? superview else { return }
+        guard let canvas = self.window ?? targetCanvas ?? superview else { return }
         let hitPoint = canvas.convert(cursorPosition, from: self)
 
-        if let hitView = canvas.hitTest(hitPoint, with: nil),
-           let scrollView = findAncestor(of: hitView, matching: { $0 is UIScrollView }) as? UIScrollView {
-            var offset = scrollView.contentOffset
-            var deltaX = deltaX
-            // Horizontal-only strips (pane tab bars) also scroll with an up/down two-finger swipe.
-            if scrollView.contentSize.height <= scrollView.bounds.height, abs(deltaY) > abs(deltaX) {
-                deltaX = deltaY
+        if let hitView = canvas.hitTest(hitPoint, with: nil) {
+            var current: UIView? = hitView
+            var fallbackScrollView: UIScrollView?
+            var targetScrollView: UIScrollView?
+            while let v = current {
+                if let sv = v as? UIScrollView {
+                    if fallbackScrollView == nil { fallbackScrollView = sv }
+                    let canScrollY = sv.contentSize.height + sv.adjustedContentInset.top + sv.adjustedContentInset.bottom > sv.bounds.height + 1
+                    let canScrollX = sv.contentSize.width + sv.adjustedContentInset.left + sv.adjustedContentInset.right > sv.bounds.width + 1
+                    if (abs(deltaY) >= abs(deltaX) && (canScrollY || canScrollX)) || (abs(deltaX) > abs(deltaY) && canScrollX) {
+                        targetScrollView = sv
+                        break
+                    }
+                }
+                current = v.superview
             }
-            offset.x = min(max(0, offset.x + deltaX), max(0, scrollView.contentSize.width - scrollView.bounds.width))
-            offset.y = min(max(0, offset.y + deltaY), max(0, scrollView.contentSize.height - scrollView.bounds.height))
+            guard let scrollView = targetScrollView ?? fallbackScrollView else { return }
+            var offset = scrollView.contentOffset
+            var dx = deltaX
+            // Horizontal-only strips (pane tab bars) also scroll with an up/down two-finger swipe.
+            if scrollView.contentSize.height <= scrollView.bounds.height, abs(deltaY) > abs(dx) {
+                dx = deltaY
+            }
+            let minX = -scrollView.adjustedContentInset.left
+            let maxX = max(minX, scrollView.contentSize.width - scrollView.bounds.width + scrollView.adjustedContentInset.right)
+            let minY = -scrollView.adjustedContentInset.top
+            let maxY = max(minY, scrollView.contentSize.height - scrollView.bounds.height + scrollView.adjustedContentInset.bottom)
+            offset.x = min(max(minX, offset.x + dx), maxX)
+            offset.y = min(max(minY, offset.y + deltaY), maxY)
             scrollView.setContentOffset(offset, animated: false)
         }
     }

@@ -157,7 +157,8 @@ export function formatTabTitle(
   }
   if (tab.type === "ssh") {
     const h = opts?.host;
-    const base = h && h.username && h.host ? `${h.username}@${h.host}` : tab.title || "SSH";
+    const strippedTitle = (tab.title || "SSH").replace(/\s*\((disconnected|connecting\.\.\.|failed)\)$/i, "").trim() || "SSH";
+    const base = h && h.username && h.host ? `${h.username}@${h.host}` : strippedTitle;
     const state = opts?.sshState ?? "Disconnected";
     switch (state) {
       case "Connected":
@@ -187,7 +188,10 @@ export function formatTabTitle(
 export function resolveAddressBarInput(input: string, searchPrefix = DEFAULT_SETTINGS.defaultSearchEngine): string {
   const trimmed = input.trim();
   if (!trimmed) return "about:home";
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)) {
+  if (/^about:(home|blank)$/i.test(trimmed)) {
+    return trimmed.toLowerCase();
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
     try {
       return new URL(trimmed).toString();
     } catch {
@@ -195,8 +199,10 @@ export function resolveAddressBarInput(input: string, searchPrefix = DEFAULT_SET
     }
   }
   // Check if it looks like a domain or localhost/IP without spaces
-  if (!/\s/.test(trimmed) && (trimmed.includes(".") || trimmed.startsWith("localhost") || /^\d{1,3}(\.\d{1,3}){3}(:\d+)?(\/.*)?$/.test(trimmed))) {
-    const scheme = trimmed.startsWith("localhost") || /^\d{1,3}(\.\d{1,3}){3}/.test(trimmed) ? "http://" : "https://";
+  const isLocalhost = /^localhost(:\d+)?(\/|$)/i.test(trimmed);
+  const isIpv4 = /^\d{1,3}(\.\d{1,3}){3}(:\d+)?(\/.*)?$/.test(trimmed);
+  if (!/\s/.test(trimmed) && (trimmed.includes(".") || isLocalhost || isIpv4)) {
+    const scheme = isLocalhost || isIpv4 ? "http://" : "https://";
     try {
       return new URL(`${scheme}${trimmed}`).toString();
     } catch {
@@ -453,6 +459,7 @@ export function swapFocusedPaneWithNext(tree: PaneTree): PaneTree {
     ...tree,
     root: swapNodes(tree.root),
     focusedPaneId: secondPane.id,
+    maximizedPaneId: tree.maximizedPaneId ? secondPane.id : null,
   };
 }
 
@@ -560,8 +567,17 @@ export function applyLayoutPreset(tree: PaneTree, preset: LayoutPresetId): PaneT
     }
   }
 
+  const usedPaneIds = new Set(oldPanes.slice(0, targetCount).map((p) => p.id));
+  const allocatePaneId = (start: number): string => {
+    let n = start;
+    while (usedPaneIds.has(`pane-${n}`)) n += 1;
+    const id = `pane-${n}`;
+    usedPaneIds.add(id);
+    return id;
+  };
+
   const makePane = (index: number): PaneNode => {
-    const id = oldPanes[index]?.id ?? `pane-${index + 1}`;
+    const id = oldPanes[index]?.id ?? allocatePaneId(index + 1);
     const tabs = buckets[index];
     const prevActive = oldPanes[index]?.activeTabId;
     const activeTabId = tabs.some((t) => t.id === prevActive)
@@ -628,12 +644,18 @@ export function applyLayoutPreset(tree: PaneTree, preset: LayoutPresetId): PaneT
 // ---------------------------------------------------------------- Tab Operations (PRD §8.2)
 
 export function addTab(tree: PaneTree, tab: Tab, paneId = tree.focusedPaneId): PaneTree {
+  if (!findPane(tree, paneId)) return tree;
   const root = mapPaneInNode(tree.root, paneId, (pane) => ({
     ...pane,
     tabs: [...pane.tabs, tab],
     activeTabId: tab.id,
   }));
-  return { ...tree, root, focusedPaneId: paneId };
+  return {
+    ...tree,
+    root,
+    focusedPaneId: paneId,
+    maximizedPaneId: tree.maximizedPaneId ? paneId : null,
+  };
 }
 
 export function createAndAddTab(
@@ -672,10 +694,15 @@ export function closeTab(tree: PaneTree, tabId: string, paneId = tree.focusedPan
 }
 
 export function activateTab(tree: PaneTree, paneId: string, tabId: string): PaneTree {
-  const root = mapPaneInNode(tree.root, paneId, (pane) =>
-    pane.tabs.some((t) => t.id === tabId) ? { ...pane, activeTabId: tabId } : pane
-  );
-  return { ...tree, root, focusedPaneId: paneId };
+  const target = findPane(tree, paneId);
+  if (!target || !target.tabs.some((t) => t.id === tabId)) return tree;
+  const root = mapPaneInNode(tree.root, paneId, (pane) => ({ ...pane, activeTabId: tabId }));
+  return {
+    ...tree,
+    root,
+    focusedPaneId: paneId,
+    maximizedPaneId: tree.maximizedPaneId ? paneId : null,
+  };
 }
 
 export function cycleTabInFocusedPane(tree: PaneTree, delta: 1 | -1): PaneTree {
@@ -739,10 +766,12 @@ export function computeTerminalGrid(
   charWidthPx: number,
   lineHeightPx: number
 ): { cols: number; rows: number } {
-  const safeCharW = Math.max(4, charWidthPx);
-  const safeLineH = Math.max(8, lineHeightPx);
-  const cols = Math.max(20, Math.floor(Math.max(0, paneWidthPx) / safeCharW));
-  const rows = Math.max(5, Math.floor(Math.max(0, paneHeightPx) / safeLineH));
+  const safeW = Number.isFinite(paneWidthPx) ? Math.max(0, paneWidthPx) : 0;
+  const safeH = Number.isFinite(paneHeightPx) ? Math.max(0, paneHeightPx) : 0;
+  const safeCharW = Number.isFinite(charWidthPx) ? Math.max(4, charWidthPx) : 8;
+  const safeLineH = Number.isFinite(lineHeightPx) ? Math.max(8, lineHeightPx) : 16;
+  const cols = Math.max(20, Math.floor(safeW / safeCharW));
+  const rows = Math.max(5, Math.floor(safeH / safeLineH));
   return { cols, rows };
 }
 
@@ -760,10 +789,13 @@ export interface ValidationIssue {
 const FORBIDDEN_SECRET_KEYS = new Set([
   "password",
   "passphrase",
-  "privateKey",
+  "privatekey",
   "private_key",
+  "privatekeypem",
+  "private_key_pem",
   "secret",
-  "secretKey",
+  "secretkey",
+  "secret_key",
   "pem",
 ]);
 
@@ -777,7 +809,8 @@ function containsForbiddenKeys(obj: unknown): string | null {
     return null;
   }
   for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-    if (FORBIDDEN_SECRET_KEYS.has(k)) return k;
+    const normalizedKey = k.toLowerCase().replace(/-/g, "_");
+    if (FORBIDDEN_SECRET_KEYS.has(normalizedKey)) return k;
     const nested = containsForbiddenKeys(v);
     if (nested) return `${k}.${nested}`;
   }
@@ -801,6 +834,7 @@ export function validatePaneTree(input: unknown): ValidationIssue[] {
   }
 
   const paneIds = new Set<string>();
+  const allTabIds = new Set<string>();
   function checkNode(node: unknown, path: string) {
     if (!node || typeof node !== "object") {
       issues.push({ path, message: "node must be an object" });
@@ -815,7 +849,7 @@ export function validatePaneTree(input: unknown): ValidationIssue[] {
       if (!Array.isArray(n.tabs)) {
         issues.push({ path: `${path}.tabs`, message: "tabs must be an array" });
       } else {
-        const tabIds = new Set<string>();
+        const paneTabIds = new Set<string>();
         n.tabs.forEach((rawTab: unknown, idx: number) => {
           const tp = `${path}.tabs[${idx}]`;
           if (!rawTab || typeof rawTab !== "object") {
@@ -823,13 +857,25 @@ export function validatePaneTree(input: unknown): ValidationIssue[] {
             return;
           }
           const tab = rawTab as Record<string, unknown>;
-          if (!tab.id || typeof tab.id !== "string") issues.push({ path: `${tp}.id`, message: "tab id required" });
-          else tabIds.add(tab.id);
+          if (!tab.id || typeof tab.id !== "string") {
+            issues.push({ path: `${tp}.id`, message: "tab id required" });
+          } else if (allTabIds.has(tab.id)) {
+            issues.push({ path: `${tp}.id`, message: `duplicate tab id ${tab.id}` });
+          } else {
+            allTabIds.add(tab.id);
+            paneTabIds.add(tab.id);
+          }
           if (!["web", "ssh", "files"].includes(String(tab.type))) {
             issues.push({ path: `${tp}.type`, message: "tab type must be web, ssh, or files" });
           }
+          if (tab.type === "files" && tab.files && typeof tab.files === "object") {
+            const mode = (tab.files as Record<string, unknown>).mode;
+            if (mode !== undefined && mode !== "local" && mode !== "sftp") {
+              issues.push({ path: `${tp}.files.mode`, message: "files mode must be local or sftp" });
+            }
+          }
         });
-        if (n.activeTabId !== null && n.activeTabId !== undefined && !tabIds.has(String(n.activeTabId))) {
+        if (n.activeTabId !== null && n.activeTabId !== undefined && !paneTabIds.has(String(n.activeTabId))) {
           issues.push({ path: `${path}.activeTabId`, message: "activeTabId must refer to a tab in the pane or be null" });
         }
       }
@@ -837,7 +883,7 @@ export function validatePaneTree(input: unknown): ValidationIssue[] {
       if (n.direction !== "horizontal" && n.direction !== "vertical") {
         issues.push({ path: `${path}.direction`, message: "direction must be horizontal or vertical" });
       }
-      if (typeof n.ratio !== "number" || n.ratio < MIN_SPLIT_RATIO || n.ratio > MAX_SPLIT_RATIO) {
+      if (typeof n.ratio !== "number" || !Number.isFinite(n.ratio) || n.ratio < MIN_SPLIT_RATIO || n.ratio > MAX_SPLIT_RATIO) {
         issues.push({ path: `${path}.ratio`, message: `ratio must be between ${MIN_SPLIT_RATIO} and ${MAX_SPLIT_RATIO}` });
       }
       checkNode(n.first, `${path}.first`);
@@ -855,6 +901,11 @@ export function validatePaneTree(input: unknown): ValidationIssue[] {
   }
   if (!t.focusedPaneId || !paneIds.has(t.focusedPaneId)) {
     issues.push({ path: "focusedPaneId", message: "focusedPaneId must refer to a pane in the tree" });
+  }
+  if (t.maximizedPaneId !== null && t.maximizedPaneId !== undefined) {
+    if (typeof t.maximizedPaneId !== "string" || !paneIds.has(t.maximizedPaneId)) {
+      issues.push({ path: "maximizedPaneId", message: "maximizedPaneId must refer to a pane in the tree or be null" });
+    }
   }
   return issues;
 }
@@ -889,7 +940,7 @@ export function normalizeSshHost(h: Partial<SshHost>): SshHost {
     id: String(h.id ?? `host-${Date.now()}`),
     ...(h.label?.trim() ? { label: h.label.trim().slice(0, 60) } : {}),
     host: String(h.host ?? "").trim(),
-    port: Number.isInteger(h.port) ? Number(h.port) : 22,
+    port: Number.isInteger(h.port) && Number(h.port) >= 1 && Number(h.port) <= 65535 ? Number(h.port) : 22,
     username: String(h.username ?? "").trim(),
     auth: h.auth === "password" || h.auth === "keyAndPassword" ? h.auth : "key",
     ...(h.keyId ? { keyId: String(h.keyId) } : {}),
@@ -923,7 +974,7 @@ export const KEYBOARD_SHORTCUTS: ShortcutSpec[] = [
   { id: "next_tab", action: "Next tab in focused pane", iosKeys: "Cmd + Tab / Cmd + Shift + ]", androidKeys: "Ctrl + Tab", worksWhenTerminalFocused: true },
   { id: "prev_tab", action: "Previous tab in focused pane", iosKeys: "Cmd + Shift + Tab / Cmd + Shift + [", androidKeys: "Ctrl + Shift + Tab", worksWhenTerminalFocused: true },
   { id: "split_right", action: "Split focused pane right (horizontal)", iosKeys: "Cmd + \\ (or Cmd + Shift + →)", androidKeys: "Ctrl + \\ (or Ctrl + Shift + →)", worksWhenTerminalFocused: true },
-  { id: "split_down", action: "Split focused pane down (vertical)", iosKeys: "Cmd + - (or Cmd + Shift + ↓)", androidKeys: "Ctrl + Shift + ↓", worksWhenTerminalFocused: true },
+  { id: "split_down", action: "Split focused pane down (vertical)", iosKeys: "Cmd + Shift + D (or Cmd + Shift + ↓)", androidKeys: "Ctrl + Shift + ↓", worksWhenTerminalFocused: true },
   { id: "focus_next_pane", action: "Focus next pane in tree order", iosKeys: "Cmd + ] (or Cmd + `)", androidKeys: "Ctrl + ] (or Ctrl + `)", worksWhenTerminalFocused: true },
   { id: "focus_prev_pane", action: "Focus previous pane in tree order", iosKeys: "Cmd + [ (or Cmd + Shift + `)", androidKeys: "Ctrl + [ (or Ctrl + Shift + `)", worksWhenTerminalFocused: true },
   { id: "maximize_pane", action: "Maximise / restore focused pane", iosKeys: "Cmd + Shift + M", androidKeys: "Ctrl + Shift + M", worksWhenTerminalFocused: true },

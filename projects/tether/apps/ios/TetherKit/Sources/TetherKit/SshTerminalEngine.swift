@@ -49,6 +49,7 @@ public final class TerminalEmulatorBuffer: @unchecked Sendable {
     private var currentBg: Int?
     private var currentBold: Bool = false
     private var currentUnderline: Bool = false
+    private var pendingEscape: String = ""
 
     public var onWindowChange: ((_ cols: Int, _ rows: Int) -> Void)?
 
@@ -119,37 +120,101 @@ public final class TerminalEmulatorBuffer: @unchecked Sendable {
         cursorCol = 0
     }
 
-    /// Feeds UTF-8 text (including ANSI CSI / DECSET escape sequences) into the terminal buffer.
+    /// Feeds UTF-8 text (including ANSI CSI / OSC / DECSET escape sequences) into the terminal buffer.
     public func feed(_ text: String) {
-        var idx = text.startIndex
-        while idx < text.endIndex {
-            let ch = text[idx]
+        let input: String
+        if pendingEscape.isEmpty {
+            input = text
+        } else {
+            input = pendingEscape + text
+            pendingEscape = ""
+        }
+        var idx = input.startIndex
+        while idx < input.endIndex {
+            let ch = input[idx]
             if ch == "\u{1B}" {
-                let nextIdx = text.index(after: idx)
-                if nextIdx < text.endIndex && text[nextIdx] == "[" {
+                let nextIdx = input.index(after: idx)
+                if nextIdx == input.endIndex {
+                    pendingEscape = String(input[idx...])
+                    return
+                }
+                let indicator = input[nextIdx]
+                if indicator == "[" {
                     // Parse CSI sequence: \x1b[ ... <final byte 0x40..0x7E>
-                    var seqIdx = text.index(after: nextIdx)
+                    var seqIdx = input.index(after: nextIdx)
                     var params = ""
                     var finalChar: Character?
-                    while seqIdx < text.endIndex {
-                        let c = text[seqIdx]
+                    while seqIdx < input.endIndex {
+                        let c = input[seqIdx]
                         if let ascii = c.asciiValue, ascii >= 0x40 && ascii <= 0x7E {
                             finalChar = c
-                            seqIdx = text.index(after: seqIdx)
+                            seqIdx = input.index(after: seqIdx)
                             break
                         }
                         params.append(c)
-                        seqIdx = text.index(after: seqIdx)
+                        seqIdx = input.index(after: seqIdx)
                     }
                     if let finalChar {
                         handleCSI(params: params, finalChar: finalChar)
+                        idx = seqIdx
+                        continue
+                    } else {
+                        // Incomplete CSI sequence split across chunks
+                        if input.distance(from: idx, to: input.endIndex) < 64 {
+                            pendingEscape = String(input[idx...])
+                        }
+                        return
                     }
-                    idx = seqIdx
+                } else if indicator == "]" {
+                    // Parse OSC sequence: \x1b] ... (\x07 or \x1b\\)
+                    var seqIdx = input.index(after: nextIdx)
+                    var terminated = false
+                    while seqIdx < input.endIndex {
+                        let c = input[seqIdx]
+                        if c == "\u{07}" {
+                            seqIdx = input.index(after: seqIdx)
+                            terminated = true
+                            break
+                        }
+                        if c == "\u{1B}" {
+                            let afterEsc = input.index(after: seqIdx)
+                            if afterEsc == input.endIndex {
+                                break
+                            }
+                            if input[afterEsc] == "\\" {
+                                seqIdx = input.index(after: afterEsc)
+                                terminated = true
+                                break
+                            }
+                        }
+                        seqIdx = input.index(after: seqIdx)
+                    }
+                    if terminated {
+                        idx = seqIdx
+                        continue
+                    } else {
+                        if input.distance(from: idx, to: input.endIndex) < 256 {
+                            pendingEscape = String(input[idx...])
+                        }
+                        return
+                    }
+                } else if indicator == "(" || indicator == ")" || indicator == "*" || indicator == "+" {
+                    // 3-byte charset selection sequence e.g. \x1b(B
+                    let afterIndicator = input.index(after: nextIdx)
+                    if afterIndicator == input.endIndex {
+                        pendingEscape = String(input[idx...])
+                        return
+                    }
+                    idx = input.index(after: afterIndicator)
+                    continue
+                } else {
+                    // 2-byte ESC sequence (e.g. \x1b=, \x1b>, \x1bM, \x1b7, \x1b8)
+                    idx = input.index(after: nextIdx)
                     continue
                 }
             }
             putChar(ch)
-            idx = text.index(after: idx)
+            idx = input.index(after: idx)
         }
     }
 
@@ -184,6 +249,12 @@ public final class TerminalEmulatorBuffer: @unchecked Sendable {
             let c = max(1, nums.count > 1 ? nums[1] : 1) - 1
             cursorRow = min(rows - 1, max(0, r))
             cursorCol = min(cols - 1, max(0, c))
+        case "G":
+            let c = max(1, nums.first ?? 1) - 1
+            cursorCol = min(cols - 1, max(0, c))
+        case "d":
+            let r = max(1, nums.first ?? 1) - 1
+            cursorRow = min(rows - 1, max(0, r))
         case "A":
             cursorRow = max(0, cursorRow - max(1, nums.first ?? 1))
         case "B":
@@ -195,21 +266,79 @@ public final class TerminalEmulatorBuffer: @unchecked Sendable {
         case "J":
             let mode = nums.first ?? 0
             if mode == 2 || mode == 3 {
-                activeGrid = Array(
-                    repeating: Array(repeating: TerminalCell(), count: cols),
-                    count: rows
-                )
+                let blank = Array(repeating: Array(repeating: TerminalCell(), count: cols), count: rows)
+                if isAlternateScreen { alternateGrid = blank } else { primaryGrid = blank }
                 cursorRow = 0
                 cursorCol = 0
+            } else if mode == 0 {
+                clearRange(fromRow: cursorRow, fromCol: cursorCol, toRow: rows - 1, toCol: cols - 1)
+            } else if mode == 1 {
+                clearRange(fromRow: 0, fromCol: 0, toRow: cursorRow, toCol: cursorCol)
             }
         case "K":
-            var grid = activeGrid
-            for c in cursorCol..<cols {
-                grid[cursorRow][c] = TerminalCell()
+            let mode = nums.first ?? 0
+            let startCol: Int
+            let endCol: Int
+            switch mode {
+            case 1:
+                startCol = 0
+                endCol = min(cols - 1, cursorCol)
+            case 2:
+                startCol = 0
+                endCol = cols - 1
+            default:
+                startCol = min(cols, cursorCol)
+                endCol = cols - 1
             }
-            activeGrid = grid
+            if startCol <= endCol {
+                if isAlternateScreen {
+                    for c in startCol...endCol { alternateGrid[cursorRow][c] = TerminalCell() }
+                } else {
+                    for c in startCol...endCol { primaryGrid[cursorRow][c] = TerminalCell() }
+                }
+            }
+        case "X":
+            let count = max(1, nums.first ?? 1)
+            let endCol = min(cols - 1, cursorCol + count - 1)
+            if cursorCol <= endCol {
+                if isAlternateScreen {
+                    for c in cursorCol...endCol { alternateGrid[cursorRow][c] = TerminalCell() }
+                } else {
+                    for c in cursorCol...endCol { primaryGrid[cursorRow][c] = TerminalCell() }
+                }
+            }
+        case "P":
+            let count = max(1, nums.first ?? 1)
+            if isAlternateScreen {
+                for c in cursorCol..<cols {
+                    let src = c + count
+                    alternateGrid[cursorRow][c] = src < cols ? alternateGrid[cursorRow][src] : TerminalCell()
+                }
+            } else {
+                for c in cursorCol..<cols {
+                    let src = c + count
+                    primaryGrid[cursorRow][c] = src < cols ? primaryGrid[cursorRow][src] : TerminalCell()
+                }
+            }
         default:
             break
+        }
+    }
+
+    private func clearRange(fromRow: Int, fromCol: Int, toRow: Int, toCol: Int) {
+        let r0 = max(0, min(rows - 1, fromRow))
+        let r1 = max(0, min(rows - 1, toRow))
+        guard r0 <= r1 else { return }
+        for r in r0...r1 {
+            let c0 = (r == r0) ? max(0, min(cols - 1, fromCol)) : 0
+            let c1 = (r == r1) ? max(0, min(cols - 1, toCol)) : (cols - 1)
+            if c0 <= c1 {
+                if isAlternateScreen {
+                    for c in c0...c1 { alternateGrid[r][c] = TerminalCell() }
+                } else {
+                    for c in c0...c1 { primaryGrid[r][c] = TerminalCell() }
+                }
+            }
         }
     }
 
@@ -273,19 +402,30 @@ public final class TerminalEmulatorBuffer: @unchecked Sendable {
             cursorCol = max(0, cursorCol - 1)
             return
         }
+        if ch == "\u{07}" {
+            return
+        }
+        if ch == "\t" {
+            let nextStop = ((cursorCol / 8) + 1) * 8
+            cursorCol = min(cols - 1, nextStop)
+            return
+        }
         if cursorCol >= cols {
             cursorCol = 0
             advanceLine()
         }
-        var grid = activeGrid
-        grid[cursorRow][cursorCol] = TerminalCell(
+        let cell = TerminalCell(
             char: ch,
             fgColorIndex: currentFg,
             bgColorIndex: currentBg,
             bold: currentBold,
             underline: currentUnderline
         )
-        activeGrid = grid
+        if isAlternateScreen {
+            alternateGrid[cursorRow][cursorCol] = cell
+        } else {
+            primaryGrid[cursorRow][cursorCol] = cell
+        }
         cursorCol += 1
     }
 
@@ -294,9 +434,12 @@ public final class TerminalEmulatorBuffer: @unchecked Sendable {
             cursorRow += 1
             return
         }
-        var grid = activeGrid
-        let topRow = grid.removeFirst()
-        if !isAlternateScreen {
+        let topRow: [TerminalCell]
+        if isAlternateScreen {
+            topRow = alternateGrid.removeFirst()
+            alternateGrid.append(Array(repeating: TerminalCell(), count: cols))
+        } else {
+            topRow = primaryGrid.removeFirst()
             let lineStr = String(topRow.map(\.char)).replacingOccurrences(
                 of: #"\s+$"#,
                 with: "",
@@ -306,9 +449,8 @@ public final class TerminalEmulatorBuffer: @unchecked Sendable {
             if scrollback.count > maxScrollbackLines {
                 scrollback.removeFirst(scrollback.count - maxScrollbackLines)
             }
+            primaryGrid.append(Array(repeating: TerminalCell(), count: cols))
         }
-        grid.append(Array(repeating: TerminalCell(), count: cols))
-        activeGrid = grid
     }
 
     /// Renders the scrollback + active screen lines into plain text for display / inspection.

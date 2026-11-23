@@ -95,6 +95,10 @@ public final class SshTabViewController: UIViewController {
         blinkTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
+                guard self.isTerminalConnected,
+                      self.paneId == self.store.tree.focusedPaneId,
+                      self.view.window != nil,
+                      !self.view.isHidden else { return }
                 self.cursorBlink.toggle()
                 self.renderTerminal()
             }
@@ -117,18 +121,27 @@ public final class SshTabViewController: UIViewController {
         let upper = key.uppercased()
         switch upper {
         case "C":
-            terminalBuffer.feed("\(shellPromptString)\(activeInputLine)^C\r\n")
+            if isTerminalConnected {
+                terminalBuffer.feed("\(shellPromptString)\(activeInputLine)^C\r\n")
+            }
             activeInputLine = ""
         case "D":
-            if activeInputLine.isEmpty {
+            if activeInputLine.isEmpty && isTerminalConnected {
                 disconnectSession(reason: "logout (EOF ^D)")
                 return
             }
         case "L":
             terminalBuffer.clearScrollback()
+        case "U", "K":
             activeInputLine = ""
-        case "U":
-            activeInputLine = ""
+        case "W":
+            // Delete last word
+            var trimmed = activeInputLine
+            while trimmed.last == " " { trimmed.removeLast() }
+            while let last = trimmed.last, last != " " { trimmed.removeLast() }
+            activeInputLine = trimmed
+        case "A", "E":
+            break
         case "R":
             terminalBuffer.feed("(reverse-i-search)`': \r\n")
             activeInputLine = ""
@@ -377,6 +390,13 @@ public final class SshTabViewController: UIViewController {
                 self.renderTerminal()
             }
             .store(in: &cancellables)
+
+        store.$sshStates
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.refreshToolbarState()
+            }
+            .store(in: &cancellables)
     }
 
     private func recalculateTerminalGrid() {
@@ -430,19 +450,136 @@ public final class SshTabViewController: UIViewController {
         }
     }
 
+    private static func xtermColor(_ index: Int) -> UIColor {
+        let ansi16: [UIColor] = [
+            UIColor(red: 0.12, green: 0.16, blue: 0.23, alpha: 1.0), // 0 black
+            UIColor(red: 0.94, green: 0.27, blue: 0.27, alpha: 1.0), // 1 red
+            UIColor(red: 0.20, green: 0.83, blue: 0.60, alpha: 1.0), // 2 green
+            UIColor(red: 0.98, green: 0.75, blue: 0.14, alpha: 1.0), // 3 yellow
+            UIColor(red: 0.38, green: 0.65, blue: 0.98, alpha: 1.0), // 4 blue
+            UIColor(red: 0.75, green: 0.52, blue: 0.99, alpha: 1.0), // 5 magenta
+            UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0), // 6 cyan
+            UIColor(red: 0.88, green: 0.92, blue: 0.97, alpha: 1.0), // 7 white
+            UIColor(red: 0.40, green: 0.45, blue: 0.55, alpha: 1.0), // 8 bright black
+            UIColor(red: 0.99, green: 0.45, blue: 0.45, alpha: 1.0), // 9 bright red
+            UIColor(red: 0.34, green: 0.93, blue: 0.69, alpha: 1.0), // 10 bright green
+            UIColor(red: 0.99, green: 0.88, blue: 0.28, alpha: 1.0), // 11 bright yellow
+            UIColor(red: 0.58, green: 0.78, blue: 0.99, alpha: 1.0), // 12 bright blue
+            UIColor(red: 0.85, green: 0.66, blue: 1.00, alpha: 1.0), // 13 bright magenta
+            UIColor(red: 0.40, green: 0.85, blue: 1.00, alpha: 1.0), // 14 bright cyan
+            UIColor(red: 1.00, green: 1.00, blue: 1.00, alpha: 1.0), // 15 bright white
+        ]
+        if index >= 0 && index < 16 { return ansi16[index] }
+        if index >= 16 && index <= 231 {
+            let n = index - 16
+            let r = n / 36
+            let g = (n % 36) / 6
+            let b = n % 6
+            let levels: [CGFloat] = [0.0, 95.0/255.0, 135.0/255.0, 175.0/255.0, 215.0/255.0, 1.0]
+            return UIColor(red: levels[r], green: levels[g], blue: levels[b], alpha: 1.0)
+        }
+        if index >= 232 && index <= 255 {
+            let v = CGFloat(8 + (index - 232) * 10) / 255.0
+            return UIColor(red: v, green: v, blue: v, alpha: 1.0)
+        }
+        return UIColor(red: 0.88, green: 0.92, blue: 0.97, alpha: 1.0)
+    }
+
     private func renderTerminal(scrollToBottom: Bool = false) {
-        let lines = terminalBuffer.renderedLines(includeScrollback: true)
-        var text = lines.joined(separator: "\n")
+        let fontSize = CGFloat(store.settings.terminalFontSizePt)
+        let regularFont = UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        let boldFont = UIFont.monospacedSystemFont(ofSize: fontSize, weight: .bold)
+        let defaultFg = UIColor(red: 0.88, green: 0.92, blue: 0.97, alpha: 1.0)
+        let baseAttrs: [NSAttributedString.Key: Any] = [
+            .font: regularFont,
+            .foregroundColor: defaultFg
+        ]
+
+        let attributed = NSMutableAttributedString()
+
+        if !terminalBuffer.isAlternateScreen && !terminalBuffer.scrollback.isEmpty {
+            let sbText = terminalBuffer.scrollback.joined(separator: "\n") + "\n"
+            attributed.append(NSAttributedString(string: sbText, attributes: baseAttrs))
+        }
+
+        // Build attributed active screen grid with run-length batching for performance
+        let grid = terminalBuffer.activeGrid
+        var lastRowToRender = grid.count - 1
+        if !terminalBuffer.isAlternateScreen {
+            while lastRowToRender > terminalBuffer.cursorRow {
+                let isBlank = grid[lastRowToRender].allSatisfy { $0.char == " " && $0.bgColorIndex == nil }
+                if isBlank { lastRowToRender -= 1 } else { break }
+            }
+            while lastRowToRender > 0 {
+                let isBlank = grid[lastRowToRender].allSatisfy { $0.char == " " && $0.bgColorIndex == nil }
+                if isBlank { lastRowToRender -= 1 } else { break }
+            }
+        }
+
+        for r in 0...max(0, lastRowToRender) {
+            let row = grid[r]
+            var lastCol = row.count - 1
+            while lastCol >= 0 && row[lastCol].char == " " && row[lastCol].bgColorIndex == nil {
+                lastCol -= 1
+            }
+            if lastCol >= 0 {
+                var c = 0
+                while c <= lastCol {
+                    let first = row[c]
+                    var runChars = String(first.char)
+                    var next = c + 1
+                    while next <= lastCol {
+                        let cell = row[next]
+                        if cell.fgColorIndex == first.fgColorIndex &&
+                           cell.bgColorIndex == first.bgColorIndex &&
+                           cell.bold == first.bold &&
+                           cell.underline == first.underline {
+                            runChars.append(cell.char)
+                            next += 1
+                        } else {
+                            break
+                        }
+                    }
+                    var attrs: [NSAttributedString.Key: Any] = [
+                        .font: first.bold ? boldFont : regularFont,
+                        .foregroundColor: first.fgColorIndex.map(Self.xtermColor) ?? defaultFg
+                    ]
+                    if let bgIdx = first.bgColorIndex {
+                        attrs[.backgroundColor] = Self.xtermColor(bgIdx)
+                    }
+                    if first.underline {
+                        attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
+                    }
+                    attributed.append(NSAttributedString(string: runChars, attributes: attrs))
+                    c = next
+                }
+            }
+            if r < lastRowToRender {
+                attributed.append(NSAttributedString(string: "\n", attributes: baseAttrs))
+            }
+        }
+
         if isTerminalConnected {
             let isFocused = (paneId == store.tree.focusedPaneId)
             let cursorChar = (isFocused && cursorBlink) ? "█" : " "
-            if !text.isEmpty && !text.hasSuffix("\n") {
-                text += "\n"
+            if attributed.length > 0 && !attributed.string.hasSuffix("\n") {
+                attributed.append(NSAttributedString(string: "\n", attributes: baseAttrs))
             }
-            text += "\(shellPromptString)\(activeInputLine)\(cursorChar)"
+            let promptAttrs: [NSAttributedString.Key: Any] = [
+                .font: boldFont,
+                .foregroundColor: UIColor(red: 0.20, green: 0.83, blue: 0.60, alpha: 1.0)
+            ]
+            attributed.append(NSAttributedString(string: shellPromptString, attributes: promptAttrs))
+            attributed.append(NSAttributedString(string: activeInputLine, attributes: baseAttrs))
+            let cursorAttrs: [NSAttributedString.Key: Any] = [
+                .font: regularFont,
+                .foregroundColor: UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
+            ]
+            attributed.append(NSAttributedString(string: cursorChar, attributes: cursorAttrs))
         }
+
         let oldOffset = terminalTextView.contentOffset
-        terminalTextView.text = text
+        terminalTextView.attributedText = attributed
         let maxOffsetY = max(0, terminalTextView.contentSize.height - terminalTextView.bounds.height + terminalTextView.adjustedContentInset.bottom)
         if scrollToBottom {
             terminalTextView.setContentOffset(CGPoint(x: 0, y: maxOffsetY), animated: false)
@@ -482,8 +619,16 @@ public final class SshTabViewController: UIViewController {
     }
 
     @objc private func connectOrDisconnectTapped() {
-        if isTerminalConnected {
+        let state = store.sshStates[tabItem.id] ?? .disconnected
+        if state == .connected {
             disconnectSession(reason: "Disconnected by user")
+            return
+        }
+        if state == .connecting {
+            store.sshStates[tabItem.id] = .disconnected
+            terminalBuffer.feed("Connection cancelled.\r\n")
+            renderTerminal(scrollToBottom: true)
+            refreshToolbarState()
             return
         }
         guard let host = currentHost else { return }
@@ -677,18 +822,22 @@ public final class SshTabViewController: UIViewController {
         refreshToolbarState()
     }
 
-    @objc private func decreaseFontTapped() {
+    @objc public func decreaseFontTapped() {
         store.settings.terminalFontSizePt = max(
             TetherConstants.minTerminalFontSize,
             store.settings.terminalFontSizePt - 1
         )
     }
 
-    @objc private func increaseFontTapped() {
+    @objc public func increaseFontTapped() {
         store.settings.terminalFontSizePt = min(
             TetherConstants.maxTerminalFontSize,
             store.settings.terminalFontSizePt + 1
         )
+    }
+
+    public func resetFontSize() {
+        store.settings.terminalFontSizePt = TetherConstants.defaultTerminalFontSize
     }
 
     @objc private func clearScrollbackTapped() {

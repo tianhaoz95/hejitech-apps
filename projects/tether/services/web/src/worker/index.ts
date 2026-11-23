@@ -82,9 +82,16 @@ async function authorize(req: Request, env: Env): Promise<Response> {
   }
 }
 
+const grantCors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "GET, DELETE, OPTIONS",
+};
+
 async function grants(req: Request, env: Env, url: URL): Promise<Response> {
+  if (req.method === "OPTIONS") return new Response(null, { headers: grantCors });
   const user = await supabaseUser(env, req);
-  if (!user) return json({ error: "sign in required" }, 401);
+  if (!user) return json({ error: "sign in required" }, 401, grantCors);
   const oauth = env.OAUTH_PROVIDER;
   if (req.method === "GET" && url.pathname === "/api/grants") {
     const { items } = await oauth.listUserGrants(user.id);
@@ -98,14 +105,20 @@ async function grants(req: Request, env: Env, url: URL): Promise<Response> {
         };
       })
     );
-    return json(rows);
+    return json(rows, 200, grantCors);
   }
   const m = url.pathname.match(/^\/api\/grants\/([^/]+)$/);
   if (req.method === "DELETE" && m) {
-    await oauth.revokeGrant(decodeURIComponent(m[1]), user.id);
-    return json({ ok: true });
+    let grantId: string;
+    try {
+      grantId = decodeURIComponent(m[1]);
+    } catch {
+      return json({ error: "invalid grant id" }, 400, grantCors);
+    }
+    await oauth.revokeGrant(grantId, user.id);
+    return json({ ok: true }, 200, grantCors);
   }
-  return json({ error: "not found" }, 404);
+  return json({ error: "not found" }, 404, grantCors);
 }
 
 const app = {

@@ -64,11 +64,17 @@ export async function resolveAgent(db: Db, token: string): Promise<string | null
 }
 
 export async function loadWorkspace(db: Db, userId: string): Promise<WorkspaceSnapshot & { saved: boolean }> {
-  const [{ data: ws }, { data: hostRows }, { data: bmRows }] = await Promise.all([
+  const [wsRes, hostsRes, bmRes] = await Promise.all([
     db.from("workspaces").select("tree, settings, updated_at").eq("user_id", userId).maybeSingle(),
     db.from("hosts").select("*").eq("user_id", userId).order("created_at"),
     db.from("bookmarks").select("*").eq("user_id", userId).order("created_at"),
   ]);
+  if (wsRes.error) throw new Error(`couldn't load workspace: ${wsRes.error.message}`);
+  if (hostsRes.error) throw new Error(`couldn't load hosts: ${hostsRes.error.message}`);
+  if (bmRes.error) throw new Error(`couldn't load bookmarks: ${bmRes.error.message}`);
+  const ws = wsRes.data;
+  const hostRows = hostsRes.data;
+  const bmRows = bmRes.data;
 
   const rawTree = ws?.tree as PaneTree | undefined;
   const tree = rawTree && validatePaneTree(rawTree).length === 0 ? rawTree : createDefaultTree();

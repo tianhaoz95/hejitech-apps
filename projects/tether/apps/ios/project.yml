@@ -46,6 +46,15 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default Configuration
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).TetherSceneDelegate
+            UIWindowSceneSessionRoleExternalDisplayNonInteractive:
+              - UISceneConfigurationName: External Display
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).TetherSceneDelegate
         UIApplicationSupportsIndirectInputEvents: true
         UISupportsDocumentBrowser: true
         UIFileSharingEnabled: true

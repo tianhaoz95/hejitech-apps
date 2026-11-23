@@ -95,7 +95,24 @@ class TetherCoreTest {
         assertEquals("root.hosts[0].privateKey", PaneTreeOps.findForbiddenSecretPath(dirty))
 
         assertEquals("https://example.com", PaneTreeOps.resolveAddressBarInput("example.com"))
+        assertEquals("about:home", PaneTreeOps.resolveAddressBarInput("about:home"))
         assertFalse(PaneTreeOps.isMultiLinePaste("ls -la"))
         assertTrue(PaneTreeOps.isMultiLinePaste("echo 1\necho 2"))
+        assertEquals("'/tmp/my file.txt'", PaneTreeOps.shellQuotedPath("/tmp/my file.txt"))
+    }
+
+    @Test
+    fun presetAvoidsDuplicatePaneIdsAndPreservesTwoByTwoOrder() {
+        var tree = PaneTreeOps.createDefaultPaneTree()
+        tree = PaneTreeOps.closePane(tree, "pane-1")
+        val twoCol = PaneTreeOps.applyLayoutPreset(tree, LayoutPresetId.TWO_COLUMN)
+        val ids = PaneTreeOps.collectPanes(twoCol.root).map { it.id }
+        assertEquals(2, ids.toSet().size)
+
+        val grid1 = PaneTreeOps.applyLayoutPreset(twoCol, LayoutPresetId.TWO_BY_TWO)
+        val order1 = PaneTreeOps.collectPanes(grid1.root).map { it.id }
+        val grid2 = PaneTreeOps.applyLayoutPreset(grid1, LayoutPresetId.TWO_BY_TWO)
+        val order2 = PaneTreeOps.collectPanes(grid2.root).map { it.id }
+        assertEquals(order1, order2)
     }
 }

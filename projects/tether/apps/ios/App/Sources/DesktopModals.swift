@@ -89,6 +89,11 @@ public final class DesktopHostsModalView: UIView, UITableViewDataSource, UITable
         tableView.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(tableView)
 
+        let preferredW = card.widthAnchor.constraint(equalToConstant: 680)
+        preferredW.priority = .defaultHigh
+        let preferredH = card.heightAnchor.constraint(equalToConstant: 480)
+        preferredH.priority = .defaultHigh
+
         NSLayoutConstraint.activate([
             backdrop.topAnchor.constraint(equalTo: topAnchor),
             backdrop.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -97,8 +102,10 @@ public final class DesktopHostsModalView: UIView, UITableViewDataSource, UITable
 
             card.centerXAnchor.constraint(equalTo: centerXAnchor),
             card.centerYAnchor.constraint(equalTo: centerYAnchor),
-            card.widthAnchor.constraint(equalToConstant: min(680, UIScreen.main.bounds.width - 40)),
-            card.heightAnchor.constraint(equalToConstant: min(480, UIScreen.main.bounds.height - 60)),
+            preferredW,
+            preferredH,
+            card.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -40),
+            card.heightAnchor.constraint(lessThanOrEqualTo: heightAnchor, constant: -60),
 
             titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
@@ -237,7 +244,7 @@ public final class DesktopHostsModalView: UIView, UITableViewDataSource, UITable
         }, onDelete: { [weak self] in
             guard let self else { return }
             self.store.secureStore.deleteHostPassword(forHostId: host.id)
-            self.store.hosts.remove(at: indexPath.row)
+            self.store.hosts.removeAll(where: { $0.id == host.id })
             self.tableView.reloadData()
         })
         return cell
@@ -398,6 +405,11 @@ public final class DesktopSettingsModalView: UIView {
         stack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(stack)
 
+        let preferredW = card.widthAnchor.constraint(equalToConstant: 640)
+        preferredW.priority = .defaultHigh
+        let preferredH = card.heightAnchor.constraint(equalToConstant: 520)
+        preferredH.priority = .defaultHigh
+
         NSLayoutConstraint.activate([
             backdrop.topAnchor.constraint(equalTo: topAnchor),
             backdrop.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -406,8 +418,10 @@ public final class DesktopSettingsModalView: UIView {
 
             card.centerXAnchor.constraint(equalTo: centerXAnchor),
             card.centerYAnchor.constraint(equalTo: centerYAnchor),
-            card.widthAnchor.constraint(equalToConstant: min(640, UIScreen.main.bounds.width - 40)),
-            card.heightAnchor.constraint(equalToConstant: min(520, UIScreen.main.bounds.height - 60)),
+            preferredW,
+            preferredH,
+            card.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -40),
+            card.heightAnchor.constraint(lessThanOrEqualTo: heightAnchor, constant: -60),
 
             titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
@@ -696,6 +710,11 @@ public final class DesktopShortcutsModalView: UIView, UITextFieldDelegate {
         stack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(stack)
 
+        let preferredW = card.widthAnchor.constraint(equalToConstant: 680)
+        preferredW.priority = .defaultHigh
+        let preferredH = card.heightAnchor.constraint(equalToConstant: 560)
+        preferredH.priority = .defaultHigh
+
         NSLayoutConstraint.activate([
             backdrop.topAnchor.constraint(equalTo: topAnchor),
             backdrop.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -704,8 +723,10 @@ public final class DesktopShortcutsModalView: UIView, UITextFieldDelegate {
 
             card.centerXAnchor.constraint(equalTo: centerXAnchor),
             card.centerYAnchor.constraint(equalTo: centerYAnchor),
-            card.widthAnchor.constraint(equalToConstant: min(680, UIScreen.main.bounds.width - 40)),
-            card.heightAnchor.constraint(equalToConstant: min(560, UIScreen.main.bounds.height - 60)),
+            preferredW,
+            preferredH,
+            card.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -40),
+            card.heightAnchor.constraint(lessThanOrEqualTo: heightAnchor, constant: -60),
 
             titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
@@ -737,6 +758,23 @@ public final class DesktopShortcutsModalView: UIView, UITextFieldDelegate {
 
     @objc private func handleSearchChanged() {
         buildShortcutsContent(filter: searchField.text ?? "")
+    }
+
+    public func handleKeyInput(_ text: String) {
+        if text == "\u{7F}" || text == "\u{08}" {
+            var cur = searchField.text ?? ""
+            if !cur.isEmpty {
+                cur.removeLast()
+                searchField.text = cur
+                handleSearchChanged()
+            }
+            return
+        }
+        let printable = text.filter { !$0.isASCII || ($0 >= " " && $0 != "\u{7F}") }
+        if !printable.isEmpty {
+            searchField.text = (searchField.text ?? "") + printable
+            handleSearchChanged()
+        }
     }
 
     private func buildShortcutsContent(filter: String) {

@@ -42,6 +42,9 @@ public final class TilingWorkspaceViewController: UIViewController {
     /// Active split drag metadata.
     private var activeSplitDrags: [UIPanGestureRecognizer: (splitId: String, direction: SplitDirection, containerBounds: CGRect)] = [:]
     private var lastRenderedTree: PaneTree?
+    private var lastRenderedCanvasSize: CGSize = .zero
+    private var lastRenderedIsCompactPhone: Bool = false
+    private var lastRenderedInteractionMode: DesktopInteractionMode = .normal
     /// Tab strip scroll offsets by pane id, kept across rebuilds so tabs past the strip's edge stay reachable.
     private var tabStripOffsets: [String: CGFloat] = [:]
 
@@ -255,6 +258,7 @@ public final class TilingWorkspaceViewController: UIViewController {
             .store(in: &cancellables)
 
         store.$activeWorkspaceIndex
+            .dropFirst()
             .receive(on: RunLoop.main)
             .sink { [weak self] idx in
                 guard let self else { return }
@@ -388,20 +392,35 @@ public final class TilingWorkspaceViewController: UIViewController {
     private func rebuildWorkspaceLayout() {
         guard workspaceCanvas.bounds.width > 10, workspaceCanvas.bounds.height > 10 else { return }
 
-        // If only the focused pane changed within an identical split/tab structure,
+        let isCompactPhone = view.bounds.width < 600 && !store.isExternalDisplayConnected
+        // If only the focused pane changed within an identical split/tab structure and canvas geometry,
         // update the borders and headers in place WITHOUT recreating views or resetting scroll!
         if let last = lastRenderedTree,
            last.root == store.tree.root,
            last.maximisedPaneId == store.tree.maximisedPaneId,
+           lastRenderedCanvasSize == workspaceCanvas.bounds.size,
+           lastRenderedIsCompactPhone == isCompactPhone,
+           lastRenderedInteractionMode == currentInteractionMode,
            !workspaceCanvas.subviews.isEmpty {
             lastRenderedTree = store.tree
             updatePaneFocusVisuals()
+            updateBottomStatusHud()
             return
         }
         lastRenderedTree = store.tree
+        lastRenderedCanvasSize = workspaceCanvas.bounds.size
+        lastRenderedIsCompactPhone = isCompactPhone
+        lastRenderedInteractionMode = currentInteractionMode
 
-        // Prune controllers for closed tabs
-        let allOpenTabIds = Set(store.panes.flatMap(\.tabs).map(\.id))
+        // Prune controllers only for tabs closed across ALL workspaces (not just the active workspace)
+        var allOpenTabIds = Set(store.panes.flatMap(\.tabs).map(\.id))
+        for ws in store.workspaces {
+            for pane in PaneTreeOps.collectPanes(ws.tree.root) {
+                for tab in pane.tabs {
+                    allOpenTabIds.insert(tab.id)
+                }
+            }
+        }
         for (tabId, vc) in tabControllers where !allOpenTabIds.contains(tabId) {
             vc.willMove(toParent: nil)
             vc.view.removeFromSuperview()
@@ -440,10 +459,11 @@ public final class TilingWorkspaceViewController: UIViewController {
             phoneSwitcherStack.addArrangedSubview(btn)
         }
 
-        let isCompactPhone = view.bounds.width < 600 && !store.isExternalDisplayConnected
-        if isCompactPhone, let focused = store.focusedPane {
+        let isCompactPhoneLayout = isCompactPhone
+        if isCompactPhoneLayout, let focused = store.focusedPane {
             let paneView = buildPaneContainer(pane: focused, frame: workspaceCanvas.bounds)
             workspaceCanvas.addSubview(paneView)
+            updateBottomStatusHud()
             return
         }
 
@@ -451,10 +471,12 @@ public final class TilingWorkspaceViewController: UIViewController {
            let maxPane = PaneTreeOps.findPane(store.tree.root, paneId: maxId) {
             let paneView = buildPaneContainer(pane: maxPane, frame: workspaceCanvas.bounds)
             workspaceCanvas.addSubview(paneView)
+            updateBottomStatusHud()
             return
         }
 
         renderTreeNode(store.tree.root, in: workspaceCanvas.bounds)
+        updateBottomStatusHud()
     }
 
     private func recordTabStripOffsets(in root: UIView) {
@@ -525,6 +547,11 @@ public final class TilingWorkspaceViewController: UIViewController {
         divider.addGestureRecognizer(pan)
         activeSplitDrags[pan] = (splitId: split.id, direction: split.direction, containerBounds: parentRect)
 
+        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDividerDoubleTap(_:)))
+        doubleTap.numberOfTapsRequired = 2
+        divider.accessibilityIdentifier = "divider-\(split.id)"
+        divider.addGestureRecognizer(doubleTap)
+
         let divInfo = SplitDividerInfo(
             splitId: split.id,
             direction: split.direction,
@@ -546,6 +573,12 @@ public final class TilingWorkspaceViewController: UIViewController {
             rawRatio = Double((loc.y - meta.containerBounds.minY) / max(1, meta.containerBounds.height))
         }
         store.tree = PaneTreeOps.updateSplitRatio(store.tree, splitId: meta.splitId, ratio: rawRatio)
+    }
+
+    @objc private func handleDividerDoubleTap(_ gesture: UITapGestureRecognizer) {
+        guard let id = gesture.view?.accessibilityIdentifier, id.hasPrefix("divider-") else { return }
+        let splitId = String(id.dropFirst("divider-".count))
+        store.tree = PaneTreeOps.updateSplitRatio(store.tree, splitId: splitId, ratio: 0.5)
     }
 
     private func buildPaneContainer(pane: PaneNode, frame: CGRect) -> UIView {
@@ -624,7 +657,7 @@ public final class TilingWorkspaceViewController: UIViewController {
             titleBtn.setTitleColor(isActive ? .white : UIColor(white: 0.72, alpha: 1.0), for: .normal)
 
             let closeBtn = DesktopActionButton { [weak self] in
-                self?.store.closeTab(paneId: pane.id, tabId: tab.id)
+                self?.requestCloseTab(paneId: pane.id, tabId: tab.id)
             }
             closeBtn.setTitle("×", for: .normal)
             closeBtn.titleLabel?.font = .systemFont(ofSize: 12, weight: .bold)
@@ -779,26 +812,23 @@ public final class TilingWorkspaceViewController: UIViewController {
 
     private func updatePaneFocusVisuals() {
         let focusedId = store.tree.focusedPaneId
-        func updateContainerRecursively(_ v: UIView) {
-            if let pId = v.accessibilityIdentifier, !pId.hasPrefix("header-") {
+        let paneIds = Set(store.panes.map(\.id))
+        for container in workspaceCanvas.subviews {
+            if let pId = container.accessibilityIdentifier, paneIds.contains(pId) {
                 let isFocused = (pId == focusedId)
-                v.layer.borderWidth = isFocused ? 2.0 : 1.0
-                v.layer.borderColor = isFocused
+                container.layer.borderWidth = isFocused ? 2.0 : 1.0
+                container.layer.borderColor = isFocused
                     ? UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0).cgColor
                     : UIColor(white: 1.0, alpha: 0.12).cgColor
-            }
-            if let hId = v.accessibilityIdentifier, hId.hasPrefix("header-") {
-                let pId = String(hId.dropFirst("header-".count))
-                let isFocused = (pId == focusedId)
-                v.backgroundColor = isFocused
-                    ? UIColor(red: 0.07, green: 0.12, blue: 0.22, alpha: 1.0)
-                    : UIColor(red: 0.04, green: 0.07, blue: 0.12, alpha: 1.0)
-            }
-            for sub in v.subviews {
-                updateContainerRecursively(sub)
+                for sub in container.subviews {
+                    if sub.accessibilityIdentifier == "header-\(pId)" {
+                        sub.backgroundColor = isFocused
+                            ? UIColor(red: 0.07, green: 0.12, blue: 0.22, alpha: 1.0)
+                            : UIColor(red: 0.04, green: 0.07, blue: 0.12, alpha: 1.0)
+                    }
+                }
             }
         }
-        updateContainerRecursively(workspaceCanvas)
 
         for (idx, v) in phoneSwitcherStack.arrangedSubviews.enumerated() {
             if let btn = v as? UIButton, idx < store.panes.count {
@@ -826,6 +856,30 @@ public final class TilingWorkspaceViewController: UIViewController {
             palette.handleKeyInput(text)
             return
         }
+        if let dialog = activeDialog {
+            dialog.handleKeyInput(text)
+            return
+        }
+        if let shortcuts = activeShortcutsModal {
+            shortcuts.handleKeyInput(text)
+            return
+        }
+        // Empty pane hotkeys: [W] Browser, [S] SSH Terminal, [F] Files
+        if let focused = store.focusedPane, focused.tabs.isEmpty {
+            switch text.lowercased() {
+            case "w":
+                store.openTab(type: .web, inPaneId: focused.id)
+                return
+            case "s":
+                store.openTab(type: .ssh, inPaneId: focused.id)
+                return
+            case "f":
+                store.openTab(type: .files, inPaneId: focused.id)
+                return
+            default:
+                return
+            }
+        }
         guard let active = activeTabController else { return }
         if let ssh = active as? SshTabViewController {
             ssh.handleKeyInput(text: text)
@@ -851,6 +905,9 @@ public final class TilingWorkspaceViewController: UIViewController {
             case .down:
                 palette.selectNextItem()
                 return
+            case .backspace:
+                palette.handleKeyInput("\u{7F}")
+                return
             default:
                 break
             }
@@ -863,9 +920,20 @@ public final class TilingWorkspaceViewController: UIViewController {
             case .escape:
                 dialog.triggerCancelAction()
                 return
+            case .backspace:
+                dialog.handleKeyInput("\u{7F}")
+                return
             default:
                 break
             }
+        }
+        if key == .escape && (activeHostsModal != nil || activeSettingsModal != nil || activeShortcutsModal != nil) {
+            dismissAllModals()
+            return
+        }
+        if let shortcuts = activeShortcutsModal, key == .backspace {
+            shortcuts.handleKeyInput("\u{7F}")
+            return
         }
         guard let active = activeTabController else { return }
         if let ssh = active as? SshTabViewController {
@@ -988,8 +1056,10 @@ public final class TilingWorkspaceViewController: UIViewController {
             isSecureTextEntry: isSecureTextEntry
         )
         dialog.translatesAutoresizingMaskIntoConstraints = false
-        dialog.onDismiss = { [weak self] in
-            self?.activeDialog = nil
+        dialog.onDismiss = { [weak self, weak dialog] in
+            if self?.activeDialog === dialog {
+                self?.activeDialog = nil
+            }
         }
         self.activeDialog = dialog
         view.addSubview(dialog)
@@ -1034,8 +1104,10 @@ public final class TilingWorkspaceViewController: UIViewController {
             self?.store.openTab(type: .ssh, hostId: host.id)
         }
         modal.translatesAutoresizingMaskIntoConstraints = false
-        modal.onDismiss = { [weak self] in
-            self?.activeHostsModal = nil
+        modal.onDismiss = { [weak self, weak modal] in
+            if self?.activeHostsModal === modal {
+                self?.activeHostsModal = nil
+            }
         }
         self.activeHostsModal = modal
         view.addSubview(modal)
@@ -1083,6 +1155,8 @@ public final class TilingWorkspaceViewController: UIViewController {
         dismissAllModals()
         let modal = DesktopShortcutsModalView(onDismiss: { [weak self] in
             self?.activeShortcutsModal = nil
+        }, onExecute: { [weak self] commandId in
+            self?.executeShortcutCommand(commandId)
         })
         modal.translatesAutoresizingMaskIntoConstraints = false
         self.activeShortcutsModal = modal
@@ -1098,6 +1172,61 @@ public final class TilingWorkspaceViewController: UIViewController {
         view.bringSubviewToFront(virtualCursorOverlay)
     }
 
+    private func executeShortcutCommand(_ commandId: String) {
+        switch commandId {
+        case "next_workspace": store.nextWorkspace()
+        case "prev_workspace": store.prevWorkspace()
+        case "new_workspace": store.addWorkspace()
+        case "focus_mru": store.focusPreviousPane()
+        case "leader_mode": enterLeaderMode()
+        case "resize_mode": enterResizeMode()
+        case "swap_mode": enterSwapMode()
+        case "cycle_next_pane": store.cyclePanes(reverse: false)
+        case "cycle_prev_pane": store.cyclePanes(reverse: true)
+        case "split_vert": store.splitFocusedPane(.horizontal)
+        case "split_horiz": store.splitFocusedPane(.vertical)
+        case "close_pane": store.closePane()
+        case "toggle_max": store.toggleMaximiseFocusedPane()
+        case "tab_switcher": showTabSwitcher(reverse: false)
+        case "tab_search", "tab_palette": openTabPalette()
+        case "new_tab": store.openTab(type: .web)
+        case "close_tab": requestCloseTab()
+        case "preset_1": store.applyPreset(.single)
+        case "preset_2": store.applyPreset(.twoColumn)
+        case "preset_3": store.applyPreset(.leftPlusTwoRight)
+        case "preset_4": store.applyPreset(.twoByTwo)
+        case "command_palette": openCommandPalette()
+        case "focus_url": focusAddressBarKey()
+        case "reload_page": reloadWebKey()
+        case "hosts_keys": openHostsTapped()
+        case "settings": openSettingsTapped()
+        case "dismiss": dismissAllModals()
+        default: break
+        }
+    }
+
+    public func requestCloseTab(paneId: String? = nil, tabId: String? = nil) {
+        let targetPaneId = paneId ?? store.tree.focusedPaneId
+        guard let pane = PaneTreeOps.findPane(store.tree.root, paneId: targetPaneId) else { return }
+        let targetTabId = tabId ?? pane.activeTabId
+        if let tab = pane.tabs.first(where: { $0.id == targetTabId }),
+           tab.type == .ssh,
+           store.sshStates[tab.id] == .connected {
+            showDesktopDialog(
+                title: "Close Connected SSH Session?",
+                message: "Closing \"\(tab.title)\" will disconnect the active SSH session.",
+                actions: [
+                    DesktopAlertAction(title: "Cancel", style: .cancel),
+                    DesktopAlertAction(title: "Close & Disconnect", style: .destructive) { [weak self] _ in
+                        self?.store.closeTab(paneId: targetPaneId, tabId: targetTabId)
+                    }
+                ]
+            )
+            return
+        }
+        store.closeTab(paneId: targetPaneId, tabId: targetTabId)
+    }
+
     @objc public func openCommandPalette() {
         if let palette = activeCommandPalette {
             palette.dismissPalette()
@@ -1106,8 +1235,10 @@ public final class TilingWorkspaceViewController: UIViewController {
         dismissAllModals()
         let palette = CommandPaletteView(store: store, workspaceVC: self, tabSearchOnly: false)
         palette.translatesAutoresizingMaskIntoConstraints = false
-        palette.onDismiss = { [weak self] in
-            self?.activeCommandPalette = nil
+        palette.onDismiss = { [weak self, weak palette] in
+            if self?.activeCommandPalette === palette {
+                self?.activeCommandPalette = nil
+            }
         }
         self.activeCommandPalette = palette
         view.addSubview(palette)
@@ -1130,8 +1261,10 @@ public final class TilingWorkspaceViewController: UIViewController {
         dismissAllModals()
         let palette = CommandPaletteView(store: store, workspaceVC: self, tabSearchOnly: true)
         palette.translatesAutoresizingMaskIntoConstraints = false
-        palette.onDismiss = { [weak self] in
-            self?.activeCommandPalette = nil
+        palette.onDismiss = { [weak self, weak palette] in
+            if self?.activeCommandPalette === palette {
+                self?.activeCommandPalette = nil
+            }
         }
         self.activeCommandPalette = palette
         view.addSubview(palette)
@@ -1332,10 +1465,6 @@ public final class TilingWorkspaceViewController: UIViewController {
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handleExternalPan(_:)))
         pan.allowedScrollTypesMask = [.continuous]
         view.addGestureRecognizer(pan)
-
-        let tap = UITapGestureRecognizer(target: self, action: #selector(handleExternalTap(_:)))
-        tap.cancelsTouchesInView = false
-        view.addGestureRecognizer(tap)
     }
 
     @objc private func handleExternalHover(_ gesture: UIHoverGestureRecognizer) {
@@ -1348,12 +1477,6 @@ public final class TilingWorkspaceViewController: UIViewController {
         let translation = gesture.translation(in: view)
         performVirtualScroll(deltaX: -translation.x * 0.8, deltaY: -translation.y * 0.8)
         gesture.setTranslation(.zero, in: view)
-    }
-
-    @objc private func handleExternalTap(_ gesture: UITapGestureRecognizer) {
-        let pt = gesture.location(in: view)
-        virtualCursorOverlay?.setCursorPosition(pt)
-        virtualCursorOverlay?.performClick()
     }
 
     // MARK: - Hardware Keyboard Shortcuts & Terminal Precedence (PRD §13.1, §13.2)
@@ -1389,7 +1512,33 @@ public final class TilingWorkspaceViewController: UIViewController {
     @objc internal func newTabKey() { store.openTab(type: .web) }
     @objc internal func nextWorkspaceKey() { store.nextWorkspace() }
     @objc internal func prevWorkspaceKey() { store.prevWorkspace() }
-    @objc internal func closeActiveTabKey() { store.closeTab() }
+    @objc internal func closeActiveTabKey() { requestCloseTab() }
+    @objc internal func reopenClosedTabKey() { _ = store.reopenLastClosedTab() }
+    @objc internal func moveTabToNextPaneKey() { store.moveActiveTabToNextPane() }
+    @objc internal func findInPageKey() { activeWebTabController()?.toggleFindBar() }
+    @objc internal func webBackKey() { activeWebTabController()?.navigateBack() }
+    @objc internal func webForwardKey() { activeWebTabController()?.navigateForward() }
+    @objc internal func zoomInKey() {
+        if let web = activeWebTabController() {
+            web.zoomIn()
+        } else if let ssh = activeSshTabController() {
+            ssh.increaseFontTapped()
+        }
+    }
+    @objc internal func zoomOutKey() {
+        if let web = activeWebTabController() {
+            web.zoomOut()
+        } else if let ssh = activeSshTabController() {
+            ssh.decreaseFontTapped()
+        }
+    }
+    @objc internal func resetZoomKey() {
+        if let web = activeWebTabController() {
+            web.resetZoom()
+        } else if let ssh = activeSshTabController() {
+            ssh.resetFontSize()
+        }
+    }
     @objc private func nextTabKey() { store.tree = PaneTreeOps.selectNextTab(store.tree, reverse: false) }
     @objc private func prevTabKey() { store.tree = PaneTreeOps.selectNextTab(store.tree, reverse: true) }
     @objc internal func cycleNextPaneKey() { store.cyclePanes(reverse: false) }

@@ -738,9 +738,13 @@ public struct SettingsSheetView: View {
                     Task {
                         // Signed in with Apple: a fresh code lets the Worker revoke Tether's Apple token (nil if cancelled).
                         let appleCode = store.backend.session?.signedInWithApple == true ? await AppleReauthorization().authorizationCode() : nil
-                        try? await store.backend.deleteAccount(appleAuthorizationCode: appleCode)
-                        store.backend.signOut()
-                        syncStatus = "Cloud account deleted."
+                        do {
+                            try await store.backend.deleteAccount(appleAuthorizationCode: appleCode)
+                            store.backend.signOut()
+                            syncStatus = "Cloud account deleted."
+                        } catch {
+                            syncStatus = "Failed to delete cloud account: \(error.localizedDescription)"
+                        }
                     }
                 }
             } message: {

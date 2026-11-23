@@ -56,7 +56,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -121,6 +123,7 @@ class MainActivity : ComponentActivity() {
     val sshConnectedTabs = mutableStateMapOf<String, Boolean>()
     val terminalBuffers = mutableStateMapOf<String, String>()
     val terminalInputs = mutableStateMapOf<String, String>()
+    private val webViewPool = mutableMapOf<String, WebView>()
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
@@ -156,10 +159,55 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStop() {
+        persistWorkspace()
+        super.onStop()
+    }
+
     override fun onDestroy() {
+        SshForegroundService.onDisconnectAllRequested = null
         displayHostController.stop()
+        webViewPool.values.forEach { wv ->
+            runCatching {
+                (wv.parent as? android.view.ViewGroup)?.removeView(wv)
+                wv.stopLoading()
+                wv.destroy()
+            }
+        }
+        webViewPool.clear()
         persistWorkspace()
         super.onDestroy()
+    }
+
+    fun getOrCreateWebView(tabId: String, factory: () -> WebView): WebView {
+        return webViewPool.getOrPut(tabId, factory)
+    }
+
+    fun pruneClosedTabState() {
+        val openTabIds = PaneTreeOps.collectPanes(treeState.root).flatMap { it.tabs }.map { it.id }.toSet()
+        var sshChanged = false
+        sshConnectedTabs.keys.toList().filterNot { openTabIds.contains(it) }.forEach { id ->
+            sshConnectedTabs.remove(id)
+            sshChanged = true
+        }
+        terminalBuffers.keys.toList().filterNot { openTabIds.contains(it) }.forEach { terminalBuffers.remove(it) }
+        terminalInputs.keys.toList().filterNot { openTabIds.contains(it) }.forEach { terminalInputs.remove(it) }
+        webViewPool.keys.toList().filterNot { openTabIds.contains(it) }.forEach { id ->
+            webViewPool.remove(id)?.let { wv ->
+                runCatching {
+                    (wv.parent as? android.view.ViewGroup)?.removeView(wv)
+                    wv.stopLoading()
+                    wv.destroy()
+                }
+            }
+        }
+        if (sshChanged) updateActiveSshService()
+    }
+
+    fun findPaneIdForTab(tabId: String): String? {
+        return PaneTreeOps.collectPanes(treeState.root).firstOrNull { pane ->
+            pane.tabs.any { it.id == tabId }
+        }?.id
     }
 
     fun persistWorkspace() {
@@ -199,7 +247,8 @@ class MainActivity : ComponentActivity() {
         if (event.action == KeyEvent.ACTION_DOWN && event.isCtrlPressed) {
             val focusedPane = PaneTreeOps.findPane(treeState.root, treeState.focusedPaneId)
             val activeTab = focusedPane?.activeTab
-            val keyChar = event.unicodeChar.toChar().uppercaseChar().toString()
+            val baseUnicode = event.getUnicodeChar(0)
+            val keyChar = if (baseUnicode != 0) baseUnicode.toChar().uppercaseChar().toString() else ""
 
             if (event.isAltPressed) {
                 when (event.keyCode) {
@@ -215,6 +264,7 @@ class MainActivity : ComponentActivity() {
                     }
                     KeyEvent.KEYCODE_W -> {
                         treeState = PaneTreeOps.closePane(treeState)
+                        pruneClosedTabState()
                         persistWorkspace()
                         return true
                     }
@@ -257,6 +307,7 @@ class MainActivity : ComponentActivity() {
                 }
                 if (event.keyCode == KeyEvent.KEYCODE_W && activeTab?.type != TabType.SSH) {
                     treeState = PaneTreeOps.closeTab(treeState)
+                    pruneClosedTabState()
                     persistWorkspace()
                     return true
                 }
@@ -379,13 +430,15 @@ fun TreeNodeView(activity: MainActivity, node: TreeNode, modifier: Modifier = Mo
                                 .width(6.dp)
                                 .background(Color(0xFF1E293B))
                                 .pointerInput(node.id, totalW) {
-                                    detectDragGestures { change, dragAmount ->
+                                    detectDragGestures(
+                                        onDragEnd = { activity.persistWorkspace() }
+                                    ) { change, dragAmount ->
                                         change.consume()
                                         val deltaRatio = dragAmount.x / totalW.coerceAtLeast(1f)
-                                        activity.treeState = PaneTreeOps.updateSplitRatio(
+                                        activity.treeState = PaneTreeOps.adjustSplitRatio(
                                             activity.treeState,
                                             node.id,
-                                            node.ratio + deltaRatio
+                                            deltaRatio.toDouble()
                                         )
                                     }
                                 }
@@ -413,13 +466,15 @@ fun TreeNodeView(activity: MainActivity, node: TreeNode, modifier: Modifier = Mo
                                 .height(6.dp)
                                 .background(Color(0xFF1E293B))
                                 .pointerInput(node.id, totalH) {
-                                    detectDragGestures { change, dragAmount ->
+                                    detectDragGestures(
+                                        onDragEnd = { activity.persistWorkspace() }
+                                    ) { change, dragAmount ->
                                         change.consume()
                                         val deltaRatio = dragAmount.y / totalH.coerceAtLeast(1f)
-                                        activity.treeState = PaneTreeOps.updateSplitRatio(
+                                        activity.treeState = PaneTreeOps.adjustSplitRatio(
                                             activity.treeState,
                                             node.id,
-                                            node.ratio + deltaRatio
+                                            deltaRatio.toDouble()
                                         )
                                     }
                                 }
@@ -497,6 +552,7 @@ fun PaneView(activity: MainActivity, pane: TreeNode.Pane, modifier: Modifier = M
                             fontSize = 12.sp,
                             modifier = Modifier.clickable {
                                 activity.treeState = PaneTreeOps.closeTab(activity.treeState, pane.id, tab.id)
+                                activity.pruneClosedTabState()
                                 activity.persistWorkspace()
                             }
                         )
@@ -574,55 +630,79 @@ fun NativeWebTabView(activity: MainActivity, paneId: String, tab: Tab) {
             }
         }
 
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    CookieManager.getInstance().setAcceptCookie(true)
-                    CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.useWideViewPort = true
-                    settings.loadWithOverviewMode = true
-                    settings.setSupportMultipleWindows(true)
-                    // Desktop user-agent by default (PRD §9.1)
-                    settings.userAgentString =
-                        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+        key(tab.id) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { ctx ->
+                    val wv = activity.getOrCreateWebView(tab.id) {
+                        WebView(ctx).apply {
+                            CookieManager.getInstance().setAcceptCookie(true)
+                            CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            settings.useWideViewPort = true
+                            settings.loadWithOverviewMode = true
+                            settings.setSupportMultipleWindows(true)
+                            // Desktop user-agent by default (PRD §9.1)
+                            settings.userAgentString =
+                                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 
-                    webViewClient = object : WebViewClient() {
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            val title = view?.title?.takeIf { it.isNotBlank() }
-                            if (url != null) {
-                                activity.treeState = PaneTreeOps.updateTab(activity.treeState, paneId, tab.id) {
-                                    it.copy(url = url, title = if (title != null) "Web: $title" else it.title)
+                            webViewClient = object : WebViewClient() {
+                                override fun onPageFinished(view: WebView?, url: String?) {
+                                    val title = view?.title?.takeIf { it.isNotBlank() }
+                                    val livePaneId = activity.findPaneIdForTab(tab.id) ?: paneId
+                                    if (url != null) {
+                                        activity.treeState = PaneTreeOps.updateTab(activity.treeState, livePaneId, tab.id) {
+                                            it.copy(url = url, title = if (title != null) "Web: $title" else it.title)
+                                        }
+                                    }
+                                }
+
+                                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                                    val u = request?.url ?: return false
+                                    val scheme = u.scheme?.lowercase() ?: return false
+                                    if (scheme == "http" || scheme == "https" || scheme == "about" || scheme == "file" || scheme == "data") {
+                                        return false
+                                    }
+                                    runCatching {
+                                        activity.startActivity(Intent(Intent.ACTION_VIEW, u))
+                                    }
+                                    return true
                                 }
                             }
-                        }
 
-                        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                            return false
+                            webChromeClient = object : WebChromeClient() {
+                                override fun onCreateWindow(
+                                    view: WebView?,
+                                    isDialog: Boolean,
+                                    isUserGesture: Boolean,
+                                    resultMsg: android.os.Message?
+                                ): Boolean {
+                                    // target="_blank" opens in a new Web tab in the same pane (PRD §9.2)
+                                    val livePaneId = activity.findPaneIdForTab(tab.id) ?: paneId
+                                    val targetUrl = view?.hitTestResult?.extra?.takeIf {
+                                        it.startsWith("http://") || it.startsWith("https://")
+                                    }
+                                    val baseTab = PaneTreeOps.createDefaultTab(TabType.WEB, hosts = activity.hostsState)
+                                    val newTab = if (targetUrl != null) {
+                                        baseTab.copy(url = targetUrl, title = "Web: ${Uri.parse(targetUrl).host ?: targetUrl}")
+                                    } else {
+                                        baseTab
+                                    }
+                                    activity.treeState = PaneTreeOps.openTab(activity.treeState, newTab, livePaneId)
+                                    return false
+                                }
+                            }
+
+                            loadUrl(tab.url ?: TetherConstants.DEFAULT_WEB_HOME_URL)
                         }
                     }
-
-                    webChromeClient = object : WebChromeClient() {
-                        override fun onCreateWindow(
-                            view: WebView?,
-                            isDialog: Boolean,
-                            isUserGesture: Boolean,
-                            resultMsg: android.os.Message?
-                        ): Boolean {
-                            // target="_blank" opens in a new Web tab in the same pane (PRD §9.2)
-                            val newTab = PaneTreeOps.createDefaultTab(TabType.WEB, hosts = activity.hostsState)
-                            activity.treeState = PaneTreeOps.openTab(activity.treeState, newTab, paneId)
-                            return false
-                        }
-                    }
-
-                    loadUrl(tab.url ?: TetherConstants.DEFAULT_WEB_HOME_URL)
-                    webViewRef = this
+                    (wv.parent as? android.view.ViewGroup)?.removeView(wv)
+                    webViewRef = wv
+                    wv
                 }
-            }
-        )
+            )
+        }
     }
 }
 
@@ -634,18 +714,20 @@ fun NativeSshTabView(activity: MainActivity, paneId: String, tab: Tab) {
         "Tether SSH Client (No local shell — PRD §3.1)\nTarget: ${host?.connectionString ?: "None"}\nPress 'Connect' to verify SHA-256 host key and allocate xterm-256color PTY.\n"
     }
     var commandInput by remember(tab.id) { mutableStateOf("") }
-    var firstConnectDialog by remember { mutableStateOf<HostKeyVerificationResult.FirstConnect?>(null) }
-    var changedKeyDialog by remember { mutableStateOf<HostKeyVerificationResult.ChangedWarning?>(null) }
-    var pendingMultilinePaste by remember { mutableStateOf<String?>(null) }
+    var firstConnectDialog by remember(tab.id) { mutableStateOf<HostKeyVerificationResult.FirstConnect?>(null) }
+    var changedKeyDialog by remember(tab.id) { mutableStateOf<HostKeyVerificationResult.ChangedWarning?>(null) }
+    var pendingMultilinePaste by remember(tab.id) { mutableStateOf<String?>(null) }
 
     // Consume pending path inserted from Files tab without executing (PRD §11.3)
     val injectedPath = activity.terminalInputs[tab.id]
-    if (injectedPath != null) {
-        activity.terminalInputs.remove(tab.id)
-        commandInput = if (commandInput.isEmpty() || commandInput.endsWith(" ")) {
-            commandInput + injectedPath
-        } else {
-            "$commandInput $injectedPath"
+    LaunchedEffect(tab.id, injectedPath) {
+        if (injectedPath != null) {
+            activity.terminalInputs.remove(tab.id)
+            commandInput = if (commandInput.isEmpty() || commandInput.endsWith(" ")) {
+                commandInput + injectedPath
+            } else {
+                "$commandInput $injectedPath"
+            }
         }
     }
 
@@ -763,15 +845,21 @@ fun NativeSshTabView(activity: MainActivity, paneId: String, tab: Tab) {
             ChromeChip(label = "Send") {
                 val cmd = commandInput
                 commandInput = ""
-                activity.terminalBuffers[tab.id] = bufferText + "$cmd\n[remote exec] $cmd\n${host?.username ?: "dev"}@${host?.host ?: "host"}:~$ "
+                if (!isConnected) {
+                    activity.terminalBuffers[tab.id] = bufferText + "\nNot connected. Tap 'Connect' first.\n"
+                } else {
+                    activity.terminalBuffers[tab.id] = bufferText + "$cmd\n[remote exec] $cmd\n${host?.username ?: "dev"}@${host?.host ?: "host"}:~$ "
+                }
             }
             ChromeChip(label = "Paste") {
                 val cm = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = cm.primaryClip?.getItemAt(0)?.text?.toString() ?: "echo line1\necho line2"
-                if (PaneTreeOps.isMultiLinePaste(clip)) {
-                    pendingMultilinePaste = clip
-                } else {
-                    commandInput += clip
+                val clip = cm.primaryClip?.getItemAt(0)?.text?.toString()
+                if (!clip.isNullOrEmpty()) {
+                    if (PaneTreeOps.isMultiLinePaste(clip)) {
+                        pendingMultilinePaste = clip
+                    } else {
+                        commandInput += clip
+                    }
                 }
             }
         }
@@ -841,7 +929,11 @@ fun NativeSshTabView(activity: MainActivity, paneId: String, tab: Tab) {
             text = { Text(lines.take(6).joinToString("\n"), fontFamily = FontFamily.Monospace, fontSize = 12.sp) },
             confirmButton = {
                 Button(onClick = {
-                    activity.terminalBuffers[tab.id] = bufferText + "\n" + multi + "\n"
+                    if (isConnected) {
+                        activity.terminalBuffers[tab.id] = bufferText + "\n" + multi + "\n"
+                    } else {
+                        activity.terminalBuffers[tab.id] = bufferText + "\nNot connected. Tap 'Connect' first.\n"
+                    }
                     pendingMultilinePaste = null
                 }) { Text("Paste ${lines.size} Lines") }
             },
@@ -861,10 +953,19 @@ fun NativeFilesTabView(activity: MainActivity, paneId: String, tab: Tab) {
 
     val safLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
         if (uri != null) {
-            activity.contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            )
+            runCatching {
+                activity.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            }.onFailure {
+                runCatching {
+                    activity.contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
+            }
             refreshTrigger++
         }
     }
@@ -876,10 +977,17 @@ fun NativeFilesTabView(activity: MainActivity, paneId: String, tab: Tab) {
             if (!welcome.exists()) {
                 welcome.writeText("# Tether Local Files\nAccessible offline or via SAF folder picker.\n")
             }
-            val target = if (currentPath == "/") root else File(root, currentPath.trimStart('/'))
+            val candidate = if (currentPath == "/") root else File(root, currentPath.trimStart('/'))
+            val rootCanon = root.canonicalFile
+            val targetCanon = candidate.canonicalFile
+            val target = if (targetCanon.path == rootCanon.path || targetCanon.path.startsWith(rootCanon.path + File.separator)) {
+                targetCanon
+            } else {
+                rootCanon
+            }
             val list = target.listFiles()?.toList().orEmpty()
             list.sortedWith(compareByDescending<File> { it.isDirectory }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.name })
-                .map { f -> Triple(f.name, if (currentPath == "/") "/${f.name}" else "$currentPath/${f.name}", f.isDirectory) }
+                .map { f -> Triple(f.name, if (currentPath == "/") "/${f.name}" else "${currentPath.trimEnd('/')}/${f.name}", f.isDirectory) }
         } else {
             listOf(
                 Triple("etc", "/etc", true),
@@ -919,7 +1027,8 @@ fun NativeFilesTabView(activity: MainActivity, paneId: String, tab: Tab) {
                     .clickable { showFullPathDialog = true }
             )
             ChromeChip(label = "Up") {
-                val parent = currentPath.substringBeforeLast('/', "").ifEmpty { "/" }
+                val normalized = currentPath.trimEnd('/').ifEmpty { "/" }
+                val parent = normalized.substringBeforeLast('/', "").ifEmpty { "/" }
                 activity.treeState = PaneTreeOps.updateTab(activity.treeState, paneId, tab.id) {
                     it.copy(path = parent, title = PaneTreeOps.computeTabTitle(it.copy(path = parent)))
                 }
@@ -957,17 +1066,25 @@ fun NativeFilesTabView(activity: MainActivity, paneId: String, tab: Tab) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (!isDir) {
                             ChromeChip(label = "Open in Web") {
-                                val webTab = Tab(type = TabType.WEB, title = "Web: $name", url = "https://example.com")
+                                val targetUrl = if (mode == FilesMode.LOCAL) {
+                                    val root = File(activity.filesDir, "local_workspace")
+                                    Uri.fromFile(File(root, fullPath.trimStart('/'))).toString()
+                                } else {
+                                    "data:text/plain;charset=utf-8," + Uri.encode("# $name\nPath: $fullPath\n")
+                                }
+                                val webTab = Tab(type = TabType.WEB, title = "Web: $name", url = targetUrl)
                                 activity.treeState = PaneTreeOps.openTab(activity.treeState, webTab, paneId)
                             }
                         }
                         ChromeChip(label = "Insert Path → SSH") {
                             // Insert shell-escaped path into focused/first SSH terminal without executing (PRD §11.3)
-                            val sshTab = PaneTreeOps.collectPanes(activity.treeState.root)
+                            val focusedSsh = PaneTreeOps.findPane(activity.treeState.root, activity.treeState.focusedPaneId)
+                                ?.activeTab?.takeIf { it.type == TabType.SSH }
+                            val sshTab = focusedSsh ?: PaneTreeOps.collectPanes(activity.treeState.root)
                                 .flatMap { it.tabs }
                                 .firstOrNull { it.type == TabType.SSH }
                             if (sshTab != null) {
-                                activity.terminalInputs[sshTab.id] = fullPath
+                                activity.terminalInputs[sshTab.id] = PaneTreeOps.shellQuotedPath(fullPath)
                             }
                         }
                         ChromeChip(label = "Copy Path") {
@@ -1027,11 +1144,15 @@ fun HostsAndKeysDialog(activity: MainActivity, onDismiss: () -> Unit) {
                     Text("Auto-reconnect on display reconnect", fontSize = 12.sp)
                 }
                 Button(onClick = {
+                    val trimmedHost = hostInput.trim()
+                    val trimmedUser = userInput.trim()
+                    val parsedPort = (portInput.trim().toIntOrNull() ?: 22).coerceIn(1, 65535)
+                    if (trimmedHost.isEmpty() || trimmedUser.isEmpty()) return@Button
                     val created = SshHost(
-                        label = labelInput,
-                        host = hostInput,
-                        port = portInput.toIntOrNull() ?: 22,
-                        username = userInput,
+                        label = labelInput.trim().ifEmpty { null },
+                        host = trimmedHost,
+                        port = parsedPort,
+                        username = trimmedUser,
                         auth = SshAuthType.KEY,
                         autoReconnectOnDisplayReconnect = autoReconnect
                     )
@@ -1093,7 +1214,11 @@ fun SettingsDialog(activity: MainActivity, onDismiss: () -> Unit) {
                             Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
                             Uri.parse("package:${context.packageName}")
                         )
-                        context.startActivity(intent)
+                        runCatching { context.startActivity(intent) }.onFailure {
+                            runCatching {
+                                context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                            }
+                        }
                     }
                 }) {
                     Text("All Files Access (Optional Power-User Setting)")

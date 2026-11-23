@@ -10,6 +10,7 @@ import {
   focusPane,
   toggleMaximizeFocusedPane,
   splitFocusedPane,
+  updateSplitRatio,
   type LayoutPresetId,
   type PaneNode,
   type PaneTree,
@@ -61,47 +62,50 @@ function renderPane(pane: PaneNode): HTMLElement {
     )
   );
 
-  const addWeb = el(
-    "button",
-    {
-      class: "btn sm",
-      type: "button",
-      onclick: (e) => {
-        e.stopPropagation();
-        tree = createAndAddTab(tree, "web", { url: "https://example.com" }, pane.id).tree;
-        render();
+  const makeAddWeb = () =>
+    el(
+      "button",
+      {
+        class: "btn sm",
+        type: "button",
+        onclick: (e) => {
+          e.stopPropagation();
+          tree = createAndAddTab(tree, "web", { url: "https://example.com" }, pane.id).tree;
+          render();
+        },
       },
-    },
-    "+ Web"
-  );
-  const addSsh = el(
-    "button",
-    {
-      class: "btn sm",
-      type: "button",
-      onclick: (e) => {
-        e.stopPropagation();
-        tree = createAndAddTab(tree, "ssh", { hostId: "sample-host-1" }, pane.id).tree;
-        render();
+      "+ Web"
+    );
+  const makeAddSsh = () =>
+    el(
+      "button",
+      {
+        class: "btn sm",
+        type: "button",
+        onclick: (e) => {
+          e.stopPropagation();
+          tree = createAndAddTab(tree, "ssh", { hostId: "sample-host-1" }, pane.id).tree;
+          render();
+        },
       },
-    },
-    "+ SSH"
-  );
-  const addFiles = el(
-    "button",
-    {
-      class: "btn sm",
-      type: "button",
-      onclick: (e) => {
-        e.stopPropagation();
-        tree = createAndAddTab(tree, "files", { filesMode: "local", path: "/Documents" }, pane.id).tree;
-        render();
+      "+ SSH"
+    );
+  const makeAddFiles = () =>
+    el(
+      "button",
+      {
+        class: "btn sm",
+        type: "button",
+        onclick: (e) => {
+          e.stopPropagation();
+          tree = createAndAddTab(tree, "files", { filesMode: "local", path: "/Documents" }, pane.id).tree;
+          render();
+        },
       },
-    },
-    "+ Files"
-  );
+      "+ Files"
+    );
 
-  const tabBar = el("div", { class: "pane-tabbar" }, ...tabNodes, addWeb, addSsh, addFiles);
+  const tabBar = el("div", { class: "pane-tabbar" }, ...tabNodes, makeAddWeb(), makeAddSsh(), makeAddFiles());
 
   let toolbar: HTMLElement;
   let body: HTMLElement;
@@ -112,7 +116,7 @@ function renderPane(pane: PaneNode): HTMLElement {
       "div",
       { class: "pane-body" },
       el("p", { class: "muted" }, "Choose a tool to open in this pane:"),
-      el("div", { class: "row" }, addWeb.cloneNode(true), addSsh.cloneNode(true), addFiles.cloneNode(true))
+      el("div", { class: "row" }, makeAddWeb(), makeAddSsh(), makeAddFiles())
     );
   } else if (activeTab.type === "web") {
     toolbar = el(
@@ -178,16 +182,39 @@ function renderPane(pane: PaneNode): HTMLElement {
   );
 }
 
-function renderNode(node: TreeNode): HTMLElement {
+function renderNode(node: TreeNode, splitPath: ("first" | "second")[] = []): HTMLElement {
   if (node.type === "pane") {
     return renderPane(node);
   }
-  const firstEl = renderNode(node.first);
-  const secondEl = renderNode(node.second);
+  const firstEl = renderNode(node.first, [...splitPath, "first"]);
+  const secondEl = renderNode(node.second, [...splitPath, "second"]);
   firstEl.style.flex = `${node.ratio}`;
   secondEl.style.flex = `${1 - node.ratio}`;
   const divider = el("div", { class: "split-divider", title: "Drag divider (clamped 0.2–0.8)" });
-  return el("div", { class: `split-container ${node.direction}` }, firstEl, divider, secondEl);
+  const container = el("div", { class: `split-container ${node.direction}` }, firstEl, divider, secondEl);
+  divider.addEventListener("pointerdown", (downEv) => {
+    downEv.preventDefault();
+    downEv.stopPropagation();
+    const onMove = (moveEv: PointerEvent) => {
+      const rect = container.getBoundingClientRect();
+      const rawRatio =
+        node.direction === "horizontal"
+          ? (moveEv.clientX - rect.left) / Math.max(1, rect.width)
+          : (moveEv.clientY - rect.top) / Math.max(1, rect.height);
+      tree = updateSplitRatio(tree, rawRatio, splitPath);
+      const clamped = Math.min(0.8, Math.max(0.2, rawRatio));
+      firstEl.style.flex = `${clamped}`;
+      secondEl.style.flex = `${1 - clamped}`;
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      render();
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  });
+  return container;
 }
 
 function render() {

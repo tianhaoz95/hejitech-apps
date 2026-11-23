@@ -37,6 +37,7 @@ public final class DesktopDialogView: UIView, UITextFieldDelegate {
     public var onDismiss: (() -> Void)?
     private var actions: [DesktopAlertAction] = []
     private var hasInputField: Bool = false
+    private var isDismissing: Bool = false
 
     public init(
         title: String,
@@ -120,10 +121,10 @@ public final class DesktopDialogView: UIView, UITextFieldDelegate {
         hasInputField = (placeholder != nil || defaultText != nil)
         inputField.isHidden = !hasInputField
 
-        // Action Buttons
+        // Action Buttons (vertical list when > 3 actions so labels never truncate to "...")
         buttonStack.translatesAutoresizingMaskIntoConstraints = false
-        buttonStack.axis = .horizontal
-        buttonStack.spacing = 10
+        buttonStack.axis = actions.count > 3 ? .vertical : .horizontal
+        buttonStack.spacing = actions.count > 3 ? 8 : 10
         buttonStack.distribution = .fillEqually
 
         for (idx, action) in actions.enumerated() {
@@ -211,12 +212,41 @@ public final class DesktopDialogView: UIView, UITextFieldDelegate {
     }
 
     @objc public func dismissDialog() {
+        guard !isDismissing else { return }
+        isDismissing = true
+        let dismissHandler = onDismiss
+        onDismiss = nil
+        dismissHandler?()
         UIView.animate(withDuration: 0.15, animations: {
             self.alpha = 0
             self.card.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
         }) { _ in
             self.removeFromSuperview()
-            self.onDismiss?()
+        }
+    }
+
+    public func handleKeyInput(_ text: String) {
+        guard hasInputField else {
+            if text == "\r" || text == "\n" {
+                triggerPrimaryAction()
+            }
+            return
+        }
+        if text == "\r" || text == "\n" {
+            triggerPrimaryAction()
+            return
+        }
+        if text == "\u{7F}" || text == "\u{08}" {
+            var cur = inputField.text ?? ""
+            if !cur.isEmpty {
+                cur.removeLast()
+                inputField.text = cur
+            }
+            return
+        }
+        let printable = text.filter { !$0.isASCII || ($0 >= " " && $0 != "\u{7F}") }
+        if !printable.isEmpty {
+            inputField.text = (inputField.text ?? "") + printable
         }
     }
 

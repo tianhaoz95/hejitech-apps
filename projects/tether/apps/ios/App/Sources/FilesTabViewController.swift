@@ -289,10 +289,15 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
         navigate(to: "/", mode: nextMode)
     }
 
+    private func isValidEntryName(_ name: String) -> Bool {
+        !name.isEmpty && name != "." && name != ".." && !name.contains("/") && !name.contains("\\")
+    }
+
     @objc private func showFullPathTapped() {
+        let activeHost = tabItem.hostId.flatMap { id in store.hosts.first(where: { $0.id == id }) } ?? store.hosts.first
         let full = currentMode == .local
             ? localRootDirectory().appendingPathComponent(currentPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))).path
-            : "sftp://\(store.hosts.first?.connectionString ?? "example.invalid:22")\(currentPath)"
+            : "sftp://\(activeHost?.connectionString ?? "example.invalid:22")\(currentPath)"
         let copyAction = DesktopAlertAction(title: "Copy Path", style: .default) { _ in
             UIPasteboard.general.string = full
         }
@@ -322,12 +327,17 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
         let createAction = DesktopAlertAction(title: "Create Folder", style: .default) { [weak self] name in
             guard let self,
                   let name = name?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !name.isEmpty else { return }
+                  self.isValidEntryName(name) else { return }
             let newPath = self.currentPath == "/" ? "/\(name)" : "\(self.currentPath)/\(name)"
             if self.currentMode == .local {
                 let cleaned = newPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
                 let dirURL = self.localRootDirectory().appendingPathComponent(cleaned, isDirectory: true)
-                try? FileManager.default.createDirectory(at: dirURL, withIntermediateDirectories: true)
+                do {
+                    try FileManager.default.createDirectory(at: dirURL, withIntermediateDirectories: true)
+                } catch {
+                    self.showDesktopAlert(title: "Couldn't Create Folder", message: error.localizedDescription, actions: [DesktopAlertAction(title: "OK", style: .cancel)])
+                    return
+                }
             } else {
                 var list = self.sftpEntries[self.currentPath] ?? []
                 list.append(FileItem(name: name, path: newPath, isDirectory: true))
@@ -417,6 +427,7 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
             cell.textLabel?.text = "Load More (\(allItems.count - visibleItems.count) remaining)…"
             cell.textLabel?.textColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0)
             cell.detailTextLabel?.text = nil
+            cell.accessoryView = nil
             return cell
         }
 
@@ -436,11 +447,21 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
             cell.detailTextLabel?.text = "\(sizeStr) · \(dateStr)"
         }
         cell.detailTextLabel?.textColor = UIColor(white: 0.58, alpha: 1.0)
+
+        let actionsBtn = DesktopActionButton { [weak self] in
+            self?.presentFileActions(for: item, sourceRow: indexPath)
+        }
+        actionsBtn.frame = CGRect(x: 0, y: 0, width: 28, height: 28)
+        actionsBtn.setImage(UIImage(systemName: "ellipsis"), for: .normal)
+        actionsBtn.tintColor = UIColor(white: 0.7, alpha: 1.0)
+        actionsBtn.accessibilityLabel = "Actions for \(item.name)"
+        cell.accessoryView = actionsBtn
         return cell
     }
 
     public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        store.focusPane(paneId)
         if indexPath.row == visibleItems.count {
             currentPage += 1
             applyPagination()
@@ -511,20 +532,41 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
         let renameAction = DesktopAlertAction(title: "Rename", style: .default) { [weak self] newName in
             guard let self,
                   let newName = newName?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !newName.isEmpty else { return }
+                  self.isValidEntryName(newName) else { return }
             let newPath = self.currentPath == "/" ? "/\(newName)" : "\(self.currentPath)/\(newName)"
             if self.currentMode == .local {
                 let oldClean = item.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
                 let newClean = newPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
                 let src = self.localRootDirectory().appendingPathComponent(oldClean)
                 let dst = self.localRootDirectory().appendingPathComponent(newClean)
-                try? FileManager.default.moveItem(at: src, to: dst)
+                do {
+                    try FileManager.default.moveItem(at: src, to: dst)
+                } catch {
+                    self.showDesktopAlert(title: "Couldn't Rename", message: error.localizedDescription, actions: [DesktopAlertAction(title: "OK", style: .cancel)])
+                    return
+                }
             } else {
                 var list = self.sftpEntries[self.currentPath] ?? []
                 if let idx = list.firstIndex(where: { $0.path == item.path }) {
                     list[idx].name = newName
                     list[idx].path = newPath
                     self.sftpEntries[self.currentPath] = list
+                }
+                if item.isDirectory {
+                    let oldPrefix = item.path
+                    let keysToMove = self.sftpEntries.keys.filter { $0 == oldPrefix || $0.hasPrefix(oldPrefix + "/") }
+                    for key in keysToMove {
+                        guard let entries = self.sftpEntries.removeValue(forKey: key) else { continue }
+                        let suffix = String(key.dropFirst(oldPrefix.count))
+                        let remappedKey = newPath + suffix
+                        self.sftpEntries[remappedKey] = entries.map { child in
+                            var updated = child
+                            if child.path.hasPrefix(oldPrefix + "/") {
+                                updated.path = newPath + String(child.path.dropFirst(oldPrefix.count))
+                            }
+                            return updated
+                        }
+                    }
                 }
             }
             self.reloadDirectory()
@@ -545,9 +587,20 @@ public final class FilesTabViewController: UIViewController, UITableViewDataSour
             if self.currentMode == .local {
                 let cleaned = item.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
                 let target = self.localRootDirectory().appendingPathComponent(cleaned)
-                try? FileManager.default.removeItem(at: target)
+                do {
+                    try FileManager.default.removeItem(at: target)
+                } catch {
+                    self.showDesktopAlert(title: "Couldn't Delete", message: error.localizedDescription, actions: [DesktopAlertAction(title: "OK", style: .cancel)])
+                    return
+                }
             } else {
                 self.sftpEntries[self.currentPath]?.removeAll { $0.path == item.path }
+                if item.isDirectory {
+                    let prefix = item.path
+                    for key in self.sftpEntries.keys.filter({ $0 == prefix || $0.hasPrefix(prefix + "/") }) {
+                        self.sftpEntries.removeValue(forKey: key)
+                    }
+                }
             }
             self.reloadDirectory()
         }

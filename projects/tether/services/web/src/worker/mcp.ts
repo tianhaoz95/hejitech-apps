@@ -206,6 +206,9 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
     case "open_tab": {
       const type = String(args.type ?? "") as TabType;
       if (!["web", "ssh", "files"].includes(type)) throw new Error("type must be web, ssh, or files");
+      if (args.files_mode !== undefined && args.files_mode !== "local" && args.files_mode !== "sftp") {
+        throw new Error("files_mode must be local or sftp");
+      }
       const ws = await loadWorkspace(db, caller.userId);
       const paneId = typeof args.pane_id === "string" && args.pane_id ? args.pane_id : ws.tree.focusedPaneId;
       const hostId = typeof args.host_id === "string" ? args.host_id : undefined;
@@ -232,6 +235,10 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
       return { hosts: ws.hosts };
     }
     case "upsert_host": {
+      // Check raw args first so forbidden secret fields are rejected rather than silently stripped (PRD §14).
+      const rawIssues = validateSshHost(args);
+      const secretIssues = rawIssues.filter((i) => i.message.includes("PRD §6.4"));
+      if (secretIssues.length) throw new Error(secretIssues.map((i) => `${i.path}: ${i.message}`).join("; "));
       const candidate = {
         id: String(args.id ?? ""),
         label: typeof args.label === "string" ? args.label : undefined,
@@ -256,7 +263,14 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
     }
     case "upsert_bookmark": {
       const url = String(args.url ?? "").trim();
-      if (!/^https?:\/\//i.test(url)) throw new Error("url must start with http:// or https://");
+      let validUrl = false;
+      try {
+        const parsed = new URL(url);
+        validUrl = (parsed.protocol === "http:" || parsed.protocol === "https:") && Boolean(parsed.hostname);
+      } catch {
+        validUrl = false;
+      }
+      if (!validUrl) throw new Error("url must be a valid http:// or https:// URL");
       const bm = {
         id: typeof args.id === "string" && args.id.trim() ? args.id.trim() : `bm-${Date.now()}`,
         title: String(args.title ?? url).trim() || url,
@@ -282,12 +296,16 @@ export async function handleMcp(req: Request, caller: Caller, db: Db): Promise<R
   if (req.method === "GET") return json({ name: "tether-mcp", transport: "streamable-http" }, 405);
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
-  let msg: { id?: string | number; method: string; params?: Record<string, unknown> };
+  let raw: unknown;
   try {
-    msg = await req.json();
+    raw = await req.json();
   } catch {
     return json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "parse error" } }, 400);
   }
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || typeof (raw as Record<string, unknown>).method !== "string") {
+    return json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "invalid request" } }, 400);
+  }
+  const msg = raw as { id?: string | number; method: string; params?: Record<string, unknown> };
   const reply = (result: unknown) => json({ jsonrpc: "2.0", id: msg.id ?? null, result });
 
   switch (msg.method) {
@@ -316,6 +334,9 @@ export async function handleMcp(req: Request, caller: Caller, db: Db): Promise<R
       }
     }
     default:
+      if (msg.id === undefined) {
+        return new Response(null, { status: 202, headers: cors });
+      }
       return json({ jsonrpc: "2.0", id: msg.id ?? null, error: { code: -32601, message: `method not found: ${msg.method}` } });
   }
 }

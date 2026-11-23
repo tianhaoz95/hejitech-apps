@@ -2,6 +2,16 @@ import TetherKit
 import UIKit
 import WebKit
 
+private final class WeakScriptMessageHandler: NSObject, WKScriptMessageHandler {
+    weak var delegate: WKScriptMessageHandler?
+    init(_ delegate: WKScriptMessageHandler) {
+        self.delegate = delegate
+    }
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        delegate?.userContentController(userContentController, didReceive: message)
+    }
+}
+
 @MainActor
 public final class WebTabViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, UITextFieldDelegate, WKScriptMessageHandler {
     private let store: WorkspaceStore
@@ -17,10 +27,20 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     private let progressView = UIProgressView(progressViewStyle: .bar)
     private let statusBanner = UILabel()
     private let scrollIndicatorBubble = UILabel()
+    private let findBar = UIView()
+    private let findTextField = UITextField()
+    private let findStatusLabel = UILabel()
+    private var findBarHeightConstraint: NSLayoutConstraint!
+    public private(set) var isFindBarVisible: Bool = false
     private var omnibarDropdown: OmnibarDropdownView?
     private var progressObservation: NSKeyValueObservation?
     private var titleObservation: NSKeyValueObservation?
     private var urlObservation: NSKeyValueObservation?
+    private var bannerDismissTask: Task<Void, Never>?
+
+    deinit {
+        webView?.configuration.userContentController.removeScriptMessageHandler(forName: "passkeyHandler")
+    }
 
     public init(store: WorkspaceStore, paneId: String, tab: TetherKit.Tab) {
         self.store = store
@@ -100,6 +120,72 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         webView.reload()
     }
 
+    public func navigateBack() {
+        if webView.canGoBack { webView.goBack() }
+    }
+
+    public func navigateForward() {
+        if webView.canGoForward { webView.goForward() }
+    }
+
+    public func zoomIn() {
+        webView.pageZoom = min(2.5, (webView.pageZoom + 0.1).roundedToTenth)
+        showStatusBanner("Zoom: \(Int((webView.pageZoom * 100).rounded()))%", isWarning: false)
+    }
+
+    public func zoomOut() {
+        webView.pageZoom = max(0.5, (webView.pageZoom - 0.1).roundedToTenth)
+        showStatusBanner("Zoom: \(Int((webView.pageZoom * 100).rounded()))%", isWarning: false)
+    }
+
+    public func resetZoom() {
+        webView.pageZoom = 1.0
+        showStatusBanner("Zoom: 100%", isWarning: false)
+    }
+
+    public func toggleFindBar() {
+        if isFindBarVisible {
+            dismissFindBar()
+        } else {
+            deactivateAddressBar()
+            isFindBarVisible = true
+            findBar.isHidden = false
+            findBarHeightConstraint.constant = 34
+            findTextField.becomeFirstResponder()
+            view.layoutIfNeeded()
+        }
+    }
+
+    public func dismissFindBar() {
+        guard isFindBarVisible else { return }
+        isFindBarVisible = false
+        findBar.isHidden = true
+        findBarHeightConstraint.constant = 0
+        findTextField.resignFirstResponder()
+        findStatusLabel.text = ""
+        view.layoutIfNeeded()
+    }
+
+    public func findInPage(backwards: Bool = false) {
+        let query = (findTextField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            findStatusLabel.text = ""
+            return
+        }
+        let cfg = WKFindConfiguration()
+        cfg.backwards = backwards
+        cfg.caseSensitive = false
+        cfg.wraps = true
+        webView.find(query, configuration: cfg) { [weak self] result in
+            Task { @MainActor in
+                self?.findStatusLabel.text = result.matchFound ? "Found" : "No match"
+                self?.findStatusLabel.textColor = result.matchFound
+                    ? UIColor(red: 0.20, green: 0.83, blue: 0.60, alpha: 1.0)
+                    : UIColor(red: 0.95, green: 0.45, blue: 0.45, alpha: 1.0)
+            }
+        }
+    }
+
     public func simulateClick(at pointInView: CGPoint) {
         let ptInWeb = view.convert(pointInView, to: webView)
         // Typing from the phone goes to the focused pane's active tab and to the address bar while it is active.
@@ -172,24 +258,12 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
             target.dispatchEvent(new PointerEvent('pointerup', upOpts));
             target.dispatchEvent(new MouseEvent('mouseup', upOpts));
 
-            var clickEvent = new MouseEvent('click', commonOpts);
-            var isAllowed = target.dispatchEvent(clickEvent);
-
+            // Use native target.click() when available so checkboxes, forms, SPA routers, and <a> links
+            // fire exactly once (avoiding double-toggles and duplicate target="_blank" tabs).
             if (typeof target.click === 'function') {
                 try { target.click(); } catch (e) {}
-            }
-
-            // 4. Handle navigation for <a> tags if event was not prevented by framework router (SPAs)
-            var a = target.closest('a');
-            if (a && a.href && isAllowed) {
-                var rawHref = a.getAttribute('href');
-                if (rawHref && !rawHref.startsWith('javascript:') && rawHref !== '#' && !rawHref.startsWith('#')) {
-                    if (a.target === '_blank') {
-                        window.open(a.href, '_blank');
-                    } else {
-                        window.location.href = a.href;
-                    }
-                }
+            } else {
+                target.dispatchEvent(new MouseEvent('click', commonOpts));
             }
 
             // 5. Handle form elements. The field is remembered because WebKit drops DOM focus when the
@@ -214,6 +288,26 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     }
 
     public func handleKeyInput(text: String) {
+        if isFindBarVisible {
+            if text == "\r" || text == "\n" {
+                findInPage(backwards: false)
+            } else if text == "\u{7F}" || text == "\u{08}" {
+                var cur = findTextField.text ?? ""
+                if !cur.isEmpty {
+                    cur.removeLast()
+                    findTextField.text = cur
+                }
+                findInPage(backwards: false)
+            } else {
+                let printable = text.filter { !$0.isASCII || ($0 >= " " && $0 != "\u{7F}") }
+                if !printable.isEmpty {
+                    findTextField.text = (findTextField.text ?? "") + printable
+                    findInPage(backwards: false)
+                }
+            }
+            return
+        }
+
         if isAddressBarActive || addressField.isFirstResponder {
             if text == "\r" || text == "\n" {
                 let target = omnibarDropdown?.selectedSuggestionUrl ?? addressField.text ?? ""
@@ -392,15 +486,17 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
             if let isHandled = result as? Bool, !isHandled {
                 Task { @MainActor in
                     guard let self else { return }
-                    let cur = self.webView.scrollView.contentOffset
+                    let sv = self.webView.scrollView
+                    let cur = sv.contentOffset
+                    let maxY = max(0, sv.contentSize.height - sv.bounds.height + sv.adjustedContentInset.bottom)
                     if text == " " {
-                        self.webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: cur.y + 350), animated: true)
+                        sv.setContentOffset(CGPoint(x: cur.x, y: min(maxY, cur.y + 350)), animated: true)
                         self.showScrollIndicator()
                     } else if text == "j" {
-                        self.webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: cur.y + 120), animated: true)
+                        sv.setContentOffset(CGPoint(x: cur.x, y: min(maxY, cur.y + 120)), animated: true)
                         self.showScrollIndicator()
                     } else if text == "k" {
-                        self.webView.scrollView.setContentOffset(CGPoint(x: cur.x, y: max(0, cur.y - 120)), animated: true)
+                        sv.setContentOffset(CGPoint(x: cur.x, y: max(0, cur.y - 120)), animated: true)
                         self.showScrollIndicator()
                     }
                 }
@@ -409,6 +505,24 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     }
 
     public func handleSpecialKey(_ key: SpecialKey) {
+        if isFindBarVisible {
+            switch key {
+            case .escape:
+                dismissFindBar()
+            case .enter:
+                findInPage(backwards: false)
+            case .up:
+                findInPage(backwards: true)
+            case .down:
+                findInPage(backwards: false)
+            case .backspace:
+                handleKeyInput(text: "\u{7F}")
+            default:
+                break
+            }
+            return
+        }
+
         if isAddressBarActive || addressField.isFirstResponder {
             switch key {
             case .escape:
@@ -582,7 +696,7 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         config.allowsInlineMediaPlayback = true
 
         let userContentController = WKUserContentController()
-        userContentController.add(self, name: "passkeyHandler")
+        userContentController.add(WeakScriptMessageHandler(self), name: "passkeyHandler")
 
         // Intercept WebAuthn credential calls to provide clear user guidance
         // when iOS restricts platform passkeys in embedded web views.
@@ -626,9 +740,57 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         statusBanner.isHidden = true
         statusBanner.numberOfLines = 0
 
+        // Compact Find-in-Page bar (Cmd+F)
+        findBar.translatesAutoresizingMaskIntoConstraints = false
+        findBar.backgroundColor = UIColor(red: 0.08, green: 0.12, blue: 0.20, alpha: 1.0)
+        findBar.isHidden = true
+
+        findTextField.translatesAutoresizingMaskIntoConstraints = false
+        findTextField.delegate = self
+        findTextField.placeholder = "Find in page… (↵ next, Esc close)"
+        findTextField.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        findTextField.textColor = .white
+        findTextField.backgroundColor = UIColor(red: 0.03, green: 0.05, blue: 0.09, alpha: 1.0)
+        findTextField.layer.cornerRadius = 4
+        findTextField.layer.borderWidth = 1
+        findTextField.layer.borderColor = UIColor(white: 1.0, alpha: 0.16).cgColor
+        findTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 8, height: 1))
+        findTextField.leftViewMode = .always
+        findTextField.autocorrectionType = .no
+        findTextField.autocapitalizationType = .none
+        findTextField.addTarget(self, action: #selector(findFieldDidChange), for: .editingChanged)
+
+        findStatusLabel.font = .monospacedSystemFont(ofSize: 11, weight: .semibold)
+        findStatusLabel.textColor = UIColor(white: 0.7, alpha: 1.0)
+
+        let findPrevBtn = UIButton(type: .system)
+        findPrevBtn.setImage(UIImage(systemName: "chevron.up"), for: .normal)
+        findPrevBtn.tintColor = .white
+        findPrevBtn.addTarget(self, action: #selector(findPrevTapped), for: .touchUpInside)
+
+        let findNextBtn = UIButton(type: .system)
+        findNextBtn.setImage(UIImage(systemName: "chevron.down"), for: .normal)
+        findNextBtn.tintColor = .white
+        findNextBtn.addTarget(self, action: #selector(findNextTapped), for: .touchUpInside)
+
+        let findCloseBtn = UIButton(type: .system)
+        findCloseBtn.setImage(UIImage(systemName: "xmark"), for: .normal)
+        findCloseBtn.tintColor = UIColor(white: 0.75, alpha: 1.0)
+        findCloseBtn.addTarget(self, action: #selector(findCloseTapped), for: .touchUpInside)
+
+        let findStack = UIStackView(arrangedSubviews: [findTextField, findStatusLabel, findPrevBtn, findNextBtn, findCloseBtn])
+        findStack.translatesAutoresizingMaskIntoConstraints = false
+        findStack.axis = .horizontal
+        findStack.spacing = 6
+        findStack.alignment = .center
+        findBar.addSubview(findStack)
+
         view.addSubview(toolbar)
+        view.addSubview(findBar)
         view.addSubview(webView)
         view.addSubview(statusBanner)
+
+        findBarHeightConstraint = findBar.heightAnchor.constraint(equalToConstant: 0)
 
         scrollIndicatorBubble.translatesAutoresizingMaskIntoConstraints = false
         scrollIndicatorBubble.backgroundColor = UIColor(red: 0.08, green: 0.12, blue: 0.20, alpha: 0.9)
@@ -662,7 +824,17 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
             progressView.bottomAnchor.constraint(equalTo: toolbar.bottomAnchor),
             progressView.heightAnchor.constraint(equalToConstant: 2),
 
-            webView.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
+            findBar.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
+            findBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            findBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            findBarHeightConstraint,
+
+            findStack.leadingAnchor.constraint(equalTo: findBar.leadingAnchor, constant: 8),
+            findStack.trailingAnchor.constraint(equalTo: findBar.trailingAnchor, constant: -8),
+            findStack.centerYAnchor.constraint(equalTo: findBar.centerYAnchor),
+            findTextField.heightAnchor.constraint(equalToConstant: 24),
+
+            webView.topAnchor.constraint(equalTo: findBar.bottomAnchor),
             webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -701,10 +873,11 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         urlObservation = webView.observe(\.url, options: [.new]) { [weak self] wv, _ in
             Task { @MainActor in
                 guard let self, let urlStr = wv.url?.absoluteString else { return }
+                let isHome = (urlStr == "about:home" || urlStr == "about:blank")
                 if !self.addressField.isFirstResponder {
-                    self.addressField.text = urlStr
+                    self.addressField.text = isHome ? "" : urlStr
                 }
-                self.updateTabState(url: urlStr, pageTitle: wv.title)
+                self.updateTabState(url: isHome ? "about:home" : urlStr, pageTitle: wv.title)
             }
         }
     }
@@ -937,9 +1110,11 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
             ? UIColor(red: 0.65, green: 0.25, blue: 0.05, alpha: 0.95)
             : UIColor(red: 0.06, green: 0.32, blue: 0.20, alpha: 0.95)
         statusBanner.isHidden = false
-        Task { @MainActor in
+        bannerDismissTask?.cancel()
+        bannerDismissTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 5_000_000_000)
-            self.statusBanner.isHidden = true
+            guard !Task.isCancelled else { return }
+            self?.statusBanner.isHidden = true
         }
     }
 
@@ -1000,7 +1175,27 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         )
     }
 
+    @objc private func findFieldDidChange() {
+        findInPage(backwards: false)
+    }
+
+    @objc private func findPrevTapped() {
+        findInPage(backwards: true)
+    }
+
+    @objc private func findNextTapped() {
+        findInPage(backwards: false)
+    }
+
+    @objc private func findCloseTapped() {
+        dismissFindBar()
+    }
+
     public func textFieldDidBeginEditing(_ textField: UITextField) {
+        if textField === findTextField {
+            store.focusPane(paneId)
+            return
+        }
         isAddressBarActive = true
         addressField.layer.borderColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 1.0).cgColor
         addressField.layer.borderWidth = 1.5
@@ -1017,6 +1212,7 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     }
 
     public func textFieldDidEndEditing(_ textField: UITextField) {
+        if textField === findTextField { return }
         isAddressBarActive = false
         addressField.layer.borderColor = UIColor(white: 1.0, alpha: 0.14).cgColor
         addressField.layer.borderWidth = 1.0
@@ -1024,13 +1220,68 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
     }
 
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        if textField === findTextField {
+            findInPage(backwards: false)
+            return true
+        }
         let target = omnibarDropdown?.selectedSuggestionUrl ?? textField.text ?? ""
         deactivateAddressBar()
         loadInput(target)
         return true
     }
 
-    // MARK: - WKUIDelegate (target="_blank" -> new tab in same pane, PRD §9.2)
+    // MARK: - WKUIDelegate (target="_blank", JS alert/confirm/prompt)
+
+    public func webView(
+        _ webView: WKWebView,
+        runJavaScriptAlertPanelWithMessage message: String,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping () -> Void
+    ) {
+        let host = frame.request.url?.host ?? "Web Page"
+        showDesktopAlert(
+            title: host,
+            message: message,
+            actions: [DesktopAlertAction(title: "OK", style: .default) { _ in completionHandler() }]
+        )
+    }
+
+    public func webView(
+        _ webView: WKWebView,
+        runJavaScriptConfirmPanelWithMessage message: String,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping (Bool) -> Void
+    ) {
+        let host = frame.request.url?.host ?? "Web Page"
+        showDesktopAlert(
+            title: host,
+            message: message,
+            actions: [
+                DesktopAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(false) },
+                DesktopAlertAction(title: "OK", style: .default) { _ in completionHandler(true) }
+            ]
+        )
+    }
+
+    public func webView(
+        _ webView: WKWebView,
+        runJavaScriptTextInputPanelWithPrompt prompt: String,
+        defaultText: String?,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping (String?) -> Void
+    ) {
+        let host = frame.request.url?.host ?? "Web Page"
+        showDesktopAlert(
+            title: host,
+            message: prompt,
+            actions: [
+                DesktopAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(nil) },
+                DesktopAlertAction(title: "OK", style: .default) { text in completionHandler(text ?? "") }
+            ],
+            textFieldPlaceholder: "Enter text…",
+            textFieldDefaultText: defaultText
+        )
+    }
 
     public func webView(
         _ webView: WKWebView,
@@ -1078,7 +1329,30 @@ public final class WebTabViewController: UIViewController, WKNavigationDelegate,
         completionHandler(dest)
     }
 
+    public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        showStatusBanner("Web process restarted — reloading page…", isWarning: true)
+        webView.reload()
+    }
+
+    public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        let nsErr = error as NSError
+        guard nsErr.code != NSURLErrorCancelled else { return }
+        showStatusBanner("Couldn't load page: \(error.localizedDescription)", isWarning: true)
+    }
+
+    public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        let nsErr = error as NSError
+        guard nsErr.code != NSURLErrorCancelled else { return }
+        showStatusBanner("Navigation error: \(error.localizedDescription)", isWarning: true)
+    }
+
     public func downloadDidFinish(_ download: WKDownload) {
         showStatusBanner("Downloaded to Documents/Downloads", isWarning: false)
+    }
+}
+
+private extension CGFloat {
+    var roundedToTenth: CGFloat {
+        (self * 10).rounded() / 10
     }
 }

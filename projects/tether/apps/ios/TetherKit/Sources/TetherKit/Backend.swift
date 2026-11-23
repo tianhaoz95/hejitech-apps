@@ -98,6 +98,7 @@ public final class Backend: @unchecked Sendable {
     private let http: URLSession
     private let lock = NSLock()
     private var _session: AuthSession?
+    private var _refreshTask: Task<Void, Error>?
     public var onSessionChange: ((AuthSession?) -> Void)?
 
     public init(config: BackendConfig, session: AuthSession? = nil, http: URLSession = .shared) {
@@ -152,15 +153,34 @@ public final class Backend: @unchecked Sendable {
         setSession(nil)
     }
 
+    private func getOrCreateRefreshTask(refreshToken: String) -> Task<Void, Error> {
+        lock.withLock {
+            if let existing = _refreshTask {
+                return existing
+            }
+            let created = Task<Void, Error> {
+                defer { self.clearRefreshTask() }
+                do {
+                    try await self.authRequest("token?grant_type=refresh_token", body: ["refresh_token": refreshToken])
+                } catch let e as BackendError where e.isUnauthorized || { if case .http(400, _) = e { return true }; return false }() {
+                    self.setSession(nil)
+                    throw BackendError.notSignedIn
+                }
+            }
+            _refreshTask = created
+            return created
+        }
+    }
+
+    private func clearRefreshTask() {
+        lock.withLock { _refreshTask = nil }
+    }
+
     public func refreshIfNeeded() async throws {
         guard let s = session else { throw BackendError.notSignedIn }
         if s.expiresAt.timeIntervalSinceNow > 60 { return }
-        do {
-            try await authRequest("token?grant_type=refresh_token", body: ["refresh_token": s.refreshToken])
-        } catch let e as BackendError where e.isUnauthorized || { if case .http(400, _) = e { return true }; return false }() {
-            setSession(nil)
-            throw BackendError.notSignedIn
-        }
+        let task = getOrCreateRefreshTask(refreshToken: s.refreshToken)
+        try await task.value
     }
 
     @discardableResult
@@ -215,7 +235,10 @@ public final class Backend: @unchecked Sendable {
         auth: Bool = true,
         as: T.Type = T.self
     ) async throws -> T {
-        var req = URLRequest(url: URL(string: config.site.absoluteString + path)!)
+        guard let url = URL(string: config.site.absoluteString + path) else {
+            throw BackendError.decode("Invalid URL path: \(path)")
+        }
+        var req = URLRequest(url: url)
         req.httpMethod = method
         req.timeoutInterval = 15
         req.setValue("ios", forHTTPHeaderField: "X-Tether-Client")
@@ -268,7 +291,8 @@ public final class Backend: @unchecked Sendable {
 
     public func deleteHost(_ id: String) async throws -> [SshHost] {
         struct Resp: Decodable { let hosts: [SshHost] }
-        return try await call("DELETE", "/api/hosts/\(id)", as: Resp.self).hosts
+        let encoded = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
+        return try await call("DELETE", "/api/hosts/\(encoded)", as: Resp.self).hosts
     }
 
     public func fetchBookmarks() async throws -> [Bookmark] {
@@ -283,7 +307,8 @@ public final class Backend: @unchecked Sendable {
 
     public func deleteBookmark(_ id: String) async throws -> [Bookmark] {
         struct Resp: Decodable { let bookmarks: [Bookmark] }
-        return try await call("DELETE", "/api/bookmarks/\(id)", as: Resp.self).bookmarks
+        let encoded = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
+        return try await call("DELETE", "/api/bookmarks/\(encoded)", as: Resp.self).bookmarks
     }
 
     /// `appleAuthorizationCode`: a fresh Sign in with Apple code, so the Worker can revoke the app's Apple token.

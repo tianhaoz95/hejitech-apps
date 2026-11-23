@@ -88,7 +88,6 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
                             shortcutHint: "↵ Jump"
                         ) { [weak self] in
                             guard let self else { return }
-                            self.dismissPalette()
                             if self.store.activeWorkspaceIndex != wsIdx {
                                 self.store.switchToWorkspace(at: wsIdx)
                             }
@@ -174,13 +173,35 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
         items.append(CommandPaletteItem(
             id: "duplicate-tab",
             title: "Duplicate Active Tab",
-            subtitle: "Duplicate current tab in a new split",
+            subtitle: "Duplicate current tab in the focused pane",
             category: "Tabs",
             systemImage: "plus.rectangle.on.rectangle",
             shortcutHint: nil
         ) { [weak self] in
             guard let self, let pane = self.store.focusedPane, let active = pane.activeTab else { return }
             self.store.tree = PaneTreeOps.duplicateTab(self.store.tree, paneId: pane.id, tabId: active.id)
+        })
+
+        items.append(CommandPaletteItem(
+            id: "reopen-closed-tab",
+            title: "Reopen Closed Tab",
+            subtitle: "Restore the most recently closed tab",
+            category: "Tabs",
+            systemImage: "arrow.uturn.backward.circle",
+            shortcutHint: "⌘⇧T"
+        ) { [weak self] in
+            _ = self?.store.reopenLastClosedTab()
+        })
+
+        items.append(CommandPaletteItem(
+            id: "move-tab-next-pane",
+            title: "Move Active Tab to Next Pane",
+            subtitle: "Send the current tab into the adjacent split pane",
+            category: "Tabs",
+            systemImage: "arrow.right.square",
+            shortcutHint: nil
+        ) { [weak self] in
+            self?.store.moveActiveTabToNextPane()
         })
 
         // 2. Workspaces
@@ -366,6 +387,50 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
         })
 
         items.append(CommandPaletteItem(
+            id: "find-in-page",
+            title: "Find in Page",
+            subtitle: "Search text on the active web page",
+            category: "Browser",
+            systemImage: "magnifyingglass",
+            shortcutHint: "⌘F"
+        ) { [weak self] in
+            self?.workspaceVC?.activeWebTabController()?.toggleFindBar()
+        })
+
+        items.append(CommandPaletteItem(
+            id: "zoom-in",
+            title: "Zoom In (Web / Terminal)",
+            subtitle: "Increase page zoom or terminal font size",
+            category: "Browser",
+            systemImage: "plus.magnifyingglass",
+            shortcutHint: "⌘+"
+        ) { [weak self] in
+            self?.workspaceVC?.zoomInKey()
+        })
+
+        items.append(CommandPaletteItem(
+            id: "zoom-out",
+            title: "Zoom Out (Web / Terminal)",
+            subtitle: "Decrease page zoom or terminal font size",
+            category: "Browser",
+            systemImage: "minus.magnifyingglass",
+            shortcutHint: "⌘-"
+        ) { [weak self] in
+            self?.workspaceVC?.zoomOutKey()
+        })
+
+        items.append(CommandPaletteItem(
+            id: "zoom-reset",
+            title: "Reset Zoom (100%)",
+            subtitle: "Reset web page zoom or terminal font size to default",
+            category: "Browser",
+            systemImage: "1.magnifyingglass",
+            shortcutHint: "⌘0"
+        ) { [weak self] in
+            self?.workspaceVC?.resetZoomKey()
+        })
+
+        items.append(CommandPaletteItem(
             id: "starter-page",
             title: "Open Starter Web Page",
             subtitle: "Display the clean Tether starter dashboard",
@@ -476,9 +541,7 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
             systemImage: "keyboard",
             shortcutHint: "⌘/"
         ) { [weak self] in
-            guard let self else { return }
-            self.dismissPalette()
-            self.workspaceVC?.openKeyboardShortcutsTapped()
+            self?.workspaceVC?.openKeyboardShortcutsTapped()
         })
 
         items.append(CommandPaletteItem(
@@ -489,9 +552,7 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
             systemImage: "xmark.square",
             shortcutHint: "⌘⌥W"
         ) { [weak self] in
-            guard let self else { return }
-            self.dismissPalette()
-            self.workspaceVC?.closeActiveWorkspaceKey()
+            self?.workspaceVC?.closeActiveWorkspaceKey()
         })
 
         items.append(CommandPaletteItem(
@@ -502,9 +563,7 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
             systemImage: "key.fill",
             shortcutHint: "⌘⇧H"
         ) { [weak self] in
-            guard let self else { return }
-            self.dismissPalette()
-            self.workspaceVC?.openHostsTapped()
+            self?.workspaceVC?.openHostsTapped()
         })
 
         items.append(CommandPaletteItem(
@@ -663,13 +722,22 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
         dismissPalette()
     }
 
+    private var isDismissing: Bool = false
+
     public func dismissPalette(completion: (() -> Void)? = nil) {
+        guard !isDismissing else {
+            completion?()
+            return
+        }
+        isDismissing = true
+        let dismissHandler = onDismiss
+        onDismiss = nil
+        dismissHandler?()
         UIView.animate(withDuration: 0.15, animations: {
             self.alpha = 0
             self.dialogCard.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
         }) { _ in
             self.removeFromSuperview()
-            self.onDismiss?()
             completion?()
         }
     }
@@ -702,7 +770,8 @@ public final class CommandPaletteView: UIView, UITextFieldDelegate, UITableViewD
     // MARK: - Keyboard & Cursor Execution
 
     public func handleKeyInput(_ text: String) {
-        if text == "\u{7F}" { // Backspace
+        searchQuery = searchField.text ?? ""
+        if text == "\u{7F}" || text == "\u{08}" { // Backspace
             if !searchQuery.isEmpty {
                 searchQuery.removeLast()
             }

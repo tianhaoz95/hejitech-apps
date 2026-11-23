@@ -6,11 +6,14 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.net.URLEncoder
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
@@ -74,12 +77,17 @@ class TetherBackend(
         val verifier = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes)
         val challengeBytes = MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.UTF_8))
         val challenge = Base64.getUrlEncoder().withoutPadding().encodeToString(challengeBytes)
-        val url = "${config.supabaseUrl}/auth/v1/authorize?provider=$provider&redirect_to=$redirectUri&code_challenge=$challenge&code_challenge_method=s256"
+        val encProvider = URLEncoder.encode(provider, "UTF-8")
+        val encRedirect = URLEncoder.encode(redirectUri, "UTF-8")
+        val url = "${config.supabaseUrl}/auth/v1/authorize?provider=$encProvider&redirect_to=$encRedirect&code_challenge=$challenge&code_challenge_method=s256"
         return url to verifier
     }
 
     suspend fun signInWithEmailPassword(email: String, password: String): AuthSession = withContext(Dispatchers.IO) {
-        val bodyStr = """{"email":"$email","password":"$password"}"""
+        val bodyStr = buildJsonObject {
+            put("email", email)
+            put("password", password)
+        }.toString()
         val req = Request.Builder()
             .url("${config.supabaseUrl}/auth/v1/token?grant_type=password")
             .addHeader("apikey", config.anonKey)
@@ -89,11 +97,11 @@ class TetherBackend(
         http.newCall(req).execute().use { resp ->
             val raw = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) error("Sign-in failed (${resp.code}): $raw")
-            val obj = json.parseToJsonElement(raw) as JsonObject
-            val access = obj["access_token"]!!.jsonPrimitive.content
-            val refresh = obj["refresh_token"]!!.jsonPrimitive.content
-            val userObj = obj["user"] as JsonObject
-            val uid = userObj["id"]!!.jsonPrimitive.content
+            val obj = json.parseToJsonElement(raw) as? JsonObject ?: error("Unexpected auth response")
+            val access = obj["access_token"]?.jsonPrimitive?.content ?: error("Missing access_token")
+            val refresh = obj["refresh_token"]?.jsonPrimitive?.content ?: error("Missing refresh_token")
+            val userObj = obj["user"] as? JsonObject ?: error("Missing user object")
+            val uid = userObj["id"]?.jsonPrimitive?.content ?: error("Missing user id")
             val userEmail = userObj["email"]?.jsonPrimitive?.content
             val expiresIn = obj["expires_in"]?.jsonPrimitive?.content?.toLongOrNull() ?: 3600L
             val authSession = AuthSession(

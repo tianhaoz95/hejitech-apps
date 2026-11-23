@@ -34,8 +34,33 @@ const cors = {
 const reply = (body: unknown, status = 200, extra: Record<string, string> = {}) =>
   json(body, status, { ...cors, ...extra });
 
+function safeDecodeSegment(raw: string): string | null {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+}
+
+function isValidHttpUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return (u.protocol === "http:" || u.protocol === "https:") && Boolean(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  try {
+    return await routeApi(req, env, url);
+  } catch (e) {
+    return reply({ error: (e as Error).message || "internal server error" }, 500);
+  }
+}
+
+async function routeApi(req: Request, env: Env, url: URL): Promise<Response> {
   const db = admin(env);
   const path = url.pathname;
 
@@ -69,7 +94,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     const issues = validatePaneTree(body.tree);
     if (issues.length) return reply({ error: "invalid pane tree", issues }, 422);
     const ws = await loadWorkspace(db, userId);
-    const settings = normalizeSettings(body.settings ?? ws.settings);
+    const settings = normalizeSettings(body.settings ? { ...ws.settings, ...body.settings } : ws.settings);
     await saveWorkspaceTreeAndSettings(db, userId, body.tree, settings);
     return reply({ tree: body.tree, settings, saved: true });
   }
@@ -90,7 +115,9 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
 
   const hostMatch = path.match(/^\/api\/hosts\/([^/]+)$/);
   if (hostMatch && req.method === "DELETE") {
-    await deleteHost(db, userId, decodeURIComponent(hostMatch[1]));
+    const id = safeDecodeSegment(hostMatch[1]);
+    if (!id) return reply({ error: "invalid host id" }, 400);
+    await deleteHost(db, userId, id);
     return reply({ ok: true });
   }
 
@@ -102,11 +129,12 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
   if (path === "/api/bookmarks" && req.method === "POST") {
     const body = (await req.json().catch(() => null)) as { id?: string; title?: string; url?: string } | null;
     const urlStr = String(body?.url ?? "").trim();
-    if (!urlStr || !/^https?:\/\//i.test(urlStr)) {
+    if (!urlStr || !isValidHttpUrl(urlStr)) {
       return reply({ error: "valid http(s) url required" }, 422);
     }
+    const id = typeof body?.id === "string" && body.id.trim() ? body.id.trim() : `bm-${Date.now()}`;
     const bm = {
-      id: String(body?.id ?? `bm-${Date.now()}`),
+      id,
       title: String(body?.title ?? urlStr).trim() || urlStr,
       url: urlStr,
     };
@@ -116,29 +144,33 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
 
   const bmMatch = path.match(/^\/api\/bookmarks\/([^/]+)$/);
   if (bmMatch && req.method === "DELETE") {
-    await deleteBookmark(db, userId, decodeURIComponent(bmMatch[1]));
+    const id = safeDecodeSegment(bmMatch[1]);
+    if (!id) return reply({ error: "invalid bookmark id" }, 400);
+    await deleteBookmark(db, userId, id);
     return reply({ ok: true });
   }
 
   // ------------------------------------------------------------ agent tokens (MCP)
   if (path === "/api/tokens" && req.method === "GET") {
-    const { data } = await db
+    const { data, error } = await db
       .from("access_tokens")
       .select("id, name, created_at, last_used_at")
       .eq("user_id", userId)
       .order("created_at");
+    if (error) return reply({ error: error.message }, 500);
     return reply(data ?? []);
   }
 
   if (path === "/api/tokens" && req.method === "POST") {
     const body = (await req.json().catch(() => ({}))) as { name?: string };
     const token = randomToken(PREFIX.agent);
+    const trimmedName = typeof body.name === "string" ? body.name.trim() : "";
     const { data, error } = await db
       .from("access_tokens")
       .insert({
         token_hash: await sha256(token),
         user_id: userId,
-        name: String(body.name ?? "Assistant").slice(0, 60),
+        name: (trimmedName || "Assistant").slice(0, 60),
       })
       .select("id")
       .single();
@@ -148,7 +180,8 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
 
   const tok = path.match(/^\/api\/tokens\/([0-9a-f-]{36})$/);
   if (tok && req.method === "DELETE") {
-    await db.from("access_tokens").delete().eq("user_id", userId).eq("id", tok[1]);
+    const { error } = await db.from("access_tokens").delete().eq("user_id", userId).eq("id", tok[1]);
+    if (error) return reply({ error: error.message }, 500);
     return reply({ ok: true });
   }
 

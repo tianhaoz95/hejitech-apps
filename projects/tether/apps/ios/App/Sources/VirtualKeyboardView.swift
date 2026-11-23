@@ -27,6 +27,16 @@ public final class VirtualKeyboardView: UIView {
 
     private var backspaceTimer: Timer?
 
+    deinit {
+        backspaceTimer?.invalidate()
+    }
+
+    public override func removeFromSuperview() {
+        backspaceTimer?.invalidate()
+        backspaceTimer = nil
+        super.removeFromSuperview()
+    }
+
     public init() {
         super.init(frame: .zero)
         setupViews()
@@ -408,6 +418,14 @@ public final class VirtualKeyboardView: UIView {
                 emitText(String(UnicodeScalar(ctrlCode)))
                 return
             }
+        }
+
+        if isAltLatched {
+            isAltLatched = false
+            if isShiftActive { isShiftActive = false }
+            rebuildKeyRows()
+            emitText("\u{1B}\(key)")
+            return
         }
 
         emitText(key)

@@ -6,8 +6,11 @@ import android.security.keystore.KeyProperties
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.interfaces.RSAPublicKey
 import java.util.Base64
 import java.util.UUID
 import javax.crypto.Cipher
@@ -25,7 +28,13 @@ data class StoredSshKey(
     val hasPassphrase: Boolean = false
 ) {
     val fingerprintSha256: String
-        get() = PaneTreeOps.computeSha256Fingerprint(publicKeyOpenSsh.toByteArray(Charsets.UTF_8))
+        get() {
+            val parts = publicKeyOpenSsh.trim().split(Regex("\\s+"))
+            val blob = if (parts.size >= 2) {
+                runCatching { Base64.getDecoder().decode(parts[1]) }.getOrNull()
+            } else null
+            return PaneTreeOps.computeSha256Fingerprint(blob ?: publicKeyOpenSsh.toByteArray(Charsets.UTF_8))
+        }
 }
 
 /**
@@ -43,11 +52,27 @@ class SecureCredentialStore(private val context: Context? = null) {
         private const val KEY_SSH_KEYS = "ssh.keys"
         private const val KEY_KNOWN_HOSTS = "ssh.known_hosts"
 
+        private fun encodeRsaOpenSshBlob(pub: RSAPublicKey): ByteArray {
+            val baos = ByteArrayOutputStream()
+            val dos = DataOutputStream(baos)
+            fun writeBytes(bytes: ByteArray) {
+                dos.writeInt(bytes.size)
+                dos.write(bytes)
+            }
+            writeBytes("ssh-rsa".toByteArray(Charsets.US_ASCII))
+            writeBytes(pub.publicExponent.toByteArray())
+            writeBytes(pub.modulus.toByteArray())
+            dos.flush()
+            return baos.toByteArray()
+        }
+
         fun generateSshKeyPair(label: String): StoredSshKey {
             val kpg = KeyPairGenerator.getInstance("RSA")
             kpg.initialize(2048)
             val kp = kpg.generateKeyPair()
-            val pubB64 = Base64.getEncoder().encodeToString(kp.public.encoded)
+            val rsaPub = kp.public as RSAPublicKey
+            val pubBlob = encodeRsaOpenSshBlob(rsaPub)
+            val pubB64 = Base64.getEncoder().encodeToString(pubBlob)
             val privB64 = Base64.getMimeEncoder(64, "\n".toByteArray()).encodeToString(kp.private.encoded)
             val pubOpenSsh = "ssh-rsa $pubB64 $label"
             val pem = "-----BEGIN PRIVATE KEY-----\n$privB64\n-----END PRIVATE KEY-----"
@@ -69,10 +94,15 @@ class SecureCredentialStore(private val context: Context? = null) {
         val updated = if (!passphrase.isNullOrEmpty()) {
             saveSecret("ssh.key_passphrase.${key.id}", passphrase)
             key.copy(hasPassphrase = true)
-        } else key
+        } else {
+            if (passphrase != null) deleteSecret("ssh.key_passphrase.${key.id}")
+            key.copy(hasPassphrase = passphrase == null && key.hasPassphrase)
+        }
         val next = listOf(updated) + listSshKeys().filterNot { it.id == key.id }
         writeEncrypted(KEY_SSH_KEYS, json.encodeToString(next))
     }
+
+    fun loadKeyPassphrase(keyId: String): String? = readEncrypted("ssh.key_passphrase.$keyId")
 
     fun deleteSshKey(id: String) {
         val next = listSshKeys().filterNot { it.id == id }
@@ -157,18 +187,21 @@ class SecureCredentialStore(private val context: Context? = null) {
         return kg.generateKey()
     }
 
+    @Synchronized
     private fun writeEncrypted(key: String, plaintext: String) {
         val ctx = context
         if (ctx == null) {
             memoryStore[key] = plaintext
             return
         }
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateMasterKey())
-        val iv = cipher.iv
-        val ciphertext = cipher.doFinal(plaintext.toByteArray(Charsets.UTF_8))
-        val encoded = Base64.getEncoder().encodeToString(iv) + ":" + Base64.getEncoder().encodeToString(ciphertext)
-        ctx.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE).edit().putString(key, encoded).apply()
+        runCatching {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.ENCRYPT_MODE, getOrCreateMasterKey())
+            val iv = cipher.iv
+            val ciphertext = cipher.doFinal(plaintext.toByteArray(Charsets.UTF_8))
+            val encoded = Base64.getEncoder().encodeToString(iv) + ":" + Base64.getEncoder().encodeToString(ciphertext)
+            ctx.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE).edit().putString(key, encoded).apply()
+        }
     }
 
     private fun readEncrypted(key: String): String? {

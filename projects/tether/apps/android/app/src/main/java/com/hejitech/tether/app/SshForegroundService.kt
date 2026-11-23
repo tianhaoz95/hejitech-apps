@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 
 /**
@@ -31,9 +33,9 @@ class SshForegroundService : Service() {
                 putExtra(EXTRA_ACTIVE_COUNT, count)
             }
             if (count > 0) {
-                context.startForegroundService(intent)
+                runCatching { context.startForegroundService(intent) }
             } else {
-                context.stopService(intent)
+                runCatching { context.stopService(intent) }
             }
         }
     }
@@ -60,20 +62,33 @@ class SshForegroundService : Service() {
                 return START_NOT_STICKY
             }
             else -> {
-                val count = intent?.getIntExtra(EXTRA_ACTIVE_COUNT, 1) ?: 1
+                val count = intent?.getIntExtra(EXTRA_ACTIVE_COUNT, 0) ?: 0
                 if (count <= 0) {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
                     return START_NOT_STICKY
                 }
-                startForeground(NOTIFICATION_ID, buildNotification(count))
-                return START_STICKY
+                val notification = buildNotification(count)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+                } else {
+                    startForeground(NOTIFICATION_ID, notification)
+                }
+                return START_NOT_STICKY
             }
         }
     }
 
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        onDisconnectAllRequested?.invoke()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf(startId)
+    }
+
     private fun buildNotification(activeCount: Int): Notification {
-        val openIntent = Intent(this, MainActivity::class.java)
+        val openIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
         val openPending = PendingIntent.getActivity(
             this,
             0,

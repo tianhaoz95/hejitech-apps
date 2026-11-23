@@ -53,23 +53,40 @@ async function render() {
   const hostInput = el("input", { type: "text", placeholder: "Hostname or IP (e.g. dev.example.com)" });
   const userInput = el("input", { type: "text", placeholder: "Username (e.g. ubuntu)" });
   const portInput = el("input", { type: "number", value: "22", min: "1", max: "65535" });
+  const hostError = el("p", { class: "error small" });
+  hostError.style.display = "none";
   const addHostBtn = el("button", { class: "btn secondary", type: "button" }, "Add SSH Host Metadata");
   addHostBtn.addEventListener("click", async () => {
     if (!hostInput.value.trim() || !userInput.value.trim()) return;
-    await api("/api/hosts", {
-      method: "POST",
-      body: JSON.stringify({
-        id: `host-${Date.now()}`,
-        host: hostInput.value.trim(),
-        port: Number(portInput.value || 22),
-        username: userInput.value.trim(),
-        auth: "key",
-        autoReconnectOnDisplayReconnect: false,
-      }),
-    });
-    hostInput.value = "";
-    userInput.value = "";
-    await refreshHosts();
+    hostError.style.display = "none";
+    addHostBtn.disabled = true;
+    try {
+      const hr = await api<{ error?: string }>("/api/hosts", {
+        method: "POST",
+        body: JSON.stringify({
+          id: `host-${Date.now()}`,
+          host: hostInput.value.trim(),
+          port: Number(portInput.value || 22),
+          username: userInput.value.trim(),
+          auth: "key",
+          autoReconnectOnDisplayReconnect: false,
+        }),
+      });
+      if (!hr.ok) {
+        hostError.textContent = hr.body?.error ?? "Couldn't add host. Check hostname, username, and port (1–65535).";
+        hostError.style.display = "block";
+        return;
+      }
+      hostInput.value = "";
+      userInput.value = "";
+      portInput.value = "22";
+      await refreshHosts();
+    } catch (e) {
+      hostError.textContent = (e as Error).message || "Network error while saving host.";
+      hostError.style.display = "block";
+    } finally {
+      addHostBtn.disabled = false;
+    }
   });
 
   const bmList = el("ul", { class: "list" });
@@ -124,7 +141,8 @@ async function render() {
       { class: "panel stack" },
       el("div", { class: "panel-header" }, el("h2", {}, "Saved SSH Hosts (Metadata Only)"), el("span", { class: "badge" }, "No secrets stored")),
       hostsList,
-      el("div", { class: "row" }, hostInput, userInput, portInput, addHostBtn)
+      el("div", { class: "row" }, hostInput, userInput, portInput, addHostBtn),
+      hostError
     ),
     el(
       "div",
@@ -200,15 +218,22 @@ async function assistantsPanel() {
   const make = el("button", { class: "btn secondary", type: "button" }, "Create personal token");
   make.addEventListener("click", async () => {
     make.disabled = true;
-    const r = await api<{ token: string }>("/api/tokens", { method: "POST", body: JSON.stringify({ name: "Assistant" }) });
-    make.disabled = false;
-    if (r.ok) {
-      fresh.replaceChildren(
-        el("p", { class: "small muted" }, "Copy your personal token now — it won't be shown again:"),
-        el("div", { class: "secret-box" }, el("code", { class: "mono" }, r.body.token))
-      );
+    try {
+      const r = await api<{ token: string; error?: string }>("/api/tokens", { method: "POST", body: JSON.stringify({ name: "Assistant" }) });
+      if (r.ok) {
+        fresh.replaceChildren(
+          el("p", { class: "small muted" }, "Copy your personal token now — it won't be shown again:"),
+          el("div", { class: "secret-box" }, el("code", { class: "mono" }, r.body.token))
+        );
+      } else {
+        fresh.replaceChildren(el("p", { class: "error small" }, r.body?.error ?? "Couldn't create token."));
+      }
+      await refresh();
+    } catch (e) {
+      fresh.replaceChildren(el("p", { class: "error small" }, (e as Error).message || "Network error."));
+    } finally {
+      make.disabled = false;
     }
-    await refresh();
   });
 
   return el(

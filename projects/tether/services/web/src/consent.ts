@@ -42,19 +42,23 @@ async function render() {
   const loopback = params.get("loopback") === "1";
   const decide = (decision: "approve" | "deny") => async () => {
     for (const b of buttons) b.disabled = true;
-    const { data: fresh } = await supabase.auth.getSession();
-    const res = await fetch("/authorize", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${fresh.session?.access_token ?? ""}`,
-      },
-      body: JSON.stringify({ handle, decision }),
-    });
-    const body = (await res.json().catch(() => ({}))) as { redirectTo?: string | null; error?: string };
-    if (body.redirectTo) return location.replace(body.redirectTo);
-    problem(body.error ?? "Something went wrong. Try again from your assistant.");
+    try {
+      const { data: fresh } = await supabase.auth.getSession();
+      const res = await fetch("/authorize", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${fresh.session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify({ handle, decision }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { redirectTo?: string | null; error?: string };
+      if (body.redirectTo) return location.replace(body.redirectTo);
+      problem(body.error ?? "Something went wrong. Try again from your assistant.");
+    } catch (e) {
+      problem((e as Error).message || "Network error. Please try again.");
+    }
   };
   const buttons = [
     el("button", { class: "btn primary", type: "button", onclick: decide("approve") }, "Allow"),

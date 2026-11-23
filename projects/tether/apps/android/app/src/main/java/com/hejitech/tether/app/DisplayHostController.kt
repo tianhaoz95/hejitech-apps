@@ -35,7 +35,7 @@ class DisplayHostController(
     override fun onDisplayChanged(displayId: Int) = refreshDisplays()
 
     fun refreshDisplays() {
-        val displays = displayManager.displays
+        val displays = displayManager.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
         val external = displays.firstOrNull { it.displayId != Display.DEFAULT_DISPLAY }
         if (external != null) {
             val mode = external.mode

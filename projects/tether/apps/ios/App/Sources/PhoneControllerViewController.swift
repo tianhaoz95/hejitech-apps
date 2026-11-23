@@ -15,7 +15,7 @@ import UIKit
 ///
 /// Forced landscape orientation with vertical icon-only sidebar (left or right side configurable).
 @MainActor
-public final class PhoneControllerViewController: UIViewController, UITextFieldDelegate, UIKeyInput, UIGestureRecognizerDelegate {
+public final class PhoneControllerViewController: UIViewController, UITextFieldDelegate, UIGestureRecognizerDelegate {
     public enum ControllerMode: Int {
         case touchpad = 0
         case keyboard = 1
@@ -80,13 +80,20 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     private var isDragModeActive: Bool = false
     private var isHoldingLeftClick: Bool = false
+    private var gcMouseMovedWhilePressed: Bool = false
+    private var notificationObservers: [NSObjectProtocol] = []
     private var edgePushTimer: CADisplayLink?
     private var edgePushDirection: CGVector = .zero
     private var registeredMice: Set<GCMouse> = []
 
+    deinit {
+        for obs in notificationObservers {
+            NotificationCenter.default.removeObserver(obs)
+        }
+    }
+
     // Keyboard Mode views
     private let keyboardContainer = UIView()
-    private let hiddenInputTextField = UITextField()
     private let activePaneLabel = UILabel()
     private let accessoryBar = UIStackView()
     private let keyboardModeVirtualKeyboard = VirtualKeyboardView()
@@ -259,20 +266,6 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             self?.applySidebarLayoutConstraints()
             self?.updateTouchpadLayout()
         }
-    }
-
-    // MARK: - UIKeyInput Protocol (Captures Physical Dock Keyboard & Software Input)
-
-    public var hasText: Bool {
-        true
-    }
-
-    public func insertText(_ text: String) {
-        workspaceVC?.routeKeyInput(text)
-    }
-
-    public func deleteBackward() {
-        workspaceVC?.routeKeyInput("\u{7F}")
     }
 
     public override func viewDidLoad() {
@@ -698,14 +691,12 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             setNeedsUpdateOfPrefersPointerLocked()
         }
 
+        view.endEditing(true)
         switch mode {
-        case .touchpad:
-            hiddenInputTextField.resignFirstResponder()
-            becomeFirstResponder()
-        case .keyboard:
+        case .touchpad, .keyboard:
             becomeFirstResponder()
         case .settings:
-            hiddenInputTextField.resignFirstResponder()
+            resignFirstResponder()
         }
     }
 
@@ -1227,18 +1218,19 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     }
 
     @objc private func handleThreeFingerSwipe(_ gesture: UISwipeGestureRecognizer) {
+        guard store.settings.touchpadDragGesture != .threeFingerDrag else { return }
         guard !threeFingerSwipeTriggered else { return }
         threeFingerSwipeTriggered = true
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         switch gesture.direction {
         case .left:
-            store.focusDirectional(.left)
-        case .right:
             store.focusDirectional(.right)
+        case .right:
+            store.focusDirectional(.left)
         case .up:
-            store.focusDirectional(.up)
-        case .down:
             store.focusDirectional(.down)
+        case .down:
+            store.focusDirectional(.up)
         default:
             break
         }
@@ -1293,10 +1285,14 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             UIKeyCommand(title: "New Tab", action: #selector(newTabKey), input: "t", modifierFlags: [.command]),
             UIKeyCommand(title: "Close Tab", action: #selector(closeTabKey), input: "w", modifierFlags: [.command]),
             UIKeyCommand(title: "Focus Address Bar", action: #selector(focusAddressBarKey), input: "l", modifierFlags: [.command]),
-            UIKeyCommand(title: "Preset 1", action: #selector(preset1Key), input: "1", modifierFlags: [.command]),
-            UIKeyCommand(title: "Preset 2", action: #selector(preset2Key), input: "2", modifierFlags: [.command]),
-            UIKeyCommand(title: "Preset 3", action: #selector(preset3Key), input: "3", modifierFlags: [.command]),
-            UIKeyCommand(title: "Preset 4", action: #selector(preset4Key), input: "4", modifierFlags: [.command]),
+            UIKeyCommand(title: "Focus Pane 1", action: #selector(focusPane1Key), input: "1", modifierFlags: [.command]),
+            UIKeyCommand(title: "Focus Pane 2", action: #selector(focusPane2Key), input: "2", modifierFlags: [.command]),
+            UIKeyCommand(title: "Focus Pane 3", action: #selector(focusPane3Key), input: "3", modifierFlags: [.command]),
+            UIKeyCommand(title: "Focus Pane 4", action: #selector(focusPane4Key), input: "4", modifierFlags: [.command]),
+            UIKeyCommand(title: "Preset 1", action: #selector(preset1Key), input: "1", modifierFlags: [.control, .alternate]),
+            UIKeyCommand(title: "Preset 2", action: #selector(preset2Key), input: "2", modifierFlags: [.control, .alternate]),
+            UIKeyCommand(title: "Preset 3", action: #selector(preset3Key), input: "3", modifierFlags: [.control, .alternate]),
+            UIKeyCommand(title: "Preset 4", action: #selector(preset4Key), input: "4", modifierFlags: [.control, .alternate]),
             UIKeyCommand(title: "Open Settings", action: #selector(openSettingsKey), input: ",", modifierFlags: [.command]),
         ]
     }
@@ -1314,6 +1310,10 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     @objc private func newTabKey() { store.openTab(type: .web) }
     @objc private func closeTabKey() { store.closeTab() }
     @objc private func focusAddressBarKey() { workspaceVC?.activeWebTabController()?.focusAddressBar() }
+    @objc private func focusPane1Key() { store.focusPaneIndex(0) }
+    @objc private func focusPane2Key() { store.focusPaneIndex(1) }
+    @objc private func focusPane3Key() { store.focusPaneIndex(2) }
+    @objc private func focusPane4Key() { store.focusPaneIndex(3) }
     @objc private func preset1Key() { store.applyPreset(.single) }
     @objc private func preset2Key() { store.applyPreset(.twoColumn) }
     @objc private func preset3Key() { store.applyPreset(.leftPlusTwoRight) }
@@ -1487,8 +1487,10 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             } else {
                 isDoubleTapDragging = false
             }
+            updateTouchpadDragGlow()
         } else if gesture.state == .ended || gesture.state == .cancelled || gesture.state == .failed {
             isDoubleTapDragging = false
+            updateTouchpadDragGlow()
         }
 
         let isDragging = isDoubleTapDragging || isDragModeActive || isHoldingLeftClick
@@ -1500,7 +1502,10 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     }
 
     @objc private func handleTwoFingerScrollPan(_ gesture: UIPanGestureRecognizer) {
-        isDoubleTapDragging = false
+        if isDoubleTapDragging {
+            isDoubleTapDragging = false
+            updateTouchpadDragGlow()
+        }
 
         switch gesture.state {
         case .began:
@@ -1529,13 +1534,23 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         workspaceVC?.routeSpecialKey(.escape)
     }
 
+    private func updateTouchpadDragGlow() {
+        let activeDrag = isDragModeActive || isDoubleTapDragging || isHoldingLeftClick
+        touchpadSurface.layer.borderColor = activeDrag
+            ? UIColor(red: 0.98, green: 0.75, blue: 0.14, alpha: 0.90).cgColor
+            : UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.25).cgColor
+        touchpadSurface.layer.borderWidth = activeDrag ? 2.5 : 1.5
+    }
+
     @objc private func handleTouchpadLongPress(_ gesture: UILongPressGestureRecognizer) {
         switch gesture.state {
         case .began:
             isHoldingLeftClick = true
+            updateTouchpadDragGlow()
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         case .ended, .cancelled, .failed:
             isHoldingLeftClick = false
+            updateTouchpadDragGlow()
         default:
             break
         }
@@ -1543,17 +1558,20 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     @objc private func handleLeftClickDown() {
         isHoldingLeftClick = true
+        updateTouchpadDragGlow()
         leftClickButton.backgroundColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.4)
     }
 
     @objc private func handleLeftClickUp() {
         isHoldingLeftClick = false
+        updateTouchpadDragGlow()
         leftClickButton.backgroundColor = UIColor(red: 0.10, green: 0.14, blue: 0.22, alpha: 1.0)
         workspaceVC?.performVirtualClick()
     }
 
     @objc private func handleDragResizeToggled() {
         isDragModeActive.toggle()
+        updateTouchpadDragGlow()
         if isDragModeActive {
             dragResizeButton.backgroundColor = UIColor(red: 0.22, green: 0.74, blue: 0.97, alpha: 0.9)
             dragResizeButton.setTitleColor(.black, for: .normal)
@@ -1668,25 +1686,23 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
 
     // MARK: - UITextFieldDelegate
 
-    public func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-        if string.isEmpty {
-            workspaceVC?.routeKeyInput("\u{7F}")
-        } else {
-            workspaceVC?.routeKeyInput(string)
+    public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        if textField === urlTextField {
+            textField.resignFirstResponder()
+            handleOpenUrlTapped()
         }
-        return false // Don't keep local text; route directly to active workspace tab
+        return false
     }
 
-    public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        workspaceVC?.routeKeyInput("\n")
-        showMode(.touchpad)
-        return false
+    @objc private func dismissSettingsKeyboard() {
+        view.endEditing(true)
     }
 
     // MARK: - Mode 3: Workspace & Settings Management
 
     private func setupSettingsMode() {
         settingsScrollView.translatesAutoresizingMaskIntoConstraints = false
+        settingsScrollView.keyboardDismissMode = .interactive
         containerView.addSubview(settingsScrollView)
 
         settingsStack.translatesAutoresizingMaskIntoConstraints = false
@@ -1942,6 +1958,15 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         urlTextField.placeholder = "https://github.com or search term…"
         urlTextField.autocapitalizationType = .none
         urlTextField.keyboardType = .URL
+        urlTextField.returnKeyType = .go
+        urlTextField.delegate = self
+        let kbToolbar = UIToolbar(frame: CGRect(x: 0, y: 0, width: 320, height: 44))
+        kbToolbar.items = [
+            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            UIBarButtonItem(title: "Done", style: .done, target: self, action: #selector(dismissSettingsKeyboard)),
+        ]
+        kbToolbar.sizeToFit()
+        urlTextField.inputAccessoryView = kbToolbar
         urlTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 8, height: 1))
         urlTextField.leftViewMode = .always
 
@@ -2096,6 +2121,7 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     }
 
     private func handleOpenUrlTapped() {
+        urlTextField.resignFirstResponder()
         let raw = (urlTextField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty else { return }
         let formatted = PaneTreeOps.resolveAddressBarInput(
@@ -2130,6 +2156,11 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
             })
         }
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        if let pop = alert.popoverPresentationController {
+            pop.sourceView = view
+            pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
+            pop.permittedArrowDirections = []
+        }
         present(alert, animated: true)
     }
 
@@ -2164,27 +2195,31 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     // MARK: - Dock Keyboard & Mouse Listeners
 
     private func setupDockMouseListeners() {
-        NotificationCenter.default.addObserver(
-            forName: .GCMouseDidConnect,
-            object: nil,
-            queue: .main
-        ) { [weak self] note in
-            guard let mouse = note.object as? GCMouse else { return }
-            Task { @MainActor [weak self] in
-                self?.configureGCMouse(mouse)
+        notificationObservers.append(
+            NotificationCenter.default.addObserver(
+                forName: .GCMouseDidConnect,
+                object: nil,
+                queue: .main
+            ) { [weak self] note in
+                guard let mouse = note.object as? GCMouse else { return }
+                Task { @MainActor [weak self] in
+                    self?.configureGCMouse(mouse)
+                }
             }
-        }
+        )
 
-        NotificationCenter.default.addObserver(
-            forName: .GCMouseDidDisconnect,
-            object: nil,
-            queue: .main
-        ) { [weak self] note in
-            guard let mouse = note.object as? GCMouse else { return }
-            Task { @MainActor [weak self] in
-                self?.registeredMice.remove(mouse)
+        notificationObservers.append(
+            NotificationCenter.default.addObserver(
+                forName: .GCMouseDidDisconnect,
+                object: nil,
+                queue: .main
+            ) { [weak self] note in
+                guard let mouse = note.object as? GCMouse else { return }
+                Task { @MainActor [weak self] in
+                    self?.registeredMice.remove(mouse)
+                }
             }
-        }
+        )
 
         for mouse in GCMouse.mice() {
             configureGCMouse(mouse)
@@ -2200,6 +2235,9 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
                 let isDragging = self.isDragModeActive || self.isHoldingLeftClick
                 let dx = CGFloat(deltaX) * sens
                 let dy = -CGFloat(deltaY) * sens
+                if self.isHoldingLeftClick && (abs(dx) > 1.5 || abs(dy) > 1.5) {
+                    self.gcMouseMovedWhilePressed = true
+                }
                 self.workspaceVC?.handleCursorPan(delta: CGVector(dx: dx, dy: dy), isDragHeld: isDragging)
             }
         }
@@ -2207,9 +2245,16 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
         mouse.mouseInput?.leftButton.pressedChangedHandler = { [weak self] (_, _, pressed) in
             Task { @MainActor [weak self] in
                 guard let self = self else { return }
-                self.isHoldingLeftClick = pressed
-                if !pressed {
-                    self.workspaceVC?.performVirtualClick()
+                if pressed {
+                    self.gcMouseMovedWhilePressed = false
+                    self.isHoldingLeftClick = true
+                } else {
+                    let wasDragging = self.gcMouseMovedWhilePressed
+                    self.isHoldingLeftClick = false
+                    self.gcMouseMovedWhilePressed = false
+                    if !wasDragging {
+                        self.workspaceVC?.performVirtualClick()
+                    }
                 }
             }
         }
@@ -2239,32 +2284,41 @@ public final class PhoneControllerViewController: UIViewController, UITextFieldD
     }
 
     private func setupHardwareKeyboardListeners() {
-        NotificationCenter.default.addObserver(
-            forName: .GCKeyboardDidConnect,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.hasDetectedPhysicalKeyboard = true
-            }
-        }
-        NotificationCenter.default.addObserver(
-            forName: .GCKeyboardDidDisconnect,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                if GCKeyboard.coalesced == nil {
-                    self?.hasDetectedPhysicalKeyboard = false
+        notificationObservers.append(
+            NotificationCenter.default.addObserver(
+                forName: .GCKeyboardDidConnect,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    self?.hasDetectedPhysicalKeyboard = true
                 }
             }
-        }
+        )
+        notificationObservers.append(
+            NotificationCenter.default.addObserver(
+                forName: .GCKeyboardDidDisconnect,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    if GCKeyboard.coalesced == nil {
+                        self?.hasDetectedPhysicalKeyboard = false
+                    }
+                }
+            }
+        )
     }
 
     // MARK: - Physical Keyboard Event Interception (UIPressesEvent)
 
     public override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         hasDetectedPhysicalKeyboard = true
+        // Let the Settings URL text field handle its own typing without routing keys to the external monitor.
+        if urlTextField.isFirstResponder {
+            super.pressesBegan(presses, with: event)
+            return
+        }
         for press in presses {
             if GlobalShortcutDispatcher.handlePress(press: press, store: store, workspaceVC: workspaceVC) {
                 return

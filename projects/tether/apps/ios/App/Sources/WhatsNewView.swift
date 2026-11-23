@@ -17,10 +17,37 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "0.1.25"
+    static let currentVersion = "0.1.26"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.1.26", date: "November 2026", items: [
+            WhatsNewItem(
+                icon: "display",
+                title: "External Display Detection & Keyboard Fix",
+                description: "Declared the iOS external display scene manifest so plugged-in monitors are detected reliably instead of mirroring, and fixed the iOS system keyboard staying stuck open on launch."
+            ),
+            WhatsNewItem(
+                icon: "terminal.fill",
+                title: "256-Color SSH Terminal & Smarter Closing",
+                description: "SSH terminals now render full xterm-256color ANSI styles (colors, bold, underline), handle OSC/escape sequences cleanly without lag, and ask before closing a live SSH session."
+            ),
+            WhatsNewItem(
+                icon: "magnifyingglass",
+                title: "Find in Page, Zoom & Web Dialogs",
+                description: "Press ⌘F to search inside any web tab, use ⌘+/⌘−/⌘0 to zoom web pages or resize terminal fonts, navigate with ⌘[/⌘], and interact with JavaScript alerts, confirms, and prompts directly on the external monitor."
+            ),
+            WhatsNewItem(
+                icon: "arrow.uturn.backward.circle.fill",
+                title: "Reopen Closed Tabs & Folder Actions",
+                description: "Accidentally closed a tab? Press ⌘⇧T or use the Command Palette to reopen it. Double-tap any split divider to reset 50/50, and manage folders directly in the Files pane."
+            ),
+            WhatsNewItem(
+                icon: "wrench.and.screwdriver.fill",
+                title: "Major Stability & Trackpad Fixes",
+                description: "Fixed web tab memory leaks, duplicate external display windows, double-click web navigation, 3-finger gesture conflicts, background workspace saving, and WebKit crash auto-recovery."
+            ),
+        ]),
         ReleaseNotes(version: "0.1.25", date: "November 2026", items: [
             WhatsNewItem(
                 icon: "hammer",

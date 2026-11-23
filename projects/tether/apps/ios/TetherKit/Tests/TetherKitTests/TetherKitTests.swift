@@ -373,5 +373,93 @@ final class TetherKitTests: XCTestCase {
             XCTAssertEqual(store.workspaces.count, 1)
         }
     }
+
+    func testRegressionPresetIdsTerminalOscAndWorkspaceRemoval() async {
+        // 1. Applying preset after closing pane-1 must not create duplicate pane-2 IDs
+        var tree = PaneTreeOps.createDefaultPaneTree()
+        tree = PaneTreeOps.closePane(tree, paneId: "pane-1")
+        let twoCol = PaneTreeOps.applyLayoutPreset(tree, preset: .twoColumn)
+        let paneIds = PaneTreeOps.collectPanes(twoCol.root).map(\.id)
+        XCTAssertEqual(Set(paneIds).count, 2)
+
+        // 2. Terminal buffer strips OSC title sequences and handles split escape chunks
+        let term = TerminalEmulatorBuffer(cols: 80, rows: 24)
+        term.feed("\u{1B}]0;user@host: ~\u{07}hello ")
+        term.feed("\u{1B}[")
+        term.feed("32mworld\u{1B}[0m")
+        XCTAssertEqual(term.renderedLines(includeScrollback: false).first, "hello world")
+
+        // 3. Address bar preserves about:home and encodes &/+ in search queries
+        XCTAssertEqual(PaneTreeOps.resolveAddressBarInput("about:home"), "about:home")
+        XCTAssertEqual(
+            PaneTreeOps.resolveAddressBarInput("c++ & rust"),
+            "https://duckduckgo.com/?q=c%2B%2B%20%26%20rust"
+        )
+
+        // 4. Removing an earlier workspace keeps the active workspace selected
+        let tmpDir = FileManager.default.temporaryDirectory.appendingPathComponent("tether-test-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        let store = await MainActor.run {
+            WorkspaceStore(
+                storageURL: tmpDir.appendingPathComponent("workspace.json"),
+                secureStore: SecureStore(service: "com.hejitech.tether.tests.reg", useInMemoryFallback: true)
+            )
+        }
+        await MainActor.run {
+            store.addWorkspace(name: "Space 2")
+            store.addWorkspace(name: "Space 3")
+            store.switchToWorkspace(at: 1) // active is "Space 2"
+            store.removeWorkspace(at: 0)   // remove "Space 1"
+            XCTAssertEqual(store.activeWorkspaceIndex, 0)
+            XCTAssertEqual(store.activeWorkspace?.name, "Space 2")
+        }
+    }
+
+    func testReopenClosedTabMoveTabAndSshStateCleanup() async {
+        let tmpDir = FileManager.default.temporaryDirectory.appendingPathComponent("tether-r2-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        let store = await MainActor.run {
+            WorkspaceStore(
+                storageURL: tmpDir.appendingPathComponent("workspace.json"),
+                secureStore: SecureStore(service: "com.hejitech.tether.tests.r2", useInMemoryFallback: true)
+            )
+        }
+
+        await MainActor.run {
+            let panes = PaneTreeOps.collectPanes(store.tree.root)
+            XCTAssertEqual(panes.count, 2)
+            let p1 = panes[0].id
+            let p2 = panes[1].id
+
+            // Open an SSH tab in pane 1, set a connection state, then close it
+            store.focusPane(p1)
+            store.openTab(type: .ssh, inPaneId: p1)
+            guard let sshTab = PaneTreeOps.findPane(store.tree.root, paneId: p1)?.activeTab else {
+                XCTFail("Expected active SSH tab")
+                return
+            }
+            store.sshStates[sshTab.id] = .connected
+            XCTAssertEqual(store.sshStates[sshTab.id], .connected)
+
+            store.closeTab(paneId: p1, tabId: sshTab.id)
+            // SSH state should be cleaned up on close
+            XCTAssertNil(store.sshStates[sshTab.id])
+            // Tab should be in closed history
+            XCTAssertEqual(store.closedTabsHistory.count, 1)
+
+            // Reopen closed tab restores it into focused pane
+            let reopened = store.reopenLastClosedTab()
+            XCTAssertTrue(reopened)
+            XCTAssertTrue(store.closedTabsHistory.isEmpty)
+            let p1AfterReopen = PaneTreeOps.findPane(store.tree.root, paneId: p1)
+            XCTAssertEqual(p1AfterReopen?.activeTab?.type, .ssh)
+
+            // Move active tab to next pane moves it from p1 to p2
+            let p2CountBefore = PaneTreeOps.findPane(store.tree.root, paneId: p2)?.tabs.count ?? 0
+            store.moveActiveTabToNextPane()
+            let p2CountAfter = PaneTreeOps.findPane(store.tree.root, paneId: p2)?.tabs.count ?? 0
+            XCTAssertEqual(p2CountAfter, p2CountBefore + 1)
+        }
+    }
 }
 
