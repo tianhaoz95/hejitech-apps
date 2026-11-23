@@ -1,6 +1,6 @@
 {
   "name": "@folio/web",
-  "version": "0.2.7",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Folio web + Worker: the site, the artifact workspace (preview, history, suggestions, comments, sharing), sandboxed artifact rendering, the API and the MCP server (with MCP Apps inline view) behind its own OAuth 2.1 (Cloudflare)",
