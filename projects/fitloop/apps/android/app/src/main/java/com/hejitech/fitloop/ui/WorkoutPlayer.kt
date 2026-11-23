@@ -80,6 +80,7 @@ fun WorkoutPlayer(model: AppModel, initial: WorkoutState, modifier: Modifier = M
     // The latest state of this workout (check-ins refresh model.today).
     val state = model.today?.state?.workouts?.firstOrNull { it.ref == initial.ref } ?: initial
     val start = remember { initial.next }
+    val opened = remember { java.time.Instant.now() }
     var ex by remember { mutableStateOf(start?.first ?: 0) }
     var set by remember { mutableStateOf(start?.second ?: 1) }
     var restUntil by remember { mutableStateOf<Long?>(null) }
@@ -103,7 +104,7 @@ fun WorkoutPlayer(model: AppModel, initial: WorkoutState, modifier: Modifier = M
     }
 
     suspend fun finish(status: String) {
-        model.checkin(NewCheckin(model.date, state.ref, "workout", status))
+        model.finishWorkout(state, status, opened)
         onClose()
     }
 

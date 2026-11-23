@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.hejitech.fitloop.core.Backend
 import com.hejitech.fitloop.core.BackendConfig
 import com.hejitech.fitloop.core.BackendException
+import com.hejitech.fitloop.core.CheckinData
 import com.hejitech.fitloop.core.Day
 import com.hejitech.fitloop.core.FeedbackTag
 import com.hejitech.fitloop.core.NewCheckin
@@ -19,18 +20,20 @@ import com.hejitech.fitloop.core.PlanResponse
 import com.hejitech.fitloop.core.ReminderPlanner
 import com.hejitech.fitloop.core.Settings
 import com.hejitech.fitloop.core.TodayResponse
+import com.hejitech.fitloop.core.WorkoutState
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
 import java.util.TimeZone
 
 enum class Phase { LAUNCHING, SIGNED_OUT, READY }
 
 /**
  * The app's state: sign-in, today (from the Worker, which merges the plan and check-ins), the plan,
- * settings and reminders. The same flow as the iPhone app's AppModel, without the watch and Health.
+ * settings, reminders and Health Connect. The same flow as the iPhone app's AppModel.
  */
 class AppModel(app: Application) : AndroidViewModel(app) {
     var phase by mutableStateOf(Phase.LAUNCHING)
@@ -61,6 +64,19 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     var openFirstWorkout = false
 
     private val prefs = app.getSharedPreferences("fitloop", Context.MODE_PRIVATE)
+
+    /** Health Connect: the daily summary and saved workouts. MainActivity asks for its permissions. */
+    val health = HealthConnect(app)
+    var requestHealthPermissions: ((Set<String>) -> Unit)? = null
+
+    /** "Save workouts to Health Connect" (this phone only, on by default, like the iPhone's switch). */
+    var saveWorkouts by mutableStateOf(prefs.getBoolean("save_workouts", true))
+        private set
+    fun switchSaveWorkouts(on: Boolean) {
+        saveWorkouts = on
+        prefs.edit().putBoolean("save_workouts", on).apply()
+        if (on) askHealth()
+    }
     private val store = SessionStore(app)
     lateinit var backend: Backend
         private set
@@ -98,6 +114,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             error = null
             phase = Phase.READY
             refresh()
+            syncHealth()
         } catch (e: BackendException) {
             if (e is BackendException.NotSignedIn || e.isUnauthorized) {
                 backend.signOut()
@@ -246,6 +263,35 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     } catch (e: Exception) {
         error = e.message
         false
+    }
+
+    // ---- workouts and Health Connect
+
+    /** The workout's check-in (with how long it took) and, when switched on, the session in Health Connect. */
+    suspend fun finishWorkout(state: WorkoutState, status: String, started: Instant, heartRate: Int? = null) {
+        val end = Instant.now()
+        checkin(NewCheckin(date, state.ref, "workout", status, CheckinData(durationSec = (end.epochSecond - started.epochSecond).toInt(), avgHr = heartRate)))
+        if (saveWorkouts) runCatching { health.saveWorkout(state.workout.kind, state.workout.title, state.ref, date, started, end) }
+    }
+
+    /** What to ask Health Connect for: the summary's reads when that's on, writing workouts when that's on. */
+    fun healthPermissionsWanted(): Set<String> = buildSet {
+        if (settings.vitals.healthDaily) addAll(HealthConnect.READ)
+        if (saveWorkouts) add(HealthConnect.WRITE_WORKOUT)
+    }
+
+    /** Asks for what's switched on and not yet allowed (the system sheet; nothing if all are granted). */
+    fun askHealth() = viewModelScope.launch {
+        if (!health.available) return@launch
+        val missing = healthPermissionsWanted() - runCatching { health.granted() }.getOrDefault(emptySet())
+        if (missing.isNotEmpty()) requestHealthPermissions?.invoke(missing)
+    }
+
+    /** The last 14 days' summary from Health Connect, when that option is on and allowed. */
+    suspend fun syncHealth() {
+        if (!settings.vitals.healthDaily || !health.available) return
+        val vitals = runCatching { health.dailySummary(14) }.getOrDefault(emptyList())
+        if (vitals.isNotEmpty()) runCatching { backend.sendVitals(vitals) }
     }
 
     // ---- reminders (local notifications)

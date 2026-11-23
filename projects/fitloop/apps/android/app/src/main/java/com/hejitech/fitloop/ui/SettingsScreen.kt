@@ -82,6 +82,7 @@ fun SettingsScreen(model: AppModel, modifier: Modifier = Modifier) {
                     scope.launch {
                         val r = draft.reminders
                         if (model.save(draft) && (r.workout.on || r.meals.on || r.evening.on || r.weekly.on)) (context as? MainActivity)?.askForNotifications()
+                        if (draft.vitals.healthDaily) { model.askHealth(); model.syncHealth() }
                     }
                 }) { Text(if (saved) "Saved" else "Save") }
             },
@@ -94,9 +95,10 @@ fun SettingsScreen(model: AppModel, modifier: Modifier = Modifier) {
             }
             item {
                 val v = draft.vitals
-                Section("Data FitLoop keeps", footer = "Heart rate and the daily health summary come from FitLoop on an iPhone with a watch. Never used for advertising, marketing or data mining.") {
+                Section("Data FitLoop keeps", footer = "Heart rate comes from your watch during a workout. The daily summary reads weight, resting heart rate, HRV, sleep, steps and active energy from Health Connect once a day. Never used for advertising, marketing or data mining.") {
                     SwitchRow("Live heart rate in workouts", v.liveHr) { draft = draft.copy(vitals = v.copy(liveHr = it)) }
-                    SwitchRow("Daily health summary", v.healthDaily) { draft = draft.copy(vitals = v.copy(healthDaily = it)) }
+                    SwitchRow("Daily Health Connect summary", v.healthDaily) { draft = draft.copy(vitals = v.copy(healthDaily = it)) }
+                    if (model.health.available) SwitchRow("Save workouts to Health Connect", model.saveWorkouts) { model.switchSaveWorkouts(it) }
                     SwitchRow("Manual entries", v.manual) { draft = draft.copy(vitals = v.copy(manual = it)) }
                     SwitchRow("Progress photos", v.photos) { draft = draft.copy(vitals = v.copy(photos = it)) }
                 }

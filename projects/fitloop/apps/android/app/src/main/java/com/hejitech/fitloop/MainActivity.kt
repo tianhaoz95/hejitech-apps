@@ -41,10 +41,15 @@ class MainActivity : ComponentActivity() {
         if (granted) model.scheduleReminders()
     }
 
+    private val askHealth = registerForActivityResult(HealthConnect.permissionContract()) { granted ->
+        if (granted.isNotEmpty()) lifecycleScope.launch { model.syncHealth() }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val debug = BuildConfig.DEBUG
+        model.requestHealthPermissions = { askHealth.launch(it) }
         model.start(production = debug && intent.getBooleanExtra("production", false), date = if (debug) intent.getStringExtra("date") else null)
         if (debug && savedInstanceState == null) {
             intent.getStringExtra("screen")?.let { model.initialTab = it }
@@ -66,7 +71,7 @@ class MainActivity : ComponentActivity() {
                             val proStatus by pro.status.collectAsState()
                             when {
                                 proStatus?.pro == true || (proStatus == null && pro.cachedPro) -> {
-                                    LaunchedEffect(Unit) { askForNotificationsOnce() }
+                                    LaunchedEffect(Unit) { askForNotificationsOnce(); askForHealthOnce() }
                                     MainTabs(model)
                                 }
                                 !proChecked -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -107,6 +112,15 @@ class MainActivity : ComponentActivity() {
         if (prefs.getBoolean("asked_notifications", false)) return
         prefs.edit().putBoolean("asked_notifications", true).apply()
         askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    /** The daily summary and saved workouts are on by default: ask Health Connect once, like the iPhone asks Health. */
+    private fun askForHealthOnce() {
+        val prefs = getSharedPreferences("fitloop", Context.MODE_PRIVATE)
+        if (BuildConfig.DEBUG && intent.getBooleanExtra("noHealth", false)) return
+        if (!model.health.available || prefs.getBoolean("asked_health", false)) return
+        prefs.edit().putBoolean("asked_health", true).apply()
+        model.askHealth()
     }
 
     /** From Settings, after saving reminders that are switched on. */
