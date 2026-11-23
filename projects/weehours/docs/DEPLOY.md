@@ -67,6 +67,30 @@ Server Notifications V2 (production + sandbox) at `https://weehours.hejitech.wor
 The Worker needs nothing new (Apple's root is in the code). Prices, review screenshots and the first submission
 with the app version: skill `heji-app-store-iap` (`iap.mjs status com.hejitech.weehours`).
 
+## 3c. Google Play (Android + Wear OS)
+
+Play app "Wee Hours: Hands-Free Baby Log" in the HEJI TECH LLC Play Console, package
+`com.hejitech.weehours` (app ID 4973129376279509482), free, created 2026-11-22. The phone app and the
+Wear OS app share the package (one listing, Wear OS form factor added); the watch's version code is
+the phone's + 1. Both sign with the upload key in `~/Credentials/weehours/` (`android-upload.env`,
+also GitHub secrets `WEEHOURS_ANDROID_KEYSTORE_BASE64` / `_PASSWORD` / `WEEHOURS_ANDROID_KEY_ALIAS`);
+Play App Signing holds the real key. Testers: the "HEJI owner" list on `internal` and `wear:internal`.
+
+`scripts/cut_release.sh weehours` runs `weehours-play-internal.yml`, which builds both bundles at
+`MARKETING_VERSION` and uploads them with the shared `play-publisher` service account
+(`PLAY_SERVICE_ACCOUNT_JSON`, granted "Release apps to testing tracks" for this app only). Check:
+`node .claude/skills/heji-google-play/play.mjs check com.hejitech.weehours`. By hand:
+
+```sh
+cd apps/android && set -a && . ~/Credentials/weehours/android-upload.env && set +a
+./gradlew :app:bundleRelease :wear:bundleRelease -PversionCode=$(( ($(date -u +%s) - 1577836800) / 60 ))
+```
+
+Still the owner's before anything goes past internal testing: store listing (text, icon, feature
+graphic, phone/tablet/Wear OS screenshots), content rating questionnaire, target audience, Data
+safety, the app access (sign-in) details for review, and Pro through Play Billing (the Android app
+has no billing yet). Steps: skill `heji-google-play`.
+
 ## 4. Even Hub (glasses)
 
 The glasses app ships with the iPhone app, under the same version: `scripts/cut_release.sh weehours`

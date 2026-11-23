@@ -1,4 +1,3 @@
-import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -8,44 +7,58 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-val wearKeystoreProperties = Properties().apply {
-    val file = rootProject.file("wear-keystore.properties")
-    if (file.exists()) file.inputStream().use { load(it) }
-}
+// One version for every Wee Hours surface: scripts/cut_release.sh bumps MARKETING_VERSION in the
+// iPhone app's project.yml, and the Android apps read it from there.
+val marketingVersion: String = Regex("""MARKETING_VERSION:\s*"([^"]+)"""")
+    .find(rootProject.file("../ios/project.yml").readText())?.groupValues?.get(1)
+    ?: error("MARKETING_VERSION not found in apps/ios/project.yml")
+
+// Release signing comes from the environment (the upload key in ~/Credentials/weehours/, or CI
+// secrets); without it a release build stays unsigned.
+val keystorePath: String? = System.getenv("WEEHOURS_ANDROID_KEYSTORE")
 
 android {
     namespace = "com.hejitech.weehours.wear"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.hejitech.weehours.wear"
+        // Same package as the phone app: one Play listing, and the Wear Data Layer pairs by package.
+        applicationId = "com.hejitech.weehours"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.13.2"
+        // Phone and watch share one Play listing (same package), so their version codes differ:
+        // -PversionCode=<n> for a store build; the watch is n + 1.
+        versionCode = (findProperty("versionCode") as String?)?.toInt()?.plus(1) ?: 1
+        versionName = marketingVersion
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
-        create("release") {
-            val ksFile = rootProject.file(wearKeystoreProperties.getProperty("storeFile", "wear-upload-keystore.jks"))
-            if (ksFile.exists()) {
-                storeFile = ksFile
-                storePassword = wearKeystoreProperties.getProperty("storePassword")
-                keyAlias = wearKeystoreProperties.getProperty("keyAlias")
-                keyPassword = wearKeystoreProperties.getProperty("keyPassword")
+        if (keystorePath != null) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("WEEHOURS_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("WEEHOURS_ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("WEEHOURS_ANDROID_KEY_PASSWORD") ?: System.getenv("WEEHOURS_ANDROID_KEYSTORE_PASSWORD")
             }
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            val ksFile = rootProject.file(wearKeystoreProperties.getProperty("storeFile", "wear-upload-keystore.jks"))
-            signingConfig = if (ksFile.exists()) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+            // R8: shrinks the bundle (material-icons-extended alone is several MB).
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (keystorePath != null) signingConfig = signingConfigs.getByName("release")
         }
+        // `-PminifyDebug`: a debug build shrunk like release, to test R8 on the phone.
         debug {
             applicationIdSuffix = ".debug"
+            if (project.hasProperty("minifyDebug")) {
+                isMinifyEnabled = true
+                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            }
         }
     }
 

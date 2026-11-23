@@ -70,7 +70,9 @@ For Wee Hours it bumps `MARKETING_VERSION` in `projects/weehours/apps/ios/projec
 (Cloudflare deploys the site + MCP Worker), and publishes `weehours-v<version>`, which runs
 `weehours-testflight.yml` with the same team-wide Apple signing secrets and
 `weehours-glasses-release.yml` (the Even G2 plugin `.ehpk`, same version, attached to the release;
-upload it to the Even Hub portal by hand). Setup: `projects/weehours/docs/DEPLOY.md`.
+upload it to the Even Hub portal by hand) and `weehours-play-internal.yml` (the Android phone app and
+its Wear OS app, same version, to Google Play's internal testing tracks: `internal` and
+`wear:internal`). Setup: `projects/weehours/docs/DEPLOY.md`.
 
 For Voxbrief it bumps `MARKETING_VERSION` in `projects/voxbrief/project.yml` (refusing until the
 in-app What's New describes the version), and publishes `voxbrief-v<version>`, which runs

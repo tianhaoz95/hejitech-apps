@@ -357,6 +357,9 @@ fun OnboardingScreen(model: AppModel) {
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text("Cloud Sync Sign-In", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        // Email sign-in is off in production (as on iPhone): only Debug builds against
+                        // the local stack show it; store builds sign in with Google.
+                        if (BuildConfig.DEBUG) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             FilterChip(selected = isSignUp, onClick = { isSignUp = true }, label = { Text("Create Account") })
                             FilterChip(selected = !isSignUp, onClick = { isSignUp = false }, label = { Text("Sign In") })
@@ -392,6 +395,7 @@ fun OnboardingScreen(model: AppModel) {
                             Icon(Icons.Default.Lock, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
                             Text(if (isSignUp) "Sign Up & Sync" else "Sign In & Sync")
+                        }
                         }
                         OutlinedButton(
                             onClick = {

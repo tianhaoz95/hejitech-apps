@@ -15,10 +15,15 @@ val localProperties = Properties().apply {
 val supabaseUrlOverride: String = localProperties.getProperty("SUPABASE_URL", "")
 val supabaseKeyOverride: String = localProperties.getProperty("SUPABASE_PUBLISHABLE_KEY", "")
 
-val keystoreProperties = Properties().apply {
-    val file = rootProject.file("keystore.properties")
-    if (file.exists()) file.inputStream().use { load(it) }
-}
+// One version for every Wee Hours surface: scripts/cut_release.sh bumps MARKETING_VERSION in the
+// iPhone app's project.yml, and the Android apps read it from there.
+val marketingVersion: String = Regex("""MARKETING_VERSION:\s*"([^"]+)"""")
+    .find(rootProject.file("../ios/project.yml").readText())?.groupValues?.get(1)
+    ?: error("MARKETING_VERSION not found in apps/ios/project.yml")
+
+// Release signing comes from the environment (the upload key in ~/Credentials/weehours/, or CI
+// secrets); without it a release build stays unsigned.
+val keystorePath: String? = System.getenv("WEEHOURS_ANDROID_KEYSTORE")
 
 android {
     namespace = "com.hejitech.weehours"
@@ -28,33 +33,40 @@ android {
         applicationId = "com.hejitech.weehours"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.13.2"
+        // -PversionCode=<n> for a store build (must grow with every upload).
+        versionCode = (findProperty("versionCode") as String?)?.toInt() ?: 1
+        versionName = marketingVersion
         buildConfigField("String", "SUPABASE_URL_OVERRIDE", "\"$supabaseUrlOverride\"")
         buildConfigField("String", "SUPABASE_KEY_OVERRIDE", "\"$supabaseKeyOverride\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
-        create("release") {
-            val ksFile = rootProject.file(keystoreProperties.getProperty("storeFile", "upload-keystore.jks"))
-            if (ksFile.exists()) {
-                storeFile = ksFile
-                storePassword = keystoreProperties.getProperty("storePassword")
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
+        if (keystorePath != null) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("WEEHOURS_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("WEEHOURS_ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("WEEHOURS_ANDROID_KEY_PASSWORD") ?: System.getenv("WEEHOURS_ANDROID_KEYSTORE_PASSWORD")
             }
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            val ksFile = rootProject.file(keystoreProperties.getProperty("storeFile", "upload-keystore.jks"))
-            signingConfig = if (ksFile.exists()) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+            // R8: shrinks the bundle (material-icons-extended alone is several MB).
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (keystorePath != null) signingConfig = signingConfigs.getByName("release")
         }
+        // `-PminifyDebug`: a debug build shrunk like release, to test R8 on the phone.
         debug {
             applicationIdSuffix = ".debug"
+            if (project.hasProperty("minifyDebug")) {
+                isMinifyEnabled = true
+                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            }
         }
     }
 
