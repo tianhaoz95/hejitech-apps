@@ -41,7 +41,7 @@ microphone ─▶ SpeechAnalyzer (on device, partial + final text)
             AudioHub: one AVAudioEngine for mic + sounds (echo cancellation), or the watch speaker
 ```
 
-- **iPhone app** (iOS 26+): the listener, the sound library (141 sounds, 12 free), Bedtime/Playtime,
+- **iPhone app** (iOS 26+): the listener, the sound library (441 sounds, 12 free), Bedtime/Playtime,
   how-automatic setting, your own trigger words, Roarly Pro (yearly with a free week, or lifetime).
 - **Apple Watch app**: start/stop, the suggestions as big buttons, the loops, replay, and sounds on the
   watch speaker when you pick it.

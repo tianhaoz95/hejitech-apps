@@ -79,6 +79,18 @@
     {"lines": ["Suddenly he slipped on a banana peel!"], "play": ["slide_whistle"]},
     {"lines": ["The silly bear farted loudly!"], "play": ["toot"]},
     {"lines": ["Shhh, be quiet, said the fox."], "play": ["shush", "fox"]},
-    {"lines": ["The parrot perched in the jungle."], "suggest": ["parrot", "jungle"]}
+    {"lines": ["The parrot perched in the jungle."], "suggest": ["parrot", "jungle"]},
+    {"lines": ["A huge polar bear appeared on the ice!"], "play": ["polar_bear"], "never": ["bear"]},
+    {"lines": ["He saw a big rhino charging toward them!"], "play": ["rhino"], "never": ["saw"]},
+    {"lines": ["Suddenly the volcano erupted!"], "play": ["volcano"]},
+    {"lines": ["They walked past a roaring waterfall."], "suggest": ["waterfall"], "never": ["river"]},
+    {"lines": ["The archer shot an arrow across the yard."], "suggest": ["arrow"]},
+    {"lines": ["The alarm clock rang loudly!"], "play": ["alarm_clock"], "never": ["clock"]},
+    {"lines": ["Suddenly the knight raised his shield!"], "play": ["shield"]},
+    {"lines": ["The unicorn appeared in the meadow."], "play": ["unicorn", "meadow"]},
+    {"lines": ["Suddenly a big fireball flew across the sky!"], "play": ["fireball"]},
+    {"lines": ["Suddenly a little bunny hopped into the garden."], "play": ["gerbil", "park_birds"]},
+    {"lines": ["Suddenly the lights went out in the old ruin."], "play": ["power_down", "abandoned_house"]},
+    {"lines": ["Three two one, blast off!"], "suggest": ["launch_countdown"], "play": ["rocket"]}
   ]
 }

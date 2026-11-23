@@ -3,168 +3,3876 @@
   "order": 2,
   "name": "Español",
   "englishName": "Spanish",
-  "languageCodes": ["es"],
-  "speechLocales": ["es-US", "es-MX", "es-ES"],
+  "languageCodes": [
+    "es"
+  ],
+  "speechLocales": [
+    "es-US",
+    "es-MX",
+    "es-ES"
+  ],
   "hint": "Cuenta tu cuento en español: Roarly escucha palabras como «león», «empezó a llover» o «guau». Tell your story in Spanish.",
   "storySenseClassifier": false,
   "holdNamesAtEndOfPartial": false,
-  "plurals": [["", "s"], ["", "es"], ["z", "ces"]],
-  "interjections": ["oh", "ay"],
+  "plurals": [
+    [
+      "",
+      "s"
+    ],
+    [
+      "",
+      "es"
+    ],
+    [
+      "z",
+      "ces"
+    ]
+  ],
+  "interjections": [
+    "oh",
+    "ay"
+  ],
   "negationSuffixes": [],
-  "reach": {"negation": 4, "lookahead": 10, "lookbehind": 12, "settledAfter": 4},
-  "cues": {
-    "lion": {"words": ["león", "leona", "leoncito", "rey de la selva"], "sounds": ["rugido", "rugió", "rugía", "ruge", "rugiendo", "rugir", "rugieron", "gruñó", "gruñía", "gruñido"]},
-    "tiger": {"words": ["tigre", "tigresa", "tigrecito"], "sounds": ["rugió", "rugía", "ruge", "rugido", "rugiendo", "gruñó", "gruñido"]},
-    "bear": {"words": ["oso", "osa", "osito", "oso pardo", "grizzly"], "sounds": ["gruñó", "gruñía", "gruñido", "gruñendo", "rugió"]},
-    "wolf": {"words": ["lobo", "loba", "lobito", "lobo feroz"], "sounds": ["aulló", "aullaba", "aullido", "aullando", "auuu"]},
-    "elephant": {"words": ["elefante", "elefanta", "elefantito"], "sounds": ["barritó", "barrito", "trompeteó"]},
-    "monkey": {"words": ["mono", "mona", "monito", "chimpancé", "gorila", "simio"], "sounds": ["chilló", "chillaba", "uh uh"]},
-    "dinosaur": {"words": ["dinosaurio", "tiranosaurio", "t rex", "trex", "dino"], "sounds": ["rugió", "rugido", "ruge", "pisotón", "pisoteó"]},
-    "dragon": {"words": ["dragón", "dragoncito"], "sounds": ["rugió", "rugido", "echó fuego", "escupió fuego", "lanzó fuego"]},
-    "snake": {"words": ["serpiente", "culebra", "víbora", "cobra", "pitón"], "sounds": ["siseó", "siseaba", "siseo", "sss"]},
-    "whale": {"words": ["ballena", "ballenita"], "sounds": ["cantó", "cantaba", "canto"]},
-    "dog": {"words": ["perro", "perra", "perrito", "perrita", "cachorro", "cachorrito"], "sounds": ["ladró", "ladraba", "ladraron", "ladrido", "ladra", "ladrando", "guau", "guau guau"]},
-    "cat": {"words": ["gato", "gata", "gatito", "gatita", "minino"], "sounds": ["maulló", "maullaba", "maullido", "miau", "ronroneó", "ronroneo"]},
-    "cow": {"words": ["vaca", "vaquita", "ternero", "toro"], "sounds": ["mugió", "mugía", "mugido", "mu", "muu"]},
-    "horse": {"words": ["caballo", "yegua", "poni", "potro", "caballito"], "sounds": ["relinchó", "relincho", "relinchaba", "galopó", "galopaba", "al galope"]},
-    "sheep": {"words": ["oveja", "ovejita", "cordero", "borrego"], "sounds": ["bee", "beee", "baló", "balido"]},
-    "owl": {"words": ["búho", "lechuza", "buhito"], "sounds": ["ululó", "ulula", "uuh uuh"]},
-    "frog": {"words": ["rana", "ranita", "sapo"], "sounds": ["croac", "croó", "croaba", "croando"]},
-    "bee": {"words": ["abeja", "abejita", "abejorro"], "sounds": ["zumbó", "zumbaba", "zumbido", "bzz"]},
-    "bird": {"words": ["pájaro", "pajarito", "ave", "petirrojo", "gorrión"], "sounds": ["pió", "piaba", "pío pío", "trinó", "cantaba", "cantó"]},
-    "seagull": {"words": ["gaviota"], "sounds": ["graznó", "graznido"]},
-    "rain": {"words": ["lluvia", "llover", "llueve", "lloviendo", "llovía", "llovizna", "aguacero", "gotas de lluvia"], "sounds": ["empezó a llover", "comenzó a llover", "se puso a llover", "plic plic"]},
-    "thunder": {"words": ["trueno", "tormenta", "relámpago", "rayo", "tormenta eléctrica"], "sounds": ["bum", "retumbó", "tronó", "estruendo"]},
-    "wind": {"words": ["viento", "ventoso", "brisa", "ventisca", "ráfaga", "vendaval", "nieve", "nevando", "nevaba", "nevada", "tormenta de nieve"], "sounds": ["sopló", "soplaba", "soplando", "silbaba", "fiu"]},
-    "ocean": {"words": ["mar", "océano", "playa", "olas", "orilla"], "sounds": ["olas rompiendo"]},
-    "forest": {"words": ["bosque"], "sounds": []},
-    "night": {"words": ["grillos", "noche estrellada", "luz de la luna", "luz de luna", "mitad de la noche"], "sounds": ["cri cri"]},
-    "fire": {"words": ["fogata", "hoguera", "chimenea", "fuego", "fogón"], "sounds": ["crepitaba", "crepitó", "chisporroteaba"]},
-    "river": {"words": ["río", "arroyo", "riachuelo", "cascada", "catarata"], "sounds": ["murmuraba", "corría el agua"]},
-    "knock": {"words": ["toc toc", "tocó la puerta", "tocaron la puerta", "llamó a la puerta", "golpeó la puerta", "golpes en la puerta"], "sounds": ["toc toc", "tocó la puerta", "llamó a la puerta"]},
-    "doorbell": {"words": ["timbre"], "sounds": ["ding dong", "sonó el timbre", "tocó el timbre"]},
-    "bell": {"words": ["campana", "campanita", "cascabel"], "sounds": ["sonó", "sonaba", "tilín", "din don"]},
-    "clock": {"words": ["reloj", "tic tac", "medianoche"], "sounds": ["tic tac", "dio la hora", "dieron las doce", "campanadas"]},
-    "train": {"words": ["tren", "chu chu", "locomotora", "ferrocarril", "trencito"], "sounds": ["chu chu", "silbato", "pitó"]},
-    "car": {"words": ["coche", "carro", "auto", "taxi", "autobús", "bus"], "sounds": ["pip pip", "bocina", "tocó la bocina", "brum", "bruum"]},
-    "boat": {"words": ["barco", "barca", "bote", "barco pirata", "velero", "ferry"], "sounds": ["tuuu", "bocina del barco"]},
-    "airplane": {"words": ["avión", "avioneta", "jet"], "sounds": ["despegó", "voló"]},
-    "rocket": {"words": ["cohete", "nave espacial", "despegue"], "sounds": ["despegó", "lanzamiento", "cuenta atrás"]},
-    "magic": {"words": ["magia", "mágico", "mágica", "varita", "varita mágica", "hechizo", "abracadabra", "mago", "brujo", "chispas"], "sounds": ["puf", "abracadabra", "bibidi babidi bu", "movió su varita", "lanzó un hechizo", "brilló"]},
-    "splash": {"words": ["chapuzón", "charco", "se tiró al agua", "cayó al agua", "salpicó"], "sounds": ["splash", "chof", "plaf", "salpicó", "salpicando"]},
-    "footsteps": {"words": ["pasos", "de puntillas", "pisadas", "pisotones"], "sounds": ["pisotón", "pisoteó", "pum pum"]},
-    "snore": {"words": ["ronquido", "roncó", "roncaba", "roncando", "se quedó dormido", "se quedó dormida", "profundamente dormido"], "sounds": ["ronquido", "roncó", "roncaba", "zzz"]},
-    "giggle": {"words": ["risita", "se rió", "se reía", "se rieron", "riendo", "cosquillas", "carcajada"], "sounds": ["se rió", "se reía", "se rieron", "riendo", "carcajada", "jijiji", "jajaja", "ja ja", "ji ji", "je je"]},
-    "whoosh": {"words": ["fiuu", "zas", "salió volando", "se fue volando", "zum"], "sounds": ["fiuu", "zas", "zuuum"]},
-    "pop": {"words": ["globo", "burbuja", "palomitas"], "sounds": ["pop", "plop", "explotó", "reventó"]},
-    "boing": {"words": ["canguro", "trampolín", "rebotó", "rebotaba", "rebotando", "boing"], "sounds": ["boing", "rebotó", "brincó"]},
-    "dolphin": {"words": ["delfín", "delfincito", "marsopa"]},
-    "pig": {"words": ["cerdo", "cerdito", "puerco", "cochinito", "chancho", "marrano", "tres cerditos"], "sounds": ["oinc", "oink", "oinc oinc"]},
-    "duck": {"words": ["pato", "pata", "patito", "patito feo"], "sounds": ["cuac", "cua cua", "cuac cuac"]},
-    "chicken": {"words": ["gallina", "gallinita", "pollito", "pollo"], "sounds": ["cacareó", "cacareaba", "clo clo", "cloqueó"]},
-    "rooster": {"words": ["gallo", "gallito"], "sounds": ["quiquiriquí", "kikirikí", "cocorocó", "qui qui ri quí"]},
-    "goat": {"words": ["cabra", "cabrita", "chivo", "chivito", "cabrito"], "sounds": ["mee", "meee"]},
-    "donkey": {"words": ["burro", "burrito", "asno", "mula"], "sounds": ["rebuznó", "rebuzno", "rebuznaba", "i aa", "hi ja"]},
-    "turkey": {"words": ["pavo", "pavito", "guajolote"], "sounds": ["glu glu", "gluglú"]},
-    "mouse": {"words": ["ratón", "ratoncito", "rata"], "sounds": ["iic", "chillido"]},
-    "crow": {"words": ["cuervo", "cuerva"], "sounds": ["cra cra"]},
-    "fly": {"words": ["mosca", "mosquita", "mosquito"]},
-    "farm": {"words": ["granja", "establo", "corral"]},
-    "city": {"words": ["ciudad", "tráfico", "calle"]},
-    "underwater": {"words": ["bajo el agua", "debajo del agua", "fondo del mar", "bajo el mar"]},
-    "cave": {"words": ["cueva", "caverna", "gruta", "túnel", "mazmorra"], "sounds": ["plic ploc"]},
-    "tractor": {"words": ["tractor"], "sounds": ["put put", "chaca chaca"]},
-    "bicycle": {"words": ["bicicleta", "bici", "triciclo"], "sounds": ["rin rin", "ring ring"]},
-    "truck": {"words": ["camión", "camioneta", "camión grande", "grúa remolque"]},
-    "motorcycle": {"words": ["moto", "motocicleta", "motoneta"], "sounds": ["aceleró"]},
-    "helicopter": {"words": ["helicóptero"], "sounds": ["voló"]},
-    "siren": {"words": ["sirena", "camión de bomberos", "bomberos", "bombero", "coche de policía", "patrulla", "policía", "ambulancia"], "sounds": ["ni no ni no", "uiu uiu", "iuu iuu"]},
-    "digger": {"words": ["excavadora", "camión de la basura", "camión de basura", "grúa", "hormigonera", "apisonadora", "pala mecánica", "obra"], "sounds": ["pi pi pi"]},
-    "creak": {"words": ["crujió la puerta", "la puerta crujió", "la puerta chirrió", "casa embrujada", "puente levadizo", "portón", "verja"], "sounds": ["crujido", "rechinó", "chirrió", "chirrido", "ñiic"]},
-    "slam": {"words": ["portazo", "cerró de golpe", "dio un portazo"], "sounds": ["portazo", "pum", "cerró de golpe", "dio un portazo"]},
-    "phone": {"words": ["teléfono", "celular", "móvil", "sonó el teléfono"], "sounds": ["ring ring", "riiing"]},
-    "munch": {"words": ["mordisco", "dio un mordisco", "mordió", "masticó", "masticaba", "mordisqueó"], "sounds": ["crunch", "ñam ñam", "ñam", "crujiente"]},
-    "slurp": {"words": ["sorbió", "sorbo", "bebió", "tomó un sorbo", "tragó"], "sounds": ["slurp", "sorbió"]},
-    "sneeze": {"words": ["estornudo", "estornudó", "estornudaba"], "sounds": ["achís", "achú", "aaachís", "estornudó"]},
-    "yawn": {"words": ["bostezo", "bostezó", "bostezaba", "bostezando"], "sounds": ["bostezó", "bostezo", "bostezaba"]},
-    "baby": {"words": ["el bebé lloró", "el bebé lloraba", "bebé llorando", "se puso a llorar", "empezó a llorar", "rompió a llorar"], "sounds": ["buaa", "bua bua", "buaaa"]},
-    "kiss": {"words": ["beso", "besó", "besito", "besitos"], "sounds": ["muac", "mua"]},
-    "cheer": {"words": ["hurra", "bravo", "aplausos", "aplaudió", "aplaudieron", "fiesta", "cumpleaños", "viva", "yupi", "celebraron", "celebró"], "sounds": ["hurra", "bravo"]},
-    "flush": {"words": ["inodoro", "retrete", "váter", "tiró de la cadena", "orinal", "bacinica"]},
-    "drum": {"words": ["tambor", "tamborcito", "tamborilero"], "sounds": ["pom pom", "rataplán", "bum bum"]},
-    "trumpet": {"words": ["trompeta", "fanfarria", "clarín"], "sounds": ["tarará", "tachán"]},
-    "whistle": {"words": ["tocó el silbato", "sopló el silbato", "pitó el silbato", "árbitro"]},
-    "fireworks": {"words": ["fuegos artificiales", "petardo", "petardos", "bengala"], "sounds": ["pum pum pum"]},
-    "ghost": {"words": ["fantasma", "fantasmita", "espectro"], "sounds": ["buu", "uuuh"]},
-    "monster": {"words": ["monstruo", "monstruito", "ogro", "trol", "troll", "bestia"], "sounds": ["grrr"]},
-    "robot": {"words": ["robot", "robotito"], "sounds": ["bip bup", "bip bop"]},
-    "laser": {"words": ["láser", "rayo láser", "pistola de rayos"], "sounds": ["piu piu", "zap"]},
-    "sword": {"words": ["espada", "espadín", "duelo de espadas"], "sounds": ["clinc", "clanc", "chocaron las espadas"]},
-    "treasure": {"words": ["tesoro", "cofre del tesoro", "cofre", "moneda", "monedas de oro", "oro", "hucha", "alcancía"], "sounds": ["chin chin"]},
-    "witch": {"words": ["bruja", "brujita"], "sounds": ["cacareo de bruja", "se rió", "carcajada"]},
-    "giant": {"words": ["el gigante", "un gigante", "los gigantes", "la giganta", "fi fa fo fum"], "sounds": ["fi fa fo fum"]},
-    "alien": {"words": ["extraterrestre", "alienígena", "marciano", "ovni", "platillo volador", "platillo volante"]},
-    "seal": {"words": ["foca", "león marino", "lobo marino"]},
-    "penguin": {"words": ["pingüino", "pingüinito"]},
-    "fox": {"words": ["zorro", "zorra", "zorrito"]},
-    "hyena": {"words": ["hiena"]},
-    "hippo": {"words": ["hipopótamo"]},
-    "eagle": {"words": ["águila", "halcón", "gavilán"]},
-    "crocodile": {"words": ["cocodrilo", "caimán"]},
-    "peacock": {"words": ["pavo real"]},
-    "goose": {"words": ["ganso", "oca"]},
-    "hooves": {"words": ["cascos", "carruaje", "trotó", "al trote"], "sounds": ["clop clop", "taca taca"]},
-    "guinea_pig": {"words": ["conejillo de indias", "cobaya", "cuy"]},
-    "parrot": {"words": ["loro", "lorito", "papagayo", "guacamayo", "cacatúa"]},
-    "woodpecker": {"words": ["pájaro carpintero", "carpintero"]},
-    "bat": {"words": ["murciélago", "murciélagos"]},
-    "cicada": {"words": ["cigarra", "chicharra"]},
-    "pigeon": {"words": ["paloma", "palomita", "tórtola"], "sounds": ["currucucú"]},
-    "squirrel": {"words": ["ardilla", "ardillita"]},
-    "cuckoo": {"words": ["cuco", "cucú", "reloj de cuco"], "sounds": ["cucú", "cu cu"]},
-    "hail": {"words": ["granizo", "granizando", "granizada"]},
-    "snow_crunch": {"words": ["caminó en la nieve", "caminaba en la nieve", "pisó la nieve", "nieve profunda"]},
-    "wind_chimes": {"words": ["campanillas de viento", "móvil de viento"]},
-    "storm": {"words": ["tormenta fuerte", "huracán", "tempestad", "vendaval"]},
-    "drip": {"words": ["goteaba", "goteando", "gotas", "grifo goteando"], "sounds": ["plic ploc", "ploc ploc"]},
-    "jungle": {"words": ["selva", "jungla", "selva tropical"]},
-    "playground": {"words": ["parque", "parque infantil", "columpios", "patio de juegos"]},
-    "space": {"words": ["espacio exterior", "en el espacio", "galaxia", "planetas", "universo"]},
-    "castle": {"words": ["castillo", "palacio", "salón del trono", "reino"]},
-    "train_ride": {"words": ["en el tren", "vías del tren", "viaje en tren"], "sounds": ["traqueteo"]},
-    "meadow": {"words": ["pradera", "prado", "campo soleado", "picnic"]},
-    "fairground": {"words": ["feria", "carnaval", "circo", "festival", "mercado"]},
-    "submarine": {"words": ["submarino", "sonar"]},
-    "cannon": {"words": ["cañón", "bala de cañón"], "sounds": ["disparó el cañón", "kabum"]},
-    "hot_air_balloon": {"words": ["globo aerostático", "dirigible"]},
-    "skateboard": {"words": ["patineta", "monopatín", "patines", "patinó"]},
-    "sleigh": {"words": ["trineo", "cascabeles", "papá noel", "santa claus", "renos"]},
-    "anchor": {"words": ["ancla", "echó el ancla", "cadenas"]},
-    "bath": {"words": ["baño", "bañera", "tina", "baño de burbujas", "sirvió agua"]},
-    "zipper": {"words": ["cremallera", "cierre", "subió la cremallera", "abrió la cremallera"]},
-    "page_turn": {"words": ["pasó la página", "abrió el libro", "mapa del tesoro", "desplegó el mapa"]},
-    "hiccup": {"words": ["hipo", "tuvo hipo", "con hipo"], "sounds": ["hip"]},
-    "tummy_rumble": {"words": ["le rugió la panza", "rugió la barriga", "sonó la barriga", "estómago rugió", "tenía mucha hambre"]},
-    "shush": {"words": ["shh", "shhh", "silencio", "susurró", "calladitos"], "sounds": ["shh", "shhh"]},
-    "music_box": {"words": ["caja de música", "cajita de música", "canción de cuna", "bailarina"]},
-    "crash": {"words": ["se rompió el plato", "rompió el frasco", "se rompió el vaso", "se hizo añicos", "estrépito"]},
-    "toot": {"words": ["pedo", "pedito", "se tiró un pedo", "pum"], "sounds": ["prrr", "pfff"]},
-    "slide_whistle": {"words": ["resbaló", "se resbaló", "cáscara de plátano", "tobogán", "se cayó", "uy"]},
-    "fairy": {"words": ["hada", "hadita", "duende", "polvo de hadas", "luciérnagas"]},
-    "cauldron": {"words": ["caldero", "poción", "pócima", "burbujeaba"]},
-    "heartbeat": {"words": ["latido", "latía el corazón", "corazón latía", "corazón le latía"], "sounds": ["tum tum", "bum bum"]},
-    "clown_horn": {"words": ["payaso", "payasito", "bocina de payaso"]}
+  "reach": {
+    "negation": 4,
+    "lookahead": 10,
+    "lookbehind": 12,
+    "settledAfter": 4
   },
-  "negations": ["no", "nunca", "jamás", "sin", "nadie", "ningún", "ninguno", "ninguna", "nada", "ni", "tampoco"],
+  "cues": {
+    "lion": {
+      "words": [
+        "león",
+        "leona",
+        "leoncito",
+        "rey de la selva"
+      ],
+      "sounds": [
+        "rugido",
+        "rugió",
+        "rugía",
+        "ruge",
+        "rugiendo",
+        "rugir",
+        "rugieron",
+        "gruñó",
+        "gruñía",
+        "gruñido"
+      ]
+    },
+    "tiger": {
+      "words": [
+        "tigre",
+        "tigresa",
+        "tigrecito"
+      ],
+      "sounds": [
+        "rugió",
+        "rugía",
+        "ruge",
+        "rugido",
+        "rugiendo",
+        "gruñó",
+        "gruñido"
+      ]
+    },
+    "bear": {
+      "words": [
+        "oso",
+        "osa",
+        "osito",
+        "oso pardo",
+        "grizzly"
+      ],
+      "sounds": [
+        "gruñó",
+        "gruñía",
+        "gruñido",
+        "gruñendo",
+        "rugió"
+      ]
+    },
+    "wolf": {
+      "words": [
+        "lobo",
+        "loba",
+        "lobito",
+        "lobo feroz"
+      ],
+      "sounds": [
+        "aulló",
+        "aullaba",
+        "aullido",
+        "aullando",
+        "auuu"
+      ]
+    },
+    "elephant": {
+      "words": [
+        "elefante",
+        "elefanta",
+        "elefantito"
+      ],
+      "sounds": [
+        "barritó",
+        "barrito",
+        "trompeteó"
+      ]
+    },
+    "monkey": {
+      "words": [
+        "mono",
+        "mona",
+        "monito",
+        "chimpancé",
+        "gorila",
+        "simio"
+      ],
+      "sounds": [
+        "chilló",
+        "chillaba",
+        "uh uh"
+      ]
+    },
+    "dinosaur": {
+      "words": [
+        "dinosaurio",
+        "tiranosaurio",
+        "t rex",
+        "trex",
+        "dino"
+      ],
+      "sounds": [
+        "rugió",
+        "rugido",
+        "ruge",
+        "pisotón",
+        "pisoteó"
+      ]
+    },
+    "dragon": {
+      "words": [
+        "dragón",
+        "dragoncito"
+      ],
+      "sounds": [
+        "rugió",
+        "rugido",
+        "echó fuego",
+        "escupió fuego",
+        "lanzó fuego"
+      ]
+    },
+    "snake": {
+      "words": [
+        "serpiente",
+        "culebra",
+        "víbora",
+        "cobra",
+        "pitón"
+      ],
+      "sounds": [
+        "siseó",
+        "siseaba",
+        "siseo",
+        "sss"
+      ]
+    },
+    "whale": {
+      "words": [
+        "ballena",
+        "ballenita"
+      ],
+      "sounds": [
+        "cantó",
+        "cantaba",
+        "canto"
+      ]
+    },
+    "dog": {
+      "words": [
+        "perro",
+        "perra",
+        "perrito",
+        "perrita",
+        "cachorro",
+        "cachorrito"
+      ],
+      "sounds": [
+        "ladró",
+        "ladraba",
+        "ladraron",
+        "ladrido",
+        "ladra",
+        "ladrando",
+        "guau",
+        "guau guau"
+      ]
+    },
+    "cat": {
+      "words": [
+        "gato",
+        "gata",
+        "gatito",
+        "gatita",
+        "minino"
+      ],
+      "sounds": [
+        "maulló",
+        "maullaba",
+        "maullido",
+        "miau",
+        "ronroneó",
+        "ronroneo"
+      ]
+    },
+    "cow": {
+      "words": [
+        "vaca",
+        "vaquita",
+        "ternero",
+        "toro"
+      ],
+      "sounds": [
+        "mugió",
+        "mugía",
+        "mugido",
+        "mu",
+        "muu"
+      ]
+    },
+    "horse": {
+      "words": [
+        "caballo",
+        "yegua",
+        "poni",
+        "potro",
+        "caballito"
+      ],
+      "sounds": [
+        "relinchó",
+        "relincho",
+        "relinchaba",
+        "galopó",
+        "galopaba",
+        "al galope"
+      ]
+    },
+    "sheep": {
+      "words": [
+        "oveja",
+        "ovejita",
+        "cordero",
+        "borrego"
+      ],
+      "sounds": [
+        "bee",
+        "beee",
+        "baló",
+        "balido"
+      ]
+    },
+    "owl": {
+      "words": [
+        "búho",
+        "lechuza",
+        "buhito"
+      ],
+      "sounds": [
+        "ululó",
+        "ulula",
+        "uuh uuh"
+      ]
+    },
+    "frog": {
+      "words": [
+        "rana",
+        "ranita",
+        "sapo"
+      ],
+      "sounds": [
+        "croac",
+        "croó",
+        "croaba",
+        "croando"
+      ]
+    },
+    "bee": {
+      "words": [
+        "abeja",
+        "abejita",
+        "abejorro"
+      ],
+      "sounds": [
+        "zumbó",
+        "zumbaba",
+        "zumbido",
+        "bzz"
+      ]
+    },
+    "bird": {
+      "words": [
+        "pájaro",
+        "pajarito",
+        "ave",
+        "petirrojo",
+        "gorrión"
+      ],
+      "sounds": [
+        "pió",
+        "piaba",
+        "pío pío",
+        "trinó",
+        "cantaba",
+        "cantó"
+      ]
+    },
+    "seagull": {
+      "words": [
+        "gaviota"
+      ],
+      "sounds": [
+        "graznó",
+        "graznido"
+      ]
+    },
+    "rain": {
+      "words": [
+        "lluvia",
+        "llover",
+        "llueve",
+        "lloviendo",
+        "llovía",
+        "llovizna",
+        "aguacero",
+        "gotas de lluvia"
+      ],
+      "sounds": [
+        "empezó a llover",
+        "comenzó a llover",
+        "se puso a llover",
+        "plic plic"
+      ]
+    },
+    "thunder": {
+      "words": [
+        "trueno",
+        "tormenta",
+        "relámpago",
+        "rayo",
+        "tormenta eléctrica"
+      ],
+      "sounds": [
+        "bum",
+        "retumbó",
+        "tronó",
+        "estruendo"
+      ]
+    },
+    "wind": {
+      "words": [
+        "viento",
+        "ventoso",
+        "brisa",
+        "ventisca",
+        "ráfaga",
+        "vendaval",
+        "nieve",
+        "nevando",
+        "nevaba",
+        "nevada",
+        "tormenta de nieve"
+      ],
+      "sounds": [
+        "sopló",
+        "soplaba",
+        "soplando",
+        "silbaba",
+        "fiu"
+      ]
+    },
+    "ocean": {
+      "words": [
+        "mar",
+        "océano",
+        "playa",
+        "olas",
+        "orilla"
+      ],
+      "sounds": [
+        "olas rompiendo"
+      ]
+    },
+    "forest": {
+      "words": [
+        "bosque"
+      ],
+      "sounds": []
+    },
+    "night": {
+      "words": [
+        "grillos",
+        "noche estrellada",
+        "luz de la luna",
+        "luz de luna",
+        "mitad de la noche"
+      ],
+      "sounds": [
+        "cri cri"
+      ]
+    },
+    "fire": {
+      "words": [
+        "fogata",
+        "hoguera",
+        "chimenea",
+        "fuego",
+        "fogón"
+      ],
+      "sounds": [
+        "crepitaba",
+        "crepitó",
+        "chisporroteaba"
+      ]
+    },
+    "river": {
+      "words": [
+        "río",
+        "arroyo",
+        "riachuelo",
+        "catarata"
+      ],
+      "sounds": [
+        "murmuraba",
+        "corría el agua"
+      ]
+    },
+    "knock": {
+      "words": [
+        "toc toc",
+        "tocó la puerta",
+        "tocaron la puerta",
+        "llamó a la puerta",
+        "golpeó la puerta",
+        "golpes en la puerta"
+      ],
+      "sounds": [
+        "toc toc",
+        "tocó la puerta",
+        "llamó a la puerta"
+      ]
+    },
+    "doorbell": {
+      "words": [
+        "timbre"
+      ],
+      "sounds": [
+        "ding dong",
+        "sonó el timbre",
+        "tocó el timbre"
+      ]
+    },
+    "bell": {
+      "words": [
+        "campana",
+        "campanita",
+        "cascabel"
+      ],
+      "sounds": [
+        "sonó",
+        "sonaba",
+        "tilín",
+        "din don"
+      ]
+    },
+    "clock": {
+      "words": [
+        "reloj",
+        "tic tac",
+        "medianoche"
+      ],
+      "sounds": [
+        "tic tac",
+        "dio la hora",
+        "dieron las doce",
+        "campanadas"
+      ]
+    },
+    "train": {
+      "words": [
+        "tren",
+        "chu chu",
+        "locomotora",
+        "ferrocarril",
+        "trencito"
+      ],
+      "sounds": [
+        "chu chu",
+        "silbato",
+        "pitó"
+      ]
+    },
+    "car": {
+      "words": [
+        "coche",
+        "carro",
+        "auto",
+        "taxi",
+        "autobús",
+        "bus"
+      ],
+      "sounds": [
+        "pip pip",
+        "bocina",
+        "tocó la bocina",
+        "brum",
+        "bruum"
+      ]
+    },
+    "boat": {
+      "words": [
+        "barco",
+        "barca",
+        "bote",
+        "barco pirata",
+        "velero",
+        "ferry"
+      ],
+      "sounds": [
+        "tuuu",
+        "bocina del barco"
+      ]
+    },
+    "airplane": {
+      "words": [
+        "avión",
+        "avioneta",
+        "jet"
+      ],
+      "sounds": [
+        "despegó",
+        "voló"
+      ]
+    },
+    "rocket": {
+      "words": [
+        "cohete",
+        "nave espacial",
+        "despegue"
+      ],
+      "sounds": [
+        "despegó",
+        "lanzamiento",
+        "cuenta atrás"
+      ]
+    },
+    "magic": {
+      "words": [
+        "magia",
+        "mágico",
+        "mágica",
+        "varita",
+        "varita mágica",
+        "hechizo",
+        "abracadabra",
+        "mago",
+        "brujo",
+        "chispas"
+      ],
+      "sounds": [
+        "puf",
+        "abracadabra",
+        "bibidi babidi bu",
+        "movió su varita",
+        "lanzó un hechizo",
+        "brilló"
+      ]
+    },
+    "splash": {
+      "words": [
+        "chapuzón",
+        "charco",
+        "se tiró al agua",
+        "cayó al agua",
+        "salpicó"
+      ],
+      "sounds": [
+        "splash",
+        "chof",
+        "plaf",
+        "salpicó",
+        "salpicando"
+      ]
+    },
+    "footsteps": {
+      "words": [
+        "pasos",
+        "de puntillas",
+        "pisadas",
+        "pisotones"
+      ],
+      "sounds": [
+        "pisotón",
+        "pisoteó",
+        "pum pum"
+      ]
+    },
+    "snore": {
+      "words": [
+        "ronquido",
+        "roncó",
+        "roncaba",
+        "roncando",
+        "se quedó dormido",
+        "se quedó dormida",
+        "profundamente dormido"
+      ],
+      "sounds": [
+        "ronquido",
+        "roncó",
+        "roncaba",
+        "zzz"
+      ]
+    },
+    "giggle": {
+      "words": [
+        "risita",
+        "se rió",
+        "se reía",
+        "se rieron",
+        "riendo",
+        "cosquillas",
+        "carcajada"
+      ],
+      "sounds": [
+        "se rió",
+        "se reía",
+        "se rieron",
+        "riendo",
+        "carcajada",
+        "jijiji",
+        "jajaja",
+        "ja ja",
+        "ji ji",
+        "je je"
+      ]
+    },
+    "whoosh": {
+      "words": [
+        "fiuu",
+        "zas",
+        "salió volando",
+        "se fue volando",
+        "zum"
+      ],
+      "sounds": [
+        "fiuu",
+        "zas",
+        "zuuum"
+      ]
+    },
+    "pop": {
+      "words": [
+        "globo",
+        "burbuja",
+        "palomitas"
+      ],
+      "sounds": [
+        "pop",
+        "plop",
+        "explotó",
+        "reventó"
+      ]
+    },
+    "boing": {
+      "words": [
+        "canguro",
+        "trampolín",
+        "rebotó",
+        "rebotaba",
+        "rebotando",
+        "boing"
+      ],
+      "sounds": [
+        "boing",
+        "rebotó",
+        "brincó"
+      ]
+    },
+    "dolphin": {
+      "words": [
+        "delfín",
+        "delfincito",
+        "marsopa"
+      ]
+    },
+    "pig": {
+      "words": [
+        "cerdo",
+        "cerdito",
+        "puerco",
+        "cochinito",
+        "chancho",
+        "marrano",
+        "tres cerditos"
+      ],
+      "sounds": [
+        "oinc",
+        "oink",
+        "oinc oinc"
+      ]
+    },
+    "duck": {
+      "words": [
+        "pato",
+        "pata",
+        "patito",
+        "patito feo"
+      ],
+      "sounds": [
+        "cuac",
+        "cua cua",
+        "cuac cuac"
+      ]
+    },
+    "chicken": {
+      "words": [
+        "gallina",
+        "gallinita",
+        "pollito",
+        "pollo"
+      ],
+      "sounds": [
+        "cacareó",
+        "cacareaba",
+        "clo clo",
+        "cloqueó"
+      ]
+    },
+    "rooster": {
+      "words": [
+        "gallo",
+        "gallito"
+      ],
+      "sounds": [
+        "quiquiriquí",
+        "kikirikí",
+        "cocorocó",
+        "qui qui ri quí"
+      ]
+    },
+    "goat": {
+      "words": [
+        "cabra",
+        "cabrita",
+        "chivo",
+        "chivito",
+        "cabrito"
+      ],
+      "sounds": [
+        "mee",
+        "meee"
+      ]
+    },
+    "donkey": {
+      "words": [
+        "burro",
+        "burrito",
+        "asno",
+        "mula"
+      ],
+      "sounds": [
+        "rebuznó",
+        "rebuzno",
+        "rebuznaba",
+        "i aa",
+        "hi ja"
+      ]
+    },
+    "turkey": {
+      "words": [
+        "pavo",
+        "pavito",
+        "guajolote"
+      ],
+      "sounds": [
+        "glu glu",
+        "gluglú"
+      ]
+    },
+    "mouse": {
+      "words": [
+        "ratón",
+        "ratoncito",
+        "rata"
+      ],
+      "sounds": [
+        "iic",
+        "chillido"
+      ]
+    },
+    "crow": {
+      "words": [
+        "cuervo",
+        "cuerva"
+      ],
+      "sounds": [
+        "cra cra"
+      ]
+    },
+    "fly": {
+      "words": [
+        "mosca",
+        "mosquita",
+        "mosquito"
+      ]
+    },
+    "farm": {
+      "words": [
+        "granja",
+        "establo",
+        "corral"
+      ]
+    },
+    "city": {
+      "words": [
+        "ciudad",
+        "tráfico",
+        "calle"
+      ]
+    },
+    "underwater": {
+      "words": [
+        "bajo el agua",
+        "debajo del agua",
+        "fondo del mar",
+        "bajo el mar"
+      ]
+    },
+    "cave": {
+      "words": [
+        "cueva",
+        "caverna",
+        "gruta",
+        "túnel",
+        "mazmorra"
+      ],
+      "sounds": [
+        "plic ploc"
+      ]
+    },
+    "tractor": {
+      "words": [
+        "tractor"
+      ],
+      "sounds": [
+        "put put",
+        "chaca chaca"
+      ]
+    },
+    "bicycle": {
+      "words": [
+        "bicicleta",
+        "bici",
+        "triciclo"
+      ],
+      "sounds": [
+        "rin rin",
+        "ring ring"
+      ]
+    },
+    "truck": {
+      "words": [
+        "camión",
+        "camioneta",
+        "camión grande",
+        "grúa remolque"
+      ]
+    },
+    "motorcycle": {
+      "words": [
+        "moto",
+        "motocicleta",
+        "motoneta"
+      ],
+      "sounds": [
+        "aceleró"
+      ]
+    },
+    "helicopter": {
+      "words": [
+        "helicóptero"
+      ],
+      "sounds": [
+        "voló"
+      ]
+    },
+    "siren": {
+      "words": [
+        "sirena",
+        "camión de bomberos",
+        "bomberos",
+        "bombero",
+        "coche de policía",
+        "patrulla",
+        "policía",
+        "ambulancia"
+      ],
+      "sounds": [
+        "ni no ni no",
+        "uiu uiu",
+        "iuu iuu"
+      ]
+    },
+    "digger": {
+      "words": [
+        "excavadora",
+        "camión de la basura",
+        "camión de basura",
+        "grúa",
+        "hormigonera",
+        "apisonadora",
+        "pala mecánica",
+        "obra"
+      ],
+      "sounds": [
+        "pi pi pi"
+      ]
+    },
+    "creak": {
+      "words": [
+        "crujió la puerta",
+        "la puerta crujió",
+        "la puerta chirrió",
+        "casa embrujada",
+        "puente levadizo",
+        "portón",
+        "verja"
+      ],
+      "sounds": [
+        "crujido",
+        "rechinó",
+        "chirrió",
+        "chirrido",
+        "ñiic"
+      ]
+    },
+    "slam": {
+      "words": [
+        "portazo",
+        "cerró de golpe",
+        "dio un portazo"
+      ],
+      "sounds": [
+        "portazo",
+        "pum",
+        "cerró de golpe",
+        "dio un portazo"
+      ]
+    },
+    "phone": {
+      "words": [
+        "teléfono",
+        "celular",
+        "móvil",
+        "sonó el teléfono"
+      ],
+      "sounds": [
+        "ring ring",
+        "riiing"
+      ]
+    },
+    "munch": {
+      "words": [
+        "mordisco",
+        "dio un mordisco",
+        "mordió",
+        "masticó",
+        "masticaba",
+        "mordisqueó"
+      ],
+      "sounds": [
+        "crunch",
+        "ñam ñam",
+        "ñam",
+        "crujiente"
+      ]
+    },
+    "slurp": {
+      "words": [
+        "sorbió",
+        "sorbo",
+        "bebió",
+        "tomó un sorbo",
+        "tragó"
+      ],
+      "sounds": [
+        "slurp",
+        "sorbió"
+      ]
+    },
+    "sneeze": {
+      "words": [
+        "estornudo",
+        "estornudó",
+        "estornudaba"
+      ],
+      "sounds": [
+        "achís",
+        "achú",
+        "aaachís",
+        "estornudó"
+      ]
+    },
+    "yawn": {
+      "words": [
+        "bostezo",
+        "bostezó",
+        "bostezaba",
+        "bostezando"
+      ],
+      "sounds": [
+        "bostezó",
+        "bostezo",
+        "bostezaba"
+      ]
+    },
+    "baby": {
+      "words": [
+        "el bebé lloró",
+        "el bebé lloraba",
+        "bebé llorando",
+        "se puso a llorar",
+        "empezó a llorar",
+        "rompió a llorar"
+      ],
+      "sounds": [
+        "buaa",
+        "bua bua",
+        "buaaa"
+      ]
+    },
+    "kiss": {
+      "words": [
+        "beso",
+        "besó",
+        "besito",
+        "besitos"
+      ],
+      "sounds": [
+        "muac",
+        "mua"
+      ]
+    },
+    "cheer": {
+      "words": [
+        "hurra",
+        "bravo",
+        "aplausos",
+        "aplaudió",
+        "aplaudieron",
+        "fiesta",
+        "cumpleaños",
+        "viva",
+        "yupi",
+        "celebraron",
+        "celebró"
+      ],
+      "sounds": [
+        "hurra",
+        "bravo"
+      ]
+    },
+    "flush": {
+      "words": [
+        "inodoro",
+        "retrete",
+        "váter",
+        "tiró de la cadena",
+        "orinal",
+        "bacinica"
+      ]
+    },
+    "drum": {
+      "words": [
+        "tambor",
+        "tamborcito",
+        "tamborilero"
+      ],
+      "sounds": [
+        "pom pom",
+        "rataplán",
+        "bum bum"
+      ]
+    },
+    "trumpet": {
+      "words": [
+        "trompeta",
+        "fanfarria",
+        "clarín"
+      ],
+      "sounds": [
+        "tarará",
+        "tachán"
+      ]
+    },
+    "whistle": {
+      "words": [
+        "tocó el silbato",
+        "sopló el silbato",
+        "pitó el silbato",
+        "árbitro"
+      ]
+    },
+    "fireworks": {
+      "words": [
+        "fuegos artificiales",
+        "petardo",
+        "petardos",
+        "bengala"
+      ],
+      "sounds": [
+        "pum pum pum"
+      ]
+    },
+    "ghost": {
+      "words": [
+        "fantasma",
+        "fantasmita",
+        "espectro"
+      ],
+      "sounds": [
+        "buu",
+        "uuuh"
+      ]
+    },
+    "monster": {
+      "words": [
+        "monstruo",
+        "monstruito",
+        "ogro",
+        "trol",
+        "troll",
+        "bestia"
+      ],
+      "sounds": [
+        "grrr"
+      ]
+    },
+    "robot": {
+      "words": [
+        "robot",
+        "robotito"
+      ],
+      "sounds": [
+        "bip bup",
+        "bip bop"
+      ]
+    },
+    "laser": {
+      "words": [
+        "láser",
+        "rayo láser",
+        "pistola de rayos"
+      ],
+      "sounds": [
+        "piu piu",
+        "zap"
+      ]
+    },
+    "sword": {
+      "words": [
+        "espada",
+        "espadín",
+        "duelo de espadas"
+      ],
+      "sounds": [
+        "clinc",
+        "clanc",
+        "chocaron las espadas"
+      ]
+    },
+    "treasure": {
+      "words": [
+        "tesoro",
+        "cofre del tesoro",
+        "cofre",
+        "moneda",
+        "monedas de oro",
+        "oro",
+        "hucha",
+        "alcancía"
+      ],
+      "sounds": [
+        "chin chin"
+      ]
+    },
+    "witch": {
+      "words": [
+        "bruja",
+        "brujita"
+      ],
+      "sounds": [
+        "cacareo de bruja",
+        "se rió",
+        "carcajada"
+      ]
+    },
+    "giant": {
+      "words": [
+        "el gigante",
+        "un gigante",
+        "los gigantes",
+        "la giganta",
+        "fi fa fo fum"
+      ],
+      "sounds": [
+        "fi fa fo fum"
+      ]
+    },
+    "alien": {
+      "words": [
+        "extraterrestre",
+        "alienígena",
+        "marciano",
+        "ovni",
+        "platillo volador",
+        "platillo volante"
+      ]
+    },
+    "seal": {
+      "words": [
+        "foca",
+        "león marino",
+        "lobo marino"
+      ]
+    },
+    "penguin": {
+      "words": [
+        "pingüino",
+        "pingüinito"
+      ]
+    },
+    "fox": {
+      "words": [
+        "zorro",
+        "zorra",
+        "zorrito"
+      ]
+    },
+    "hyena": {
+      "words": [
+        "hiena"
+      ]
+    },
+    "hippo": {
+      "words": [
+        "hipopótamo"
+      ]
+    },
+    "eagle": {
+      "words": [
+        "águila",
+        "halcón",
+        "gavilán"
+      ]
+    },
+    "crocodile": {
+      "words": [
+        "cocodrilo",
+        "caimán"
+      ]
+    },
+    "peacock": {
+      "words": [
+        "pavo real"
+      ]
+    },
+    "goose": {
+      "words": [
+        "ganso",
+        "oca"
+      ]
+    },
+    "hooves": {
+      "words": [
+        "cascos",
+        "carruaje",
+        "trotó",
+        "al trote"
+      ],
+      "sounds": [
+        "clop clop",
+        "taca taca"
+      ]
+    },
+    "guinea_pig": {
+      "words": [
+        "conejillo de indias",
+        "cobaya",
+        "cuy"
+      ]
+    },
+    "parrot": {
+      "words": [
+        "loro",
+        "lorito",
+        "papagayo",
+        "guacamayo",
+        "cacatúa"
+      ]
+    },
+    "woodpecker": {
+      "words": [
+        "pájaro carpintero",
+        "carpintero"
+      ]
+    },
+    "bat": {
+      "words": [
+        "murciélago",
+        "murciélagos"
+      ]
+    },
+    "cicada": {
+      "words": [
+        "cigarra",
+        "chicharra"
+      ]
+    },
+    "pigeon": {
+      "words": [
+        "paloma",
+        "palomita",
+        "tórtola"
+      ],
+      "sounds": [
+        "currucucú"
+      ]
+    },
+    "squirrel": {
+      "words": [
+        "ardilla",
+        "ardillita"
+      ]
+    },
+    "cuckoo": {
+      "words": [
+        "cuco",
+        "cucú",
+        "reloj de cuco"
+      ],
+      "sounds": [
+        "cucú",
+        "cu cu"
+      ]
+    },
+    "hail": {
+      "words": [
+        "granizo",
+        "granizando",
+        "granizada"
+      ]
+    },
+    "snow_crunch": {
+      "words": [
+        "caminó en la nieve",
+        "caminaba en la nieve",
+        "pisó la nieve",
+        "nieve profunda"
+      ]
+    },
+    "wind_chimes": {
+      "words": [
+        "campanillas de viento",
+        "móvil de viento"
+      ]
+    },
+    "storm": {
+      "words": [
+        "tormenta fuerte",
+        "huracán",
+        "tempestad",
+        "vendaval"
+      ]
+    },
+    "drip": {
+      "words": [
+        "goteaba",
+        "goteando",
+        "gotas",
+        "grifo goteando"
+      ],
+      "sounds": [
+        "plic ploc",
+        "ploc ploc"
+      ]
+    },
+    "jungle": {
+      "words": [
+        "selva",
+        "jungla",
+        "selva tropical"
+      ]
+    },
+    "playground": {
+      "words": [
+        "parque",
+        "parque infantil",
+        "columpios",
+        "patio de juegos"
+      ]
+    },
+    "space": {
+      "words": [
+        "espacio exterior",
+        "en el espacio",
+        "galaxia",
+        "planetas",
+        "universo"
+      ]
+    },
+    "castle": {
+      "words": [
+        "castillo",
+        "palacio",
+        "salón del trono",
+        "reino"
+      ]
+    },
+    "train_ride": {
+      "words": [
+        "en el tren",
+        "vías del tren",
+        "viaje en tren"
+      ],
+      "sounds": [
+        "traqueteo"
+      ]
+    },
+    "meadow": {
+      "words": [
+        "pradera",
+        "prado",
+        "campo soleado",
+        "picnic"
+      ]
+    },
+    "fairground": {
+      "words": [
+        "feria",
+        "carnaval",
+        "circo",
+        "festival"
+      ]
+    },
+    "submarine": {
+      "words": [
+        "submarino",
+        "sonar"
+      ]
+    },
+    "cannon": {
+      "words": [
+        "cañón",
+        "bala de cañón"
+      ],
+      "sounds": [
+        "disparó el cañón",
+        "kabum"
+      ]
+    },
+    "hot_air_balloon": {
+      "words": [
+        "globo aerostático",
+        "dirigible"
+      ]
+    },
+    "skateboard": {
+      "words": [
+        "patineta",
+        "monopatín",
+        "patines",
+        "patinó"
+      ]
+    },
+    "sleigh": {
+      "words": [
+        "trineo",
+        "cascabeles",
+        "papá noel",
+        "santa claus",
+        "renos"
+      ]
+    },
+    "anchor": {
+      "words": [
+        "ancla",
+        "echó el ancla",
+        "cadenas"
+      ]
+    },
+    "bath": {
+      "words": [
+        "baño",
+        "bañera",
+        "tina",
+        "baño de burbujas",
+        "sirvió agua"
+      ]
+    },
+    "zipper": {
+      "words": [
+        "cremallera",
+        "cierre",
+        "subió la cremallera",
+        "abrió la cremallera"
+      ]
+    },
+    "page_turn": {
+      "words": [
+        "pasó la página",
+        "abrió el libro",
+        "mapa del tesoro",
+        "desplegó el mapa"
+      ]
+    },
+    "hiccup": {
+      "words": [
+        "hipo",
+        "tuvo hipo",
+        "con hipo"
+      ],
+      "sounds": [
+        "hip"
+      ]
+    },
+    "tummy_rumble": {
+      "words": [
+        "le rugió la panza",
+        "rugió la barriga",
+        "sonó la barriga",
+        "estómago rugió",
+        "tenía mucha hambre"
+      ]
+    },
+    "shush": {
+      "words": [
+        "shh",
+        "shhh",
+        "silencio",
+        "susurró",
+        "calladitos"
+      ],
+      "sounds": [
+        "shh",
+        "shhh"
+      ]
+    },
+    "music_box": {
+      "words": [
+        "caja de música",
+        "cajita de música",
+        "canción de cuna",
+        "bailarina"
+      ]
+    },
+    "crash": {
+      "words": [
+        "se rompió el plato",
+        "rompió el frasco",
+        "se rompió el vaso",
+        "se hizo añicos",
+        "estrépito"
+      ]
+    },
+    "toot": {
+      "words": [
+        "pedo",
+        "pedito",
+        "se tiró un pedo",
+        "pum"
+      ],
+      "sounds": [
+        "prrr",
+        "pfff"
+      ]
+    },
+    "slide_whistle": {
+      "words": [
+        "resbaló",
+        "se resbaló",
+        "cáscara de plátano",
+        "tobogán",
+        "se cayó",
+        "uy"
+      ]
+    },
+    "fairy": {
+      "words": [
+        "hada",
+        "hadita",
+        "duende",
+        "polvo de hadas",
+        "luciérnagas"
+      ]
+    },
+    "cauldron": {
+      "words": [
+        "caldero",
+        "poción",
+        "pócima",
+        "burbujeaba"
+      ]
+    },
+    "heartbeat": {
+      "words": [
+        "latido",
+        "latía el corazón",
+        "corazón latía",
+        "corazón le latía"
+      ],
+      "sounds": [
+        "tum tum",
+        "bum bum"
+      ]
+    },
+    "clown_horn": {
+      "words": [
+        "payaso",
+        "payasito",
+        "bocina de payaso"
+      ]
+    },
+    "rhino": {
+      "words": [
+        "rinoceronte"
+      ]
+    },
+    "polar_bear": {
+      "words": [
+        "oso polar",
+        "osos polares"
+      ]
+    },
+    "walrus": {
+      "words": [
+        "morsa"
+      ]
+    },
+    "moose": {
+      "words": [
+        "alce"
+      ]
+    },
+    "bison": {
+      "words": [
+        "bisonte",
+        "búfalo"
+      ]
+    },
+    "orca": {
+      "words": [
+        "orca",
+        "ballena asesina"
+      ]
+    },
+    "otter": {
+      "words": [
+        "nutria",
+        "nutria marina"
+      ]
+    },
+    "raccoon": {
+      "words": [
+        "mapache"
+      ]
+    },
+    "cheetah": {
+      "words": [
+        "guepardo",
+        "leopardo",
+        "pantera",
+        "jaguar"
+      ]
+    },
+    "gibbon": {
+      "words": [
+        "gibón",
+        "orangután",
+        "babuino"
+      ]
+    },
+    "kookaburra": {
+      "words": [
+        "cucaburra",
+        "kookaburra"
+      ]
+    },
+    "loon": {
+      "words": [
+        "colimbo"
+      ]
+    },
+    "crane": {
+      "words": [
+        "grulla",
+        "grulla blanca"
+      ]
+    },
+    "toucan": {
+      "words": [
+        "tucán"
+      ]
+    },
+    "swan": {
+      "words": [
+        "cisne",
+        "cisne negro"
+      ]
+    },
+    "quail": {
+      "words": [
+        "codorniz"
+      ]
+    },
+    "canary": {
+      "words": [
+        "canario"
+      ]
+    },
+    "cowbell": {
+      "words": [
+        "cencerro"
+      ]
+    },
+    "barn_door": {
+      "words": [
+        "puerta del granero",
+        "puerta del establo"
+      ]
+    },
+    "wood_chop": {
+      "words": [
+        "cortó leña",
+        "cortaba leña",
+        "leñador",
+        "hacha",
+        "partió madera"
+      ]
+    },
+    "beehive": {
+      "words": [
+        "colmena",
+        "panal",
+        "enjambre de abejas"
+      ]
+    },
+    "bull": {
+      "words": [
+        "toro",
+        "buey"
+      ]
+    },
+    "dinner_bell": {
+      "words": [
+        "campana de la cena",
+        "campana del comedor"
+      ]
+    },
+    "anvil": {
+      "words": [
+        "herrero",
+        "yunque",
+        "fragua",
+        "forjó la espada"
+      ]
+    },
+    "rattlesnake": {
+      "words": [
+        "serpiente de cascabel",
+        "víbora de cascabel",
+        "cascabel"
+      ]
+    },
+    "gecko": {
+      "words": [
+        "gecko",
+        "geco",
+        "lagartija",
+        "camaleón",
+        "iguana"
+      ]
+    },
+    "hedgehog": {
+      "words": [
+        "erizo",
+        "puercoespín"
+      ]
+    },
+    "magpie": {
+      "words": [
+        "urraca"
+      ]
+    },
+    "bluebird": {
+      "words": [
+        "azulejo",
+        "arrendajo azul",
+        "pájaro azul"
+      ]
+    },
+    "blackbird": {
+      "words": [
+        "mirlo",
+        "estornino"
+      ]
+    },
+    "grouse": {
+      "words": [
+        "urogallo",
+        "faisán",
+        "perdiz"
+      ]
+    },
+    "grasshopper": {
+      "words": [
+        "saltamontes",
+        "langosta"
+      ]
+    },
+    "crab": {
+      "words": [
+        "cangrejo",
+        "cangrejito",
+        "pinzas"
+      ]
+    },
+    "bug": {
+      "words": [
+        "escarabajo",
+        "cucaracha",
+        "bicho gigante",
+        "insecto"
+      ]
+    },
+    "waterfall": {
+      "words": [
+        "cascada",
+        "catarata"
+      ]
+    },
+    "geyser": {
+      "words": [
+        "géiser",
+        "aguas termales"
+      ]
+    },
+    "volcano": {
+      "words": [
+        "volcán",
+        "erupción",
+        "entró en erupción",
+        "lava"
+      ]
+    },
+    "ice_crack": {
+      "words": [
+        "se rompió el hielo",
+        "hielo crujió",
+        "lago helado",
+        "glaciar",
+        "iceberg"
+      ]
+    },
+    "leaves": {
+      "words": [
+        "hojas secas",
+        "hojas de otoño",
+        "hojas caídas",
+        "pisó las hojas"
+      ]
+    },
+    "mud": {
+      "words": [
+        "barro",
+        "lodo",
+        "charco de barro",
+        "charco de lodo"
+      ]
+    },
+    "earthquake": {
+      "words": [
+        "terremoto",
+        "temblor",
+        "tembló la tierra"
+      ]
+    },
+    "tornado": {
+      "words": [
+        "tornado",
+        "remolino",
+        "ciclón"
+      ]
+    },
+    "avalanche": {
+      "words": [
+        "avalancha",
+        "alud",
+        "derrumbe",
+        "cayeron rocas"
+      ]
+    },
+    "rain_roof": {
+      "words": [
+        "lluvia en el tejado",
+        "techo de chapa",
+        "lluvia en el techo"
+      ]
+    },
+    "harbor": {
+      "words": [
+        "puerto",
+        "muelle",
+        "embarcadero",
+        "marina"
+      ]
+    },
+    "market": {
+      "words": [
+        "mercado",
+        "bazar",
+        "plaza del pueblo",
+        "mercadillo"
+      ]
+    },
+    "kitchen": {
+      "words": [
+        "cocina",
+        "panadería",
+        "restaurante",
+        "cocinando la cena"
+      ]
+    },
+    "stadium": {
+      "words": [
+        "estadio",
+        "partido",
+        "cancha",
+        "público aplaudiendo"
+      ]
+    },
+    "desert": {
+      "words": [
+        "desierto",
+        "dunas",
+        "sahara",
+        "oasis"
+      ]
+    },
+    "arctic": {
+      "words": [
+        "ártico",
+        "polo norte",
+        "polo sur",
+        "antártida",
+        "iglú"
+      ]
+    },
+    "swamp": {
+      "words": [
+        "pantano",
+        "ciénaga",
+        "humedal"
+      ]
+    },
+    "pirate_ship": {
+      "words": [
+        "barco velero",
+        "galeón",
+        "cubierta del barco",
+        "alta mar"
+      ]
+    },
+    "haunted_house": {
+      "words": [
+        "casa embrujada",
+        "mansión embrujada",
+        "casa encantada",
+        "viejo ático"
+      ]
+    },
+    "spaceship_bridge": {
+      "words": [
+        "puente de la nave",
+        "sala de control",
+        "estación espacial",
+        "cabina de la nave"
+      ]
+    },
+    "trolley": {
+      "words": [
+        "tranvía",
+        "trolebús",
+        "teleférico"
+      ]
+    },
+    "steam_whistle": {
+      "words": [
+        "silbato de vapor",
+        "silbato de la fábrica"
+      ]
+    },
+    "race_car": {
+      "words": [
+        "coche de carreras",
+        "auto de carreras",
+        "carro de carreras",
+        "fórmula uno"
+      ]
+    },
+    "engine_start": {
+      "words": [
+        "arrancó el coche",
+        "arrancó el auto",
+        "encendió el motor",
+        "arrancó el motor"
+      ]
+    },
+    "hammer": {
+      "words": [
+        "martillo",
+        "martilló",
+        "clavó un clavo"
+      ]
+    },
+    "saw": {
+      "words": [
+        "serrucho",
+        "sierra",
+        "motosierra",
+        "cortando madera",
+        "carpintero"
+      ]
+    },
+    "camera": {
+      "words": [
+        "cámara",
+        "tomó una foto",
+        "sacó una foto",
+        "fotografía"
+      ]
+    },
+    "typewriter": {
+      "words": [
+        "máquina de escribir",
+        "escribió a máquina"
+      ]
+    },
+    "cash_register": {
+      "words": [
+        "caja registradora",
+        "pagó en la caja"
+      ]
+    },
+    "elevator": {
+      "words": [
+        "ascensor",
+        "elevador"
+      ]
+    },
+    "alarm_clock": {
+      "words": [
+        "despertador",
+        "sonó la alarma",
+        "alarma del reloj"
+      ]
+    },
+    "grandfather_clock": {
+      "words": [
+        "reloj de péndulo",
+        "reloj de abuelo",
+        "torre del reloj",
+        "dio las doce"
+      ]
+    },
+    "church_bell": {
+      "words": [
+        "campana de la iglesia",
+        "campanas de la iglesia",
+        "catedral",
+        "campanas de boda"
+      ]
+    },
+    "iron_gate": {
+      "words": [
+        "puerta de hierro",
+        "reja pesada",
+        "puerta del calabozo",
+        "portón del castillo"
+      ]
+    },
+    "keys": {
+      "words": [
+        "llaves",
+        "llavero",
+        "manojo de llaves"
+      ]
+    },
+    "lock": {
+      "words": [
+        "abrió con llave",
+        "cerró con llave",
+        "candado",
+        "cerradura"
+      ]
+    },
+    "dishes": {
+      "words": [
+        "platos",
+        "ollas y sartenes",
+        "vajilla",
+        "lavó los platos"
+      ]
+    },
+    "microwave": {
+      "words": [
+        "microondas",
+        "calentó en el microondas"
+      ]
+    },
+    "bottle_pop": {
+      "words": [
+        "descorchó",
+        "corcho",
+        "abrió la botella",
+        "champán"
+      ]
+    },
+    "pour": {
+      "words": [
+        "sirvió un vaso",
+        "sirvió leche",
+        "sirvió té",
+        "sirvió jugo",
+        "sirvió una taza"
+      ]
+    },
+    "kettle": {
+      "words": [
+        "tetera",
+        "pava",
+        "hervidor",
+        "agua hirviendo",
+        "hora del té"
+      ]
+    },
+    "scissors": {
+      "words": [
+        "tijeras",
+        "tijera",
+        "cortó el papel"
+      ],
+      "sounds": [
+        "chas chas"
+      ]
+    },
+    "toothbrush": {
+      "words": [
+        "cepillo de dientes",
+        "se lavó los dientes",
+        "se cepilló los dientes"
+      ]
+    },
+    "cough": {
+      "words": [
+        "tos",
+        "tosió",
+        "tosiendo",
+        "carraspeó"
+      ]
+    },
+    "burp": {
+      "words": [
+        "eructo",
+        "eructó",
+        "se tiró un eructo"
+      ]
+    },
+    "sigh": {
+      "words": [
+        "suspiro",
+        "suspiró",
+        "gran suspiro"
+      ]
+    },
+    "gasp": {
+      "words": [
+        "jadeo",
+        "jadeó",
+        "se quedó sin aliento"
+      ]
+    },
+    "piano": {
+      "words": [
+        "piano",
+        "tocó el piano",
+        "pianista"
+      ]
+    },
+    "guitar": {
+      "words": [
+        "guitarra",
+        "tocó la guitarra",
+        "ukelele",
+        "banjo"
+      ]
+    },
+    "xylophone": {
+      "words": [
+        "xilófono",
+        "marimba"
+      ]
+    },
+    "popcorn": {
+      "words": [
+        "palomitas",
+        "palomitas de maíz",
+        "pochoclo",
+        "canguil"
+      ]
+    },
+    "explosion": {
+      "words": [
+        "explosión",
+        "explotó",
+        "estalló",
+        "dinamita"
+      ],
+      "sounds": [
+        "bum",
+        "kabum"
+      ]
+    },
+    "arrow": {
+      "words": [
+        "arco y flecha",
+        "disparó una flecha",
+        "lanzó una flecha",
+        "arquero",
+        "ballesta"
+      ]
+    },
+    "shield": {
+      "words": [
+        "escudo",
+        "bloqueó el golpe",
+        "armadura",
+        "caballero"
+      ]
+    },
+    "portal": {
+      "words": [
+        "portal",
+        "vórtice",
+        "portal mágico"
+      ]
+    },
+    "teleport": {
+      "words": [
+        "teletransportó",
+        "desapareció en un destello",
+        "teletransporte"
+      ]
+    },
+    "victory": {
+      "words": [
+        "ganó la carrera",
+        "ganó el juego",
+        "victoria",
+        "campeón",
+        "trofeo"
+      ]
+    },
+    "sad_trombone": {
+      "words": [
+        "oh no",
+        "perdió el juego",
+        "trombón triste"
+      ],
+      "sounds": [
+        "ua ua"
+      ]
+    },
+    "spring": {
+      "words": [
+        "resorte",
+        "muelle",
+        "resorte metálico"
+      ]
+    },
+    "squish": {
+      "words": [
+        "slime",
+        "baba",
+        "baboso",
+        "aplastó",
+        "pegajoso"
+      ]
+    },
+    "evil_laugh": {
+      "words": [
+        "villano",
+        "risa malvada",
+        "malvado",
+        "hechicero malvado"
+      ],
+      "sounds": [
+        "muajaja",
+        "jajaja"
+      ]
+    },
+    "zombie": {
+      "words": [
+        "zombi",
+        "zombie",
+        "momia",
+        "esqueleto"
+      ]
+    },
+    "unicorn": {
+      "words": [
+        "unicornio",
+        "pegaso"
+      ]
+    },
+    "squeaky_toy": {
+      "words": [
+        "patito de goma",
+        "patito de hule",
+        "juguete chillón"
+      ]
+    },
+    "drumroll": {
+      "words": [
+        "redoble de tambor",
+        "redoble",
+        "y el ganador es"
+      ]
+    },
+    "gong": {
+      "words": [
+        "gong",
+        "tocó el gong"
+      ]
+    },
+    "antelope": {
+      "words": [
+        "antílope",
+        "impala",
+        "gacela"
+      ]
+    },
+    "deer": {
+      "words": [
+        "ciervo",
+        "venado",
+        "cervatillo"
+      ]
+    },
+    "stork": {
+      "words": [
+        "cigüeña",
+        "garza"
+      ]
+    },
+    "kingfisher": {
+      "words": [
+        "martín pescador"
+      ]
+    },
+    "coot": {
+      "words": [
+        "focha",
+        "gallineta de agua"
+      ]
+    },
+    "baboon": {
+      "words": [
+        "mandril",
+        "gelada"
+      ]
+    },
+    "panther": {
+      "words": [
+        "pantera negra",
+        "puma",
+        "león de montaña"
+      ]
+    },
+    "grizzly_eat": {
+      "words": [
+        "oso hambriento",
+        "oso gruñó"
+      ]
+    },
+    "alligator_hiss": {
+      "words": [
+        "caimán siseó",
+        "cocodrilo siseó"
+      ]
+    },
+    "sea_lion": {
+      "words": [
+        "elefante marino",
+        "lobo de mar"
+      ]
+    },
+    "elephant_calf": {
+      "words": [
+        "elefantito",
+        "elefante bebé"
+      ]
+    },
+    "wolf_pack": {
+      "words": [
+        "manada de lobos",
+        "lobos aullaron"
+      ]
+    },
+    "lion_cub": {
+      "words": [
+        "cachorro de león",
+        "leoncito"
+      ]
+    },
+    "bear_cub": {
+      "words": [
+        "osezno",
+        "osito bebé"
+      ]
+    },
+    "dino_stomp": {
+      "words": [
+        "brontosaurio",
+        "triceratops",
+        "estegosaurio"
+      ]
+    },
+    "whale_pod": {
+      "words": [
+        "ballena azul",
+        "ballena jorobada",
+        "canto de ballena"
+      ]
+    },
+    "dolphin_click": {
+      "words": [
+        "delfincito",
+        "manada de delfines"
+      ]
+    },
+    "jungle_monkey": {
+      "words": [
+        "mono aullador",
+        "lémur"
+      ]
+    },
+    "coyote": {
+      "words": [
+        "coyote",
+        "chacal"
+      ]
+    },
+    "eagle_cry": {
+      "words": [
+        "águila calva",
+        "cóndor"
+      ]
+    },
+    "milking": {
+      "words": [
+        "ordeñó la vaca",
+        "ordeñando la vaca",
+        "cubo de leche"
+      ]
+    },
+    "barn_owl": {
+      "words": [
+        "lechuza",
+        "búho nival"
+      ]
+    },
+    "farm_tractor": {
+      "words": [
+        "cosechadora",
+        "arado"
+      ]
+    },
+    "hay_cart": {
+      "words": [
+        "carreta",
+        "carruaje de heno",
+        "diligencia"
+      ]
+    },
+    "horse_gallop": {
+      "words": [
+        "galopando",
+        "estampida",
+        "caballos salvajes"
+      ]
+    },
+    "sheep_flock": {
+      "words": [
+        "rebaño de ovejas",
+        "pastor",
+        "corderitos"
+      ]
+    },
+    "pig_oink": {
+      "words": [
+        "jabalí",
+        "cerdito bebé"
+      ]
+    },
+    "hen_cluck": {
+      "words": [
+        "gallinero"
+      ]
+    },
+    "duck_splash": {
+      "words": [
+        "estanque de patos",
+        "bandada de patos"
+      ]
+    },
+    "dog_pant": {
+      "words": [
+        "cachorrito",
+        "perro pastor"
+      ]
+    },
+    "cat_purr": {
+      "words": [
+        "gatito bebé",
+        "minino"
+      ]
+    },
+    "goat_kid": {
+      "words": [
+        "cabrito",
+        "cabra montés"
+      ]
+    },
+    "donkey_hooves": {
+      "words": [
+        "burrito",
+        "asno"
+      ]
+    },
+    "stable_bell": {
+      "words": [
+        "campana escolar",
+        "campana de la escuela"
+      ]
+    },
+    "pitchfork": {
+      "words": [
+        "horca",
+        "pajar",
+        "pala",
+        "cavó un hoyo"
+      ]
+    },
+    "robin": {
+      "words": [
+        "petirrojo",
+        "zorzal"
+      ]
+    },
+    "nutcracker": {
+      "words": [
+        "cascanueces",
+        "arrendajo"
+      ]
+    },
+    "killdeer": {
+      "words": [
+        "chorlito",
+        "playero"
+      ]
+    },
+    "bunting": {
+      "words": [
+        "pinzón",
+        "jilguero",
+        "cardenal"
+      ]
+    },
+    "warbler": {
+      "words": [
+        "ruiseñor",
+        "alondra",
+        "reyezuelo"
+      ]
+    },
+    "palm_squirrel": {
+      "words": [
+        "ardillita",
+        "ardilla listada"
+      ]
+    },
+    "frog_chorus": {
+      "words": [
+        "estanque de ranas",
+        "nenúfar",
+        "coro de ranas"
+      ]
+    },
+    "beetle_bite": {
+      "words": [
+        "mariquita",
+        "oruga",
+        "hormiga",
+        "hormigas"
+      ]
+    },
+    "cricket_chirp": {
+      "words": [
+        "un grillo",
+        "grillito"
+      ]
+    },
+    "mosquito": {
+      "words": [
+        "mosquito",
+        "zancudo"
+      ]
+    },
+    "wasp": {
+      "words": [
+        "avispa",
+        "avispón"
+      ]
+    },
+    "firefly_hum": {
+      "words": [
+        "mariposa",
+        "mariposas",
+        "libélula",
+        "polilla"
+      ]
+    },
+    "hamster": {
+      "words": [
+        "hámster",
+        "jerbo",
+        "hurón"
+      ]
+    },
+    "gerbil": {
+      "words": [
+        "conejo",
+        "conejito",
+        "liebre"
+      ]
+    },
+    "spider_crawl": {
+      "words": [
+        "araña",
+        "tarántula",
+        "telaraña"
+      ]
+    },
+    "snail_slime": {
+      "words": [
+        "caracol",
+        "babosa",
+        "lombriz",
+        "gusano"
+      ]
+    },
+    "bat_flutter": {
+      "words": [
+        "batió sus alas",
+        "aleteó",
+        "abrió las alas"
+      ]
+    },
+    "owl_wings": {
+      "words": [
+        "colibrí",
+        "picaflor"
+      ]
+    },
+    "pigeon_wings": {
+      "words": [
+        "bandada de pájaros",
+        "pájaros cantando"
+      ]
+    },
+    "sparrow_flock": {
+      "words": [
+        "golondrina",
+        "gorrión"
+      ]
+    },
+    "surf_crash": {
+      "words": [
+        "ola gigante",
+        "tsunami",
+        "ola rompió"
+      ]
+    },
+    "lightning_bolt": {
+      "words": [
+        "rayo cayó",
+        "relámpago",
+        "cayó un rayo"
+      ]
+    },
+    "heavy_rain": {
+      "words": [
+        "aguacero",
+        "diluvio",
+        "lluvia torrencial"
+      ]
+    },
+    "drizzle": {
+      "words": [
+        "llovizna",
+        "lluvia suave"
+      ]
+    },
+    "gale_wind": {
+      "words": [
+        "vendaval fuerte",
+        "viento helado",
+        "viento aullando"
+      ]
+    },
+    "blizzard": {
+      "words": [
+        "ventisca",
+        "tormenta de nieve"
+      ]
+    },
+    "thunder_roll": {
+      "words": [
+        "trueno lejano",
+        "nubes de tormenta"
+      ]
+    },
+    "rain_puddle": {
+      "words": [
+        "saltó en un charco",
+        "botas de lluvia"
+      ]
+    },
+    "wind_gust": {
+      "words": [
+        "ráfaga de viento",
+        "soplo de viento"
+      ]
+    },
+    "frost_freeze": {
+      "words": [
+        "se congeló",
+        "convertido en hielo",
+        "reina de hielo"
+      ]
+    },
+    "icicle_drop": {
+      "words": [
+        "carámbano",
+        "carámbanos"
+      ]
+    },
+    "rockfall": {
+      "words": [
+        "cayeron piedras",
+        "derrumbe de rocas"
+      ]
+    },
+    "mudslide": {
+      "words": [
+        "arenas movedizas",
+        "pozo de lodo"
+      ]
+    },
+    "sandstorm": {
+      "words": [
+        "tormenta de arena",
+        "tormenta de polvo"
+      ]
+    },
+    "heatwave": {
+      "words": [
+        "verano caluroso",
+        "tarde de verano"
+      ]
+    },
+    "river_rapids": {
+      "words": [
+        "rápidos del río",
+        "río caudaloso"
+      ]
+    },
+    "brook_babble": {
+      "words": [
+        "arroyito",
+        "riachuelo"
+      ]
+    },
+    "ocean_storm": {
+      "words": [
+        "mar embravecido",
+        "tormenta en el mar"
+      ]
+    },
+    "spring_breeze": {
+      "words": [
+        "brisa suave",
+        "brisa primaveral"
+      ]
+    },
+    "crackling_frost": {
+      "words": [
+        "muñeco de nieve",
+        "bolas de nieve",
+        "huellas en la nieve"
+      ]
+    },
+    "train_station": {
+      "words": [
+        "estación de tren",
+        "andén"
+      ]
+    },
+    "park_birds": {
+      "words": [
+        "jardín",
+        "huerto",
+        "parque soleado"
+      ]
+    },
+    "park_river": {
+      "words": [
+        "orilla del río",
+        "campamento",
+        "de pesca"
+      ]
+    },
+    "park_wind": {
+      "words": [
+        "cima de la montaña",
+        "acantilado",
+        "cumbre"
+      ]
+    },
+    "abandoned_house": {
+      "words": [
+        "casa abandonada",
+        "ruinas",
+        "sótano"
+      ]
+    },
+    "ghost_hall": {
+      "words": [
+        "cementerio",
+        "cripta",
+        "bosque embrujado"
+      ]
+    },
+    "blacksmith_shop": {
+      "words": [
+        "herrería",
+        "taller del herrero"
+      ]
+    },
+    "boiler_room": {
+      "words": [
+        "sala de máquinas",
+        "fábrica"
+      ]
+    },
+    "sewing_room": {
+      "words": [
+        "sastrería",
+        "taller de costura"
+      ]
+    },
+    "busy_cafe": {
+      "words": [
+        "cafetería",
+        "taberna",
+        "posada"
+      ]
+    },
+    "hospital_room": {
+      "words": [
+        "hospital",
+        "clínica",
+        "enfermería"
+      ]
+    },
+    "deep_dungeon": {
+      "words": [
+        "pasadizo secreto",
+        "laberinto",
+        "subterráneo"
+      ]
+    },
+    "enchanted_forest": {
+      "words": [
+        "bosque encantado",
+        "bosque mágico",
+        "país de las maravillas"
+      ]
+    },
+    "crystal_cave": {
+      "words": [
+        "cueva de cristal",
+        "mina de diamantes",
+        "cueva del tesoro"
+      ]
+    },
+    "alien_planet": {
+      "words": [
+        "planeta alienígena",
+        "marte",
+        "superficie de la luna"
+      ]
+    },
+    "fire_bell": {
+      "words": [
+        "alarma de incendios",
+        "campana de bomberos"
+      ]
+    },
+    "sewing_machine": {
+      "words": [
+        "máquina de coser",
+        "cosió el vestido"
+      ]
+    },
+    "steam_iron": {
+      "words": [
+        "plancha de vapor",
+        "planchó",
+        "chorro de vapor"
+      ]
+    },
+    "bus_horn": {
+      "words": [
+        "autobús escolar",
+        "camión escolar",
+        "bocina del autobús"
+      ]
+    },
+    "phone_keypad": {
+      "words": [
+        "marcó el número",
+        "marcó por teléfono",
+        "teclado"
+      ]
+    },
+    "ships_bell": {
+      "words": [
+        "campana del barco",
+        "todos a bordo"
+      ]
+    },
+    "ship_telegraph": {
+      "words": [
+        "a toda máquina",
+        "telégrafo"
+      ]
+    },
+    "coal_shovel": {
+      "words": [
+        "paleó carbón",
+        "caldera",
+        "horno"
+      ]
+    },
+    "subway": {
+      "words": [
+        "metro",
+        "subterráneo",
+        "tren subterráneo"
+      ]
+    },
+    "monorail": {
+      "words": [
+        "monorriel",
+        "tren bala"
+      ]
+    },
+    "gas_pump": {
+      "words": [
+        "gasolinera",
+        "llenó el tanque"
+      ]
+    },
+    "sandpaper": {
+      "words": [
+        "papel de lija",
+        "lijó la madera"
+      ]
+    },
+    "forge_bellows": {
+      "words": [
+        "fuelle",
+        "avivó el fuego"
+      ]
+    },
+    "power_down": {
+      "words": [
+        "se fue la luz",
+        "apagón",
+        "se apagó la máquina"
+      ]
+    },
+    "power_up": {
+      "words": [
+        "volvió la luz",
+        "se encendió la máquina",
+        "cargó energía"
+      ]
+    },
+    "cell_ring": {
+      "words": [
+        "mensaje de texto",
+        "celular",
+        "notificación"
+      ]
+    },
+    "motor_hum": {
+      "words": [
+        "lancha",
+        "lancha rápida",
+        "cortacésped"
+      ]
+    },
+    "vintage_horn": {
+      "words": [
+        "auto clásico",
+        "coche antiguo"
+      ]
+    },
+    "air_horn": {
+      "words": [
+        "camión de rescate",
+        "vehículo de emergencia"
+      ]
+    },
+    "bicycle_spokes": {
+      "words": [
+        "pedaleó",
+        "rueda girando",
+        "carretilla"
+      ]
+    },
+    "chain_rattle": {
+      "words": [
+        "cadenas sonando",
+        "grilletes",
+        "encadenado"
+      ]
+    },
+    "drawbridge": {
+      "words": [
+        "puente levadizo",
+        "bajó el puente"
+      ]
+    },
+    "iron_latch": {
+      "words": [
+        "cerrojo",
+        "trampilla",
+        "pestillo"
+      ]
+    },
+    "wood_creak": {
+      "words": [
+        "piso crujió",
+        "escalera crujiente",
+        "puente de madera"
+      ]
+    },
+    "crate_smash": {
+      "words": [
+        "caja de madera",
+        "rompió el barril",
+        "barril"
+      ]
+    },
+    "heavy_thud": {
+      "words": [
+        "golpe seco",
+        "cayó con un golpe"
+      ]
+    },
+    "metal_clang": {
+      "words": [
+        "llave inglesa",
+        "caja de herramientas",
+        "lata"
+      ]
+    },
+    "pulley_winch": {
+      "words": [
+        "polea",
+        "tirolesa",
+        "izó"
+      ]
+    },
+    "factory_machine": {
+      "words": [
+        "cinta transportadora",
+        "invento",
+        "engranajes"
+      ]
+    },
+    "printing_press": {
+      "words": [
+        "imprenta",
+        "impresora",
+        "periódico"
+      ]
+    },
+    "radar_beep": {
+      "words": [
+        "radar",
+        "escáner",
+        "detector de metales",
+        "satélite"
+      ]
+    },
+    "sonar_echo": {
+      "words": [
+        "periscopio",
+        "sumergirse"
+      ]
+    },
+    "launch_countdown": {
+      "words": [
+        "tres dos uno",
+        "cuenta regresiva",
+        "en sus marcas"
+      ]
+    },
+    "jet_flyby": {
+      "words": [
+        "avión de combate",
+        "supersónico",
+        "avioneta"
+      ]
+    },
+    "helicopter_blade": {
+      "words": [
+        "helicóptero de rescate",
+        "dron",
+        "hélice"
+      ]
+    },
+    "tambourine": {
+      "words": [
+        "pandereta"
+      ]
+    },
+    "triangle": {
+      "words": [
+        "triángulo musical"
+      ]
+    },
+    "guiro": {
+      "words": [
+        "güiro"
+      ]
+    },
+    "claves": {
+      "words": [
+        "claves",
+        "castañuelas",
+        "baile de tap"
+      ]
+    },
+    "agogo": {
+      "words": [
+        "agogo",
+        "tambor metálico",
+        "samba"
+      ]
+    },
+    "maracas": {
+      "words": [
+        "maracas",
+        "sonajero"
+      ]
+    },
+    "heart_monitor": {
+      "words": [
+        "estetoscopio",
+        "monitor cardíaco"
+      ]
+    },
+    "air_conditioner": {
+      "words": [
+        "aire acondicionado",
+        "ventilador"
+      ]
+    },
+    "air_fryer": {
+      "words": [
+        "licuadora",
+        "aspiradora",
+        "secador de pelo",
+        "freidora"
+      ]
+    },
+    "boiling_pot": {
+      "words": [
+        "sopa hirviendo",
+        "olla hirviendo",
+        "guiso"
+      ]
+    },
+    "cutting_board": {
+      "words": [
+        "tabla de cortar",
+        "picó verduras",
+        "cortó zanahorias"
+      ]
+    },
+    "cookware": {
+      "words": [
+        "sartén",
+        "cacerola",
+        "bandeja de horno"
+      ]
+    },
+    "door_close": {
+      "words": [
+        "cerró la puerta",
+        "puerta del armario"
+      ]
+    },
+    "heavy_door": {
+      "words": [
+        "puerta principal",
+        "puerta trasera",
+        "entró a casa"
+      ]
+    },
+    "bottle_clink": {
+      "words": [
+        "botella de leche",
+        "frasco de vidrio",
+        "mensaje en una botella"
+      ]
+    },
+    "bottle_close": {
+      "words": [
+        "tapó la botella",
+        "cerró el frasco",
+        "termo"
+      ]
+    },
+    "cork_screw": {
+      "words": [
+        "salud",
+        "brindis",
+        "brindaron",
+        "limonada"
+      ]
+    },
+    "glass_clink": {
+      "words": [
+        "cubitos de hielo",
+        "bebida fría",
+        "agua helada"
+      ]
+    },
+    "pot_lid": {
+      "words": [
+        "tapa de la olla",
+        "levantó la tapa"
+      ]
+    },
+    "paper_rip": {
+      "words": [
+        "rasgó el papel",
+        "papel de regalo",
+        "abrió el regalo"
+      ]
+    },
+    "book_slam": {
+      "words": [
+        "cerró el libro",
+        "libro de cuentos",
+        "libro de hechizos"
+      ]
+    },
+    "cloth_rustle": {
+      "words": [
+        "manta",
+        "cobija",
+        "almohada",
+        "pijama",
+        "acostó"
+      ]
+    },
+    "beads_rattle": {
+      "words": [
+        "canicas",
+        "collar",
+        "perlas",
+        "pulsera"
+      ]
+    },
+    "water_plop": {
+      "words": [
+        "plop",
+        "tiró una piedrita",
+        "pozo de los deseos"
+      ]
+    },
+    "bubble_pop": {
+      "words": [
+        "pompas de jabón",
+        "burbujas de jabón",
+        "pecera"
+      ]
+    },
+    "baby_giggle": {
+      "words": [
+        "bebé rió",
+        "bebé contento",
+        "bebito"
+      ]
+    },
+    "baby_yawn": {
+      "words": [
+        "con sueño",
+        "hora de dormir",
+        "se frotó los ojos"
+      ]
+    },
+    "chuckle": {
+      "words": [
+        "risita",
+        "carcajada",
+        "jo jo jo"
+      ]
+    },
+    "silly_laugh": {
+      "words": [
+        "risa graciosa",
+        "bufón"
+      ]
+    },
+    "heartbeat_fast": {
+      "words": [
+        "corazón acelerado",
+        "escondidas",
+        "nervioso"
+      ]
+    },
+    "snore_deep": {
+      "words": [
+        "ronquido fuerte",
+        "hibernando"
+      ]
+    },
+    "sneeze_big": {
+      "words": [
+        "gran estornudo",
+        "resfriado",
+        "pimienta"
+      ]
+    },
+    "apple_crunch": {
+      "words": [
+        "galleta",
+        "galletas",
+        "zanahoria",
+        "papas fritas"
+      ]
+    },
+    "slurp_drink": {
+      "words": [
+        "jugo",
+        "malteada",
+        "chocolate caliente"
+      ]
+    },
+    "harp": {
+      "words": [
+        "arpa",
+        "arpa de oro",
+        "ángel"
+      ]
+    },
+    "fireball": {
+      "words": [
+        "bola de fuego",
+        "meteoro",
+        "estrella fugaz"
+      ]
+    },
+    "ice_spell": {
+      "words": [
+        "hechizo de hielo",
+        "magia de hielo"
+      ]
+    },
+    "heal_spell": {
+      "words": [
+        "hechizo curativo",
+        "elixir",
+        "curó"
+      ]
+    },
+    "magic_sparkle": {
+      "words": [
+        "polvo mágico",
+        "genio",
+        "lámpara mágica",
+        "tres deseos"
+      ]
+    },
+    "sword_draw": {
+      "words": [
+        "desenvainó",
+        "sacó su espada",
+        "excalibur"
+      ]
+    },
+    "sword_swing": {
+      "words": [
+        "blandió su espada",
+        "espada pirata"
+      ]
+    },
+    "dagger_slash": {
+      "words": [
+        "ninja",
+        "samurái",
+        "katana"
+      ]
+    },
+    "chainmail": {
+      "words": [
+        "cota de malla",
+        "hombre de hojalata",
+        "armadura brillante"
+      ]
+    },
+    "knight_armor": {
+      "words": [
+        "yelmo",
+        "casco de caballero",
+        "torneo"
+      ]
+    },
+    "werewolf": {
+      "words": [
+        "hombre lobo",
+        "luna llena"
+      ]
+    },
+    "ogre": {
+      "words": [
+        "pie grande",
+        "yeti",
+        "abominable hombre de las nieves"
+      ]
+    },
+    "shadow_wraith": {
+      "words": [
+        "espectro",
+        "hombre del saco",
+        "coco"
+      ]
+    },
+    "slime_bounce": {
+      "words": [
+        "monstruo de gelatina",
+        "gelatina"
+      ]
+    },
+    "goblin": {
+      "words": [
+        "duende travieso",
+        "gnomo",
+        "trasgo"
+      ]
+    },
+    "troll_roar": {
+      "words": [
+        "trol del puente",
+        "cíclope",
+        "minotauro"
+      ]
+    },
+    "giant_roar": {
+      "words": [
+        "kraken",
+        "monstruo marino"
+      ]
+    },
+    "gem_sparkle": {
+      "words": [
+        "diamante",
+        "rubí",
+        "esmeralda",
+        "corona",
+        "cristal mágico"
+      ]
+    },
+    "coin_clink": {
+      "words": [
+        "moneda de oro",
+        "monedas de oro",
+        "oro pirata"
+      ]
+    },
+    "arcade_coin": {
+      "words": [
+        "videojuego",
+        "maquinita",
+        "vida extra"
+      ]
+    },
+    "powerup_retro": {
+      "words": [
+        "superpoder",
+        "superhéroe",
+        "hongo mágico"
+      ]
+    },
+    "game_over": {
+      "words": [
+        "fin del juego",
+        "perdió una vida"
+      ]
+    },
+    "pixel_boom": {
+      "words": [
+        "asteroide",
+        "batalla espacial",
+        "cometa"
+      ]
+    },
+    "phaser": {
+      "words": [
+        "rayo congelador",
+        "rayo encogedor",
+        "pistola láser"
+      ]
+    },
+    "space_jump": {
+      "words": [
+        "velocidad luz",
+        "hiperespacio"
+      ]
+    },
+    "space_alert": {
+      "words": [
+        "alerta roja",
+        "escudos arriba"
+      ]
+    },
+    "cartoon_jump": {
+      "words": [
+        "saltador",
+        "brincó",
+        "súper salto"
+      ]
+    },
+    "cartoon_bounce": {
+      "words": [
+        "pelota saltarina",
+        "pelota de playa",
+        "baloncesto"
+      ]
+    },
+    "lasso_swish": {
+      "words": [
+        "lazo",
+        "vaquero",
+        "vaquera",
+        "bumerán"
+      ]
+    },
+    "cape_swoosh": {
+      "words": [
+        "capa",
+        "capa invisible",
+        "alfombra mágica",
+        "alfombra voladora"
+      ]
+    },
+    "whip_crack": {
+      "words": [
+        "chasqueó los dedos",
+        "látigo",
+        "golpe de karate"
+      ]
+    },
+    "magic_wand": {
+      "words": [
+        "pidió un deseo",
+        "hada madrina",
+        "estrella de los deseos"
+      ]
+    },
+    "crystal_chime": {
+      "words": [
+        "puerta secreta",
+        "encontró una pista",
+        "buena idea",
+        "eureka"
+      ]
+    },
+    "potion_bubble": {
+      "words": [
+        "sirena",
+        "sirenas",
+        "atlántida",
+        "pulpo"
+      ]
+    },
+    "boulder_roll": {
+      "words": [
+        "roca gigante",
+        "puerta de piedra",
+        "estatua se movió"
+      ]
+    },
+    "stone_crumble": {
+      "words": [
+        "muro se derrumbó",
+        "torre cayó",
+        "castillo de arena"
+      ]
+    },
+    "branch_snap": {
+      "words": [
+        "rama se rompió",
+        "pisó una rama",
+        "árbol cayó"
+      ]
+    },
+    "laser_blast": {
+      "words": [
+        "sable de luz",
+        "espada láser"
+      ]
+    },
+    "ufo_hum": {
+      "words": [
+        "nave nodriza",
+        "rayo tractor",
+        "nave alienígena"
+      ]
+    },
+    "robot_talk": {
+      "words": [
+        "androide",
+        "astronauta",
+        "robot espacial"
+      ]
+    },
+    "mystery_chime": {
+      "words": [
+        "misterio",
+        "detective",
+        "lupa",
+        "acertijo"
+      ]
+    }
+  },
+  "negations": [
+    "no",
+    "nunca",
+    "jamás",
+    "sin",
+    "nadie",
+    "ningún",
+    "ninguno",
+    "ninguna",
+    "nada",
+    "ni",
+    "tampoco"
+  ],
   "notNegations": [],
-  "departures": ["se fue", "se fueron", "se fue corriendo", "se escaparon", "se alejaron", "se va", "se iba", "lejos", "se alejó", "se alejaba", "se escapó", "escapó", "huyó", "huía", "se escondió", "escondido", "escondida", "dormido", "dormida", "durmiendo", "se durmió", "dormía", "callado", "callada", "en silencio", "silencioso", "silenciosa", "desapareció", "se marchó", "adiós", "ya no", "dejó de", "soñaba", "soñando", "soñó"],
-  "arrivals": ["llegó", "llega", "llegaba", "llegaron", "llegan", "aparecieron", "vinieron", "saltaron", "viene", "venía", "vino", "apareció", "aparece", "saltó", "salta", "de repente", "de pronto", "persiguió", "perseguía", "persigue", "persiguiendo", "persiguen", "corriendo hacia", "cerca", "grande", "enorme", "gigante", "fuerte", "enojado", "enojada", "enfadado", "hambriento", "hambrienta", "feroz", "atacó", "aquí", "había una vez", "había un", "había una", "hay un", "hay una", "vivía", "vio", "ve", "mira", "miró", "dijo", "dice", "gritó", "llamó", "se despertó", "despertó", "empezó", "comenzó", "salió", "detrás de ti", "encontró", "oyó", "escucha", "escuchó", "se acercó", "se acercaba", "corrió hacia", "conoció"],
-  "memories": ["recordaba", "recuerda", "recordó", "recuerdo", "soñaba con", "soñó con", "imagina", "imaginaba", "extrañaba", "deseaba", "como si", "fingía", "finge"],
-  "askBefore": ["qué dice", "cómo hace", "qué sonido", "qué ruido", "cómo suena"],
+  "departures": [
+    "se fue",
+    "se fueron",
+    "se fue corriendo",
+    "se escaparon",
+    "se alejaron",
+    "se va",
+    "se iba",
+    "lejos",
+    "se alejó",
+    "se alejaba",
+    "se escapó",
+    "escapó",
+    "huyó",
+    "huía",
+    "se escondió",
+    "escondido",
+    "escondida",
+    "dormido",
+    "dormida",
+    "durmiendo",
+    "se durmió",
+    "dormía",
+    "callado",
+    "callada",
+    "en silencio",
+    "silencioso",
+    "silenciosa",
+    "desapareció",
+    "se marchó",
+    "adiós",
+    "ya no",
+    "dejó de",
+    "soñaba",
+    "soñando",
+    "soñó"
+  ],
+  "arrivals": [
+    "llegó",
+    "llega",
+    "llegaba",
+    "llegaron",
+    "llegan",
+    "aparecieron",
+    "vinieron",
+    "saltaron",
+    "viene",
+    "venía",
+    "vino",
+    "apareció",
+    "aparece",
+    "saltó",
+    "salta",
+    "de repente",
+    "de pronto",
+    "persiguió",
+    "perseguía",
+    "persigue",
+    "persiguiendo",
+    "persiguen",
+    "corriendo hacia",
+    "cerca",
+    "grande",
+    "enorme",
+    "gigante",
+    "fuerte",
+    "enojado",
+    "enojada",
+    "enfadado",
+    "hambriento",
+    "hambrienta",
+    "feroz",
+    "atacó",
+    "aquí",
+    "había una vez",
+    "había un",
+    "había una",
+    "hay un",
+    "hay una",
+    "vivía",
+    "vio",
+    "ve",
+    "mira",
+    "miró",
+    "dijo",
+    "dice",
+    "gritó",
+    "llamó",
+    "se despertó",
+    "despertó",
+    "empezó",
+    "comenzó",
+    "salió",
+    "detrás de ti",
+    "encontró",
+    "oyó",
+    "escucha",
+    "escuchó",
+    "se acercó",
+    "se acercaba",
+    "corrió hacia",
+    "conoció"
+  ],
+  "memories": [
+    "recordaba",
+    "recuerda",
+    "recordó",
+    "recuerdo",
+    "soñaba con",
+    "soñó con",
+    "imagina",
+    "imaginaba",
+    "extrañaba",
+    "deseaba",
+    "como si",
+    "fingía",
+    "finge"
+  ],
+  "askBefore": [
+    "qué dice",
+    "cómo hace",
+    "qué sonido",
+    "qué ruido",
+    "cómo suena"
+  ],
   "askAfter": [],
-  "blockers": ["pollo frito"],
-  "stopWords": ["paró", "dejó de", "terminó", "se acabó", "ya no", "se fue", "se calmó", "se despejó", "pasó"],
-  "clearSkies": ["salió el sol", "sale el sol", "soleado", "arcoíris", "arco iris", "se despejó"],
-  "goodnight": ["fin", "el fin", "buenas noches", "colorín colorado", "dulces sueños", "se quedó dormido", "se quedó dormida", "profundamente dormido"],
-  "notGoodnight": ["por fin", "al fin", "fin de semana", "a fin de", "sin fin"]
+  "blockers": [
+    "pollo frito"
+  ],
+  "stopWords": [
+    "paró",
+    "dejó de",
+    "terminó",
+    "se acabó",
+    "ya no",
+    "se fue",
+    "se calmó",
+    "se despejó",
+    "pasó"
+  ],
+  "clearSkies": [
+    "salió el sol",
+    "sale el sol",
+    "soleado",
+    "arcoíris",
+    "arco iris",
+    "se despejó"
+  ],
+  "goodnight": [
+    "fin",
+    "el fin",
+    "buenas noches",
+    "colorín colorado",
+    "dulces sueños",
+    "se quedó dormido",
+    "se quedó dormida",
+    "profundamente dormido"
+  ],
+  "notGoodnight": [
+    "por fin",
+    "al fin",
+    "fin de semana",
+    "a fin de",
+    "sin fin"
+  ]
 }

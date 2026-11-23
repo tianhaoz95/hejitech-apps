@@ -3,168 +3,4323 @@
   "order": 0,
   "name": "English",
   "englishName": "English",
-  "languageCodes": ["en"],
-  "speechLocales": ["en-US", "en-GB", "en-AU", "en-CA"],
+  "languageCodes": [
+    "en"
+  ],
+  "speechLocales": [
+    "en-US",
+    "en-GB",
+    "en-AU",
+    "en-CA"
+  ],
   "hint": "Tell your story in English.",
   "storySenseClassifier": true,
   "holdNamesAtEndOfPartial": false,
-  "plurals": [["", "s"], ["", "es"], ["y", "ies"], ["f", "ves"]],
-  "interjections": ["oh", "uh"],
-  "negationSuffixes": ["n't"],
-  "reach": {"negation": 4, "lookahead": 10, "lookbehind": 12, "settledAfter": 4},
-  "cues": {
-    "lion": {"words": ["lion", "lioness", "king of the jungle"], "sounds": ["roar", "roared", "roaring", "roars", "growl", "growled", "growling"]},
-    "tiger": {"words": ["tiger", "tigress"], "sounds": ["roar", "roared", "roaring", "growl", "growled", "growling", "snarl", "snarled"]},
-    "bear": {"words": ["bear", "grizzly", "grizzly bear"], "sounds": ["growl", "growled", "growling", "roar", "roared", "grumble", "grumbled"]},
-    "wolf": {"words": ["wolf", "wolves", "big bad wolf"], "sounds": ["howl", "howled", "howling", "awoo"]},
-    "elephant": {"words": ["elephant"], "sounds": ["trumpeted", "trumpeting"]},
-    "monkey": {"words": ["monkey", "chimp", "chimpanzee", "ape", "gorilla"], "sounds": ["ooh ooh", "chattered", "screeched"]},
-    "dinosaur": {"words": ["dinosaur", "t rex", "trex", "tyrannosaurus", "dino"], "sounds": ["roar", "roared", "roaring", "stomp", "stomped", "stomping"]},
-    "dragon": {"words": ["dragon"], "sounds": ["roar", "roared", "roaring", "breathed fire", "fire breathing"]},
-    "snake": {"words": ["snake", "serpent", "python", "cobra"], "sounds": ["hiss", "hissed", "hissing", "sss"]},
-    "whale": {"words": ["whale"], "sounds": ["sang", "singing", "song"]},
-    "dog": {"words": ["dog", "puppy", "doggy", "doggie", "pup"], "sounds": ["bark", "barked", "barking", "woof", "ruff", "arf"]},
-    "cat": {"words": ["cat", "kitty", "kitten", "kitty cat"], "sounds": ["meow", "meowed", "mew", "purr", "purred"]},
-    "cow": {"words": ["cow", "calf", "cattle"], "sounds": ["moo", "mooed", "mooing"]},
-    "horse": {"words": ["horse", "pony", "stallion"], "sounds": ["neigh", "neighed", "whinny", "whinnied", "galloped", "gallop"]},
-    "sheep": {"words": ["sheep", "lamb"], "sounds": ["baa", "baaed", "bleat", "bleated"]},
-    "owl": {"words": ["owl"], "sounds": ["hoot", "hooted", "hooting", "who who"]},
-    "frog": {"words": ["frog", "toad"], "sounds": ["ribbit", "croak", "croaked", "croaking"]},
-    "bee": {"words": ["bee", "bumblebee", "honeybee"], "sounds": ["buzz", "buzzed", "buzzing"]},
-    "bird": {"words": ["bird", "birdie", "robin", "sparrow", "songbird"], "sounds": ["chirp", "chirped", "tweet", "tweeted", "sang", "singing"]},
-    "seagull": {"words": ["seagull", "gull"], "sounds": ["squawk", "squawked"]},
-    "rain": {"words": ["rain", "raining", "rainy", "rainstorm", "pouring", "drizzle", "drizzling", "raindrops"], "sounds": ["started to rain", "began to rain", "started raining", "pitter patter"]},
-    "thunder": {"words": ["thunder", "thunderstorm", "lightning"], "sounds": ["boom", "rumble", "rumbled", "crash", "crashed", "clap"]},
-    "wind": {"words": ["wind", "windy", "breeze", "blizzard", "gust", "snow", "snowing", "snowstorm", "snowy"], "sounds": ["blew", "blowing", "howled", "whooshed", "whistled"]},
-    "ocean": {"words": ["ocean", "sea", "seaside", "beach", "waves", "shore"], "sounds": ["splashing waves", "crashing waves"]},
-    "forest": {"words": ["forest", "woods"], "sounds": []},
-    "night": {"words": ["crickets", "nighttime", "night time", "middle of the night", "moonlight", "starry night"], "sounds": ["chirping crickets"]},
-    "fire": {"words": ["campfire", "fireplace", "bonfire", "fire"], "sounds": ["crackled", "crackling"]},
-    "river": {"words": ["river", "stream", "brook", "creek", "waterfall"], "sounds": ["babbling", "trickling", "flowing"]},
-    "knock": {"words": ["knock knock", "knocked", "knocking", "knock on the door", "knocks"], "sounds": ["knock knock", "knocked", "knocking"]},
-    "doorbell": {"words": ["doorbell", "door bell"], "sounds": ["ding dong", "rang", "rings"]},
-    "bell": {"words": ["bell", "bells", "jingle"], "sounds": ["rang", "ringing", "ding", "jingled"]},
-    "clock": {"words": ["clock", "tick tock", "midnight"], "sounds": ["tick tock", "ticking", "chimed", "struck"]},
-    "train": {"words": ["train", "choo choo", "locomotive", "railway"], "sounds": ["choo choo", "whistle", "whistled", "chugged"]},
-    "car": {"words": ["car", "taxi", "bus"], "sounds": ["honk", "honked", "beep beep", "vroom", "zoomed"]},
-    "boat": {"words": ["boat", "ship", "pirate ship", "sailboat", "ferry"], "sounds": ["horn", "toot"]},
-    "airplane": {"words": ["airplane", "aeroplane", "plane", "jet"], "sounds": ["flew", "took off", "zoom"]},
-    "rocket": {"words": ["rocket", "spaceship", "blast off", "liftoff"], "sounds": ["blast off", "blasted off", "launched", "lift off"]},
-    "magic": {"words": ["magic", "magical", "wand", "spell", "abracadabra", "wizard", "sparkle", "sparkles"], "sounds": ["poof", "abracadabra", "bibbidi bobbidi", "sparkled", "waved her wand", "waved his wand", "cast a spell"]},
-    "splash": {"words": ["splash", "splashed", "puddle", "jumped in the water", "fell in the water", "dove in"], "sounds": ["splash", "splashed", "splashing", "kersplash"]},
-    "footsteps": {"words": ["footsteps", "tiptoe", "tiptoed", "tip toe", "stomped", "stomping", "creeping"], "sounds": ["stomp", "stomped", "tiptoed"]},
-    "snore": {"words": ["snore", "snored", "snoring", "fast asleep", "fell asleep"], "sounds": ["snore", "snored", "snoring", "zzz"]},
-    "giggle": {"words": ["giggle", "giggled", "giggling", "tickle", "tickled", "laughed", "laughing"], "sounds": ["giggle", "giggled", "hee hee", "ha ha"]},
-    "whoosh": {"words": ["whoosh", "swoosh", "zoomed away", "flew away", "flew off", "zip"], "sounds": ["whoosh", "whooshed", "swoosh", "swooshed"]},
-    "pop": {"words": ["balloon", "bubble", "bubbles", "popcorn"], "sounds": ["pop", "popped", "popping"]},
-    "boing": {"words": ["kangaroo", "trampoline", "bounce", "bounced", "bouncing", "boing"], "sounds": ["boing", "bounced", "bouncing", "hopped"]},
-    "dolphin": {"words": ["dolphin", "porpoise"]},
-    "pig": {"words": ["pig", "piggy", "piglet", "hog", "three little pigs"], "sounds": ["oink", "oinked", "oink oink", "squealed"]},
-    "duck": {"words": ["duck", "duckling", "ducky", "ugly duckling"], "sounds": ["quack", "quacked", "quacking", "quack quack"]},
-    "chicken": {"words": ["chicken", "hen", "chick", "mother hen", "little red hen"], "sounds": ["cluck", "clucked", "clucking", "bawk", "cheep cheep", "peep peep"]},
-    "rooster": {"words": ["rooster", "cockerel", "rooster crows"], "sounds": ["cock a doodle doo", "cockadoodledoo", "crowed", "crowing"]},
-    "goat": {"words": ["goat", "billy goat", "nanny goat"], "sounds": ["maa", "maaa"]},
-    "donkey": {"words": ["donkey", "mule"], "sounds": ["hee haw", "heehaw", "brayed", "braying"]},
-    "turkey": {"words": ["turkey"], "sounds": ["gobble", "gobbled", "gobble gobble"]},
-    "mouse": {"words": ["mouse", "mice", "mousey", "rat"], "sounds": ["squeak", "squeaked", "squeaking", "squeak squeak"]},
-    "crow": {"words": ["crow", "raven"], "sounds": ["caw", "cawed", "caw caw"]},
-    "fly": {"words": ["a fly", "the fly", "little fly", "housefly", "mosquito"], "sounds": ["bzzz", "bzz"]},
-    "farm": {"words": ["farm", "farmyard", "barnyard", "barn"]},
-    "city": {"words": ["city", "town", "busy street", "traffic", "downtown"]},
-    "underwater": {"words": ["underwater", "under the sea", "under the water", "bottom of the sea", "deep sea"]},
-    "cave": {"words": ["cave", "cavern", "tunnel", "dungeon"], "sounds": ["drip drip"]},
-    "tractor": {"words": ["tractor"], "sounds": ["chug chug", "putt putt"]},
-    "bicycle": {"words": ["bicycle", "bike", "tricycle", "trike"], "sounds": ["ring ring", "ding ding"]},
-    "truck": {"words": ["truck", "lorry", "van", "tow truck", "monster truck"], "sounds": ["air horn"]},
-    "motorcycle": {"words": ["motorcycle", "motorbike", "dirt bike", "scooter"], "sounds": ["revved", "revving"]},
-    "helicopter": {"words": ["helicopter", "chopper"], "sounds": ["whirr", "whirred", "flew"]},
-    "siren": {"words": ["siren", "fire truck", "fire engine", "firetruck", "firefighter", "firefighters", "fireman", "firemen", "police car", "police", "ambulance"], "sounds": ["nee naw", "wee woo", "woo woo"]},
-    "digger": {"words": ["digger", "excavator", "bulldozer", "dump truck", "garbage truck", "rubbish truck", "cement mixer", "crane", "construction site"], "sounds": ["beep beep beep"]},
-    "creak": {"words": ["creaky", "creaky door", "squeaky door", "haunted house", "drawbridge", "gate"], "sounds": ["creak", "creaked", "creaking"]},
-    "slam": {"words": ["slammed the door", "door slammed", "banged the door"], "sounds": ["slam", "slammed", "slamming", "slammed the door", "door slammed", "banged the door"]},
-    "phone": {"words": ["phone", "telephone", "cellphone", "phone rang"], "sounds": ["ring ring", "brring"]},
-    "munch": {"words": ["munch", "munched", "munching", "chomp", "chomped", "nibble", "nibbled", "took a bite", "bit into", "yum yum"], "sounds": ["crunch", "crunched", "crunchy", "nom nom", "om nom nom"]},
-    "slurp": {"words": ["sip", "sipped", "gulp", "gulped", "drank", "drink of water"], "sounds": ["slurp", "slurped", "slurping"]},
-    "sneeze": {"words": ["sneeze", "sneezed", "sneezing"], "sounds": ["achoo", "ah choo", "atchoo", "atishoo", "sneezed"]},
-    "yawn": {"words": ["yawn", "yawned", "yawning"], "sounds": ["yawn", "yawned"]},
-    "baby": {"words": ["the baby cried", "baby cried", "baby was crying", "crying baby", "started to cry", "began to cry", "burst into tears"], "sounds": ["waah", "wah wah", "boo hoo"]},
-    "kiss": {"words": ["kiss", "kissed", "kisses", "smooch"], "sounds": ["mwah", "smooch"]},
-    "cheer": {"words": ["hooray", "hurray", "hurrah", "yay", "cheered", "cheering", "clapped", "clapping", "applause", "birthday party", "party", "celebrate", "celebrated"], "sounds": ["hooray", "hip hip hooray"]},
-    "flush": {"words": ["toilet", "potty", "flush", "flushed"], "sounds": ["flush", "flushed"]},
-    "drum": {"words": ["drum", "drummer", "beat the drum", "banged the drum"], "sounds": ["rat a tat", "ratatat", "boom boom"]},
-    "trumpet": {"words": ["trumpet", "bugle", "fanfare"], "sounds": ["ta da", "tada"]},
-    "whistle": {"words": ["blew the whistle", "blew a whistle", "blew his whistle", "blew her whistle", "referee"]},
-    "fireworks": {"words": ["fireworks", "firework", "firecracker", "sparklers"], "sounds": ["bang bang", "whizz bang"]},
-    "ghost": {"words": ["ghost", "ghostly", "spooky", "phantom"], "sounds": ["boo", "wooo", "oooo"]},
-    "monster": {"words": ["monster", "ogre", "troll", "beast"], "sounds": ["rawr"]},
-    "robot": {"words": ["robot"], "sounds": ["beep boop", "beep bop", "bleep bloop"]},
-    "laser": {"words": ["laser", "laser beam", "ray gun", "zap", "zapped"], "sounds": ["zap", "zapped", "pew pew"]},
-    "sword": {"words": ["sword", "swordfight", "sword fight"], "sounds": ["clang", "clanged", "clash", "clashed"]},
-    "treasure": {"words": ["treasure", "treasure chest", "coin", "gold", "pot of gold", "piggy bank"], "sounds": ["cha ching", "ka ching"]},
-    "witch": {"words": ["witch"], "sounds": ["cackle", "cackled", "cackling"]},
-    "giant": {"words": ["the giant", "giants", "fee fi fo fum"], "sounds": ["fee fi fo fum"]},
-    "alien": {"words": ["alien", "ufo", "flying saucer", "martian"]},
-    "seal": {"words": ["seal", "sea lion"], "sounds": ["arf arf", "barked like a seal"]},
-    "penguin": {"words": ["penguin"], "sounds": ["waddled"]},
-    "fox": {"words": ["fox", "vixen"], "sounds": ["yipped", "yip"]},
-    "hyena": {"words": ["hyena"]},
-    "hippo": {"words": ["hippo", "hippopotamus"]},
-    "eagle": {"words": ["eagle", "hawk", "falcon"], "sounds": ["screeched"]},
-    "crocodile": {"words": ["crocodile", "alligator", "gator"], "sounds": ["snapped its jaws", "snap snap"]},
-    "peacock": {"words": ["peacock", "peafowl"]},
-    "goose": {"words": ["goose", "geese", "gosling"], "sounds": ["honk honk"]},
-    "hooves": {"words": ["clip clop", "hooves", "carriage", "trotted"], "sounds": ["clip clop", "clop clop"]},
-    "guinea_pig": {"words": ["guinea pig"], "sounds": ["wheek", "wheek wheek"]},
-    "parrot": {"words": ["parrot", "macaw", "cockatoo", "parakeet"], "sounds": ["polly wants a cracker"]},
-    "woodpecker": {"words": ["woodpecker"], "sounds": ["pecked the tree", "pecking"]},
-    "bat": {"words": ["a bat", "the bat", "bats", "vampire bat", "fruit bat"]},
-    "cicada": {"words": ["cicada", "cicadas"]},
-    "pigeon": {"words": ["pigeon", "dove"], "sounds": ["coo", "cooed", "coo coo"]},
-    "squirrel": {"words": ["squirrel", "chipmunk"]},
-    "cuckoo": {"words": ["cuckoo", "cuckoo clock"], "sounds": ["cuckoo cuckoo"]},
-    "hail": {"words": ["hail", "hailstorm", "hailing", "hailstones"]},
-    "snow_crunch": {"words": ["deep snow", "crunched in the snow", "walked in the snow", "walking in the snow", "trudged through the snow", "snowy path"]},
-    "wind_chimes": {"words": ["wind chimes", "wind chime", "chimes"]},
-    "storm": {"words": ["storm", "stormy", "hurricane", "tempest", "raging storm"]},
-    "drip": {"words": ["dripping", "drip drop", "melting icicles", "leaky faucet", "dripped"]},
-    "jungle": {"words": ["jungle", "rainforest"]},
-    "playground": {"words": ["playground", "park", "swings", "sandbox"]},
-    "space": {"words": ["outer space", "in space", "galaxy", "planets", "constellation"]},
-    "castle": {"words": ["castle", "palace", "throne room", "kingdom"]},
-    "train_ride": {"words": ["rode the train", "on the train", "train tracks", "clackety clack", "railroad tracks"], "sounds": ["clackety clack"]},
-    "meadow": {"words": ["meadow", "sunny field", "picnic", "hillside", "wildflowers"]},
-    "fairground": {"words": ["carnival", "fairground", "circus", "festival", "county fair", "busy market"]},
-    "submarine": {"words": ["submarine", "sonar"], "sounds": ["sonar ping"]},
-    "cannon": {"words": ["cannon", "cannonball"], "sounds": ["fired the cannon", "kaboom"]},
-    "hot_air_balloon": {"words": ["hot air balloon", "airship", "blimp"]},
-    "skateboard": {"words": ["skateboard", "roller skates", "skated", "skateboarding"]},
-    "sleigh": {"words": ["sleigh", "sleigh bells", "santa", "reindeer"], "sounds": ["jingle bells"]},
-    "anchor": {"words": ["anchor", "dropped anchor", "heavy chain"]},
-    "bath": {"words": ["bath", "bathtub", "bubble bath", "poured water", "pouring water", "wash up"]},
-    "zipper": {"words": ["zipper", "zipped up", "unzipped", "zip up"], "sounds": ["zzzip"]},
-    "page_turn": {"words": ["turned the page", "opened the book", "treasure map", "unfolded the map", "flipped the page"]},
-    "hiccup": {"words": ["hiccup", "hiccuped", "hiccups", "hiccuping"], "sounds": ["hic", "hiccup"]},
-    "tummy_rumble": {"words": ["tummy rumbled", "stomach growled", "belly rumbled", "tummy growled", "hungry tummy"]},
-    "shush": {"words": ["shh", "shhh", "shushed", "be quiet", "whispered"], "sounds": ["shh", "shhh"]},
-    "music_box": {"words": ["music box", "lullaby", "ballerina"]},
-    "crash": {"words": ["dropped the plate", "broke the jar", "shattered", "clattered", "smashed", "glass broke"], "sounds": ["shatter", "crash"]},
-    "toot": {"words": ["fart", "farted", "toot", "tooted", "poot", "whoopee cushion"], "sounds": ["fart", "farted", "pffft", "brrrap"]},
-    "slide_whistle": {"words": ["slipped", "banana peel", "slid down", "tumbled", "whoops", "whoopsie"]},
-    "fairy": {"words": ["fairy", "pixie", "fairy dust", "fireflies"]},
-    "cauldron": {"words": ["cauldron", "potion", "magic brew", "bubbling mud", "bubbling pot"]},
-    "heartbeat": {"words": ["heartbeat", "heart pounded", "heart beat fast", "heart was beating"], "sounds": ["thump thump", "lub dub"]},
-    "clown_horn": {"words": ["clown", "honked his nose", "squeaky horn"], "sounds": ["honk honk"]}
+  "plurals": [
+    [
+      "",
+      "s"
+    ],
+    [
+      "",
+      "es"
+    ],
+    [
+      "y",
+      "ies"
+    ],
+    [
+      "f",
+      "ves"
+    ]
+  ],
+  "interjections": [
+    "oh",
+    "uh"
+  ],
+  "negationSuffixes": [
+    "n't"
+  ],
+  "reach": {
+    "negation": 4,
+    "lookahead": 10,
+    "lookbehind": 12,
+    "settledAfter": 4
   },
-  "negations": ["no", "not", "never", "without", "nobody", "none", "nothing", "neither", "nor", "isn't", "wasn't", "weren't", "aren't", "didn't", "doesn't", "don't", "won't", "couldn't", "can't", "cannot", "hasn't", "haven't"],
+  "cues": {
+    "lion": {
+      "words": [
+        "lion",
+        "lioness",
+        "king of the jungle"
+      ],
+      "sounds": [
+        "roar",
+        "roared",
+        "roaring",
+        "roars",
+        "growl",
+        "growled",
+        "growling"
+      ]
+    },
+    "tiger": {
+      "words": [
+        "tiger",
+        "tigress"
+      ],
+      "sounds": [
+        "roar",
+        "roared",
+        "roaring",
+        "growl",
+        "growled",
+        "growling",
+        "snarl",
+        "snarled"
+      ]
+    },
+    "bear": {
+      "words": [
+        "bear",
+        "grizzly",
+        "grizzly bear"
+      ],
+      "sounds": [
+        "growl",
+        "growled",
+        "growling",
+        "roar",
+        "roared",
+        "grumble",
+        "grumbled"
+      ]
+    },
+    "wolf": {
+      "words": [
+        "wolf",
+        "wolves",
+        "big bad wolf"
+      ],
+      "sounds": [
+        "howl",
+        "howled",
+        "howling",
+        "awoo"
+      ]
+    },
+    "elephant": {
+      "words": [
+        "elephant"
+      ],
+      "sounds": [
+        "trumpeted",
+        "trumpeting"
+      ]
+    },
+    "monkey": {
+      "words": [
+        "monkey",
+        "chimp",
+        "chimpanzee",
+        "ape",
+        "gorilla"
+      ],
+      "sounds": [
+        "ooh ooh",
+        "chattered",
+        "screeched"
+      ]
+    },
+    "dinosaur": {
+      "words": [
+        "dinosaur",
+        "t rex",
+        "trex",
+        "tyrannosaurus",
+        "dino"
+      ],
+      "sounds": [
+        "roar",
+        "roared",
+        "roaring",
+        "stomp",
+        "stomped",
+        "stomping"
+      ]
+    },
+    "dragon": {
+      "words": [
+        "dragon"
+      ],
+      "sounds": [
+        "roar",
+        "roared",
+        "roaring",
+        "breathed fire",
+        "fire breathing"
+      ]
+    },
+    "snake": {
+      "words": [
+        "snake",
+        "serpent",
+        "python",
+        "cobra"
+      ],
+      "sounds": [
+        "hiss",
+        "hissed",
+        "hissing",
+        "sss"
+      ]
+    },
+    "whale": {
+      "words": [
+        "whale"
+      ],
+      "sounds": [
+        "sang",
+        "singing",
+        "song"
+      ]
+    },
+    "dog": {
+      "words": [
+        "dog",
+        "puppy",
+        "doggy",
+        "doggie",
+        "pup"
+      ],
+      "sounds": [
+        "bark",
+        "barked",
+        "barking",
+        "woof",
+        "ruff",
+        "arf"
+      ]
+    },
+    "cat": {
+      "words": [
+        "cat",
+        "kitty",
+        "kitten",
+        "kitty cat"
+      ],
+      "sounds": [
+        "meow",
+        "meowed",
+        "mew",
+        "purr",
+        "purred"
+      ]
+    },
+    "cow": {
+      "words": [
+        "cow",
+        "calf",
+        "cattle"
+      ],
+      "sounds": [
+        "moo",
+        "mooed",
+        "mooing"
+      ]
+    },
+    "horse": {
+      "words": [
+        "horse",
+        "pony",
+        "stallion"
+      ],
+      "sounds": [
+        "neigh",
+        "neighed",
+        "whinny",
+        "whinnied",
+        "galloped",
+        "gallop"
+      ]
+    },
+    "sheep": {
+      "words": [
+        "sheep",
+        "lamb"
+      ],
+      "sounds": [
+        "baa",
+        "baaed",
+        "bleat",
+        "bleated"
+      ]
+    },
+    "owl": {
+      "words": [
+        "owl"
+      ],
+      "sounds": [
+        "hoot",
+        "hooted",
+        "hooting",
+        "who who"
+      ]
+    },
+    "frog": {
+      "words": [
+        "frog",
+        "toad"
+      ],
+      "sounds": [
+        "ribbit",
+        "croak",
+        "croaked",
+        "croaking"
+      ]
+    },
+    "bee": {
+      "words": [
+        "bee",
+        "bumblebee",
+        "honeybee"
+      ],
+      "sounds": [
+        "buzz",
+        "buzzed",
+        "buzzing"
+      ]
+    },
+    "bird": {
+      "words": [
+        "bird",
+        "birdie",
+        "robin",
+        "sparrow",
+        "songbird"
+      ],
+      "sounds": [
+        "chirp",
+        "chirped",
+        "tweet",
+        "tweeted",
+        "sang",
+        "singing"
+      ]
+    },
+    "seagull": {
+      "words": [
+        "seagull",
+        "gull"
+      ],
+      "sounds": [
+        "squawk",
+        "squawked"
+      ]
+    },
+    "rain": {
+      "words": [
+        "rain",
+        "raining",
+        "rainy",
+        "rainstorm",
+        "pouring",
+        "drizzle",
+        "drizzling",
+        "raindrops"
+      ],
+      "sounds": [
+        "started to rain",
+        "began to rain",
+        "started raining",
+        "pitter patter"
+      ]
+    },
+    "thunder": {
+      "words": [
+        "thunder",
+        "thunderstorm",
+        "lightning"
+      ],
+      "sounds": [
+        "boom",
+        "rumble",
+        "rumbled",
+        "crash",
+        "crashed",
+        "clap"
+      ]
+    },
+    "wind": {
+      "words": [
+        "wind",
+        "windy",
+        "breeze",
+        "blizzard",
+        "gust",
+        "snow",
+        "snowing",
+        "snowstorm",
+        "snowy"
+      ],
+      "sounds": [
+        "blew",
+        "blowing",
+        "howled",
+        "whooshed",
+        "whistled"
+      ]
+    },
+    "ocean": {
+      "words": [
+        "ocean",
+        "sea",
+        "seaside",
+        "beach",
+        "waves",
+        "shore"
+      ],
+      "sounds": [
+        "splashing waves",
+        "crashing waves"
+      ]
+    },
+    "forest": {
+      "words": [
+        "forest",
+        "woods"
+      ],
+      "sounds": []
+    },
+    "night": {
+      "words": [
+        "crickets",
+        "nighttime",
+        "night time",
+        "middle of the night",
+        "moonlight",
+        "starry night"
+      ],
+      "sounds": [
+        "chirping crickets"
+      ]
+    },
+    "fire": {
+      "words": [
+        "campfire",
+        "fireplace",
+        "bonfire",
+        "fire"
+      ],
+      "sounds": [
+        "crackled",
+        "crackling"
+      ]
+    },
+    "river": {
+      "words": [
+        "river",
+        "stream",
+        "brook",
+        "creek"
+      ],
+      "sounds": [
+        "babbling",
+        "trickling",
+        "flowing"
+      ]
+    },
+    "knock": {
+      "words": [
+        "knock knock",
+        "knocked",
+        "knocking",
+        "knock on the door",
+        "knocks"
+      ],
+      "sounds": [
+        "knock knock",
+        "knocked",
+        "knocking"
+      ]
+    },
+    "doorbell": {
+      "words": [
+        "doorbell",
+        "door bell"
+      ],
+      "sounds": [
+        "ding dong",
+        "rang",
+        "rings"
+      ]
+    },
+    "bell": {
+      "words": [
+        "bell",
+        "bells",
+        "jingle"
+      ],
+      "sounds": [
+        "rang",
+        "ringing",
+        "ding",
+        "jingled"
+      ]
+    },
+    "clock": {
+      "words": [
+        "clock",
+        "tick tock",
+        "midnight"
+      ],
+      "sounds": [
+        "tick tock",
+        "ticking",
+        "chimed",
+        "struck"
+      ]
+    },
+    "train": {
+      "words": [
+        "train",
+        "choo choo",
+        "locomotive",
+        "railway"
+      ],
+      "sounds": [
+        "choo choo",
+        "whistle",
+        "whistled",
+        "chugged"
+      ]
+    },
+    "car": {
+      "words": [
+        "car",
+        "taxi",
+        "bus"
+      ],
+      "sounds": [
+        "honk",
+        "honked",
+        "beep beep",
+        "vroom",
+        "zoomed"
+      ]
+    },
+    "boat": {
+      "words": [
+        "boat",
+        "ship",
+        "pirate ship",
+        "sailboat",
+        "ferry"
+      ],
+      "sounds": [
+        "horn",
+        "toot"
+      ]
+    },
+    "airplane": {
+      "words": [
+        "airplane",
+        "aeroplane",
+        "plane",
+        "jet"
+      ],
+      "sounds": [
+        "flew",
+        "took off",
+        "zoom"
+      ]
+    },
+    "rocket": {
+      "words": [
+        "rocket",
+        "spaceship",
+        "blast off",
+        "liftoff"
+      ],
+      "sounds": [
+        "blast off",
+        "blasted off",
+        "launched",
+        "lift off"
+      ]
+    },
+    "magic": {
+      "words": [
+        "magic",
+        "magical",
+        "wand",
+        "spell",
+        "abracadabra",
+        "wizard",
+        "sparkle",
+        "sparkles"
+      ],
+      "sounds": [
+        "poof",
+        "abracadabra",
+        "bibbidi bobbidi",
+        "sparkled",
+        "waved her wand",
+        "waved his wand",
+        "cast a spell"
+      ]
+    },
+    "splash": {
+      "words": [
+        "splash",
+        "splashed",
+        "puddle",
+        "jumped in the water",
+        "fell in the water",
+        "dove in"
+      ],
+      "sounds": [
+        "splash",
+        "splashed",
+        "splashing",
+        "kersplash"
+      ]
+    },
+    "footsteps": {
+      "words": [
+        "footsteps",
+        "tiptoe",
+        "tiptoed",
+        "tip toe",
+        "stomped",
+        "stomping",
+        "creeping"
+      ],
+      "sounds": [
+        "stomp",
+        "stomped",
+        "tiptoed"
+      ]
+    },
+    "snore": {
+      "words": [
+        "snore",
+        "snored",
+        "snoring",
+        "fast asleep",
+        "fell asleep"
+      ],
+      "sounds": [
+        "snore",
+        "snored",
+        "snoring",
+        "zzz"
+      ]
+    },
+    "giggle": {
+      "words": [
+        "giggle",
+        "giggled",
+        "giggling",
+        "tickle",
+        "tickled",
+        "laughed",
+        "laughing"
+      ],
+      "sounds": [
+        "giggle",
+        "giggled",
+        "hee hee",
+        "ha ha"
+      ]
+    },
+    "whoosh": {
+      "words": [
+        "whoosh",
+        "swoosh",
+        "zoomed away",
+        "flew away",
+        "flew off",
+        "zip"
+      ],
+      "sounds": [
+        "whoosh",
+        "whooshed",
+        "swoosh",
+        "swooshed"
+      ]
+    },
+    "pop": {
+      "words": [
+        "balloon",
+        "bubble",
+        "bubbles"
+      ],
+      "sounds": [
+        "pop",
+        "popped",
+        "popping"
+      ]
+    },
+    "boing": {
+      "words": [
+        "kangaroo",
+        "trampoline",
+        "bounce",
+        "bounced",
+        "bouncing",
+        "boing"
+      ],
+      "sounds": [
+        "boing",
+        "bounced",
+        "bouncing",
+        "hopped"
+      ]
+    },
+    "dolphin": {
+      "words": [
+        "dolphin",
+        "porpoise"
+      ]
+    },
+    "pig": {
+      "words": [
+        "pig",
+        "piggy",
+        "piglet",
+        "hog",
+        "three little pigs"
+      ],
+      "sounds": [
+        "oink",
+        "oinked",
+        "oink oink",
+        "squealed"
+      ]
+    },
+    "duck": {
+      "words": [
+        "duck",
+        "duckling",
+        "ducky",
+        "ugly duckling"
+      ],
+      "sounds": [
+        "quack",
+        "quacked",
+        "quacking",
+        "quack quack"
+      ]
+    },
+    "chicken": {
+      "words": [
+        "chicken",
+        "hen",
+        "chick",
+        "mother hen",
+        "little red hen"
+      ],
+      "sounds": [
+        "cluck",
+        "clucked",
+        "clucking",
+        "bawk",
+        "cheep cheep",
+        "peep peep"
+      ]
+    },
+    "rooster": {
+      "words": [
+        "rooster",
+        "cockerel",
+        "rooster crows"
+      ],
+      "sounds": [
+        "cock a doodle doo",
+        "cockadoodledoo",
+        "crowed",
+        "crowing"
+      ]
+    },
+    "goat": {
+      "words": [
+        "goat",
+        "billy goat",
+        "nanny goat"
+      ],
+      "sounds": [
+        "maa",
+        "maaa"
+      ]
+    },
+    "donkey": {
+      "words": [
+        "donkey",
+        "mule"
+      ],
+      "sounds": [
+        "hee haw",
+        "heehaw",
+        "brayed",
+        "braying"
+      ]
+    },
+    "turkey": {
+      "words": [
+        "turkey"
+      ],
+      "sounds": [
+        "gobble",
+        "gobbled",
+        "gobble gobble"
+      ]
+    },
+    "mouse": {
+      "words": [
+        "mouse",
+        "mice",
+        "mousey",
+        "rat"
+      ],
+      "sounds": [
+        "squeak",
+        "squeaked",
+        "squeaking",
+        "squeak squeak"
+      ]
+    },
+    "crow": {
+      "words": [
+        "crow",
+        "raven"
+      ],
+      "sounds": [
+        "caw",
+        "cawed",
+        "caw caw"
+      ]
+    },
+    "fly": {
+      "words": [
+        "a fly",
+        "the fly",
+        "little fly",
+        "housefly",
+        "mosquito"
+      ],
+      "sounds": [
+        "bzzz",
+        "bzz"
+      ]
+    },
+    "farm": {
+      "words": [
+        "farm",
+        "farmyard",
+        "barnyard",
+        "barn"
+      ]
+    },
+    "city": {
+      "words": [
+        "city",
+        "town",
+        "busy street",
+        "traffic",
+        "downtown"
+      ]
+    },
+    "underwater": {
+      "words": [
+        "underwater",
+        "under the sea",
+        "under the water",
+        "bottom of the sea",
+        "deep sea"
+      ]
+    },
+    "cave": {
+      "words": [
+        "cave",
+        "cavern",
+        "tunnel",
+        "dungeon"
+      ],
+      "sounds": [
+        "drip drip"
+      ]
+    },
+    "tractor": {
+      "words": [
+        "tractor"
+      ],
+      "sounds": [
+        "chug chug",
+        "putt putt"
+      ]
+    },
+    "bicycle": {
+      "words": [
+        "bicycle",
+        "bike",
+        "tricycle",
+        "trike"
+      ],
+      "sounds": [
+        "ring ring",
+        "ding ding"
+      ]
+    },
+    "truck": {
+      "words": [
+        "truck",
+        "lorry",
+        "van",
+        "tow truck",
+        "monster truck"
+      ],
+      "sounds": [
+        "air horn"
+      ]
+    },
+    "motorcycle": {
+      "words": [
+        "motorcycle",
+        "motorbike",
+        "dirt bike",
+        "scooter"
+      ],
+      "sounds": [
+        "revved",
+        "revving"
+      ]
+    },
+    "helicopter": {
+      "words": [
+        "helicopter",
+        "chopper"
+      ],
+      "sounds": [
+        "whirr",
+        "whirred",
+        "flew"
+      ]
+    },
+    "siren": {
+      "words": [
+        "siren",
+        "fire truck",
+        "fire engine",
+        "firetruck",
+        "firefighter",
+        "firefighters",
+        "fireman",
+        "firemen",
+        "police car",
+        "police",
+        "ambulance"
+      ],
+      "sounds": [
+        "nee naw",
+        "wee woo",
+        "woo woo"
+      ]
+    },
+    "digger": {
+      "words": [
+        "digger",
+        "excavator",
+        "bulldozer",
+        "dump truck",
+        "garbage truck",
+        "rubbish truck",
+        "cement mixer",
+        "crane",
+        "construction site"
+      ],
+      "sounds": [
+        "beep beep beep"
+      ]
+    },
+    "creak": {
+      "words": [
+        "creaky",
+        "creaky door",
+        "squeaky door",
+        "haunted house",
+        "drawbridge",
+        "gate"
+      ],
+      "sounds": [
+        "creak",
+        "creaked",
+        "creaking"
+      ]
+    },
+    "slam": {
+      "words": [
+        "slammed the door",
+        "door slammed",
+        "banged the door"
+      ],
+      "sounds": [
+        "slam",
+        "slammed",
+        "slamming",
+        "slammed the door",
+        "door slammed",
+        "banged the door"
+      ]
+    },
+    "phone": {
+      "words": [
+        "phone",
+        "telephone",
+        "cellphone",
+        "phone rang"
+      ],
+      "sounds": [
+        "ring ring",
+        "brring"
+      ]
+    },
+    "munch": {
+      "words": [
+        "munch",
+        "munched",
+        "munching",
+        "chomp",
+        "chomped",
+        "nibble",
+        "nibbled",
+        "took a bite",
+        "bit into",
+        "yum yum"
+      ],
+      "sounds": [
+        "crunch",
+        "crunched",
+        "crunchy",
+        "nom nom",
+        "om nom nom"
+      ]
+    },
+    "slurp": {
+      "words": [
+        "sip",
+        "sipped",
+        "gulp",
+        "gulped",
+        "drank",
+        "drink of water"
+      ],
+      "sounds": [
+        "slurp",
+        "slurped",
+        "slurping"
+      ]
+    },
+    "sneeze": {
+      "words": [
+        "sneeze",
+        "sneezed",
+        "sneezing"
+      ],
+      "sounds": [
+        "achoo",
+        "ah choo",
+        "atchoo",
+        "atishoo",
+        "sneezed"
+      ]
+    },
+    "yawn": {
+      "words": [
+        "yawn",
+        "yawned",
+        "yawning"
+      ],
+      "sounds": [
+        "yawn",
+        "yawned"
+      ]
+    },
+    "baby": {
+      "words": [
+        "the baby cried",
+        "baby cried",
+        "baby was crying",
+        "crying baby",
+        "started to cry",
+        "began to cry",
+        "burst into tears"
+      ],
+      "sounds": [
+        "waah",
+        "wah wah",
+        "boo hoo"
+      ]
+    },
+    "kiss": {
+      "words": [
+        "kiss",
+        "kissed",
+        "kisses",
+        "smooch"
+      ],
+      "sounds": [
+        "mwah",
+        "smooch"
+      ]
+    },
+    "cheer": {
+      "words": [
+        "hooray",
+        "hurray",
+        "hurrah",
+        "yay",
+        "cheered",
+        "cheering",
+        "clapped",
+        "clapping",
+        "applause",
+        "birthday party",
+        "party",
+        "celebrate",
+        "celebrated"
+      ],
+      "sounds": [
+        "hooray",
+        "hip hip hooray"
+      ]
+    },
+    "flush": {
+      "words": [
+        "toilet",
+        "potty",
+        "flush",
+        "flushed"
+      ],
+      "sounds": [
+        "flush",
+        "flushed"
+      ]
+    },
+    "drum": {
+      "words": [
+        "drum",
+        "drummer",
+        "beat the drum",
+        "banged the drum"
+      ],
+      "sounds": [
+        "rat a tat",
+        "ratatat",
+        "boom boom"
+      ]
+    },
+    "trumpet": {
+      "words": [
+        "trumpet",
+        "bugle",
+        "fanfare"
+      ],
+      "sounds": [
+        "ta da",
+        "tada"
+      ]
+    },
+    "whistle": {
+      "words": [
+        "blew the whistle",
+        "blew a whistle",
+        "blew his whistle",
+        "blew her whistle",
+        "referee"
+      ]
+    },
+    "fireworks": {
+      "words": [
+        "fireworks",
+        "firework",
+        "firecracker",
+        "sparklers"
+      ],
+      "sounds": [
+        "bang bang",
+        "whizz bang"
+      ]
+    },
+    "ghost": {
+      "words": [
+        "ghost",
+        "ghostly",
+        "spooky",
+        "phantom"
+      ],
+      "sounds": [
+        "boo",
+        "wooo",
+        "oooo"
+      ]
+    },
+    "monster": {
+      "words": [
+        "monster",
+        "ogre",
+        "troll",
+        "beast"
+      ],
+      "sounds": [
+        "rawr"
+      ]
+    },
+    "robot": {
+      "words": [
+        "robot"
+      ],
+      "sounds": [
+        "beep boop",
+        "beep bop",
+        "bleep bloop"
+      ]
+    },
+    "laser": {
+      "words": [
+        "laser",
+        "laser beam",
+        "ray gun",
+        "zap",
+        "zapped"
+      ],
+      "sounds": [
+        "zap",
+        "zapped",
+        "pew pew"
+      ]
+    },
+    "sword": {
+      "words": [
+        "sword",
+        "swordfight",
+        "sword fight"
+      ],
+      "sounds": [
+        "clang",
+        "clanged",
+        "clash",
+        "clashed"
+      ]
+    },
+    "treasure": {
+      "words": [
+        "treasure",
+        "treasure chest",
+        "coin",
+        "gold",
+        "pot of gold",
+        "piggy bank"
+      ],
+      "sounds": [
+        "cha ching",
+        "ka ching"
+      ]
+    },
+    "witch": {
+      "words": [
+        "witch"
+      ],
+      "sounds": [
+        "cackle",
+        "cackled",
+        "cackling"
+      ]
+    },
+    "giant": {
+      "words": [
+        "the giant",
+        "giants",
+        "fee fi fo fum"
+      ],
+      "sounds": [
+        "fee fi fo fum"
+      ]
+    },
+    "alien": {
+      "words": [
+        "alien",
+        "ufo",
+        "flying saucer",
+        "martian"
+      ]
+    },
+    "seal": {
+      "words": [
+        "seal",
+        "sea lion"
+      ],
+      "sounds": [
+        "arf arf",
+        "barked like a seal"
+      ]
+    },
+    "penguin": {
+      "words": [
+        "penguin"
+      ],
+      "sounds": [
+        "waddled"
+      ]
+    },
+    "fox": {
+      "words": [
+        "fox",
+        "vixen"
+      ],
+      "sounds": [
+        "yipped",
+        "yip"
+      ]
+    },
+    "hyena": {
+      "words": [
+        "hyena"
+      ]
+    },
+    "hippo": {
+      "words": [
+        "hippo",
+        "hippopotamus"
+      ]
+    },
+    "eagle": {
+      "words": [
+        "eagle",
+        "hawk",
+        "falcon"
+      ],
+      "sounds": [
+        "screeched"
+      ]
+    },
+    "crocodile": {
+      "words": [
+        "crocodile",
+        "alligator",
+        "gator"
+      ],
+      "sounds": [
+        "snapped its jaws",
+        "snap snap"
+      ]
+    },
+    "peacock": {
+      "words": [
+        "peacock",
+        "peafowl"
+      ]
+    },
+    "goose": {
+      "words": [
+        "goose",
+        "geese",
+        "gosling"
+      ],
+      "sounds": [
+        "honk honk"
+      ]
+    },
+    "hooves": {
+      "words": [
+        "clip clop",
+        "hooves",
+        "carriage",
+        "trotted"
+      ],
+      "sounds": [
+        "clip clop",
+        "clop clop"
+      ]
+    },
+    "guinea_pig": {
+      "words": [
+        "guinea pig"
+      ],
+      "sounds": [
+        "wheek",
+        "wheek wheek"
+      ]
+    },
+    "parrot": {
+      "words": [
+        "parrot",
+        "macaw",
+        "cockatoo",
+        "parakeet"
+      ],
+      "sounds": [
+        "polly wants a cracker"
+      ]
+    },
+    "woodpecker": {
+      "words": [
+        "woodpecker"
+      ],
+      "sounds": [
+        "pecked the tree",
+        "pecking"
+      ]
+    },
+    "bat": {
+      "words": [
+        "a bat",
+        "the bat",
+        "bats",
+        "vampire bat",
+        "fruit bat"
+      ]
+    },
+    "cicada": {
+      "words": [
+        "cicada",
+        "cicadas"
+      ]
+    },
+    "pigeon": {
+      "words": [
+        "pigeon",
+        "dove"
+      ],
+      "sounds": [
+        "coo",
+        "cooed",
+        "coo coo"
+      ]
+    },
+    "squirrel": {
+      "words": [
+        "squirrel",
+        "chipmunk"
+      ]
+    },
+    "cuckoo": {
+      "words": [
+        "cuckoo",
+        "cuckoo clock"
+      ],
+      "sounds": [
+        "cuckoo cuckoo"
+      ]
+    },
+    "hail": {
+      "words": [
+        "hail",
+        "hailstorm",
+        "hailing",
+        "hailstones"
+      ]
+    },
+    "snow_crunch": {
+      "words": [
+        "deep snow",
+        "crunched in the snow",
+        "walked in the snow",
+        "walking in the snow",
+        "trudged through the snow",
+        "snowy path"
+      ]
+    },
+    "wind_chimes": {
+      "words": [
+        "wind chimes",
+        "wind chime",
+        "chimes"
+      ]
+    },
+    "storm": {
+      "words": [
+        "storm",
+        "stormy",
+        "hurricane",
+        "tempest",
+        "raging storm"
+      ]
+    },
+    "drip": {
+      "words": [
+        "dripping",
+        "drip drop",
+        "melting icicles",
+        "leaky faucet",
+        "dripped"
+      ]
+    },
+    "jungle": {
+      "words": [
+        "jungle",
+        "rainforest"
+      ]
+    },
+    "playground": {
+      "words": [
+        "playground",
+        "park",
+        "swings",
+        "sandbox"
+      ]
+    },
+    "space": {
+      "words": [
+        "outer space",
+        "in space",
+        "galaxy",
+        "planets",
+        "constellation"
+      ]
+    },
+    "castle": {
+      "words": [
+        "castle",
+        "palace",
+        "throne room",
+        "kingdom"
+      ]
+    },
+    "train_ride": {
+      "words": [
+        "rode the train",
+        "on the train",
+        "train tracks",
+        "clackety clack",
+        "railroad tracks"
+      ],
+      "sounds": [
+        "clackety clack"
+      ]
+    },
+    "meadow": {
+      "words": [
+        "meadow",
+        "sunny field",
+        "picnic",
+        "hillside",
+        "wildflowers"
+      ]
+    },
+    "fairground": {
+      "words": [
+        "carnival",
+        "fairground",
+        "circus",
+        "festival",
+        "county fair"
+      ]
+    },
+    "submarine": {
+      "words": [
+        "submarine",
+        "sonar"
+      ],
+      "sounds": [
+        "sonar ping"
+      ]
+    },
+    "cannon": {
+      "words": [
+        "cannon",
+        "cannonball"
+      ],
+      "sounds": [
+        "fired the cannon",
+        "kaboom"
+      ]
+    },
+    "hot_air_balloon": {
+      "words": [
+        "hot air balloon",
+        "airship",
+        "blimp"
+      ]
+    },
+    "skateboard": {
+      "words": [
+        "skateboard",
+        "roller skates",
+        "skated",
+        "skateboarding"
+      ]
+    },
+    "sleigh": {
+      "words": [
+        "sleigh",
+        "sleigh bells",
+        "santa",
+        "reindeer"
+      ],
+      "sounds": [
+        "jingle bells"
+      ]
+    },
+    "anchor": {
+      "words": [
+        "anchor",
+        "dropped anchor",
+        "heavy chain"
+      ]
+    },
+    "bath": {
+      "words": [
+        "bath",
+        "bathtub",
+        "bubble bath",
+        "poured water",
+        "pouring water",
+        "wash up"
+      ]
+    },
+    "zipper": {
+      "words": [
+        "zipper",
+        "zipped up",
+        "unzipped",
+        "zip up"
+      ],
+      "sounds": [
+        "zzzip"
+      ]
+    },
+    "page_turn": {
+      "words": [
+        "turned the page",
+        "opened the book",
+        "treasure map",
+        "unfolded the map",
+        "flipped the page"
+      ]
+    },
+    "hiccup": {
+      "words": [
+        "hiccup",
+        "hiccuped",
+        "hiccups",
+        "hiccuping"
+      ],
+      "sounds": [
+        "hic",
+        "hiccup"
+      ]
+    },
+    "tummy_rumble": {
+      "words": [
+        "tummy rumbled",
+        "stomach growled",
+        "belly rumbled",
+        "tummy growled",
+        "hungry tummy"
+      ]
+    },
+    "shush": {
+      "words": [
+        "shh",
+        "shhh",
+        "shushed",
+        "be quiet",
+        "whispered"
+      ],
+      "sounds": [
+        "shh",
+        "shhh"
+      ]
+    },
+    "music_box": {
+      "words": [
+        "music box",
+        "lullaby",
+        "ballerina"
+      ]
+    },
+    "crash": {
+      "words": [
+        "dropped the plate",
+        "broke the jar",
+        "shattered",
+        "clattered",
+        "smashed",
+        "glass broke"
+      ],
+      "sounds": [
+        "shatter",
+        "crash"
+      ]
+    },
+    "toot": {
+      "words": [
+        "fart",
+        "farted",
+        "toot",
+        "tooted",
+        "poot",
+        "whoopee cushion"
+      ],
+      "sounds": [
+        "fart",
+        "farted",
+        "pffft",
+        "brrrap"
+      ]
+    },
+    "slide_whistle": {
+      "words": [
+        "slipped",
+        "banana peel",
+        "slid down",
+        "tumbled",
+        "whoops",
+        "whoopsie"
+      ]
+    },
+    "fairy": {
+      "words": [
+        "fairy",
+        "pixie",
+        "fairy dust",
+        "fireflies"
+      ]
+    },
+    "cauldron": {
+      "words": [
+        "cauldron",
+        "potion",
+        "magic brew",
+        "bubbling mud",
+        "bubbling pot"
+      ]
+    },
+    "heartbeat": {
+      "words": [
+        "heartbeat",
+        "heart pounded",
+        "heart beat fast",
+        "heart was beating"
+      ],
+      "sounds": [
+        "thump thump",
+        "lub dub"
+      ]
+    },
+    "clown_horn": {
+      "words": [
+        "clown",
+        "honked his nose",
+        "squeaky horn"
+      ],
+      "sounds": [
+        "honk honk"
+      ]
+    },
+    "rhino": {
+      "words": [
+        "rhino",
+        "rhinoceros"
+      ]
+    },
+    "polar_bear": {
+      "words": [
+        "polar bear",
+        "polar bears"
+      ]
+    },
+    "walrus": {
+      "words": [
+        "walrus",
+        "walruses"
+      ]
+    },
+    "moose": {
+      "words": [
+        "moose"
+      ]
+    },
+    "bison": {
+      "words": [
+        "bison",
+        "buffalo"
+      ]
+    },
+    "orca": {
+      "words": [
+        "orca",
+        "killer whale"
+      ]
+    },
+    "otter": {
+      "words": [
+        "otter",
+        "sea otter",
+        "river otter"
+      ]
+    },
+    "raccoon": {
+      "words": [
+        "raccoon",
+        "trash panda"
+      ]
+    },
+    "cheetah": {
+      "words": [
+        "cheetah",
+        "leopard",
+        "panther",
+        "jaguar"
+      ]
+    },
+    "gibbon": {
+      "words": [
+        "gibbon",
+        "orangutan",
+        "baboon"
+      ]
+    },
+    "kookaburra": {
+      "words": [
+        "kookaburra"
+      ]
+    },
+    "loon": {
+      "words": [
+        "loon",
+        "common loon"
+      ]
+    },
+    "crane": {
+      "words": [
+        "sandhill crane",
+        "whooping crane",
+        "white crane",
+        "a crane flew"
+      ]
+    },
+    "toucan": {
+      "words": [
+        "toucan"
+      ]
+    },
+    "swan": {
+      "words": [
+        "swan",
+        "black swan",
+        "cygnet"
+      ]
+    },
+    "quail": {
+      "words": [
+        "quail",
+        "bobwhite"
+      ]
+    },
+    "canary": {
+      "words": [
+        "canary",
+        "canaries"
+      ]
+    },
+    "cowbell": {
+      "words": [
+        "cowbell",
+        "cow bell"
+      ]
+    },
+    "barn_door": {
+      "words": [
+        "barn door",
+        "stable door",
+        "shed door"
+      ]
+    },
+    "wood_chop": {
+      "words": [
+        "chopped wood",
+        "chopping wood",
+        "chopped the tree",
+        "lumberjack",
+        "swung the axe",
+        "firewood"
+      ]
+    },
+    "beehive": {
+      "words": [
+        "beehive",
+        "bee hive",
+        "swarm of bees"
+      ]
+    },
+    "bull": {
+      "words": [
+        "bull",
+        "angry bull",
+        "ox"
+      ]
+    },
+    "dinner_bell": {
+      "words": [
+        "dinner bell",
+        "supper bell",
+        "chow bell",
+        "lunch bell"
+      ]
+    },
+    "anvil": {
+      "words": [
+        "blacksmith",
+        "anvil",
+        "forge",
+        "forged the sword"
+      ]
+    },
+    "rattlesnake": {
+      "words": [
+        "rattlesnake",
+        "rattler"
+      ]
+    },
+    "gecko": {
+      "words": [
+        "gecko",
+        "lizard",
+        "chameleon",
+        "iguana"
+      ]
+    },
+    "hedgehog": {
+      "words": [
+        "hedgehog",
+        "porcupine"
+      ]
+    },
+    "magpie": {
+      "words": [
+        "magpie"
+      ]
+    },
+    "bluebird": {
+      "words": [
+        "bluebird",
+        "blue jay",
+        "bluejay"
+      ]
+    },
+    "blackbird": {
+      "words": [
+        "blackbird",
+        "starling"
+      ]
+    },
+    "grouse": {
+      "words": [
+        "grouse",
+        "pheasant",
+        "partridge"
+      ]
+    },
+    "grasshopper": {
+      "words": [
+        "grasshopper",
+        "katydid",
+        "locust"
+      ]
+    },
+    "crab": {
+      "words": [
+        "crab",
+        "hermit crab",
+        "pincers"
+      ],
+      "sounds": [
+        "snip snap"
+      ]
+    },
+    "bug": {
+      "words": [
+        "beetle",
+        "cockroach",
+        "creepy bug",
+        "giant bug",
+        "crawling bug"
+      ]
+    },
+    "waterfall": {
+      "words": [
+        "waterfall",
+        "cascade"
+      ]
+    },
+    "geyser": {
+      "words": [
+        "geyser",
+        "hot spring",
+        "steam burst"
+      ]
+    },
+    "volcano": {
+      "words": [
+        "volcano",
+        "volcanic",
+        "erupted",
+        "eruption",
+        "lava"
+      ]
+    },
+    "ice_crack": {
+      "words": [
+        "ice cracked",
+        "cracking ice",
+        "frozen lake",
+        "glacier",
+        "iceberg"
+      ]
+    },
+    "leaves": {
+      "words": [
+        "autumn leaves",
+        "fallen leaves",
+        "rustling leaves",
+        "pile of leaves",
+        "dry leaves",
+        "crunched through the leaves"
+      ]
+    },
+    "mud": {
+      "words": [
+        "mud",
+        "muddy",
+        "mud puddle",
+        "squelched",
+        "sticky mud"
+      ],
+      "sounds": [
+        "squelch",
+        "squelched"
+      ]
+    },
+    "earthquake": {
+      "words": [
+        "earthquake",
+        "ground shook",
+        "earth shook",
+        "tremor"
+      ]
+    },
+    "tornado": {
+      "words": [
+        "tornado",
+        "twister",
+        "cyclone",
+        "whirlwind"
+      ]
+    },
+    "avalanche": {
+      "words": [
+        "avalanche",
+        "rockslide",
+        "landslide",
+        "boulders fell"
+      ]
+    },
+    "rain_roof": {
+      "words": [
+        "rain on the roof",
+        "tin roof",
+        "attic rain",
+        "cozy rain"
+      ]
+    },
+    "harbor": {
+      "words": [
+        "harbor",
+        "harbour",
+        "dock",
+        "pier",
+        "marina",
+        "wharf",
+        "seaport"
+      ]
+    },
+    "market": {
+      "words": [
+        "market",
+        "marketplace",
+        "bazaar",
+        "busy market",
+        "town square"
+      ]
+    },
+    "kitchen": {
+      "words": [
+        "kitchen",
+        "bakery",
+        "cooking dinner",
+        "restaurant"
+      ]
+    },
+    "stadium": {
+      "words": [
+        "stadium",
+        "ballgame",
+        "sports arena",
+        "big game",
+        "cheering crowd"
+      ]
+    },
+    "desert": {
+      "words": [
+        "desert",
+        "sand dunes",
+        "sahara",
+        "oasis"
+      ]
+    },
+    "arctic": {
+      "words": [
+        "arctic",
+        "north pole",
+        "south pole",
+        "antarctica",
+        "frozen tundra",
+        "igloo"
+      ]
+    },
+    "swamp": {
+      "words": [
+        "swamp",
+        "marsh",
+        "bayou",
+        "bog"
+      ]
+    },
+    "pirate_ship": {
+      "words": [
+        "sailing ship",
+        "wooden ship",
+        "galleon",
+        "deck of the ship",
+        "high seas"
+      ]
+    },
+    "haunted_house": {
+      "words": [
+        "spooky house",
+        "haunted mansion",
+        "eerie hallway",
+        "old attic"
+      ]
+    },
+    "spaceship_bridge": {
+      "words": [
+        "spaceship bridge",
+        "cockpit",
+        "control room",
+        "space station",
+        "mission control"
+      ]
+    },
+    "trolley": {
+      "words": [
+        "trolley",
+        "tram",
+        "streetcar",
+        "cable car"
+      ]
+    },
+    "steam_whistle": {
+      "words": [
+        "steam whistle",
+        "factory whistle",
+        "ship whistle"
+      ]
+    },
+    "race_car": {
+      "words": [
+        "race car",
+        "racecar",
+        "sports car",
+        "formula one",
+        "sped past"
+      ]
+    },
+    "engine_start": {
+      "words": [
+        "started the car",
+        "started the engine",
+        "turned the ignition",
+        "engine roared to life"
+      ]
+    },
+    "hammer": {
+      "words": [
+        "hammer",
+        "hammered",
+        "nailed",
+        "pounded the nail"
+      ]
+    },
+    "saw": {
+      "words": [
+        "hand saw",
+        "sawing wood",
+        "sawed the wood",
+        "sawed through",
+        "chainsaw",
+        "carpenter"
+      ]
+    },
+    "camera": {
+      "words": [
+        "camera",
+        "took a photo",
+        "took a picture",
+        "snapshot",
+        "say cheese"
+      ]
+    },
+    "typewriter": {
+      "words": [
+        "typewriter",
+        "typed a letter",
+        "typing away"
+      ]
+    },
+    "cash_register": {
+      "words": [
+        "cash register",
+        "checkout",
+        "paid for it",
+        "store clerk"
+      ]
+    },
+    "elevator": {
+      "words": [
+        "elevator",
+        "took the lift"
+      ]
+    },
+    "alarm_clock": {
+      "words": [
+        "alarm clock",
+        "alarm rang",
+        "wake up alarm"
+      ]
+    },
+    "grandfather_clock": {
+      "words": [
+        "grandfather clock",
+        "clock tower",
+        "big ben",
+        "struck twelve"
+      ]
+    },
+    "church_bell": {
+      "words": [
+        "church bell",
+        "church bells",
+        "cathedral",
+        "wedding bells",
+        "steeple"
+      ]
+    },
+    "iron_gate": {
+      "words": [
+        "iron gate",
+        "heavy gate",
+        "prison door",
+        "castle gate",
+        "vault door"
+      ]
+    },
+    "keys": {
+      "words": [
+        "keys",
+        "keychain",
+        "jingled the keys",
+        "ring of keys",
+        "bunch of keys"
+      ]
+    },
+    "lock": {
+      "words": [
+        "unlocked the door",
+        "locked the door",
+        "padlock",
+        "keyhole",
+        "turned the key"
+      ]
+    },
+    "dishes": {
+      "words": [
+        "dishes",
+        "plates",
+        "pots and pans",
+        "silverware",
+        "washed the dishes"
+      ]
+    },
+    "microwave": {
+      "words": [
+        "microwave",
+        "heated it up"
+      ]
+    },
+    "bottle_pop": {
+      "words": [
+        "popped the cork",
+        "opened the bottle",
+        "cork popped",
+        "champagne",
+        "fizzy soda"
+      ]
+    },
+    "pour": {
+      "words": [
+        "poured a glass",
+        "poured milk",
+        "poured tea",
+        "poured juice",
+        "pouring a drink",
+        "poured a cup"
+      ]
+    },
+    "kettle": {
+      "words": [
+        "kettle",
+        "tea kettle",
+        "boiling water",
+        "tea time",
+        "made some tea"
+      ]
+    },
+    "scissors": {
+      "words": [
+        "scissors",
+        "snipped",
+        "cut the paper"
+      ],
+      "sounds": [
+        "snip snip"
+      ]
+    },
+    "toothbrush": {
+      "words": [
+        "toothbrush",
+        "brushed his teeth",
+        "brushed her teeth",
+        "brush your teeth",
+        "brushing teeth"
+      ]
+    },
+    "cough": {
+      "words": [
+        "cough",
+        "coughed",
+        "coughing",
+        "cleared his throat",
+        "cleared her throat"
+      ],
+      "sounds": [
+        "ahem"
+      ]
+    },
+    "burp": {
+      "words": [
+        "burp",
+        "burped",
+        "burping",
+        "belch",
+        "belched"
+      ]
+    },
+    "sigh": {
+      "words": [
+        "sigh",
+        "sighed",
+        "big sigh",
+        "breathed a sigh",
+        "whew"
+      ]
+    },
+    "gasp": {
+      "words": [
+        "gasp",
+        "gasped",
+        "big gasp"
+      ]
+    },
+    "piano": {
+      "words": [
+        "piano",
+        "played the piano",
+        "pianist",
+        "grand piano"
+      ]
+    },
+    "guitar": {
+      "words": [
+        "guitar",
+        "strummed",
+        "acoustic guitar",
+        "ukulele",
+        "banjo"
+      ]
+    },
+    "xylophone": {
+      "words": [
+        "xylophone",
+        "marimba",
+        "glockenspiel"
+      ]
+    },
+    "popcorn": {
+      "words": [
+        "popcorn",
+        "popping popcorn",
+        "movie night"
+      ]
+    },
+    "explosion": {
+      "words": [
+        "explosion",
+        "exploded",
+        "blew up",
+        "big boom",
+        "dynamite"
+      ],
+      "sounds": [
+        "kaboom",
+        "ka boom"
+      ]
+    },
+    "arrow": {
+      "words": [
+        "bow and arrow",
+        "shot an arrow",
+        "fired an arrow",
+        "archer",
+        "crossbow"
+      ],
+      "sounds": [
+        "twang"
+      ]
+    },
+    "shield": {
+      "words": [
+        "shield",
+        "blocked the blow",
+        "armor",
+        "knight"
+      ]
+    },
+    "portal": {
+      "words": [
+        "portal",
+        "vortex",
+        "time portal",
+        "magic doorway",
+        "wormhole"
+      ]
+    },
+    "teleport": {
+      "words": [
+        "teleport",
+        "teleported",
+        "vanished in a flash",
+        "beamed up",
+        "blinked away"
+      ]
+    },
+    "victory": {
+      "words": [
+        "won the race",
+        "won the game",
+        "victory",
+        "champion",
+        "trophy",
+        "level up"
+      ]
+    },
+    "sad_trombone": {
+      "words": [
+        "uh oh",
+        "sad trombone",
+        "lost the game",
+        "womp womp"
+      ],
+      "sounds": [
+        "wah wah",
+        "womp womp"
+      ]
+    },
+    "spring": {
+      "words": [
+        "coiled spring",
+        "bouncy spring",
+        "slinky",
+        "sproing",
+        "bedspring"
+      ],
+      "sounds": [
+        "sproing"
+      ]
+    },
+    "squish": {
+      "words": [
+        "slime",
+        "squishy",
+        "splat",
+        "squished",
+        "goo",
+        "ooze"
+      ],
+      "sounds": [
+        "splat",
+        "squish"
+      ]
+    },
+    "evil_laugh": {
+      "words": [
+        "villain",
+        "evil laugh",
+        "wicked laugh",
+        "bad guy",
+        "evil wizard"
+      ],
+      "sounds": [
+        "mwahahaha",
+        "muahahaha"
+      ]
+    },
+    "zombie": {
+      "words": [
+        "zombie",
+        "mummy",
+        "skeleton",
+        "undead",
+        "frankenstein"
+      ]
+    },
+    "unicorn": {
+      "words": [
+        "unicorn",
+        "pegasus",
+        "magic horse"
+      ]
+    },
+    "squeaky_toy": {
+      "words": [
+        "squeaky toy",
+        "rubber duck",
+        "rubber ducky",
+        "squeaked the toy"
+      ]
+    },
+    "drumroll": {
+      "words": [
+        "drumroll",
+        "drum roll",
+        "and the winner is"
+      ]
+    },
+    "gong": {
+      "words": [
+        "gong",
+        "struck the gong",
+        "temple gong"
+      ]
+    },
+    "antelope": {
+      "words": [
+        "antelope",
+        "impala",
+        "gazelle"
+      ]
+    },
+    "deer": {
+      "words": [
+        "deer",
+        "stag",
+        "fawn",
+        "elk",
+        "buck"
+      ]
+    },
+    "stork": {
+      "words": [
+        "stork",
+        "wood stork",
+        "heron"
+      ]
+    },
+    "kingfisher": {
+      "words": [
+        "kingfisher"
+      ]
+    },
+    "coot": {
+      "words": [
+        "waterhen",
+        "coot",
+        "moorhen",
+        "marsh bird"
+      ]
+    },
+    "baboon": {
+      "words": [
+        "gelada",
+        "mandrill",
+        "wild baboon"
+      ]
+    },
+    "panther": {
+      "words": [
+        "black panther",
+        "puma",
+        "cougar",
+        "mountain lion"
+      ]
+    },
+    "grizzly_eat": {
+      "words": [
+        "hungry bear",
+        "bear growled",
+        "bear snorted"
+      ]
+    },
+    "alligator_hiss": {
+      "words": [
+        "alligator hissed",
+        "crocodile hissed",
+        "caiman"
+      ]
+    },
+    "sea_lion": {
+      "words": [
+        "fur seal",
+        "elephant seal",
+        "walrus pup"
+      ]
+    },
+    "elephant_calf": {
+      "words": [
+        "baby elephant",
+        "little elephant",
+        "elephant calf"
+      ]
+    },
+    "wolf_pack": {
+      "words": [
+        "wolf pack",
+        "pack of wolves",
+        "wolves howled"
+      ]
+    },
+    "lion_cub": {
+      "words": [
+        "lion cub",
+        "baby lion",
+        "little lion"
+      ]
+    },
+    "bear_cub": {
+      "words": [
+        "bear cub",
+        "baby bear",
+        "little bear"
+      ]
+    },
+    "dino_stomp": {
+      "words": [
+        "brontosaurus",
+        "stegosaurus",
+        "triceratops",
+        "dino stomp"
+      ]
+    },
+    "whale_pod": {
+      "words": [
+        "blue whale",
+        "humpback whale",
+        "whale song",
+        "pod of whales"
+      ]
+    },
+    "dolphin_click": {
+      "words": [
+        "baby dolphin",
+        "pod of dolphins",
+        "dolphin clicked"
+      ]
+    },
+    "jungle_monkey": {
+      "words": [
+        "howler monkey",
+        "spider monkey",
+        "lemur"
+      ]
+    },
+    "coyote": {
+      "words": [
+        "coyote",
+        "jackal",
+        "dingo"
+      ]
+    },
+    "eagle_cry": {
+      "words": [
+        "bald eagle",
+        "golden eagle",
+        "osprey",
+        "condor"
+      ]
+    },
+    "milking": {
+      "words": [
+        "milked the cow",
+        "milking the cow",
+        "milk pail",
+        "milk bucket"
+      ]
+    },
+    "barn_owl": {
+      "words": [
+        "barn owl",
+        "snowy owl",
+        "great horned owl"
+      ]
+    },
+    "farm_tractor": {
+      "words": [
+        "combine harvester",
+        "harvester",
+        "plow",
+        "plough"
+      ]
+    },
+    "hay_cart": {
+      "words": [
+        "hayride",
+        "wagon",
+        "stagecoach",
+        "wooden cart"
+      ]
+    },
+    "horse_gallop": {
+      "words": [
+        "galloping",
+        "herd of horses",
+        "stampede",
+        "wild horses"
+      ]
+    },
+    "sheep_flock": {
+      "words": [
+        "flock of sheep",
+        "herd of sheep",
+        "little lambs",
+        "shepherd"
+      ]
+    },
+    "pig_oink": {
+      "words": [
+        "baby pig",
+        "wild boar",
+        "warthog"
+      ]
+    },
+    "hen_cluck": {
+      "words": [
+        "chicken coop",
+        "henhouse",
+        "flock of chickens"
+      ]
+    },
+    "duck_splash": {
+      "words": [
+        "duck pond",
+        "mallard",
+        "flock of ducks"
+      ]
+    },
+    "dog_pant": {
+      "words": [
+        "little puppy",
+        "baby puppy",
+        "hound",
+        "sheepdog"
+      ]
+    },
+    "cat_purr": {
+      "words": [
+        "baby kitten",
+        "tiny kitten",
+        "tabby cat"
+      ]
+    },
+    "goat_kid": {
+      "words": [
+        "baby goat",
+        "little goat",
+        "mountain goat"
+      ]
+    },
+    "donkey_hooves": {
+      "words": [
+        "burro",
+        "stubborn donkey",
+        "little donkey"
+      ]
+    },
+    "stable_bell": {
+      "words": [
+        "farm bell",
+        "school bell",
+        "recess bell",
+        "brass bell"
+      ]
+    },
+    "pitchfork": {
+      "words": [
+        "pitchfork",
+        "haystack",
+        "shoveled",
+        "dug a hole",
+        "shovel"
+      ]
+    },
+    "robin": {
+      "words": [
+        "american robin",
+        "redbreast",
+        "thrush"
+      ]
+    },
+    "nutcracker": {
+      "words": [
+        "nutcracker bird",
+        "jay",
+        "forest bird"
+      ]
+    },
+    "killdeer": {
+      "words": [
+        "killdeer",
+        "plover",
+        "sandpiper",
+        "shorebird"
+      ]
+    },
+    "bunting": {
+      "words": [
+        "bunting",
+        "finch",
+        "goldfinch",
+        "cardinal"
+      ]
+    },
+    "warbler": {
+      "words": [
+        "warbler",
+        "wren",
+        "nightingale",
+        "lark"
+      ]
+    },
+    "palm_squirrel": {
+      "words": [
+        "baby squirrel",
+        "palm squirrel",
+        "little chipmunk"
+      ]
+    },
+    "frog_chorus": {
+      "words": [
+        "frog pond",
+        "lily pad",
+        "pond at night",
+        "hundreds of frogs"
+      ]
+    },
+    "beetle_bite": {
+      "words": [
+        "ladybug",
+        "caterpillar",
+        "ant",
+        "ants",
+        "inchworm"
+      ]
+    },
+    "cricket_chirp": {
+      "words": [
+        "a cricket",
+        "little cricket",
+        "jiminy cricket"
+      ]
+    },
+    "mosquito": {
+      "words": [
+        "a mosquito",
+        "pesky mosquito",
+        "gnat"
+      ]
+    },
+    "wasp": {
+      "words": [
+        "wasp",
+        "hornet",
+        "yellow jacket"
+      ]
+    },
+    "firefly_hum": {
+      "words": [
+        "butterfly",
+        "butterflies",
+        "moth",
+        "dragonfly"
+      ]
+    },
+    "hamster": {
+      "words": [
+        "hamster",
+        "gerbil",
+        "ferret"
+      ]
+    },
+    "gerbil": {
+      "words": [
+        "bunny",
+        "rabbit",
+        "bunny rabbit",
+        "easter bunny"
+      ]
+    },
+    "spider_crawl": {
+      "words": [
+        "spider",
+        "tarantula",
+        "spiderweb",
+        "cobweb"
+      ]
+    },
+    "snail_slime": {
+      "words": [
+        "snail",
+        "slug",
+        "earthworm",
+        "worm"
+      ]
+    },
+    "bat_flutter": {
+      "words": [
+        "flapped its wings",
+        "flapping wings",
+        "fluttered",
+        "spread its wings"
+      ]
+    },
+    "owl_wings": {
+      "words": [
+        "hummingbird"
+      ]
+    },
+    "pigeon_wings": {
+      "words": [
+        "flock of birds",
+        "birds flew up",
+        "singing birds"
+      ]
+    },
+    "sparrow_flock": {
+      "words": [
+        "swallow",
+        "swift",
+        "starling",
+        "chickadee"
+      ]
+    },
+    "surf_crash": {
+      "words": [
+        "giant wave",
+        "tidal wave",
+        "tsunami",
+        "wave crashed",
+        "big wave"
+      ]
+    },
+    "lightning_bolt": {
+      "words": [
+        "lightning bolt",
+        "lightning strike",
+        "struck by lightning",
+        "bolt of lightning"
+      ]
+    },
+    "heavy_rain": {
+      "words": [
+        "downpour",
+        "monsoon",
+        "pouring rain",
+        "cloudburst"
+      ]
+    },
+    "drizzle": {
+      "words": [
+        "light rain",
+        "gentle rain",
+        "soft rain",
+        "misty rain"
+      ]
+    },
+    "gale_wind": {
+      "words": [
+        "gale",
+        "howling wind",
+        "fierce wind",
+        "wild wind"
+      ]
+    },
+    "blizzard": {
+      "words": [
+        "snowstorm",
+        "winter storm",
+        "freezing blizzard",
+        "whiteout"
+      ]
+    },
+    "thunder_roll": {
+      "words": [
+        "distant thunder",
+        "rumbling sky",
+        "storm clouds",
+        "dark clouds"
+      ]
+    },
+    "rain_puddle": {
+      "words": [
+        "jumped in a puddle",
+        "splashed in a puddle",
+        "muddy boots",
+        "rain boots"
+      ]
+    },
+    "wind_gust": {
+      "words": [
+        "gust of wind",
+        "blew his hat off",
+        "blew her hat off",
+        "whirlwind"
+      ]
+    },
+    "frost_freeze": {
+      "words": [
+        "froze solid",
+        "turned to ice",
+        "frozen solid",
+        "jack frost",
+        "ice queen"
+      ]
+    },
+    "icicle_drop": {
+      "words": [
+        "icicle",
+        "icicles",
+        "crystal shattered"
+      ]
+    },
+    "rockfall": {
+      "words": [
+        "falling rocks",
+        "boulder fell",
+        "cave in",
+        "rocks tumbled"
+      ]
+    },
+    "mudslide": {
+      "words": [
+        "mud pots",
+        "quicksand",
+        "sinking sand",
+        "tar pit"
+      ]
+    },
+    "sandstorm": {
+      "words": [
+        "sandstorm",
+        "dust storm",
+        "desert storm"
+      ]
+    },
+    "heatwave": {
+      "words": [
+        "hot summer",
+        "summer afternoon",
+        "heatwave",
+        "scorching sun"
+      ]
+    },
+    "river_rapids": {
+      "words": [
+        "rapids",
+        "white water",
+        "rushing river",
+        "raging river"
+      ]
+    },
+    "brook_babble": {
+      "words": [
+        "little stream",
+        "babbling brook",
+        "quiet creek",
+        "stepping stones"
+      ]
+    },
+    "ocean_storm": {
+      "words": [
+        "stormy sea",
+        "rough seas",
+        "hurricane at sea",
+        "raging ocean"
+      ]
+    },
+    "spring_breeze": {
+      "words": [
+        "gentle breeze",
+        "spring breeze",
+        "warm breeze",
+        "soft wind"
+      ]
+    },
+    "crackling_frost": {
+      "words": [
+        "snowball fight",
+        "snowman",
+        "footprints in the snow",
+        "snowy hill"
+      ]
+    },
+    "train_station": {
+      "words": [
+        "train station",
+        "railway station",
+        "platform",
+        "grand central"
+      ]
+    },
+    "park_birds": {
+      "words": [
+        "sunny park",
+        "botanical garden",
+        "orchard",
+        "garden"
+      ]
+    },
+    "park_river": {
+      "words": [
+        "riverside",
+        "riverbank",
+        "campsite",
+        "fishing trip"
+      ]
+    },
+    "park_wind": {
+      "words": [
+        "mountaintop",
+        "hilltop",
+        "mountain peak",
+        "cliff",
+        "summit"
+      ]
+    },
+    "abandoned_house": {
+      "words": [
+        "abandoned house",
+        "old ruin",
+        "ruins",
+        "empty warehouse",
+        "cellar"
+      ]
+    },
+    "ghost_hall": {
+      "words": [
+        "graveyard",
+        "cemetery",
+        "crypt",
+        "spooky forest",
+        "forbidden forest"
+      ]
+    },
+    "blacksmith_shop": {
+      "words": [
+        "smithy",
+        "workshop",
+        "blacksmith shop",
+        "ironworks"
+      ]
+    },
+    "boiler_room": {
+      "words": [
+        "engine room",
+        "boiler room",
+        "factory",
+        "power plant"
+      ]
+    },
+    "sewing_room": {
+      "words": [
+        "tailor shop",
+        "sewing room",
+        "dressmaker"
+      ]
+    },
+    "busy_cafe": {
+      "words": [
+        "cafe",
+        "coffee shop",
+        "diner",
+        "tavern",
+        "inn"
+      ]
+    },
+    "hospital_room": {
+      "words": [
+        "hospital",
+        "doctor office",
+        "infirmary",
+        "clinic"
+      ]
+    },
+    "deep_dungeon": {
+      "words": [
+        "secret passage",
+        "secret tunnel",
+        "underground",
+        "labyrinth",
+        "maze"
+      ]
+    },
+    "enchanted_forest": {
+      "words": [
+        "enchanted forest",
+        "magic forest",
+        "fairy forest",
+        "wonderland"
+      ]
+    },
+    "crystal_cave": {
+      "words": [
+        "crystal cave",
+        "gem mine",
+        "treasure cave",
+        "mine"
+      ]
+    },
+    "alien_planet": {
+      "words": [
+        "alien planet",
+        "mars",
+        "moon surface",
+        "distant planet",
+        "jupiter"
+      ]
+    },
+    "fire_bell": {
+      "words": [
+        "fire alarm",
+        "fire bell",
+        "alarm bell",
+        "ring the alarm"
+      ]
+    },
+    "sewing_machine": {
+      "words": [
+        "sewing machine",
+        "sewed a dress",
+        "stitched it up"
+      ]
+    },
+    "steam_iron": {
+      "words": [
+        "steam iron",
+        "ironed",
+        "puff of steam",
+        "steam hissed"
+      ]
+    },
+    "bus_horn": {
+      "words": [
+        "school bus",
+        "city bus",
+        "double decker bus",
+        "bus horn"
+      ]
+    },
+    "phone_keypad": {
+      "words": [
+        "dialed the number",
+        "dialed the phone",
+        "pressed the buttons",
+        "keypad"
+      ]
+    },
+    "ships_bell": {
+      "words": [
+        "ship bell",
+        "ship's bell",
+        "all aboard",
+        "captain rang"
+      ]
+    },
+    "ship_telegraph": {
+      "words": [
+        "full steam ahead",
+        "full speed ahead",
+        "telegraph",
+        "engine order"
+      ]
+    },
+    "coal_shovel": {
+      "words": [
+        "shoveled coal",
+        "coal car",
+        "stoked the furnace",
+        "furnace"
+      ]
+    },
+    "subway": {
+      "words": [
+        "subway",
+        "metro",
+        "underground train",
+        "tube train"
+      ]
+    },
+    "monorail": {
+      "words": [
+        "monorail",
+        "skytrain",
+        "bullet train",
+        "express train"
+      ]
+    },
+    "gas_pump": {
+      "words": [
+        "gas station",
+        "filled up the tank",
+        "fuel pump",
+        "petrol station"
+      ]
+    },
+    "sandpaper": {
+      "words": [
+        "sandpaper",
+        "sanded the wood",
+        "woodworker",
+        "scrubbed"
+      ]
+    },
+    "forge_bellows": {
+      "words": [
+        "bellows",
+        "stoked the fire",
+        "blast furnace",
+        "flames roared"
+      ]
+    },
+    "power_down": {
+      "words": [
+        "power went out",
+        "lights went out",
+        "powered down",
+        "shut down",
+        "blackout"
+      ]
+    },
+    "power_up": {
+      "words": [
+        "powered up",
+        "lights came back on",
+        "turned on the machine",
+        "charged up"
+      ]
+    },
+    "cell_ring": {
+      "words": [
+        "text message",
+        "got a message",
+        "smartphone",
+        "notification"
+      ]
+    },
+    "motor_hum": {
+      "words": [
+        "motorboat",
+        "speedboat",
+        "jet ski",
+        "lawnmower"
+      ]
+    },
+    "vintage_horn": {
+      "words": [
+        "classic car",
+        "vintage car",
+        "old jalopy",
+        "hot rod"
+      ]
+    },
+    "air_horn": {
+      "words": [
+        "ladder truck",
+        "rescue truck",
+        "emergency vehicle"
+      ]
+    },
+    "bicycle_spokes": {
+      "words": [
+        "pedaled",
+        "pedaling",
+        "bike chain",
+        "spinning wheel",
+        "wheelbarrow"
+      ]
+    },
+    "chain_rattle": {
+      "words": [
+        "rattling chains",
+        "shackles",
+        "iron chain",
+        "chained up"
+      ]
+    },
+    "drawbridge": {
+      "words": [
+        "lowered the drawbridge",
+        "raised the drawbridge",
+        "castle bridge",
+        "portcullis"
+      ]
+    },
+    "iron_latch": {
+      "words": [
+        "unlatched",
+        "door latch",
+        "bolted the door",
+        "trapdoor"
+      ]
+    },
+    "wood_creak": {
+      "words": [
+        "creaky floor",
+        "floorboard creaked",
+        "creaky stairs",
+        "wooden bridge"
+      ]
+    },
+    "crate_smash": {
+      "words": [
+        "smashed the box",
+        "wooden crate",
+        "broke the barrel",
+        "barrel"
+      ]
+    },
+    "heavy_thud": {
+      "words": [
+        "big thud",
+        "heavy thud",
+        "fell with a thud",
+        "plopped down"
+      ]
+    },
+    "metal_clang": {
+      "words": [
+        "dropped the wrench",
+        "toolbox",
+        "metal pipe",
+        "tin can"
+      ]
+    },
+    "pulley_winch": {
+      "words": [
+        "pulley",
+        "winch",
+        "hoisted",
+        "zip line",
+        "zipline"
+      ]
+    },
+    "factory_machine": {
+      "words": [
+        "conveyor belt",
+        "assembly line",
+        "invention",
+        "contraption",
+        "gears"
+      ]
+    },
+    "printing_press": {
+      "words": [
+        "printing press",
+        "printer",
+        "newspaper",
+        "printed"
+      ]
+    },
+    "radar_beep": {
+      "words": [
+        "radar",
+        "scanner",
+        "metal detector",
+        "satellite"
+      ]
+    },
+    "sonar_echo": {
+      "words": [
+        "periscope",
+        "dive dive",
+        "bathyscaphe",
+        "diving bell"
+      ]
+    },
+    "launch_countdown": {
+      "words": [
+        "three two one",
+        "countdown",
+        "ready set go",
+        "on your mark"
+      ]
+    },
+    "jet_flyby": {
+      "words": [
+        "fighter jet",
+        "supersonic",
+        "sonic boom",
+        "biplane",
+        "glider"
+      ]
+    },
+    "helicopter_blade": {
+      "words": [
+        "rescue helicopter",
+        "helipad",
+        "drone",
+        "propeller"
+      ]
+    },
+    "tambourine": {
+      "words": [
+        "tambourine"
+      ]
+    },
+    "triangle": {
+      "words": [
+        "triangle instrument",
+        "rang the triangle",
+        "dinner triangle"
+      ]
+    },
+    "guiro": {
+      "words": [
+        "guiro",
+        "washboard",
+        "rhythm scraper"
+      ]
+    },
+    "claves": {
+      "words": [
+        "rhythm sticks",
+        "claves",
+        "tap dance",
+        "tap dancing",
+        "castanets"
+      ]
+    },
+    "agogo": {
+      "words": [
+        "agogo",
+        "steel drum",
+        "calypso",
+        "samba"
+      ]
+    },
+    "maracas": {
+      "words": [
+        "maracas",
+        "shaker",
+        "baby rattle",
+        "rattle"
+      ]
+    },
+    "heart_monitor": {
+      "words": [
+        "stethoscope",
+        "doctor checked",
+        "heart monitor",
+        "vital signs"
+      ]
+    },
+    "air_conditioner": {
+      "words": [
+        "air conditioner",
+        "ceiling fan",
+        "white noise",
+        "box fan"
+      ]
+    },
+    "air_fryer": {
+      "words": [
+        "blender",
+        "vacuum",
+        "vacuum cleaner",
+        "hair dryer",
+        "air fryer"
+      ]
+    },
+    "boiling_pot": {
+      "words": [
+        "boiling soup",
+        "stew pot",
+        "simmering",
+        "spaghetti pot",
+        "hot soup"
+      ]
+    },
+    "cutting_board": {
+      "words": [
+        "chopped vegetables",
+        "cutting board",
+        "sliced the carrots",
+        "chef chopped"
+      ]
+    },
+    "cookware": {
+      "words": [
+        "frying pan",
+        "skillet",
+        "saucepan",
+        "baking sheet"
+      ]
+    },
+    "door_close": {
+      "words": [
+        "closed the door",
+        "shut the door",
+        "bedroom door",
+        "closet door"
+      ]
+    },
+    "heavy_door": {
+      "words": [
+        "front door",
+        "back door",
+        "opened the door",
+        "walked inside"
+      ]
+    },
+    "bottle_clink": {
+      "words": [
+        "milk bottle",
+        "glass jar",
+        "pickle jar",
+        "message in a bottle"
+      ]
+    },
+    "bottle_close": {
+      "words": [
+        "put the lid on",
+        "corked the bottle",
+        "closed the jar",
+        "thermos"
+      ]
+    },
+    "cork_screw": {
+      "words": [
+        "cheers",
+        "toast",
+        "clinked glasses",
+        "lemonade"
+      ]
+    },
+    "glass_clink": {
+      "words": [
+        "ice cubes",
+        "iced tea",
+        "cold drink",
+        "ice water"
+      ]
+    },
+    "pot_lid": {
+      "words": [
+        "pot lid",
+        "lifted the lid",
+        "soup pot",
+        "dutch oven"
+      ]
+    },
+    "paper_rip": {
+      "words": [
+        "ripped the paper",
+        "tore the paper",
+        "wrapping paper",
+        "unwrapped the gift",
+        "birthday present"
+      ]
+    },
+    "book_slam": {
+      "words": [
+        "closed the book",
+        "shut the book",
+        "storybook",
+        "spellbook",
+        "encyclopedia"
+      ]
+    },
+    "cloth_rustle": {
+      "words": [
+        "blanket",
+        "tucked into bed",
+        "cozy bed",
+        "pillow",
+        "pajamas",
+        "pyjamas"
+      ]
+    },
+    "beads_rattle": {
+      "words": [
+        "marbles",
+        "necklace",
+        "beads",
+        "pearls",
+        "bracelets"
+      ]
+    },
+    "water_plop": {
+      "words": [
+        "plop",
+        "plopped",
+        "dropped a pebble",
+        "tossed a stone",
+        "wishing well"
+      ]
+    },
+    "bubble_pop": {
+      "words": [
+        "blew bubbles",
+        "soap bubbles",
+        "bubble wand",
+        "fish tank"
+      ]
+    },
+    "baby_giggle": {
+      "words": [
+        "baby laughed",
+        "baby giggled",
+        "little baby",
+        "toddler"
+      ]
+    },
+    "baby_yawn": {
+      "words": [
+        "sleepy",
+        "getting sleepy",
+        "bedtime",
+        "rubbed his eyes",
+        "rubbed her eyes"
+      ]
+    },
+    "chuckle": {
+      "words": [
+        "chuckle",
+        "chuckled",
+        "belly laugh",
+        "ho ho ho"
+      ]
+    },
+    "silly_laugh": {
+      "words": [
+        "silly laugh",
+        "goofy laugh",
+        "jester",
+        "joker"
+      ]
+    },
+    "heartbeat_fast": {
+      "words": [
+        "heart raced",
+        "racing heart",
+        "nervous",
+        "tiptoed past",
+        "hide and seek"
+      ]
+    },
+    "snore_deep": {
+      "words": [
+        "grandpa snored",
+        "giant snored",
+        "hibernating",
+        "hibernate"
+      ]
+    },
+    "sneeze_big": {
+      "words": [
+        "big sneeze",
+        "caught a cold",
+        "pepper",
+        "dusty"
+      ]
+    },
+    "apple_crunch": {
+      "words": [
+        "cookie",
+        "cookies",
+        "biscuit",
+        "cracker",
+        "carrot",
+        "pretzel",
+        "chips"
+      ]
+    },
+    "slurp_drink": {
+      "words": [
+        "juice box",
+        "milkshake",
+        "straw",
+        "hot cocoa",
+        "hot chocolate"
+      ]
+    },
+    "harp": {
+      "words": [
+        "harp",
+        "played the harp",
+        "golden harp",
+        "angel",
+        "dreamland"
+      ]
+    },
+    "fireball": {
+      "words": [
+        "fireball",
+        "flame spell",
+        "meteor",
+        "shooting star"
+      ]
+    },
+    "ice_spell": {
+      "words": [
+        "ice spell",
+        "frost spell",
+        "snow queen",
+        "ice magic"
+      ]
+    },
+    "heal_spell": {
+      "words": [
+        "healing spell",
+        "magic potion",
+        "healed",
+        "elixir",
+        "magic glow"
+      ]
+    },
+    "magic_sparkle": {
+      "words": [
+        "pixie dust",
+        "magic dust",
+        "genie",
+        "magic lamp",
+        "three wishes"
+      ]
+    },
+    "sword_draw": {
+      "words": [
+        "drew his sword",
+        "drew her sword",
+        "excalibur",
+        "unsheathed"
+      ]
+    },
+    "sword_swing": {
+      "words": [
+        "swung his sword",
+        "swung her sword",
+        "pirate sword",
+        "cutlass"
+      ]
+    },
+    "dagger_slash": {
+      "words": [
+        "ninja",
+        "samurai",
+        "katana",
+        "ninja star"
+      ]
+    },
+    "chainmail": {
+      "words": [
+        "chainmail",
+        "suit of armor",
+        "tin man",
+        "shiny armor"
+      ]
+    },
+    "knight_armor": {
+      "words": [
+        "knight's helmet",
+        "visor",
+        "jousting",
+        "tournament"
+      ]
+    },
+    "werewolf": {
+      "words": [
+        "werewolf",
+        "full moon",
+        "wolfman"
+      ]
+    },
+    "ogre": {
+      "words": [
+        "grumpy ogre",
+        "bigfoot",
+        "yeti",
+        "sasquatch",
+        "abominable snowman"
+      ]
+    },
+    "shadow_wraith": {
+      "words": [
+        "wraith",
+        "shadow monster",
+        "boogeyman",
+        "bogeyman",
+        "banshee"
+      ]
+    },
+    "slime_bounce": {
+      "words": [
+        "jelly monster",
+        "blob",
+        "gloop",
+        "wobbly jelly"
+      ]
+    },
+    "goblin": {
+      "words": [
+        "goblin",
+        "gremlin",
+        "imp",
+        "leprechaun",
+        "gnome"
+      ]
+    },
+    "troll_roar": {
+      "words": [
+        "bridge troll",
+        "under the bridge",
+        "cyclops",
+        "minotaur"
+      ]
+    },
+    "giant_roar": {
+      "words": [
+        "kraken",
+        "sea monster",
+        "loch ness",
+        "leviathan"
+      ]
+    },
+    "gem_sparkle": {
+      "words": [
+        "diamond",
+        "ruby",
+        "emerald",
+        "crown",
+        "tiara",
+        "magic crystal"
+      ]
+    },
+    "coin_clink": {
+      "words": [
+        "gold coin",
+        "gold coins",
+        "doubloon",
+        "pirate gold",
+        "shiny penny"
+      ]
+    },
+    "arcade_coin": {
+      "words": [
+        "video game",
+        "arcade",
+        "high score",
+        "extra life"
+      ]
+    },
+    "powerup_retro": {
+      "words": [
+        "superpower",
+        "superhero",
+        "power up",
+        "magic mushroom",
+        "super speed"
+      ]
+    },
+    "game_over": {
+      "words": [
+        "game over",
+        "out of lives",
+        "try again"
+      ]
+    },
+    "pixel_boom": {
+      "words": [
+        "asteroid",
+        "space battle",
+        "comet",
+        "starship"
+      ]
+    },
+    "phaser": {
+      "words": [
+        "phaser",
+        "blaster",
+        "shrink ray",
+        "freeze ray"
+      ]
+    },
+    "space_jump": {
+      "words": [
+        "warp speed",
+        "hyperdrive",
+        "light speed",
+        "hyperspace"
+      ]
+    },
+    "space_alert": {
+      "words": [
+        "red alert",
+        "shields up",
+        "warning alarm",
+        "intruder alert"
+      ]
+    },
+    "cartoon_jump": {
+      "words": [
+        "pogo stick",
+        "hopped over",
+        "leaped over",
+        "super jump"
+      ]
+    },
+    "cartoon_bounce": {
+      "words": [
+        "bouncy ball",
+        "rubber ball",
+        "basketball",
+        "beach ball",
+        "bounced away"
+      ]
+    },
+    "lasso_swish": {
+      "words": [
+        "lasso",
+        "cowboy",
+        "cowgirl",
+        "rodeo",
+        "boomerang"
+      ]
+    },
+    "cape_swoosh": {
+      "words": [
+        "cape",
+        "magic cloak",
+        "invisibility cloak",
+        "magic carpet",
+        "flying carpet"
+      ]
+    },
+    "whip_crack": {
+      "words": [
+        "crack of the whip",
+        "snapped his fingers",
+        "snapped her fingers",
+        "karate chop"
+      ]
+    },
+    "magic_wand": {
+      "words": [
+        "made a wish",
+        "wishing star",
+        "fairy godmother",
+        "bibbidi"
+      ]
+    },
+    "crystal_chime": {
+      "words": [
+        "secret door",
+        "found a clue",
+        "solved the riddle",
+        "eureka",
+        "good idea",
+        "lightbulb"
+      ]
+    },
+    "potion_bubble": {
+      "words": [
+        "mermaid",
+        "mermaids",
+        "atlantis",
+        "sea witch",
+        "octopus"
+      ]
+    },
+    "boulder_roll": {
+      "words": [
+        "rolling boulder",
+        "giant boulder",
+        "statue moved",
+        "stone door"
+      ]
+    },
+    "stone_crumble": {
+      "words": [
+        "wall crumbled",
+        "tower fell",
+        "castle wall",
+        "brick wall",
+        "sandcastle"
+      ]
+    },
+    "branch_snap": {
+      "words": [
+        "twig snapped",
+        "branch snapped",
+        "stepped on a twig",
+        "tree fell"
+      ]
+    },
+    "laser_blast": {
+      "words": [
+        "lightsaber",
+        "energy sword",
+        "space blaster",
+        "photon"
+      ]
+    },
+    "ufo_hum": {
+      "words": [
+        "tractor beam",
+        "mothership",
+        "space invader",
+        "alien ship"
+      ]
+    },
+    "robot_talk": {
+      "words": [
+        "android",
+        "cyborg",
+        "astronaut",
+        "space robot",
+        "mechanical voice"
+      ]
+    },
+    "mystery_chime": {
+      "words": [
+        "mystery",
+        "detective",
+        "magnifying glass",
+        "secret map",
+        "riddle"
+      ]
+    }
+  },
+  "negations": [
+    "no",
+    "not",
+    "never",
+    "without",
+    "nobody",
+    "none",
+    "nothing",
+    "neither",
+    "nor",
+    "isn't",
+    "wasn't",
+    "weren't",
+    "aren't",
+    "didn't",
+    "doesn't",
+    "don't",
+    "won't",
+    "couldn't",
+    "can't",
+    "cannot",
+    "hasn't",
+    "haven't"
+  ],
   "notNegations": [],
-  "departures": ["away", "gone", "left", "leaving", "disappeared", "vanished", "hid", "hiding", "asleep", "sleeping", "slept", "quiet", "quietly", "silent", "silently", "went home", "said goodbye", "far", "escaped", "no longer", "anymore", "used to", "remember", "once saw", "stopped", "dreaming", "dreamed", "dreamt"],
-  "arrivals": ["came", "comes", "coming", "appeared", "appears", "jumped", "jumps", "leaped", "leapt", "chased", "chasing", "chases", "toward", "towards", "closer", "suddenly", "opened", "big", "huge", "giant", "loud", "loudly", "angry", "scary", "hungry", "attacked", "pounced", "here", "there was", "there is", "there lived", "lived", "saw", "see", "look", "looked", "said", "says", "shouted", "yelled", "called", "woke up", "wakes up", "started", "began", "out came", "popped out", "burst", "ran after", "running after", "behind you", "right behind", "walked in", "walked up", "sneaking up", "crept up", "it a", "it was a", "met", "meets", "found", "heard", "listen"],
-  "memories": ["remember", "remembered", "used to", "once saw", "dreamed of", "dreamt of", "dreaming of", "wished", "missed", "pretend", "imagine", "picture"],
-  "askBefore": ["what does", "what sound", "what noise", "how does"],
-  "askAfter": ["say", "sound", "noise", "go", "make"],
-  "blockers": ["duck down", "duck under", "duck behind", "snow white", "baseball bat"],
-  "stopWords": ["stopped", "stops", "ended", "is over", "was over", "no more", "went away", "cleared", "calmed down", "died down", "passed"],
-  "clearSkies": ["sun came out", "sun come out", "sunny", "rainbow", "sky cleared"],
-  "goodnight": ["the end", "good night", "goodnight", "sweet dreams", "fell fast asleep", "fast asleep"],
+  "departures": [
+    "away",
+    "gone",
+    "left",
+    "leaving",
+    "disappeared",
+    "vanished",
+    "hid",
+    "hiding",
+    "asleep",
+    "sleeping",
+    "slept",
+    "quiet",
+    "quietly",
+    "silent",
+    "silently",
+    "went home",
+    "said goodbye",
+    "far",
+    "escaped",
+    "no longer",
+    "anymore",
+    "used to",
+    "remember",
+    "once saw",
+    "stopped",
+    "dreaming",
+    "dreamed",
+    "dreamt"
+  ],
+  "arrivals": [
+    "came",
+    "comes",
+    "coming",
+    "appeared",
+    "appears",
+    "jumped",
+    "jumps",
+    "leaped",
+    "leapt",
+    "chased",
+    "chasing",
+    "chases",
+    "toward",
+    "towards",
+    "closer",
+    "suddenly",
+    "opened",
+    "big",
+    "huge",
+    "giant",
+    "loud",
+    "loudly",
+    "angry",
+    "scary",
+    "hungry",
+    "attacked",
+    "pounced",
+    "here",
+    "there was",
+    "there is",
+    "there lived",
+    "lived",
+    "saw",
+    "see",
+    "look",
+    "looked",
+    "said",
+    "says",
+    "shouted",
+    "yelled",
+    "called",
+    "woke up",
+    "wakes up",
+    "started",
+    "began",
+    "out came",
+    "popped out",
+    "burst",
+    "ran after",
+    "running after",
+    "behind you",
+    "right behind",
+    "walked in",
+    "walked up",
+    "sneaking up",
+    "crept up",
+    "it a",
+    "it was a",
+    "met",
+    "meets",
+    "found",
+    "heard",
+    "listen"
+  ],
+  "memories": [
+    "remember",
+    "remembered",
+    "used to",
+    "once saw",
+    "dreamed of",
+    "dreamt of",
+    "dreaming of",
+    "wished",
+    "missed",
+    "pretend",
+    "imagine",
+    "picture"
+  ],
+  "askBefore": [
+    "what does",
+    "what sound",
+    "what noise",
+    "how does"
+  ],
+  "askAfter": [
+    "say",
+    "sound",
+    "noise",
+    "go",
+    "make"
+  ],
+  "blockers": [
+    "duck down",
+    "duck under",
+    "duck behind",
+    "snow white",
+    "baseball bat"
+  ],
+  "stopWords": [
+    "stopped",
+    "stops",
+    "ended",
+    "is over",
+    "was over",
+    "no more",
+    "went away",
+    "cleared",
+    "calmed down",
+    "died down",
+    "passed"
+  ],
+  "clearSkies": [
+    "sun came out",
+    "sun come out",
+    "sunny",
+    "rainbow",
+    "sky cleared"
+  ],
+  "goodnight": [
+    "the end",
+    "good night",
+    "goodnight",
+    "sweet dreams",
+    "fell fast asleep",
+    "fast asleep"
+  ],
   "notGoodnight": []
 }

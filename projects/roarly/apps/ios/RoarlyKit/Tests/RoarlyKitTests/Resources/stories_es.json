@@ -48,6 +48,12 @@
     {"lines": ["Empezó a caer nieve."], "play": ["wind"]},
     {"lines": ["De repente apareció un pavo real."], "play": ["peacock"], "never": ["turkey"]},
     {"lines": ["El pirata disparó el cañón."], "play": ["cannon"]},
-    {"lines": ["El loro gritó en la selva."], "play": ["parrot"]}
+    {"lines": ["El loro gritó en la selva."], "play": ["parrot"]},
+    {"lines": ["De repente apareció un oso polar enorme."], "play": ["polar_bear"], "never": ["bear"]},
+    {"lines": ["De repente el volcán entró en erupción."], "play": ["volcano"]},
+    {"lines": ["El caballero levantó su escudo."], "suggest": ["shield"]},
+    {"lines": ["El unicornio llegó al prado."], "play": ["unicorn", "meadow"]},
+    {"lines": ["De repente apareció un conejito en el jardín."], "play": ["gerbil", "park_birds"]},
+    {"lines": ["De pronto cayó una bola de fuego."], "play": ["fireball"]}
   ]
 }

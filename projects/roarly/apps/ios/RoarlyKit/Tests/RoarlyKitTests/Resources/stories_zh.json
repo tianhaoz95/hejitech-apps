@@ -52,6 +52,12 @@
     {"lines": ["外面下雪了。"], "suggest": ["wind"]},
     {"lines": ["一只大河马从河里钻出来了！"], "play": ["hippo"], "never": ["horse"]},
     {"lines": ["小松鼠跳上了树枝。"], "play": ["squirrel"], "never": ["mouse"]},
-    {"lines": ["海盗船开炮了，轰隆！"], "play": ["cannon"]}
+    {"lines": ["海盗船开炮了，轰隆！"], "play": ["cannon"]},
+    {"lines": ["一只大北极熊突然出现了！"], "play": ["polar_bear"], "never": ["bear"]},
+    {"lines": ["墙上突然出现一只小壁虎。"], "play": ["gecko"], "never": ["tiger"]},
+    {"lines": ["突然火山爆发了！"], "play": ["volcano"]},
+    {"lines": ["独角兽跳了出来！"], "play": ["unicorn"]},
+    {"lines": ["一只小白兔突然跳进了花园！"], "play": ["gerbil", "park_birds"]},
+    {"lines": ["突然一个大火球飞了过来！"], "play": ["fireball"]}
   ]
 }
