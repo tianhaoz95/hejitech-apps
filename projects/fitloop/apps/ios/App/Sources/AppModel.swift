@@ -21,6 +21,15 @@ final class AppModel {
     /// The workout open in the player (its ref), and the Watch's latest heart rate.
     var activeWorkout: String?
     var heartRate: Int?
+    /// When the open workout started, its kind and title (for Health and the Live Activity).
+    private(set) var workoutStarted: Date?
+    private var workoutKind = "strength"
+    private var workoutTitle = ""
+    /// The workout just finished, waiting for the watch's summary (heart rate, time) for its check-in.
+    private var finished: (date: String, ref: String, status: String, at: Date)?
+    /// The last workout saved to Health, for the player's confirmation.
+    var savedToHealth: String?
+    let phoneWorkouts = PhoneWorkoutSaver()
 
     private(set) var backend: Backend
     let health = HealthSync()
@@ -64,7 +73,7 @@ final class AppModel {
         #endif
         watch.onHeartRate = { [weak self] hr in Task { @MainActor in await self?.heartRate(hr) } }
         watch.onSetDone = { [weak self] in Task { @MainActor in self?.watchSetDone?() } }
-        watch.onEnded = { [weak self] in Task { @MainActor in self?.heartRate = nil } }
+        watch.onEnded = { [weak self] summary in Task { @MainActor in await self?.watchEnded(summary) } }
     }
 
     /// The workout player registers what "set done" on the Watch means.
@@ -236,9 +245,38 @@ final class AppModel {
 
     // MARK: workouts, the Watch and live heart rate
 
-    func beginWorkout(_ ref: String) {
+    func beginWorkout(_ ref: String, kind: String, title: String) {
+        if activeWorkout != ref { workoutStarted = Date() }
         activeWorkout = ref
-        watch.startOnWatch()
+        workoutKind = kind
+        workoutTitle = title
+        savedToHealth = nil
+        watch.startOnWatch(kind: kind)
+    }
+
+    /// The workout's check-in, the end of the watch session (which saves it to Health with heart
+    /// rate) or, with no watch, the iPhone saving it to Health itself.
+    func finishWorkout(_ ref: String, status: String) async {
+        let start = workoutStarted ?? Date()
+        let elapsed = Int(Date().timeIntervalSince(start))
+        let usesWatch = watch.available
+        await checkin(NewCheckin(date: date, ref: ref, kind: "workout", status: status, data: CheckinData(durationSec: elapsed, avgHr: heartRate)))
+        finished = (date, ref, status, Date())
+        let (kind, title) = (workoutKind, workoutTitle)
+        await endWorkout()
+        if !usesWatch, await phoneWorkouts.save(kind: kind, title: title, ref: ref, start: start, end: Date()) { savedToHealth = title }
+    }
+
+    /// The watch's numbers for the workout that just ended go in a second workout check-in (later
+    /// check-ins win), so the agent sees average and top heart rate and the real time.
+    private func watchEnded(_ summary: WatchWorkoutSummary?) async {
+        heartRate = nil
+        guard let summary, let f = finished, summary.ref == f.ref, Date().timeIntervalSince(f.at) < 30 * 60 else { return }
+        finished = nil
+        if summary.savedToHealth { savedToHealth = workoutTitle.isEmpty ? "Workout" : workoutTitle }
+        guard summary.avgHr != nil || summary.maxHr != nil else { return }
+        await checkin(NewCheckin(date: f.date, ref: f.ref, kind: "workout", status: f.status,
+                                 data: CheckinData(durationSec: summary.durationSec, avgHr: summary.avgHr, maxHr: summary.maxHr), note: nil))
     }
 
     func updateWatch(title: String, exercise: String, setLine: String, restUntil: Date?, progress: String) {
@@ -246,6 +284,7 @@ final class AppModel {
         watch.send(context: [
             WatchMessage.workoutRef: ref, WatchMessage.workoutTitle: title, WatchMessage.exerciseName: exercise,
             WatchMessage.setLine: setLine, WatchMessage.restUntil: restUntil?.timeIntervalSince1970 ?? 0, WatchMessage.progress: progress,
+            WatchMessage.workoutKind: workoutKind, WatchMessage.saveToHealth: PhoneWorkoutSaver.enabled,
         ])
     }
 
@@ -265,6 +304,7 @@ final class AppModel {
 
     func endWorkout() async {
         activeWorkout = nil
+        workoutStarted = nil
         heartRate = nil
         watch.send(context: [WatchMessage.workoutRef: ""])
         if settings.vitals.liveHr { try? await backend.live(hr: nil, workoutRef: nil) }

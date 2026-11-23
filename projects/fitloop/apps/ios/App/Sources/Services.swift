@@ -84,12 +84,46 @@ final class HealthSync: @unchecked Sendable {
     }
 }
 
+/// Saves a workout done on the iPhone alone (no watch running it) to Health: its type from the
+/// plan, start and end, the plan's title. The watch saves its own (with heart rate and energy).
+final class PhoneWorkoutSaver: @unchecked Sendable {
+    private let store = HKHealthStore()
+    static let enabledKey = "saveWorkoutsToHealth"
+    static var enabled: Bool { UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true }
+
+    func save(kind: String, title: String, ref: String, start: Date, end: Date) async -> Bool {
+        guard HKHealthStore.isHealthDataAvailable(), Self.enabled, end.timeIntervalSince(start) >= 60 else { return false }
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-noHealth") { return false }
+        #endif
+        do {
+            try await store.requestAuthorization(toShare: [HKObjectType.workoutType()], read: [])
+            guard store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized else { return false }
+            let b = HKWorkoutBuilder(healthStore: store, configuration: WorkoutKind.configuration(kind), device: .local())
+            try await b.beginCollection(at: start)
+            try await b.endCollection(at: end)
+            try await b.addMetadata([HKMetadataKeyIndoorWorkout: true, WorkoutKind.titleKey: title, WorkoutKind.refKey: ref])
+            return try await b.finishWorkout() != nil
+        } catch { return false }
+    }
+}
+
+/// What the watch measured during a workout, sent when it ends.
+struct WatchWorkoutSummary: Sendable {
+    var ref: String
+    var avgHr: Int?
+    var maxHr: Int?
+    var durationSec: Int?
+    var energyKcal: Int?
+    var savedToHealth: Bool
+}
+
 /// The iPhone's side of WatchConnectivity: tells the Watch which workout is open (it runs the
 /// workout session that measures heart rate) and hears back heart rate, "set done" and the end.
 final class WatchLink: NSObject, WCSessionDelegate, @unchecked Sendable {
     var onHeartRate: ((Int) -> Void)?
     var onSetDone: (() -> Void)?
-    var onEnded: (() -> Void)?
+    var onEnded: ((WatchWorkoutSummary?) -> Void)?
     private let store = HKHealthStore()
 
     func activate() {
@@ -101,12 +135,9 @@ final class WatchLink: NSObject, WCSessionDelegate, @unchecked Sendable {
     var available: Bool { WCSession.isSupported() && WCSession.default.isPaired && WCSession.default.isWatchAppInstalled }
 
     /// Launches the Watch app into a workout (it starts the HKWorkoutSession that measures heart rate).
-    func startOnWatch() {
+    func startOnWatch(kind: String) {
         guard available else { return }
-        let config = HKWorkoutConfiguration()
-        config.activityType = .traditionalStrengthTraining
-        config.locationType = .indoor
-        store.startWatchApp(with: config) { _, _ in }
+        store.startWatchApp(with: WorkoutKind.configuration(kind)) { _, _ in }
     }
 
     func send(context: [String: Any]) {
@@ -135,9 +166,18 @@ final class WatchLink: NSObject, WCSessionDelegate, @unchecked Sendable {
         switch message[WatchMessage.kind] as? String {
         case WatchMessage.kindHeartRate: if let hr = message[WatchMessage.hr] as? Int { onHeartRate?(hr) }
         case WatchMessage.kindSetDone: onSetDone?()
-        case WatchMessage.kindEnded: onEnded?()
+        case WatchMessage.kindEnded: onEnded?(nil) // a watch build from before the summary
         default: break
         }
+    }
+
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        guard userInfo[WatchMessage.kind] as? String == WatchMessage.kindEnded else { return }
+        onEnded?(WatchWorkoutSummary(
+            ref: userInfo[WatchMessage.endedRef] as? String ?? "", avgHr: userInfo[WatchMessage.avgHr] as? Int,
+            maxHr: userInfo[WatchMessage.maxHr] as? Int, durationSec: userInfo[WatchMessage.durationSec] as? Int,
+            energyKcal: userInfo[WatchMessage.energyKcal] as? Int, savedToHealth: userInfo[WatchMessage.savedToHealth] as? Bool ?? false
+        ))
     }
 
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}

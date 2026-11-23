@@ -42,6 +42,11 @@ final class WorkoutManager: NSObject {
     var restUntil: Date?
     var heartRate: Int?
     var running = false
+    /// The workout the phone has open (its ref and kind), and the last one saved to Health.
+    private var ref = ""
+    private var kind = "strength"
+    private var saveToHealth = true
+    var lastSaved: String?
     /// Today's progress from the phone (also what the watch face complication shows).
     var day: DayProgress? = DayProgressStore.load()
     /// The phone has a workout open.
@@ -58,10 +63,12 @@ final class WorkoutManager: NSObject {
         WCSession.default.activate()
     }
 
-    func start(_ config: HKWorkoutConfiguration = { let c = HKWorkoutConfiguration(); c.activityType = .traditionalStrengthTraining; c.locationType = .indoor; return c }()) {
+    func start(_ config: HKWorkoutConfiguration? = nil) {
         guard session == nil else { return }
+        let config = config ?? WorkoutKind.configuration(kind)
         Task {
-            let share: Set<HKSampleType> = [HKObjectType.workoutType()]
+            // Sharing heart rate and energy lets the builder save them with the workout in Health.
+            let share: Set<HKSampleType> = [HKObjectType.workoutType(), HKQuantityType(.heartRate), HKQuantityType(.activeEnergyBurned)]
             let read: Set<HKObjectType> = [HKQuantityType(.heartRate), HKQuantityType(.activeEnergyBurned)]
             try? await store.requestAuthorization(toShare: share, read: read)
             do {
@@ -80,18 +87,36 @@ final class WorkoutManager: NSObject {
         }
     }
 
+    /// Ends the session and saves the workout to Health with what the plan called it, then tells
+    /// the phone what was measured (average and top heart rate, time, energy) for the check-in.
     func end() {
         guard let s = session, let b = builder else { return }
         s.end()
-        Task {
-            try? await b.endCollection(at: Date())
-            _ = try? await b.finishWorkout()
-        }
+        let (title, ref, save) = (self.title, self.ref, saveToHealth)
         session = nil
         builder = nil
         running = false
         heartRate = nil
-        send([WatchMessage.kind: WatchMessage.kindEnded])
+        Task {
+            let endDate = Date()
+            try? await b.endCollection(at: endDate)
+            var meta: [String: Any] = [HKMetadataKeyIndoorWorkout: true]
+            if !title.isEmpty { meta[WorkoutKind.titleKey] = title }
+            if !ref.isEmpty { meta[WorkoutKind.refKey] = ref }
+            try? await b.addMetadata(meta)
+            let workout = save ? try? await b.finishWorkout() : nil
+            if !save { b.discardWorkout() }
+            let bpm = HKUnit.count().unitDivided(by: .minute())
+            let hr = b.statistics(for: HKQuantityType(.heartRate))
+            var summary: [String: Any] = [WatchMessage.kind: WatchMessage.kindEnded, WatchMessage.endedRef: ref, WatchMessage.savedToHealth: workout != nil]
+            if let v = hr?.averageQuantity()?.doubleValue(for: bpm) { summary[WatchMessage.avgHr] = Int(v.rounded()) }
+            if let v = hr?.maximumQuantity()?.doubleValue(for: bpm) { summary[WatchMessage.maxHr] = Int(v.rounded()) }
+            if let v = b.statistics(for: HKQuantityType(.activeEnergyBurned))?.sumQuantity()?.doubleValue(for: .kilocalorie()) { summary[WatchMessage.energyKcal] = Int(v.rounded()) }
+            summary[WatchMessage.durationSec] = Int(b.elapsedTime(at: endDate).rounded())
+            if workout != nil { lastSaved = title.isEmpty ? "Workout" : title }
+            // User info is queued and delivered even if the phone app is in the background.
+            if WCSession.default.activationState == .activated { WCSession.default.transferUserInfo(summary) }
+        }
     }
 
     #if DEBUG
@@ -112,6 +137,16 @@ final class WorkoutManager: NSObject {
         send([WatchMessage.kind: WatchMessage.kindSetDone])
     }
 
+    /// "3/13" → 3.
+    private static func setsDone(_ progress: String) -> Int { progress.split(separator: "/").first.flatMap { Int($0) } ?? 0 }
+
+    /// A marker in the Health workout at each set, so the sets show on its timeline.
+    private func markSet() {
+        guard let b = builder else { return }
+        let now = Date()
+        b.addWorkoutEvents([HKWorkoutEvent(type: .marker, dateInterval: DateInterval(start: now, duration: 0), metadata: nil)]) { _, _ in }
+    }
+
     fileprivate func received(_ hr: Double) {
         let bpm = Int(hr.rounded())
         heartRate = bpm
@@ -130,10 +165,17 @@ final class WorkoutManager: NSObject {
             if running { end() }
             return
         }
+        let progressBefore = progress
+        self.ref = ref
+        kind = context[WatchMessage.workoutKind] as? String ?? kind
+        saveToHealth = context[WatchMessage.saveToHealth] as? Bool ?? true
         title = context[WatchMessage.workoutTitle] as? String ?? ""
         exercise = context[WatchMessage.exerciseName] as? String ?? ""
         setLine = context[WatchMessage.setLine] as? String ?? ""
         progress = context[WatchMessage.progress] as? String ?? ""
+        // A set checked off on the phone moves the count: mark it in the Health workout too.
+        // (Sets done on the watch come back this way too, so each set is marked once.)
+        if running, Self.setsDone(progress) > Self.setsDone(progressBefore), !progressBefore.isEmpty { markSet() }
         let rest = context[WatchMessage.restUntil] as? Double ?? 0
         let until = rest > 0 ? Date(timeIntervalSince1970: rest) : nil
         if until != restUntil, until != nil { scheduleRestEndHaptic(until!) }
@@ -219,6 +261,7 @@ struct WatchHome: View {
                         }
                         Text("Open a workout on your iPhone; it shows up here with your heart rate.").font(.footnote).foregroundStyle(.secondary)
                         if w.running, let hr = w.heartRate { Label("\(hr)", systemImage: "heart.fill").foregroundStyle(.red) }
+                        if let saved = w.lastSaved { Label("\(saved) saved to Health", systemImage: "checkmark.circle").font(.caption2).foregroundStyle(.green) }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

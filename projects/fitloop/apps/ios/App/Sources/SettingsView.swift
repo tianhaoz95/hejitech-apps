@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var saved = true
     @State private var confirmDelete = false
     @State private var whatsNew = false
+    @AppStorage(PhoneWorkoutSaver.enabledKey) private var saveWorkouts = true
 
     var body: some View {
         NavigationStack {
@@ -21,7 +22,8 @@ struct SettingsView: View {
                     Toggle("Daily Apple Health summary", isOn: $draft.vitals.healthDaily)
                     Toggle("Manual entries", isOn: $draft.vitals.manual)
                     Toggle("Progress photos", isOn: $draft.vitals.photos)
-                } header: { Text("Data FitLoop keeps") } footer: { Text("Heart rate comes from your Apple Watch during a workout; Apple Health adds weight, resting HR, HRV, sleep, steps and active energy once a day. Never used for advertising, marketing or data mining.") }
+                    Toggle("Save workouts to Apple Health", isOn: $saveWorkouts)
+                } header: { Text("Data FitLoop keeps") } footer: { Text("Heart rate comes from your Apple Watch during a workout; Apple Health adds weight, resting HR, HRV, sleep, steps and active energy once a day. Finished workouts are saved to Health as their kind (strength, cardio, mobility…), with heart rate and energy when your watch ran them. Never used for advertising, marketing or data mining.") }
                 Section {
                     Toggle("Check-ins", isOn: $draft.agentAccess.checkins)
                     Toggle("Feedback notes", isOn: $draft.agentAccess.feedback)

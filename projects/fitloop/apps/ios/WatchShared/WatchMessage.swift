@@ -3,7 +3,8 @@ import Foundation
 /// What the iPhone and the Watch say to each other over WatchConnectivity (compiled into both).
 ///
 ///   phone → watch  application context: the open workout (or none) and where it is
-///   watch → phone  message: heart rate samples, "set done", "workout ended"
+///   watch → phone  message: heart rate samples, "set done"; user info: "workout ended" with what
+///                  the watch measured (it must arrive even if the phone app isn't in front)
 enum WatchMessage {
     // Application context keys (phone → watch).
     static let workoutRef = "workoutRef"
@@ -12,6 +13,10 @@ enum WatchMessage {
     static let setLine = "setLine"
     static let restUntil = "restUntil"
     static let progress = "progress"
+    /// The plan's workout kind (strength, cardio…), so Health gets the right workout type.
+    static let workoutKind = "workoutKind"
+    /// The iPhone's "Save workouts to Health" switch (false: the watch discards the workout).
+    static let saveToHealth = "saveToHealth"
 
     // Message keys (watch → phone).
     static let kind = "kind"
@@ -19,6 +24,14 @@ enum WatchMessage {
     static let kindHeartRate = "hr"
     static let kindSetDone = "setDone"
     static let kindEnded = "ended"
+
+    // The summary sent with kindEnded (what the watch measured; any may be missing).
+    static let endedRef = "ref"
+    static let avgHr = "avgHr"
+    static let maxHr = "maxHr"
+    static let durationSec = "durationSec"
+    static let energyKcal = "energyKcal"
+    static let savedToHealth = "savedToHealth"
 }
 
 /// Today's progress, sent phone → watch as user info and kept for the watch face complication.

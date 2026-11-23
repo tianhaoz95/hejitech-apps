@@ -60,7 +60,7 @@ struct WorkoutPlayer: View {
             }
             .onAppear {
                 if let n = state.next { ex = n.exercise; set = n.set }
-                model.beginWorkout(state.ref)
+                model.beginWorkout(state.ref, kind: state.workout.kind, title: state.workout.title)
                 model.watchSetDone = { setDone() }
                 pushToWatch()
             }
@@ -203,8 +203,7 @@ struct WorkoutPlayer: View {
     }
 
     private func finish(_ status: String) async {
-        await model.checkin(NewCheckin(date: model.date, ref: state.ref, kind: "workout", status: status, data: model.heartRate.map { CheckinData(avgHr: $0) }))
-        await model.endWorkout()
+        await model.finishWorkout(state.ref, status: status)
         dismiss()
     }
 
