@@ -66,7 +66,8 @@ final class LongMemoTests: XCTestCase {
                 return ##"{"title": "Q4 roadmap", "summary": "The whole memo.", "tags": ["#q4"]}"##
             }
             let part = user.contains("part 1 of") ? 1 : 2
-            return ##"{"title": "Part \##(part)", "summary": "Summary \##(part).", "\##(checklistKey)": ["Shared item", "Item \##(part)"], "tags": ["#p\##(part)"]}"##
+            // Items made of the transcript's words: a rewrite that isn't is thrown away (isGrounded).
+            return ##"{"title": "Part \##(part)", "summary": "Summary \##(part).", "\##(checklistKey)": ["Word10x1 Word10x2", "Word\##(part)x5 Word\##(part)x6"], "tags": ["#p\##(part)"]}"##
         }
         let result = try await LLMCopywriterService().process(transcript: sentences(200), mode: .full, dictionary: [], templates: [template], engine: engine)
 
@@ -75,7 +76,7 @@ final class LongMemoTests: XCTestCase {
         XCTAssertEqual(result.parts.map(\.summary), ["Summary 1.", "Summary 2."])
         XCTAssertEqual(result.parts.first?.startFraction, 0)
         let items = result.sections.first { $0.style == .checklist }?.items
-        XCTAssertEqual(items, ["Shared item", "Item 1", "Item 2"])
+        XCTAssertEqual(items, ["Word10x1 Word10x2", "Word1x5 Word1x6", "Word2x5 Word2x6"])
         let userPrompts = await calls.all
         XCTAssertEqual(userPrompts.count, 3, "two parts + one overview; a single template needs no classification")
     }

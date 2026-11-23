@@ -595,7 +595,12 @@ public final class NoteProcessingPipeline: ObservableObject {
 
         do {
             ProcessingCheckpoint.report(step: LLMCopywriterService.structureStep, done: 0, total: 1)
-            let full = try await llmService.processTranscript(transcript, mode: .full, dictionary: dictionary, templates: templates)
+            let full = try await llmService.processTranscript(
+                Self.structuredRewriteInput(cleanedText: note.lightCleanedNote, transcript: transcript),
+                mode: .full,
+                dictionary: [],
+                templates: templates
+            )
             // A template never renames a note, and keeps a summary written in its own step.
             if !keepsSummary { note.summary = full.summary }
             note.tags = full.tags
@@ -868,6 +873,19 @@ public final class NoteProcessingPipeline: ObservableObject {
                 await process(note: current)
             }
         }
+    }
+
+    /// What the structured rewrite reads: the note's cleaned text, which already spells the
+    /// personal dictionary's terms and has the fillers out, so it goes in without the dictionary
+    /// (like the brief). Given the raw transcript with the dictionary's terms in front of it, Lite
+    /// wrote a Chinese errand memo up as a note about a dictionary term ("Weehour is a dictionary
+    /// term, but it's not clear what it refers to"). The transcript only when there's no cleaned
+    /// text. `internal` for tests.
+    static func structuredRewriteInput(cleanedText: String?, transcript: String) -> String {
+        if let cleanedText, !cleanedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return cleanedText
+        }
+        return transcript
     }
 
     static func seconds(since start: ContinuousClock.Instant) -> Double {

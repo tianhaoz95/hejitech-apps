@@ -188,11 +188,15 @@ public extension LLMCopywriterServiceProtocol {
 public enum LLMCopywriterError: LocalizedError {
     case unparsableResponse
     case aiEngineUnavailable
+    /// A structured rewrite that says next to nothing the memo says (`LLMCopywriterService.isGrounded`).
+    case ungroundedResponse
 
     public var errorDescription: String? {
         switch self {
         case .unparsableResponse:
             return "On-device model response could not be parsed as JSON."
+        case .ungroundedResponse:
+            return "The structured note didn't match what you said, so it wasn't kept. Your cleaned text is unchanged."
         case .aiEngineUnavailable:
             return "AI engine not available. Your transcript is saved in the Transcript tab."
         }
@@ -272,14 +276,18 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
 
             // 3. MLX: Flash when it's the one in use, otherwise the bundled Lite -- the user's pick,
             //    and the fallback wherever Apple Intelligence isn't available or failed.
+            var lastError: Error?
             do {
                 return try await processWithOnDeviceLLM(transcript: trimmed, mode: mode, dictionary: dictionary, templates: templates)
             } catch {
+                lastError = error
                 print("[LLMCopywriterService] On-device MLX model failed: \(error)")
             }
 
             // 4. No rule-based fallback: its output was rarely worth reading over the raw
-            //    transcript, which the caller keeps.
+            //    transcript, which the caller keeps. A model that ran but wrote about something
+            //    else says so, rather than that no engine ran.
+            if case LLMCopywriterError.ungroundedResponse? = lastError { throw LLMCopywriterError.ungroundedResponse }
             throw LLMCopywriterError.aiEngineUnavailable
         }()
 
@@ -759,10 +767,14 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         switch mode {
         case .full:
             let parts = Self.splitIntoParts(transcript, threshold: Self.longTranscriptWordThreshold, target: Self.longMemoPartWordTarget, overlap: true)
-            if parts.count > 1 {
-                return try await processLongFull(parts: parts, transcript: transcript, dictionary: dictionary, templates: templates, engine: engine)
+            let result = parts.count > 1
+                ? try await processLongFull(parts: parts, transcript: transcript, dictionary: dictionary, templates: templates, engine: engine)
+                : try await processFull(transcript: transcript, dictionary: dictionary, templates: templates, engine: engine)
+            guard Self.isGrounded(result, in: transcript) else {
+                print("[LLMCopywriterService] Structured rewrite (\(engine.label)) shares too little with the memo; not kept.")
+                throw LLMCopywriterError.ungroundedResponse
             }
-            return try await processFull(transcript: transcript, dictionary: dictionary, templates: templates, engine: engine)
+            return result
         case .light:
             // No overlap: the parts' corrected texts are joined back into one text.
             let parts = Self.splitIntoParts(transcript, threshold: Self.lightTranscriptWordThreshold, target: Self.lightPartWordTarget, overlap: false)
@@ -826,7 +838,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         let generationRaw = try await measured("Write note", into: &timings) {
             try await engine.generate(
                 buildGenerationSystemPrompt(template: chosenTemplate, dictionary: dictionary),
-                transcriptUserPrompt(transcript, dictionary: dictionary),
+                generationUserPrompt(transcript, dictionary: dictionary),
                 1024
             )
         }
@@ -1056,7 +1068,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
     /// only what this part says instead of inventing a whole-memo framing. `internal` for tests.
     func longMemoPartUserPrompt(_ text: String, index: Int, count: Int, dictionary: [DictionaryEntry]) -> String {
         "This is part \(index + 1) of \(count) of one long voice memo. Extract only what this part says; "
-            + "the other parts are handled separately.\n\n" + transcriptUserPrompt(text, dictionary: dictionary)
+            + "the other parts are handled separately.\n\n" + generationUserPrompt(text, dictionary: dictionary)
     }
 
     /// System prompt for the last call on a long memo: title, summary and tags for the whole memo
@@ -1068,7 +1080,7 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         ONLY one valid JSON object -- no markdown code fences, no commentary before or after -- \
         using exactly these keys: "title" (string, 8 words or fewer, about the whole memo), \
         "summary" (one or two sentences covering the whole memo, not just its start), "tags" \
-        (array of short hashtags starting with #).\(dictionaryInstructionBlock(dictionary))
+        (array of short hashtags starting with #). \(Self.sameLanguageRule)\(dictionaryInstructionBlock(dictionary))
         """
     }
 
@@ -1198,9 +1210,14 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         words or fewer), "summary" (one sentence string), \(sectionLines), "tags" (array of short \
         hashtags starting with #). Use an empty array or empty string for any category with \
         nothing to report. Fix grammar and remove filler words in every \
-        string.\(dictionaryInstructionBlock(dictionary))
+        string. \(Self.sameLanguageRule)\(dictionaryInstructionBlock(dictionary))
         """
     }
+
+    /// The structured prompts' language rule. Asked in English with nothing about language, Lite
+    /// wrote a Chinese memo's structured note in English (and about something else entirely).
+    /// No example language named: a small model copies an example.
+    static let sameLanguageRule = "Write every string in the language the transcript is in; never translate it."
 
     /// System prompt for the `.light` proofread (Apple Intelligence and MLX). `internal` for
     /// unit tests and the prompt export the LLM eval reads (`evals/llm`).
@@ -1531,6 +1548,82 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         return String(text[firstBrace...lastBrace])
     }
 
+    // MARK: - Grounding
+
+    /// Least share of a structured rewrite's words (its sections and summary) that must also be
+    /// in the memo. A faithful rewrite reuses most of the memo's words; the rewrite that described
+    /// a dictionary term instead of a Chinese errand memo shared none. Calibrated on Lite's eval
+    /// outputs (`evals/llm`, `grounding` check, same rule in `checks.py`).
+    static let minGroundedShare = 0.3
+
+    /// Fewer content words than this and there's too little to judge (an empty template).
+    static let minGroundingWords = 4
+
+    /// Whether a structured rewrite is about the memo it was written from. `internal` for tests.
+    static func isGrounded(_ result: LLMProcessingResult, in source: String) -> Bool {
+        let written = ([result.summary] + result.sections.flatMap { $0.items }).joined(separator: "\n")
+        guard let share = groundedShare(of: written, in: source) else { return true }
+        return share >= minGroundedShare
+    }
+
+    /// Share of `text`'s content words also found in `source`, or nil when `text` has fewer than
+    /// `minGroundingWords`. Words are compared by their first 6 letters (so "deploying" matches
+    /// "deploy"); Chinese, Japanese and Korean, written without spaces, by pairs of characters.
+    static func groundedShare(of text: String, in source: String) -> Double? {
+        let written = groundingTokens(text)
+        guard written.count >= minGroundingWords else { return nil }
+        let available = groundingTokens(source)
+        return Double(written.intersection(available).count) / Double(written.count)
+    }
+
+    static func groundingTokens(_ text: String) -> Set<String> {
+        var tokens = Set<String>()
+        var run: [Character] = []
+        var word = ""
+        func flushRun() {
+            if run.count == 1 {
+                tokens.insert(String(run))
+            } else if run.count > 1 {
+                for index in 0..<(run.count - 1) { tokens.insert(String(run[index...index + 1])) }
+            }
+            run = []
+        }
+        func flushWord() {
+            let lowered = word.lowercased()
+            if lowered.count >= 3, !groundingStopWords.contains(lowered) { tokens.insert(String(lowered.prefix(6))) }
+            word = ""
+        }
+        for character in text {
+            if isCJK(character) {
+                flushWord()
+                run.append(character)
+            } else if character.isLetter || character.isNumber {
+                flushRun()
+                word.append(character)
+            } else {
+                flushRun()
+                flushWord()
+            }
+        }
+        flushRun()
+        flushWord()
+        return tokens
+    }
+
+    private static func isCJK(_ character: Character) -> Bool {
+        guard let scalar = character.unicodeScalars.first?.value else { return false }
+        return (0x4E00...0x9FFF).contains(scalar) || (0x3400...0x4DBF).contains(scalar)
+            || (0x3040...0x30FF).contains(scalar) || (0xAC00...0xD7AF).contains(scalar)
+    }
+
+    private static let groundingStopWords: Set<String> = [
+        "the", "and", "for", "that", "this", "with", "are", "was", "were", "but", "not", "you",
+        "your", "have", "has", "had", "will", "can", "from", "they", "them", "its", "our", "all",
+        "any", "should", "would", "could", "need", "needs", "also", "then", "there", "their",
+        "about", "into", "some", "what", "when", "which", "who", "been", "being", "more", "make",
+        "get", "use", "one", "two", "out", "how", "it's", "i'm", "we're", "don't"
+    ]
+
     // MARK: - Personal Dictionary Prompt Injection
 
     /// Smaller than `ASRService.maxVocabularyTerms` since this string enters a small on-device
@@ -1581,6 +1674,14 @@ public final class LLMCopywriterService: LLMCopywriterServiceProtocol, @unchecke
         guard !dictionary.isEmpty else { return transcript }
         let terms = dictionary.prefix(Self.maxDictionaryTermsInPrompt).map(\.term).joined(separator: ", ")
         return "Dictionary terms (anything that sounds like one is that term): \(terms)\n\nTranscript:\n\(transcript)"
+    }
+
+    /// The user message of a structured rewrite: `transcriptUserPrompt` followed by the language
+    /// rule. Next to the memo, Lite kept a Chinese or Japanese memo's language in 22 of 24 samples;
+    /// with the rule only in the system prompt, 18 (and 7 with it first). `internal` for tests
+    /// and the eval export.
+    func generationUserPrompt(_ transcript: String, dictionary: [DictionaryEntry]) -> String {
+        transcriptUserPrompt(transcript, dictionary: dictionary) + "\n\n(\(Self.sameLanguageRule))"
     }
 
     // MARK: - On-Device NLP & Semantic Transformation Engine

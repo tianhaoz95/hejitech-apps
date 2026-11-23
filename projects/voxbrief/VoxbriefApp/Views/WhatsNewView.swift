@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.38.0"
+    public static let currentVersion = "1.38.1"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,26 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.38.1",
+            date: "November 2026",
+            tagline: "Structured Notes That Stay on Topic",
+            features: [],
+            improvementsAndFixes: [
+                WhatsNewItem(
+                    icon: "list.bullet.rectangle",
+                    tint: .blue,
+                    title: "Structured Notes Stay on What You Said",
+                    description: "A structured note (task list, general notes and the other formats) is now written from your cleaned text, in the language you spoke. Before, the on-device model could write about a word from your personal dictionary instead of your memo, or answer a Chinese memo in English. A structured note that doesn't match what you said isn't kept: your cleaned text stays, with Try Again.",
+                    kind: .fix,
+                    highlights: [
+                        "Written from the cleaned text, which already spells your dictionary's words",
+                        "Stays in the language you spoke",
+                        "A note about something else is thrown away instead of saved"
+                    ]
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.38.0",
             date: "November 2026",

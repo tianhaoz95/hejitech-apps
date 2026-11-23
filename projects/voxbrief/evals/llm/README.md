@@ -12,7 +12,15 @@ isn't covered; Flash (Qwen3-4B-4bit) can be picked with `--model`.
   not a script; Lite fails these and the app gives it the light cleanup instead), `brief` (title and one-line
   summary from cleaned text: mode `brief`, or `brief-overview` with a long memo's part summaries
   one per line as `transcript`), `turns` (a conversation's turns proofread turn by turn, one turn
-  per line as `transcript`: same count back, content kept).
+  per line as `transcript`: same count back, content kept), `language` (a memo not in English
+  keeps its language: `expect.language: "cjk"` for Chinese, Japanese or Korean).
+- Every `full` output is also checked for being grounded in its `transcript` (`grounded in the
+  memo`: at least 30% of its summary's and sections' words are in the memo), the same rule
+  `LLMCopywriterService.isGrounded` applies before the app keeps a structured rewrite. Since
+  2026-11-23 the app's structured rewrite reads the note's cleaned text without the personal
+  dictionary, so a `full` case's `transcript` stands for that text; the `dictionary`/`fp-` full
+  cases still score the generation prompt with a dictionary, which the app no longer sends there;
+  the light cleanup is where its terms are applied now (the `dict-light-`/`lang-` light cases).
 - `Tests/MacUnitTests/LLMPromptExportTests.swift` builds every prompt with the app's own code
   (alias correction, `buildClassificationSystemPrompt`, `buildGenerationSystemPrompt`,
   `buildLightSystemPrompt`, `transcriptUserPrompt`) and writes `prompts.json`. It runs in the

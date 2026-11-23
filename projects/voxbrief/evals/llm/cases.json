@@ -1069,5 +1069,100 @@
         "alfama"
       ]
     }
+  },
+  {
+    "id": "lang-zh-light-dictionary",
+    "category": "language",
+    "note": "The 2026-11-23 report: a Chinese errand memo's structured note (Lite, General Notes) was about the dictionary term 'Weehour', in English, with nothing from the memo. The light cleanup gets the transcript and the dictionary: it must stay Chinese and leave the terms out.",
+    "mode": "light",
+    "transcript": "嗯，一会儿吃完饭以后，嗯需要把烘干的衣服放起来，嗯，把刚洗的衣服烘上。然后把那个桌子上的呃纸壳子扔掉。嗯，把猫砂给装上，然后地下室还有一些纸盒子也需要扔掉。",
+    "dictionary": [
+      {
+        "term": "Weehour"
+      },
+      {
+        "term": "Waypack"
+      },
+      {
+        "term": "Voxbrief"
+      }
+    ],
+    "expect": {
+      "language": "cjk",
+      "contains": [
+        "猫砂",
+        "地下室"
+      ],
+      "not_contains_ci": [
+        "weehour",
+        "waypack",
+        "voxbrief",
+        "dictionary"
+      ]
+    }
+  },
+  {
+    "id": "lang-zh-structured-notes",
+    "category": "language",
+    "note": "The 2026-11-23 report: a Chinese errand memo's structured note (Lite, General Notes) was about the dictionary term 'Weehour', in English, with nothing from the memo. The structured rewrite now reads the cleaned text without the dictionary.",
+    "mode": "full",
+    "transcript": "一会儿吃完饭以后，需要把烘干的衣服放起来，把刚洗的衣服烘上。\n\n然后把桌子上的纸壳子扔掉。把猫砂给装上，然后地下室还有一些纸盒子也需要扔掉。",
+    "templates": [
+      "General Notes"
+    ],
+    "expect": {
+      "language": "cjk",
+      "contains": [
+        "猫砂"
+      ],
+      "nonempty": [
+        "notes"
+      ],
+      "not_contains_ci": [
+        "dictionary",
+        "transcript"
+      ]
+    }
+  },
+  {
+    "id": "lang-zh-structured-tasks",
+    "category": "language",
+    "note": "The 2026-11-23 report: a Chinese errand memo's structured note (Lite, General Notes) was about the dictionary term 'Weehour', in English, with nothing from the memo. Same memo as a task list.",
+    "mode": "full",
+    "transcript": "一会儿吃完饭以后，需要把烘干的衣服放起来，把刚洗的衣服烘上。\n\n然后把桌子上的纸壳子扔掉。把猫砂给装上，然后地下室还有一些纸盒子也需要扔掉。",
+    "templates": [
+      "Task List"
+    ],
+    "expect": {
+      "language": "cjk",
+      "contains": [
+        "猫砂"
+      ],
+      "min_items": {
+        "tasks": 3
+      }
+    }
+  },
+  {
+    "id": "lang-es-structured-tasks",
+    "category": "language",
+    "note": "A Spanish memo's structured note stays in Spanish.",
+    "mode": "full",
+    "transcript": "Mañana tengo que renovar el pasaporte, recoger la ropa de la tintorería y reservar una mesa para el sábado.",
+    "templates": [
+      "Task List"
+    ],
+    "expect": {
+      "contains_ci": [
+        "pasaporte"
+      ],
+      "not_contains_ci": [
+        "passport",
+        "dry clean"
+      ],
+      "min_items": {
+        "tasks": 3
+      }
+    }
   }
 ]

@@ -60,6 +60,7 @@ async def _run(run, kit, items, out):
         else:
             template = scenario["template"]
             system = kit.generation_system(template, dictionary)
+            user = kit.generation_user_prompt(heard, dictionary)
             keys = ["title", "summary", "tags"] + kit.field_keys(template)
             choice = await teacher.json(kit.classification_system(), scenario["transcript"], temperature=0,
                                         validate=lambda v: isinstance(v.get("template"), str))

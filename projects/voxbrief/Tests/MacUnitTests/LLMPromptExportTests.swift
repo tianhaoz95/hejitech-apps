@@ -95,7 +95,7 @@ final class LLMPromptExportTests: XCTestCase {
                 item["generation"] = Dictionary(uniqueKeysWithValues: templates.map { template in
                     (template.name, [
                         "system": service.buildGenerationSystemPrompt(template: template, dictionary: dictionary),
-                        "user": userPrompt,
+                        "user": service.generationUserPrompt(transcript, dictionary: dictionary),
                         "fieldKeys": template.sections.map(\.fieldKey)
                     ] as [String: Any])
                 })
@@ -118,6 +118,7 @@ final class LLMPromptExportTests: XCTestCase {
                 ] as [String: Any])
             }),
             "light": ["system": service.buildLightSystemPrompt(dictionary: [])],
+            "sameLanguageRule": LLMCopywriterService.sameLanguageRule,
             "maxDictionaryTermsInPrompt": LLMCopywriterService.maxDictionaryTermsInPrompt,
             "maxAliasesPerTermInPrompt": LLMCopywriterService.maxAliasesPerTermInPrompt
         ]

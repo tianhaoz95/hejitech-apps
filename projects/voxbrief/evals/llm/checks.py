@@ -38,12 +38,77 @@ def strings_in(value):
     return []
 
 
-def score_output(raw, mode, field_keys, expect, template=None):
+# Port of LLMCopywriterService's grounding rule (`isGrounded`): the app throws away a structured
+# rewrite that shares less than this with the memo it was written from.
+MIN_GROUNDED_SHARE = 0.3
+MIN_GROUNDING_WORDS = 4
+GROUNDING_STOP_WORDS = {
+    "the", "and", "for", "that", "this", "with", "are", "was", "were", "but", "not", "you",
+    "your", "have", "has", "had", "will", "can", "from", "they", "them", "its", "our", "all",
+    "any", "should", "would", "could", "need", "needs", "also", "then", "there", "their",
+    "about", "into", "some", "what", "when", "which", "who", "been", "being", "more", "make",
+    "get", "use", "one", "two", "out", "how", "it's", "i'm", "we're", "don't",
+}
+
+
+def is_cjk(ch):
+    o = ord(ch)
+    return 0x4E00 <= o <= 0x9FFF or 0x3400 <= o <= 0x4DBF or 0x3040 <= o <= 0x30FF or 0xAC00 <= o <= 0xD7AF
+
+
+def grounding_tokens(text):
+    """Port of LLMCopywriterService.groundingTokens."""
+    tokens, run, word = set(), [], []
+
+    def flush_run():
+        if len(run) == 1:
+            tokens.add(run[0])
+        for i in range(len(run) - 1):
+            tokens.add(run[i] + run[i + 1])
+        run.clear()
+
+    def flush_word():
+        w = "".join(word).lower()
+        if len(w) >= 3 and w not in GROUNDING_STOP_WORDS:
+            tokens.add(w[:6])
+        word.clear()
+
+    for ch in text:
+        if is_cjk(ch):
+            flush_word()
+            run.append(ch)
+        elif ch.isalnum():
+            flush_run()
+            word.append(ch)
+        else:
+            flush_run()
+            flush_word()
+    flush_run()
+    flush_word()
+    return tokens
+
+
+def grounded_share(text, source):
+    """Port of LLMCopywriterService.groundedShare: None when there's too little to judge."""
+    written = grounding_tokens(text)
+    if len(written) < MIN_GROUNDING_WORDS:
+        return None
+    return len(written & grounding_tokens(source)) / len(written)
+
+
+def cjk_share(text):
+    letters = [ch for ch in text if ch.isalpha()]
+    return sum(is_cjk(ch) for ch in letters) / len(letters) if letters else 0.0
+
+
+def score_output(raw, mode, field_keys, expect, template=None, source=None):
     """List of (check, passed, detail) for one raw model output.
 
     `mode` is "full" or "light"; `field_keys` are the chosen template's section keys (full mode);
     `expect` uses the keys documented in evals/llm/README.md; `template` is the template the
-    output was generated for (checked against `expect["template"]`)."""
+    output was generated for (checked against `expect["template"]`); `source` is the text the
+    output was written from (full mode: the app keeps a structured rewrite only when it's
+    grounded in it)."""
     checks = []
     obj = extract_json(raw)
     if obj is None and mode == "turns":
@@ -97,6 +162,15 @@ def score_output(raw, mode, field_keys, expect, template=None):
     body = "\n".join(s for k, v in obj.items() if k not in ("title", "tags") for s in strings_in(v))
     leaked = [m for m in LEAK_MARKERS if m.lower() in text.lower()]
     checks.append(("no prompt leak", not leaked, f"leaked {leaked}" if leaked else ""))
+
+    if mode == "full" and source is not None:
+        written = "\n".join(strings_in(obj.get("summary")) + [s for k in field_keys for s in strings_in(obj.get(k))])
+        share = grounded_share(written, source)
+        checks.append(("grounded in the memo", share is None or share >= MIN_GROUNDED_SHARE,
+                       "too little to judge" if share is None else f"{share:.0%} of its words"))
+    if expect.get("language") == "cjk":
+        share = cjk_share(body)
+        checks.append(("same language (CJK)", share >= 0.6, f"{share:.0%} CJK letters"))
 
     if "template" in expect:
         checks.append(("template", template == expect["template"], f"chose {template}"))

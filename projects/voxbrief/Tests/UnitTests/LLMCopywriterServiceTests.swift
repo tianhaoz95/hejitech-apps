@@ -349,6 +349,65 @@ final class LLMCopywriterServiceTests: XCTestCase {
         XCTAssertTrue(prompt.contains("Voxbrief"))
     }
 
+    func testStructuredPromptsAskForTheTranscriptsLanguage() {
+        let generation = service.buildGenerationSystemPrompt(template: NoteTemplate.taskList, dictionary: [])
+        XCTAssertTrue(generation.contains(LLMCopywriterService.sameLanguageRule))
+        XCTAssertTrue(service.buildLongMemoOverviewSystemPrompt(dictionary: []).contains(LLMCopywriterService.sameLanguageRule))
+        XCTAssertEqual(service.generationUserPrompt("把猫砂给装上。", dictionary: []), "把猫砂给装上。\n\n(\(LLMCopywriterService.sameLanguageRule))")
+    }
+
+    // MARK: - Grounding (the 2026-11-23 report)
+
+    private static let chineseMemo = "一会儿吃完饭以后，需要把烘干的衣服放起来，把刚洗的衣服烘上。然后把桌子上的纸壳子扔掉。把猫砂给装上，然后地下室还有一些纸盒子也需要扔掉。"
+
+    func testTheReportedStructuredNoteIsNotGrounded() {
+        let share = LLMCopywriterService.groundedShare(
+            of: "Weehour is a term that sounds like a dictionary term, but it's not clear what it refers to in the transcript.\nWeehour is a dictionary term, but it's not clear what it refers to in the transcript.",
+            in: Self.chineseMemo
+        )
+        XCTAssertEqual(share, 0)
+    }
+
+    func testAFaithfulChineseTaskListIsGrounded() throws {
+        let share = try XCTUnwrap(LLMCopywriterService.groundedShare(
+            of: "吃完饭后处理家务和清理垃圾。\n把烘干的衣服放起来\n把刚洗的衣服烘上\n扔掉桌子上的纸壳子\n装好猫砂\n扔掉地下室的纸盒子",
+            in: Self.chineseMemo
+        ))
+        XCTAssertGreaterThan(share, LLMCopywriterService.minGroundedShare)
+    }
+
+    func testAFaithfulEnglishRewriteIsGroundedDespiteRewording() throws {
+        let share = try XCTUnwrap(LLMCopywriterService.groundedShare(
+            of: "Renew the passport, collect the dry cleaning and book a Saturday table.\nRenewing passport\nPick up dry cleaning\nBook a table for Saturday",
+            in: "Tomorrow I have to renew my passport, pick up the dry cleaning and book a table for Saturday."
+        ))
+        XCTAssertGreaterThan(share, 0.6)
+    }
+
+    func testTooLittleTextIsNotJudged() {
+        XCTAssertNil(LLMCopywriterService.groundedShare(of: "Call Sam", in: "anything"))
+    }
+
+    func testAnUngroundedStructuredRewriteIsThrownAway() async {
+        let engine = LLMCopywriterService.StageTwoEngine(label: "Test") { _, _, _ in
+            ##"{"title": "Weehour", "summary": "Weehour is a term that sounds like a dictionary term.", "notes": "Weehour is a dictionary term, but it's not clear what it refers to in the transcript.", "tags": ["#Weehour"]}"##
+        }
+        do {
+            _ = try await service.process(transcript: Self.chineseMemo, mode: .full, dictionary: [], templates: [NoteTemplate.generalNotes], engine: engine)
+            XCTFail("An ungrounded rewrite must not be kept")
+        } catch {
+            guard case LLMCopywriterError.ungroundedResponse = error else { return XCTFail("Unexpected error \(error)") }
+        }
+    }
+
+    func testAGroundedStructuredRewriteIsKept() async throws {
+        let engine = LLMCopywriterService.StageTwoEngine(label: "Test") { _, _, _ in
+            ##"{"title": "家务清单", "summary": "吃完饭后把衣服烘上，扔掉纸壳子和纸盒子，装好猫砂。", "notes": "吃完饭以后把烘干的衣服放起来，把刚洗的衣服烘上，然后扔掉桌子上的纸壳子，装好猫砂，再扔掉地下室的纸盒子。", "tags": ["#家务"]}"##
+        }
+        let result = try await service.process(transcript: Self.chineseMemo, mode: .full, dictionary: [], templates: [NoteTemplate.generalNotes], engine: engine)
+        XCTAssertEqual(result.title, "家务清单")
+    }
+
     func testParseGenerationResponseExtractsArraySections() throws {
         let raw = """
         {"title": "Ship the feature", "summary": "A quick update", "requirements": ["Ship it"], "conditions": [], "actionItems": [], "tags": ["#Tasks"]}

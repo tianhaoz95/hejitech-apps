@@ -26,6 +26,10 @@ def test_no_dictionary_leaves_prompts_untouched(kit):
     assert kit.generation_system("Task List", []) == "GEN tasks."
 
 
+def test_generation_user_prompt_ends_with_the_language_rule(kit):
+    assert kit.generation_user_prompt("Just text.", []) == "Just text.\n\n(SAME LANGUAGE.)"
+
+
 def test_user_prompt_reminds_of_terms(kit):
     prompt = kit.user_prompt("For the Wotsbrief project.", [{"term": "Voxbrief"}, {"term": "Supabase"}])
     assert prompt == ("Dictionary terms (anything that sounds like one is that term): Voxbrief, Supabase"

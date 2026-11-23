@@ -23,6 +23,7 @@ def kit():
             "Task List": {"system": "GEN tasks.", "fieldKeys": ["tasks"]},
         },
         "light": {"system": "LIGHT."},
+        "sameLanguageRule": "SAME LANGUAGE.",
         "maxDictionaryTermsInPrompt": 50,
         "maxAliasesPerTermInPrompt": 3,
     })

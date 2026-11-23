@@ -74,7 +74,7 @@ def test_build_uses_the_app_prompts(kit):
     assert classify["prompt"][1]["content"] == "update Wotsbrief, then buy milk"
     assert json.loads(classify["completion"]) == {"template": "Task List"}
     assert generate["prompt"][0]["content"].startswith("GEN tasks.\n\nPersonal dictionary:")
-    assert generate["prompt"][1]["content"].endswith("Transcript:\nupdate Wotsbrief, then buy milk")
+    assert generate["prompt"][1]["content"].endswith("Transcript:\nupdate Wotsbrief, then buy milk\n\n(SAME LANGUAGE.)")
     assert json.loads(generate["completion"])["tasks"][0] == "Update Voxbrief"
     assert in_validation("s000001", 1.0) and not in_validation("s000001", 0.0)
 

@@ -84,7 +84,7 @@ def score(case, prompts, template, raw):
     expect = dict(case.get("expect", {}))
     if case["mode"] == "turns":
         expect.setdefault("turn_count", prompts["turns"]["count"])
-    return score_output(raw, case["mode"], field_keys, expect, template)
+    return score_output(raw, case["mode"], field_keys, expect, template, source=case["transcript"])
 
 
 def pct(passed, total):

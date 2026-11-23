@@ -82,6 +82,11 @@ class Kit:
         return f"Dictionary terms (anything that sounds like one is that term): {terms}\n\nTranscript:\n{transcript}"
 
 
+    def generation_user_prompt(self, transcript, dictionary):
+        """Port of LLMCopywriterService.generationUserPrompt: the language rule after the memo."""
+        return self.user_prompt(transcript, dictionary) + f"\n\n({self.kit['sameLanguageRule']})"
+
+
 def apply_aliases(transcript, dictionary):
     """Port of DictionaryCorrector.apply: whole-word, case-insensitive alias → term."""
     result = transcript
@@ -130,7 +135,8 @@ def verify_against_export(prompts_export, cases_path):
             pairs = []
             for template, prompts in exported["generation"].items():
                 pairs.append((f"{template} system", kit.generation_system(template, dictionary), prompts["system"]))
-                pairs.append((f"{template} user", user, prompts["user"]))
+                generation_user = kit.generation_user_prompt(app_transcript(case["transcript"], dictionary), dictionary)
+                pairs.append((f"{template} user", generation_user, prompts["user"]))
         for name, ours, theirs in pairs:
             if ours != theirs:
                 problems.append(f"{exported['id']}: {name} differs from the app's")

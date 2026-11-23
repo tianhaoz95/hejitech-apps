@@ -36,7 +36,7 @@ def examples_for(scenario, record, kit):
         ], "completion": json.dumps({"template": template}), "meta": meta},
         {"task": "generate", "prompt": [
             {"role": "system", "content": kit.generation_system(template, dictionary)},
-            {"role": "user", "content": kit.user_prompt(heard, dictionary)},
+            {"role": "user", "content": kit.generation_user_prompt(heard, dictionary)},
         ], "completion": target, "meta": meta},
     ]
 

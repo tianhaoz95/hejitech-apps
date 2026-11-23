@@ -519,6 +519,28 @@ final class NoteProcessingPipelineTests: XCTestCase {
         XCTAssertNil(saved?.templateChoice, "A finished structured rewrite clears the request")
     }
 
+    /// The 2026-11-23 report: given the raw transcript with the dictionary's terms in front, Lite
+    /// wrote a Chinese memo's structured note about a dictionary term. The structured rewrite
+    /// reads the cleaned text, without the dictionary, like the brief.
+    func testStructuredRewriteReadsTheCleanedTextWithoutTheDictionary() async {
+        var note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
+        note.templateChoice = .template(NoteTemplate.taskList.id)
+        repository.save(note)
+
+        await pipeline.process(note: note)
+
+        XCTAssertEqual(mockLLM.receivedModes, [.light, .full])
+        XCTAssertFalse(mockLLM.receivedDictionaries[0].isEmpty, "The light cleanup still gets the dictionary")
+        XCTAssertEqual(mockLLM.receivedDictionaries[1], [], "The structured rewrite gets none")
+        XCTAssertEqual(mockLLM.receivedTranscripts[1], "mock light", "The structured rewrite reads the cleaned text")
+    }
+
+    func testStructuredRewriteInputFallsBackToTheTranscript() {
+        XCTAssertEqual(NoteProcessingPipeline.structuredRewriteInput(cleanedText: "Cleaned.", transcript: "raw"), "Cleaned.")
+        XCTAssertEqual(NoteProcessingPipeline.structuredRewriteInput(cleanedText: "  \n", transcript: "raw"), "raw")
+        XCTAssertEqual(NoteProcessingPipeline.structuredRewriteInput(cleanedText: nil, transcript: "raw"), "raw")
+    }
+
     func testProcessWithAutoDetectPassesTheEnabledTemplates() async {
         var note = VoiceNote(id: UUID(), audioFileName: "recording.m4a", status: .syncing)
         note.templateChoice = .auto
