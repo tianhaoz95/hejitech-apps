@@ -57,6 +57,9 @@ struct ArtifactView: View {
     @State private var highlight: QuoteRequest?
     @State private var tabBarHeight: CGFloat = 0
     @State private var keyboardShown = false
+    /// The brief, the version line and "Copy for your agent" stay out of the way of the page
+    /// until the info button in the toolbar shows them.
+    @State private var showDetails = false
     @Namespace private var tabSelection
 
     enum Tab: String, CaseIterable {
@@ -80,8 +83,11 @@ struct ArtifactView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let d = store.detail {
-                header(d)
-                Divider()
+                if showDetails {
+                    header(d)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    Divider()
+                }
                 content
                     // The tabs float over the bottom of the content, which scrolls underneath them.
                     .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -279,6 +285,12 @@ struct ArtifactView: View {
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
+            if store.detail != nil {
+                Button {
+                    withAnimation(.snappy) { showDetails.toggle() }
+                } label: { Image(systemName: showDetails ? "info.circle.fill" : "info.circle") }
+                    .accessibilityLabel(showDetails ? "Hide details" : "Show details")
+            }
             Button { showSharing = true } label: { Image(systemName: "person.badge.plus") }
                 .accessibilityLabel("Share")
             Menu {
