@@ -57,13 +57,13 @@ await step("signs in (seed athlete) and a second user", async () => {
 });
 
 // ---------------------------------------------------------------- the agent's side
-await step("MCP: 401 with the OAuth hint, initialize, fifteen tools with annotations", async () => {
+await step("MCP: 401 with the OAuth hint, initialize, seventeen tools with annotations", async () => {
   const r = await mcpClient(mcpUrl, null).rpc("tools/list");
   assert.equal(r.status, 401);
   assert.match(r.headers.get("WWW-Authenticate") ?? "", /resource_metadata=/);
   assert.equal((await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } })).body.result.serverInfo.name, "fitloop");
   const tools = (await rpc("tools/list")).body.result.tools;
-  assert.equal(tools.length, 15);
+  assert.equal(tools.length, 17);
   for (const t of tools) assert.equal(typeof t.annotations.readOnlyHint, "boolean", t.name);
 });
 await step("the agent uploads an exercise GIF, renders procedural animations, and backend caches on demand", async () => {
@@ -135,6 +135,23 @@ await step("publish_plan: version 2 from today, the user sees it with the change
   assert.deepEqual(web.body.versions.slice(0, 2).map((v) => v.version), [p.version, p.version - 1]);
 });
 
+await step("patch_plan: one day changed, validated, published as the next version; stale base refused", async () => {
+  const cur = (await tool("get_current_plan")).current;
+  const rest = { title: "Rest day", workouts: [], meals: cur.plan.week.sun.meals };
+  const bad = await tool("patch_plan", { changes: { week: { sat: { title: "x".repeat(80), workouts: [], meals: [] } } }, change_note: "x" });
+  assert.equal(bad.published, false);
+  const stale = await tool("patch_plan", { changes: { week: { sat: rest } }, change_note: "x", base_version: cur.version - 1 });
+  assert.equal(stale.published, false);
+  assert.match(stale.error, /newer/);
+  const p = await tool("patch_plan", { changes: { week: { sat: rest } }, change_note: "Saturday is a rest day now.", base_version: cur.version });
+  assert.equal(p.published, true, JSON.stringify(p));
+  assert.equal(p.version, cur.version + 1);
+  assert.deepEqual(p.changed, ["week.sat"]);
+  const next = (await tool("get_current_plan")).current;
+  assert.equal(next.plan.week.sat.title, "Rest day");
+  assert.deepEqual(next.plan.week.thu, cur.plan.week.thu);
+  version = p.version;
+});
 // ---------------------------------------------------------------- the user's side
 let firstWorkout, firstMeal;
 await step("today: the session and the glasses token see the same day", async () => {
@@ -194,6 +211,15 @@ await step("progress and the weekly review", async () => {
   const w = await tool("get_weekly_review");
   assert.ok(w.adherence.days.length === 7);
   assert.ok(Array.isArray(w.changes_made_by_user));
+});
+
+await step("get_trends: weeks side by side with the sets done today", async () => {
+  const t = await tool("get_trends", { weeks: 4 });
+  assert.equal(t.weeks.length, 4);
+  assert.equal(t.to, today);
+  if (firstWorkout) assert.ok(t.weeks[3].sets_done >= firstWorkout.exercises[0].exercise.sets);
+  assert.ok(Array.isArray(t.notes));
+  assert.equal(t.shared.checkins, true);
 });
 
 // ---------------------------------------------------------------- data switches

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   adherence, checkCheckin, demoPlan, demoSettings, checkFeedback, checkPlan, checkSettings, checkVital, dayPlan, dayState, defaultSettings, errorsOf, GUIDE,
   LINE_PX, MAX_LINES, Navigator, normalizeSettings, textPx, setTarget, weekdayOf,
-  findCatalogExercise, renderProceduralPresetGif, type Checkin, type Command, type Plan, type World,
+  findCatalogExercise, renderProceduralPresetGif, applyPatch, trends, loadKg, repsOf, type Checkin, type Command, type Plan, type World,
 } from "../src/index.ts";
 
 const plan = (): Plan => JSON.parse(readFileSync(new URL("../fixtures/example-plan.json", import.meta.url), "utf8"));
@@ -381,5 +381,51 @@ describe("App Review demo account", () => {
     expect(p.starts_on).toBe(MON);
     expect(dayPlan(p, "2026-10-28")?.meals.length).toBeGreaterThan(0);
     expect(checkSettings(demoSettings())).toEqual([]);
+  });
+});
+
+describe("patch_plan and trends", () => {
+  it("patches days and overrides into a new plan from today, leaving the base alone", () => {
+    const base = plan();
+    const rest = { title: "Rest day", workouts: [], meals: base.week.mon.meals };
+    const { plan: next, changed } = applyPatch(base, { week: { fri: rest }, overrides: { "2026-11-26": null, "2026-12-01": rest }, targets: { calories: 2300 } }, "2026-11-01");
+    expect(changed).toEqual(["starts_on", "week.fri", "overrides.2026-11-26", "overrides.2026-12-01", "targets"]);
+    expect(next.starts_on).toBe("2026-11-01");
+    expect(next.week.fri.title).toBe("Rest day");
+    expect(next.overrides?.["2026-11-26"]).toBeUndefined();
+    expect(next.targets?.calories).toBe(2300);
+    expect(errorsOf(checkPlan(next))).toEqual([]);
+    expect(base.week.fri.title).not.toBe("Rest day");
+    expect(base.overrides?.["2026-11-26"]).toBeDefined();
+  });
+  it("refuses malformed patches", () => {
+    expect(() => applyPatch(plan(), { week: { funday: {} } } as never, MON)).toThrow(/not a weekday/);
+    expect(() => applyPatch(plan(), { overrides: { "2026-12-25": null } }, MON)).toThrow(/no override/);
+    expect(() => applyPatch(plan(), { colour: "red" } as never, MON)).toThrow(/unknown change colour/);
+  });
+  it("reads loads and reps", () => {
+    expect(loadKg("60 kg")).toBe(60);
+    expect(loadKg("2x20kg")).toBe(40);
+    expect(loadKg("135 lb")).toBeCloseTo(61.2, 1);
+    expect(loadKg("bodyweight")).toBeNull();
+    expect(loadKg("RPE 7")).toBeNull();
+    expect([repsOf("8-10"), repsOf(12), repsOf(undefined)]).toEqual([8, 12, null]);
+  });
+  it("weekly trends: completion, volume, top loads and stalls", () => {
+    const p = { ...plan(), starts_on: "2026-10-01" };
+    const squat = p.week.mon.workouts[0].exercises[1];
+    const weeks = ["2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26"]; // Mondays
+    const checkins: Checkin[] = weeks.flatMap((date, i) => [1, 2].map((s) => ({
+      ...ci(`full-body-a/${squat.id}/${s}`, "set"), date, data: { reps: 10, load: "20 kg", rpe: 7 + i * 0.5 },
+    })));
+    const t = trends([{ plan: p, from: "2026-10-01" }], checkins, [{ date: "2026-10-27", metric: "weight", value: 80 }, { date: "2026-10-28", metric: "weight", value: 79 }], "2026-11-01", 4);
+    expect(t.weeks.map((w) => w.from)).toEqual(["2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26"]);
+    expect(t.weeks.map((w) => w.sets_done)).toEqual([2, 2, 2, 2]);
+    expect(t.weeks[0].volume).toBe(400);
+    expect(t.weeks[3].avg_rpe).toBe(8.5);
+    expect(t.weeks[3].vitals.weight).toBe(79.5);
+    expect(t.exercises[0]).toMatchObject({ name: squat.name, sets_done: 8, top_load: [20, 20, 20, 20], top_reps: [10, 10, 10, 10] });
+    expect(t.notes.some((n) => n.includes(squat.name) && n.includes("same top load"))).toBe(true);
+    expect(trends([{ plan: p, from: "2026-10-01" }], checkins, [], "2026-11-01", 4, "imperial").weeks[0].volume).toBe(Math.round(400 * 2.20462));
   });
 });

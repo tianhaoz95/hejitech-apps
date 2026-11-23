@@ -4,7 +4,7 @@
 import { LIMITS } from "./validate.ts";
 import { FEEDBACK_TAGS, METRICS, PLAN_FORMAT_VERSION } from "./types.ts";
 
-export const GUIDE_VERSION = "1.4";
+export const GUIDE_VERSION = "1.5";
 
 export const GUIDE = `# FitLoop plan guide (v${GUIDE_VERSION}, plan format ${PLAN_FORMAT_VERSION})
 
@@ -19,9 +19,13 @@ moment. You read all of it back here and improve the plan. FitLoop gives no advi
    interview the user first (see "Interviewing the user" below) and save what you learn with
    update_profile_notes so the next agent session knows it.
 2. Before changing a plan: get_feedback (status open), get_progress (adherence and what they
-   actually did), get_vitals if shared. Feedback is the user talking to you; take it seriously.
+   actually did), get_vitals if shared. get_trends shows the last weeks side by side (completion,
+   volume, effort, heart rate, vitals, top loads per exercise) when you plan progression. Feedback is the user talking to you; take it seriously.
 3. Write the whole plan (format below), validate_plan until there are no errors, then publish_plan
    with a change_note in plain words ("Swapped lunges for step-ups because of your knee").
+   For a small change (one day, a dated override such as a trip, the targets), patch_plan
+   applies just that to the current plan and publishes it as the next version, with the same
+   validation; you don't have to resend the whole plan.
 4. respond_to_feedback for every note you acted on (or decided not to, with why). The user sees
    your reply next to their note.
 5. Publishing replaces the current plan from its starts_on (default today). Past check-ins stay with

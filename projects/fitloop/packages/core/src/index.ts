@@ -9,3 +9,4 @@ export * from "./exercise_catalog.ts";
 export * from "./procedural_rigging.ts";
 
 export * from "./demo.ts";
+export * from "./trends.ts";

@@ -49,7 +49,7 @@ local stack), `-reviewSignIn` (the App Review sign-in path), `-screen today|plan
   in pixels by `font.ts`, 9 lines in a bordered frame, and the R1 `Navigator`). Change behaviour there, with a test.
 - **Worker** (`services/web/src/worker`): `api.ts` (session / glasses token / pairing; every write
   checked with core), `review.ts` (App Review's demo account: `/api/review-sign-in` resets it to
-  core's `demoPlan` / `demoSettings` and mints a Supabase session), `mcp.ts` (13 tools, each with annotations; `agent_access` switches enforced
+  core's `demoPlan` / `demoSettings` and mints a Supabase session), `mcp.ts` (17 tools, each with annotations; `agent_access` switches enforced
   here), `store.ts` (db, tokens, plan versions, `today()`), `index.ts` (OAuth provider). Service key
   only here; clients read their own rows through RLS.
 - **Plugin** (`apps/glasses/src`): `app.ts` (FitLoopApp: today from the Worker with a cached copy,

@@ -3,14 +3,14 @@
 // personal access tokens `fla_…` made in the app. The agent is the user's coach: it reads what the
 // user shares (settings decide), publishes plan versions and answers feedback.
 import {
-  addDays, adherence, checkPlan, dayState, errorsOf, GUIDE, GUIDE_VERSION, localDate, Navigator, normalizeSettings, PLAN_FORMAT_VERSION, WEEKDAYS,
-  type DayPlan, type Plan, type World,
+  addDays, adherence, applyPatch, checkPlan, dayState, errorsOf, GUIDE, GUIDE_VERSION, localDate, Navigator, normalizeSettings, PLAN_FORMAT_VERSION, trends, WEEKDAYS,
+  type DayPlan, type Plan, type PlanPatch, type World,
 } from "@fitloop/core";
 import { BUCKET, checkinsBetween, feedbackList, loadSettings, PHOTO_URL_TTL_SEC, planSpans, planVersions, published, saveSettings, type Db } from "./store.ts";
 import { uploadExerciseGif } from "./exercise_media.ts";
 
 const PROTOCOL_VERSION = "2025-06-18";
-export const SERVER_VERSION = "0.1.0";
+export const SERVER_VERSION = "0.2.0";
 const MAX_RANGE_DAYS = 120;
 
 export interface Caller {
@@ -40,12 +40,36 @@ export const TOOLS = [
   { name: "get_current_plan", title: "Get the current plan", description: "The plan in force now: version, the whole plan, the change note and when it was published. Null before the first publish.", inputSchema: { type: "object", properties: {} }, annotations: ro("Get the current plan") },
   { name: "validate_plan", title: "Validate a plan", description: "Checks a plan against every rule (errors block publishing, warnings are advice) and renders what the glasses will show for the first workout of a sample day, so you can see it fits.", inputSchema: { type: "object", required: ["plan"], properties: { plan: PLAN } }, annotations: ro("Validate a plan") },
   { name: "publish_plan", title: "Publish a plan", description: "Publishes the plan as the next version; it governs from its starts_on (pass today's date to replace the current plan now). Refused while validate_plan finds errors. The change_note is shown to the user: say what changed and why, in plain words.", inputSchema: { type: "object", required: ["plan", "change_note"], properties: { plan: PLAN, change_note: { type: "string" } } }, annotations: rw("Publish a plan") },
+  {
+    name: "patch_plan", title: "Change part of the plan",
+    description: "A small change without resending the whole plan: replace days of the week, add or remove dated overrides (a trip, a busy day), or change the title, summary, ends_on, goals, constraints or targets. FitLoop applies it to the current plan, validates the result like publish_plan and publishes it as the next version, governing from today (or the starts_on you pass, not earlier than today) so past days keep the version they were done against. Days are whole DayPlans (title, workouts, meals). The change_note is shown to the user.",
+    inputSchema: {
+      type: "object", required: ["changes", "change_note"],
+      properties: {
+        changes: {
+          type: "object",
+          properties: {
+            week: { type: "object", description: "mon…sun → the whole new DayPlan for that weekday" },
+            overrides: { type: "object", description: "YYYY-MM-DD → a DayPlan for that date, or null to remove the override" },
+            title: { type: "string" }, summary: { type: "string" },
+            ends_on: { type: ["string", "null"], description: "YYYY-MM-DD, or null for open-ended" },
+            goals: { type: "array", items: { type: "object" } }, constraints: { type: "array", items: { type: "string" } }, targets: { type: "object" },
+          },
+        },
+        change_note: { type: "string" },
+        base_version: { type: "integer", description: "The version you read and are changing (default: the newest). Refused if a newer one exists, so you don't undo a change you haven't seen." },
+        starts_on: { type: "string", description: "YYYY-MM-DD, today or later (default today)" },
+      },
+    },
+    annotations: rw("Change part of the plan"),
+  },
   { name: "get_checkins", title: "Get check-ins", description: "What the user did: per set (reps, load, rpe, heart rate), exercise, workout and meal (eaten/skipped/swapped, portion), with notes. Needs the user's check-ins sharing switch.", inputSchema: { type: "object", properties: RANGE }, annotations: ro("Get check-ins") },
   { name: "get_progress", title: "Get progress", description: "Adherence per day (completion, workouts and meals done vs planned), averages and the workout streak over a range, across plan versions.", inputSchema: { type: "object", properties: RANGE }, annotations: ro("Get progress") },
   { name: "get_feedback", title: "Get feedback", description: "The user's notes to you, left in the moment (text + tags, the date and plan item). Read the open ones before changing the plan.", inputSchema: { type: "object", properties: { status: { type: "string", enum: ["open", "addressed", "all"] } } }, annotations: ro("Get feedback") },
   { name: "respond_to_feedback", title: "Reply to feedback", description: "Your reply to one note (the user sees it next to their note). addressed=true (default) closes it.", inputSchema: { type: "object", required: ["id", "reply"], properties: { id: { type: "string" }, reply: { type: "string" }, addressed: { type: "boolean" } } }, annotations: rw("Reply to feedback", true) },
   { name: "get_vitals", title: "Get vitals", description: "Daily vitals the user shares (weight, resting heart rate, HRV, sleep, steps, active energy, energy/mood/soreness) from Apple Health, the Watch or typed in. Only metrics whose source is switched on, and only if vitals sharing is on.", inputSchema: { type: "object", properties: { ...RANGE, metrics: { type: "array", items: { type: "string" } } } }, annotations: ro("Get vitals") },
   { name: "list_photos", title: "List progress photos", description: "Progress photo dates and notes; with the user's photo-sharing switch on, also short-lived image links.", inputSchema: { type: "object", properties: RANGE }, annotations: ro("List progress photos") },
+  { name: "get_trends", title: "Get trends", description: "The last weeks side by side, for planning progression: per week completion, workouts and meals done vs planned, sets done, volume (reps × load, in the user's unit), average RPE and heart rate, weekly means of shared vitals; the most-trained exercises' top load and reps per week; and plain observations (stalled loads, falling completion). Default 8 weeks ending today, at most 26. Set details need check-ins sharing; vitals need vitals sharing.", inputSchema: { type: "object", properties: { weeks: { type: "integer", minimum: 1, maximum: 26 }, to: { type: "string", description: "YYYY-MM-DD (default today)" } } }, annotations: ro("Get trends") },
   { name: "get_weekly_review", title: "Get the weekly review", description: "One week at a glance for planning the next: adherence, open feedback, swaps and skips, vitals trend, the plan version. Defaults to the last 7 days.", inputSchema: { type: "object", properties: { week_start: { type: "string", description: "YYYY-MM-DD" } } }, annotations: ro("Get the weekly review") },
   {
     name: "upload_exercise_gif",
@@ -151,6 +175,43 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
       const { data, error } = await db.rpc("publish_plan", { p_user: userId, p_plan: plan, p_change_note: note.slice(0, 2000), p_starts_on: plan.starts_on, p_by: caller.via === "oauth" ? "agent" : "agent-token" });
       if (error) throw new Error(`couldn't publish: ${error.message}`);
       return { published: true, version: data, starts_on: plan.starts_on, in_force_today: plan.starts_on <= todayStr };
+    }
+    case "patch_plan": {
+      const note = String(args.change_note ?? "").trim();
+      if (!note) throw new Error("change_note: tell the user what changed and why");
+      const rows = await planVersions(db, userId, 1);
+      const base = rows[0];
+      if (!base) throw new Error("there's no plan yet: write the first one with publish_plan");
+      if (args.base_version !== undefined && Number(args.base_version) !== base.version) {
+        return { published: false, error: `version ${base.version} is newer than base_version ${args.base_version}`, hint: "get_current_plan, then patch that version" };
+      }
+      const startsOn = isDate(args.starts_on) ? args.starts_on : todayStr;
+      if (startsOn < todayStr) throw new Error("starts_on can't be in the past: past days keep the version they were done against");
+      const { plan, changed } = applyPatch(base.plan, args.changes as PlanPatch, base.plan.starts_on > startsOn ? base.plan.starts_on : startsOn);
+      if (!changed.length) throw new Error("changes is empty");
+      const issues = checkPlan(plan);
+      const errors = errorsOf(issues);
+      if (errors.length) return { published: false, errors, hint: "fix these in your changes and patch again (nothing was published)" };
+      const { data, error } = await db.rpc("publish_plan", { p_user: userId, p_plan: plan, p_change_note: note.slice(0, 2000), p_starts_on: plan.starts_on, p_by: caller.via === "oauth" ? "agent" : "agent-token" });
+      if (error) throw new Error(`couldn't publish: ${error.message}`);
+      return { published: true, version: data, base_version: base.version, changed, starts_on: plan.starts_on, in_force_today: plan.starts_on <= todayStr, warnings: issues.filter((i) => i.severity === "warning") };
+    }
+    case "get_trends": {
+      const to = isDate(args.to) ? args.to : todayStr;
+      const weeks = Number.isFinite(Number(args.weeks)) ? Math.max(1, Math.min(26, Math.floor(Number(args.weeks)))) : 8;
+      const from = addDays(to, -7 * weeks + 1);
+      const sources = [settings.vitals.health_daily && "health", settings.vitals.manual && "manual", settings.vitals.live_hr && "watch"].filter(Boolean) as string[];
+      const [rows, checkins, vitals] = await Promise.all([
+        planVersions(db, userId, 200),
+        settings.agent_access.checkins ? checkinsBetween(db, userId, from, to) : Promise.resolve([]),
+        settings.agent_access.vitals && sources.length
+          ? db.from("vitals").select("date, metric, value").eq("user_id", userId).gte("date", from).lte("date", to).in("source", sources).then((r) => r.data ?? [])
+          : Promise.resolve([]),
+      ]);
+      return {
+        ...trends(planSpans(rows), checkins, vitals, to, weeks, settings.units),
+        shared: { checkins: settings.agent_access.checkins, vitals: settings.agent_access.vitals },
+      };
     }
     case "get_checkins": {
       if (!settings.agent_access.checkins) throw new Error("the user hasn't shared check-ins with agents (FitLoop Settings → Agent access)");

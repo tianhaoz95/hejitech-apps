@@ -108,3 +108,17 @@ purchases" (only the iPhone app was gated, checked on the phone).
   the paid version. Kotlin went to 2.2 for Play Billing 8.
 - Purchase rows are kept when someone deletes their FitLoop data: they are the account's purchase records.
 
+
+## Smaller plan changes and trends over MCP (2026-11-22)
+
+- **patch_plan** changes part of the plan (whole days of the week, dated overrides, title, summary,
+  ends_on, goals, constraints, targets) without resending all of it. The Worker applies it to the
+  newest version (`applyPatch` in core), validates the result exactly like publish_plan and publishes
+  it as the next version from today (or later), so past days keep the version they were done against.
+  `base_version` refuses a patch on a plan that changed since the agent read it. There is no
+  propose/accept step: the user already sees every version's change note and adjusts days with
+  check-ins, and the agent publishes plans the same way today.
+- **get_trends** puts up to 26 weeks side by side (`trends` in core): completion, sets, volume
+  (reps × the load when it is written in kg or lb, in the user's unit), RPE, heart rate, weekly vitals
+  means and the top exercises' loads, plus plain observations (stalled loads, falling completion)
+  that are numbers, not advice. It obeys the same check-ins and vitals sharing switches.
