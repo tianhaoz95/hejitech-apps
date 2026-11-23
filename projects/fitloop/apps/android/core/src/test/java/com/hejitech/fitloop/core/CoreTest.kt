@@ -108,4 +108,14 @@ class CoreTest {
         assertTrue(start.url.endsWith("&code_challenge_method=s256"))
         assertTrue(start.verifier.length >= 43)
     }
+
+    @Test
+    fun wearProtocolRoundTrips() {
+        val w = WatchWorkout("full-body-a", "Full body A", "Goblet squat", "Set 2/3 · 10 reps @ 20 kg", 1_700_000_000_000, 4, 13)
+        assertEquals(w, WearProtocol.decode(WearProtocol.encode(w)))
+        assertTrue(w.open)
+        assertFalse(WatchWorkout().open)
+        assertEquals(128, WearProtocol.hrOf(WearProtocol.hr(128)))
+        assertEquals(null, WearProtocol.decode("not json".toByteArray()))
+    }
 }

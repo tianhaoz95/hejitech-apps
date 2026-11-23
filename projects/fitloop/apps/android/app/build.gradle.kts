@@ -88,6 +88,11 @@ dependencies {
     implementation(libs.billing.ktx)
     // The daily summary and saved workouts on Android (HealthConnect.kt), like Health on iPhone.
     implementation(libs.health.connect)
+    // The Wear OS watch during a workout (WearLink.kt): messages and opening the watch app.
+    implementation(libs.play.services.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
+    implementation(libs.kotlinx.coroutines.guava)
+    implementation(libs.wear.remote.interactions)
     // Play Billing brings an old Fragment; ActivityResult (the notification prompt) needs 1.3+.
     implementation(libs.fragment)
     implementation(platform(libs.compose.bom))

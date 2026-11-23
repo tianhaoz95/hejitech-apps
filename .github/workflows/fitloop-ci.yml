@@ -104,7 +104,7 @@ jobs:
         run: xcodebuild -project FitLoop.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
 
   android:
-    name: Android app (core tests, debug APK)
+    name: Android apps (core tests, phone and Wear OS debug APKs)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -114,6 +114,6 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
-      - name: Core tests (shared fixtures with FitLoopKit) and debug APK
+      - name: Core tests (shared fixtures with FitLoopKit), phone and watch debug APKs
         working-directory: projects/fitloop/apps/android
-        run: ./gradlew :core:test :app:assembleDebug --no-daemon
+        run: ./gradlew :core:test :app:assembleDebug :wear:assembleDebug --no-daemon

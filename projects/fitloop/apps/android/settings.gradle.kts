@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "fitloop"
 include(":core")
 include(":app")
+include(":wear")

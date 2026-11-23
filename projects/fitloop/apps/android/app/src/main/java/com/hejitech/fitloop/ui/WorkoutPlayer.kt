@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -52,6 +53,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.hejitech.fitloop.AppModel
 import com.hejitech.fitloop.core.CheckinData
+import com.hejitech.fitloop.core.WatchWorkout
 import com.hejitech.fitloop.core.ExerciseAnimation
 import com.hejitech.fitloop.core.FeedbackTag
 import com.hejitech.fitloop.core.NewCheckin
@@ -110,7 +113,7 @@ fun WorkoutPlayer(model: AppModel, initial: WorkoutState, modifier: Modifier = M
 
     fun setDone() {
         val c = current
-        val data = CheckinData(reps = c.exercise.repsCount, load = c.exercise.load, durationSec = workStarted?.let { ((System.currentTimeMillis() - it) / 1000).toInt() })
+        val data = CheckinData(reps = c.exercise.repsCount, load = c.exercise.load, durationSec = workStarted?.let { ((System.currentTimeMillis() - it) / 1000).toInt() }, avgHr = model.heartRate)
         val setNumber = set
         workStarted = null
         val last = setNumber >= c.exercise.sets
@@ -144,6 +147,20 @@ fun WorkoutPlayer(model: AppModel, initial: WorkoutState, modifier: Modifier = M
         }
     }
 
+    // The watch follows along: it opens with the workout, gets every change, and its Set done is ours.
+    LaunchedEffect(Unit) { model.beginWorkout() }
+    DisposableEffect(Unit) {
+        model.watchSetDone = { mainAction() }
+        onDispose { model.watchSetDone = null; model.endWorkout() }
+    }
+    LaunchedEffect(ex, set, restUntil, state.setsDone, current.settled) {
+        model.updateWatch(WatchWorkout(
+            ref = state.ref, title = state.workout.title, exercise = e.name,
+            setLine = if (current.settled) "Done" else "Set $set/${e.sets} · ${e.target}",
+            restUntil = restUntil ?: 0, setsDone = state.setsDone, setsTotal = state.setsTotal,
+        ))
+    }
+
     Column(modifier.fillMaxSize()) {
         TopAppBar(
             windowInsets = androidx.compose.foundation.layout.WindowInsets(0),
@@ -162,7 +179,10 @@ fun WorkoutPlayer(model: AppModel, initial: WorkoutState, modifier: Modifier = M
             },
         )
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("${state.setsDone} of ${state.setsTotal} sets", style = MaterialTheme.typography.bodyMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("${state.setsDone} of ${state.setsTotal} sets", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                model.heartRate?.let { Text("♥ $it", style = MaterialTheme.typography.titleMedium, color = Color(0xFFE5484D), modifier = Modifier.testTag("heart-rate")) }
+            }
             LinearProgressIndicator(progress = { state.setsDone.toFloat() / maxOf(state.setsTotal, 1) }, modifier = Modifier.fillMaxWidth())
 
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {

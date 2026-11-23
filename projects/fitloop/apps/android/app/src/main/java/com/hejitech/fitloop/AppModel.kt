@@ -20,6 +20,7 @@ import com.hejitech.fitloop.core.PlanResponse
 import com.hejitech.fitloop.core.ReminderPlanner
 import com.hejitech.fitloop.core.Settings
 import com.hejitech.fitloop.core.TodayResponse
+import com.hejitech.fitloop.core.WatchWorkout
 import com.hejitech.fitloop.core.WorkoutState
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
@@ -69,6 +70,15 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     val health = HealthConnect(app)
     var requestHealthPermissions: ((Set<String>) -> Unit)? = null
 
+    /** The Wear OS watch during a workout, and its latest heart rate. */
+    val wear = WearLink(app)
+    var heartRate by mutableStateOf<Int?>(null)
+        private set
+    /** The open player's Set done, for the watch's button. */
+    var watchSetDone: (() -> Unit)? = null
+    private var watchWorkout = WatchWorkout()
+    private var lastLivePost = 0L
+
     /** "Save workouts to Health Connect" (this phone only, on by default, like the iPhone's switch). */
     var saveWorkouts by mutableStateOf(prefs.getBoolean("save_workouts", true))
         private set
@@ -91,6 +101,10 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         val config = if (BuildConfig.DEBUG && !production) BackendConfig.LOCAL else BackendConfig.PRODUCTION
         backend = Backend(config, store.load())
         backend.onSessionChange = store::save
+        wear.onHeartRate = { bpm -> viewModelScope.launch { watchHeartRate(bpm) } }
+        wear.onSetDone = { viewModelScope.launch { watchSetDone?.invoke() } }
+        wear.current = { watchWorkout }
+        wear.start()
         if (date != null && Day.date(date) != null) this.date = date
         viewModelScope.launch { route() }
     }
@@ -267,10 +281,39 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 
     // ---- workouts and Health Connect
 
+    /** A workout opened in the player: FitLoop opens on the watch too. */
+    fun beginWorkout() {
+        heartRate = null
+        viewModelScope.launch { wear.openOnWatch() }
+    }
+
+    /** Where the open workout is, for the watch. */
+    fun updateWatch(w: WatchWorkout) {
+        if (w == watchWorkout) return
+        watchWorkout = w
+        viewModelScope.launch { wear.send(w) }
+    }
+
+    /** The player closed: the watch stops, and the glasses' live heart rate clears. */
+    fun endWorkout() {
+        updateWatch(WatchWorkout())
+        if (heartRate != null && settings.vitals.liveHr) viewModelScope.launch { runCatching { backend.live(null, null) } }
+        heartRate = null
+    }
+
+    private fun watchHeartRate(bpm: Int) {
+        heartRate = bpm
+        // Relayed to the Worker for the glasses, at most every 4 s (as the iPhone app does).
+        val now = System.currentTimeMillis()
+        if (!settings.vitals.liveHr || now - lastLivePost < 4_000 || !watchWorkout.open) return
+        lastLivePost = now
+        viewModelScope.launch { runCatching { backend.live(bpm, watchWorkout.ref) } }
+    }
+
     /** The workout's check-in (with how long it took) and, when switched on, the session in Health Connect. */
     suspend fun finishWorkout(state: WorkoutState, status: String, started: Instant, heartRate: Int? = null) {
         val end = Instant.now()
-        checkin(NewCheckin(date, state.ref, "workout", status, CheckinData(durationSec = (end.epochSecond - started.epochSecond).toInt(), avgHr = heartRate)))
+        checkin(NewCheckin(date, state.ref, "workout", status, CheckinData(durationSec = (end.epochSecond - started.epochSecond).toInt(), avgHr = heartRate ?: this.heartRate)))
         if (saveWorkouts) runCatching { health.saveWorkout(state.workout.kind, state.workout.title, state.ref, date, started, end) }
     }
 

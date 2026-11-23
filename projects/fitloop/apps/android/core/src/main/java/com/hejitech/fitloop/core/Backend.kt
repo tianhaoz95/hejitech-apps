@@ -245,6 +245,12 @@ class Backend(
     suspend fun unpair(id: String) { raw("DELETE", "/api/devices/$id") }
     suspend fun deleteData() { raw("DELETE", "/api/account", "{}") }
 
+    /** Live heart rate from the watch during a workout, for the glasses (null clears it). */
+    suspend fun live(hr: Int?, workoutRef: String?) {
+        val body = buildJsonObject { put("hr", hr); put("workout_ref", workoutRef) }.toString()
+        raw("PUT", "/api/live", body)
+    }
+
     /** Downloads bytes (a progress photo's signed URL). */
     suspend fun download(url: String): ByteArray = withContext(Dispatchers.IO) {
         http.newCall(Request.Builder().url(url).build()).execute().use { resp ->

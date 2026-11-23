@@ -70,8 +70,10 @@ jobs:
         run: |
           VC=$(( ($(date -u +%s) - 1577836800) / 60 ))
           echo "VERSION_CODE=$VC" >> "$GITHUB_ENV"
-          ./gradlew :core:test :app:bundleRelease -PversionCode="$VC" --no-daemon
+          # The Wear OS app shares the listing (same package), so its code is this one plus one.
+          ./gradlew :core:test :app:bundleRelease :wear:bundleRelease -PversionCode="$VC" --no-daemon
           jarsigner -verify app/build/outputs/bundle/release/app-release.aab | tail -1
+          jarsigner -verify wear/build/outputs/bundle/release/wear-release.aab | tail -1
 
       - name: Upload to the internal testing track
         uses: r0adkll/upload-google-play@v1
@@ -82,6 +84,21 @@ jobs:
           mappingFile: projects/fitloop/apps/android/app/build/outputs/mapping/release/mapping.txt
           releaseName: ${{ env.VERSION }} (${{ env.VERSION_CODE }})
           track: internal
+          status: completed
+
+      # The Wear OS form factor's own track. It exists only once Wear OS is added to the listing in
+      # Play Console and the first watch bundle is uploaded there by hand (skill heji-google-play);
+      # until then set nothing and only the phone app ships. Then: repo variable FITLOOP_PLAY_WEAR=true.
+      - name: Upload the Wear OS app to its internal testing track
+        if: vars.FITLOOP_PLAY_WEAR == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.hejitech.fitloop
+          releaseFiles: projects/fitloop/apps/android/wear/build/outputs/bundle/release/wear-release.aab
+          mappingFile: projects/fitloop/apps/android/wear/build/outputs/mapping/release/mapping.txt
+          releaseName: ${{ env.VERSION }} (${{ env.VERSION_CODE }} watch)
+          track: wear:internal
           status: completed
 
       - name: Clean up signing material

@@ -24,7 +24,7 @@ cd projects/fitloop/apps/ios && xcodegen generate     # FitLoop.xcodeproj is gen
 xcodebuild -project FitLoop.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' -derivedDataPath .derived CODE_SIGN_IDENTITY=- build
 
 # Android (JDK 17: JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home)
-cd projects/fitloop/apps/android && ./gradlew :core:test :app:assembleDebug
+cd projects/fitloop/apps/android && ./gradlew :core:test :app:assembleDebug :wear:assembleDebug
 adb reverse tcp:8794 tcp:8794 && adb reverse tcp:55421 tcp:55421   # the local stack from a device/emulator
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb shell am start -n com.hejitech.fitloop/.MainActivity --ez autoSignIn true   # also: reviewSignIn, screen, date, openWorkout, production
@@ -66,7 +66,17 @@ local stack), `-reviewSignIn` (the App Review sign-in path), `-screen today|plan
   `SessionStore` (session sealed with an Android Keystore AES-GCM key), `Reminders.kt` (inexact
   AlarmManager alarms, re-set after boot), the five tabs and the workout player in `ui/`. Google
   sign-in goes through a Custom Tab back to `fitloop://login-callback` (the iPhone app's address).
-  Not there yet: Sign in with Apple, a watch (no live heart rate), Health Connect, What's New.
+  `HealthConnect.kt` (the daily summary as `health` vitals and finished workouts as exercise
+  sessions, asked once after sign-in; `HealthRationaleActivity` shows the privacy policy),
+  `WearLink.kt` (the Wear OS watch during a workout: opens it, sends the workout, hears heart rate
+  and Set done; relays heart rate to `/api/live`), `ui/WhatsNew.kt` (checked by `release_check`).
+  Sign in with Apple goes through the browser like Google and shows only once Supabase's Apple
+  provider redirects (it needs a web Services ID and its secret on the shared project; not set yet).
+- **Wear OS** (`apps/android/wear`, package `com.hejitech.fitloop` like the phone, versionCode + 1):
+  follows the workout the phone opens (`core/WearProtocol.kt`, Data Layer messages), shows the set
+  and rest timer, measures heart rate with Health Services' MeasureClient while open, Set done on the
+  wrist. Play: `wear:internal` once the Wear OS form factor is on the listing and the first watch
+  bundle is uploaded by hand; then set the repo variable `FITLOOP_PLAY_WEAR=true` and CI uploads it.
   versionName is read from `apps/ios/project.yml`'s MARKETING_VERSION. Google Play: app
   `com.hejitech.fitloop` (HEJI TECH LLC, app ID 4973385431680507913), internal testing only (tester
   list "HEJI owner"; no store listing yet). Release builds are R8-shrunk and target API 36 (Play's
