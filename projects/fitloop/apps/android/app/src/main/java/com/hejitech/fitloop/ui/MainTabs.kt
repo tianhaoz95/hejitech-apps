@@ -20,6 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import com.hejitech.fitloop.AppModel
 
@@ -41,6 +42,9 @@ fun MainTabs(model: AppModel) {
         WorkoutPlayer(model, workout, Modifier.systemBarsPadding()) { model.openWorkout = null }
         return
     }
+    val context = LocalContext.current
+    var whatsNew by rememberSaveable { mutableStateOf(WhatsNew.shouldShow(context)) }
+    if (whatsNew) WhatsNewSheet { WhatsNew.markSeen(context); whatsNew = false }
     var tab by rememberSaveable { mutableStateOf(model.initialTab.takeIf { t -> tabs.any { it.id == t } } ?: "today") }
     Scaffold(
         bottomBar = {

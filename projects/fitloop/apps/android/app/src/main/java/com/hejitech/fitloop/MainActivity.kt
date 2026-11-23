@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
         if (model.phase == Phase.READY) lifecycleScope.launch { pro.refresh() }
     }
 
-    /** `fitloop://login-callback?code=…`: the browser coming back from Google sign-in. */
+    /** `fitloop://login-callback?code=…`: the browser coming back from Google or Apple sign-in. */
     private fun handle(intent: Intent) {
         val data = intent.data ?: return
         if (data.scheme == "fitloop" && data.host == "login-callback") {

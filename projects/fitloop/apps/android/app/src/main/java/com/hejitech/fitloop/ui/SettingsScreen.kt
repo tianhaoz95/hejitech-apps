@@ -65,6 +65,7 @@ fun SettingsScreen(model: AppModel, modifier: Modifier = Modifier) {
     var draft by remember(model.settings) { mutableStateOf(model.settings) }
     var page by remember { mutableStateOf<String?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var whatsNew by remember { mutableStateOf(false) }
     val saved = draft == model.settings
     val site = model.backend.config.site
 
@@ -170,6 +171,7 @@ fun SettingsScreen(model: AppModel, modifier: Modifier = Modifier) {
             }
             item {
                 Section("About") {
+                    NavRow("What's New") { whatsNew = true }
                     NavRow("Help") { openUrl(context, "$site/support/") }
                     NavRow("Terms") { openUrl(context, "$site/terms/") }
                     NavRow("Privacy") { openUrl(context, "$site/privacy/") }
@@ -184,6 +186,7 @@ fun SettingsScreen(model: AppModel, modifier: Modifier = Modifier) {
             item { ErrorText(model.error) }
         }
     }
+    if (whatsNew) WhatsNewSheet { whatsNew = false }
     if (confirmDelete) AlertDialog(
         onDismissRequest = { confirmDelete = false },
         title = { Text("Delete everything FitLoop keeps about you?") },

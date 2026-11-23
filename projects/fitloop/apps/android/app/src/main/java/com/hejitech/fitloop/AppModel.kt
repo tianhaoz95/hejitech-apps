@@ -49,6 +49,10 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     var loading by mutableStateOf(false)
         private set
 
+    /** Sign in with Apple through the browser works once the shared project's Apple provider has a web secret. */
+    var appleAvailable by mutableStateOf(false)
+        private set
+
     /** The workout open in the player (its ref): shown over the tabs, like the iPhone app's full-screen player. */
     var openWorkout by mutableStateOf<String?>(null)
 
@@ -78,7 +82,11 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     /** After launch and after every sign-in path: to the app, or to sign-in. */
     private suspend fun route() {
         val s = backend.session
-        if (s == null) { phase = Phase.SIGNED_OUT; return }
+        if (s == null) {
+            phase = Phase.SIGNED_OUT
+            if (!appleAvailable) viewModelScope.launch { appleAvailable = backend.providerAvailable("apple", AUTH_REDIRECT) }
+            return
+        }
         email = s.email
         try {
             val r = backend.settings()
@@ -107,9 +115,14 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     // ---- sign-in
 
     /** Google through the browser with PKCE: the URL to open. The callback comes back to `finishOAuth`. */
-    fun startGoogleSignIn(): String {
-        val start = backend.oauthStart("google", AUTH_REDIRECT)
-        prefs.edit().putString("pkce_verifier", start.verifier).apply()
+    fun startGoogleSignIn(): String = startOAuth("google")
+
+    /** Apple through the browser with PKCE, for accounts made with Sign in with Apple on iPhone. */
+    fun startAppleSignIn(): String = startOAuth("apple")
+
+    private fun startOAuth(provider: String): String {
+        val start = backend.oauthStart(provider, AUTH_REDIRECT)
+        prefs.edit().putString("pkce_verifier", start.verifier).putString("pkce_provider", provider).apply()
         error = null
         return start.url
     }
@@ -117,10 +130,11 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     /** `fitloop://login-callback?code=…` from the browser. */
     fun finishOAuth(callback: Uri) {
         val verifier = prefs.getString("pkce_verifier", null) ?: return
-        prefs.edit().remove("pkce_verifier").apply()
+        val provider = if (prefs.getString("pkce_provider", "google") == "apple") "Apple" else "Google"
+        prefs.edit().remove("pkce_verifier").remove("pkce_provider").apply()
         val code = callback.getQueryParameter("code")
         if (code == null) {
-            error = "Google sign-in failed: ${callback.getQueryParameter("error_description") ?: "no code in the callback"}"
+            error = "$provider sign-in failed: ${callback.getQueryParameter("error_description") ?: "no code in the callback"}"
             return
         }
         viewModelScope.launch {
@@ -128,7 +142,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
                 backend.exchangeCode(code, verifier)
                 route()
             } catch (e: Exception) {
-                error = "Google sign-in failed: ${e.message}"
+                error = "$provider sign-in failed: ${e.message}"
             }
         }
     }

@@ -112,6 +112,18 @@ class Backend(
         return OAuthStart(url.toString(), verifier)
     }
 
+    /**
+     * Whether Supabase can start a browser sign-in with this provider: it redirects to the provider
+     * when it's set up and answers 400 when it isn't (Apple needs a web Services ID and its secret).
+     */
+    suspend fun providerAvailable(provider: String, redirect: String): Boolean = withContext(Dispatchers.IO) {
+        val url = oauthStart(provider, redirect).url
+        runCatching {
+            http.newBuilder().followRedirects(false).followSslRedirects(false).build()
+                .newCall(Request.Builder().url(url).get().build()).execute().use { it.code in 300..399 }
+        }.getOrDefault(false)
+    }
+
     suspend fun exchangeCode(code: String, verifier: String): AuthSession =
         authRequest("token?grant_type=pkce", mapOf("auth_code" to code, "code_verifier" to verifier))
 

@@ -25,6 +25,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -85,6 +86,14 @@ fun SignInScreen(model: AppModel) {
         Spacer(Modifier.height(32.dp))
         Button(onClick = { openUrl(context, model.startGoogleSignIn()) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("google-signin")) {
             Text("Continue with Google")
+        }
+        // Accounts made with Sign in with Apple on iPhone sign in here the same way, through the browser.
+        if (model.appleAvailable) {
+            Button(
+                onClick = { openUrl(context, model.startAppleSignIn()) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("apple-signin"),
+            ) { Text("Continue with Apple") }
         }
         if (BuildConfig.DEBUG && model.isLocal) {
             var email by rememberSaveable { mutableStateOf("athlete@example.com") }
