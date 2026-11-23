@@ -44,6 +44,8 @@
 	<string>FitLoop saves the workouts you do with it to Apple Health.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Pick progress photos to keep in FitLoop (only if you turn progress photos on).</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

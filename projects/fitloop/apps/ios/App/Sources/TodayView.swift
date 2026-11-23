@@ -74,7 +74,16 @@ struct TodayView: View {
                 #endif
             }
             .sheet(item: $noteFor) { n in NoteSheet(target: n) }
+            .onChange(of: model.pendingWorkout, initial: true) { _, ref in openPending(ref) }
+            .onChange(of: model.today?.state.date) { _, _ in openPending(model.pendingWorkout) }
         }
+    }
+
+    /// "Start today's workout" from Siri or Shortcuts: open it once today has loaded.
+    private func openPending(_ ref: String?) {
+        guard let ref, let w = model.today?.state.workouts.first(where: { $0.ref == ref }) else { return }
+        model.pendingWorkout = nil
+        openWorkout = w
     }
 
     private var title: String {

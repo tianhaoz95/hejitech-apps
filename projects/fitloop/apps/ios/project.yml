@@ -31,9 +31,12 @@ targets:
       - path: App/Sources
       - path: App/Resources
       - path: WatchShared
+      - path: LiveActivityShared
     dependencies:
       - package: FitLoopKit
       - target: WatchApp
+      - target: LiveActivity
+        embed: true
     settings:
       base:
         PRODUCT_NAME: FitLoop
@@ -49,6 +52,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
+        NSSupportsLiveActivities: true
         NSHealthShareUsageDescription: FitLoop reads your weight, resting heart rate, HRV, sleep, steps, active energy and workout heart rate once a day (only if you turn that on) to show your progress and share it with your agent.
         NSHealthUpdateUsageDescription: FitLoop saves the workouts you do with it to Apple Health.
         NSPhotoLibraryUsageDescription: Pick progress photos to keep in FitLoop (only if you turn progress photos on).
@@ -132,6 +136,30 @@ targets:
         ITSAppUsesNonExemptEncryption: false
     entitlements:
       path: WatchWidgets/WatchWidgets.entitlements
+
+  # The open workout on the Lock Screen and in the Dynamic Island (ActivityKit). No App Group: the
+  # app starts and updates it; "Set done" is a LiveActivityIntent that runs in the app.
+  LiveActivity:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: LiveActivity
+      - path: LiveActivityShared
+    settings:
+      base:
+        PRODUCT_NAME: FitLoopLiveActivity
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG).liveactivity
+        INFOPLIST_KEY_CFBundleDisplayName: "FitLoop Workout"
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: LiveActivity/Info.plist
+      properties:
+        CFBundleDisplayName: "FitLoop Workout"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        ITSAppUsesNonExemptEncryption: false
 
 schemes:
   App:

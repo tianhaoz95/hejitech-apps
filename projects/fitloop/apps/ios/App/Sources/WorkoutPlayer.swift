@@ -62,9 +62,13 @@ struct WorkoutPlayer: View {
                 if let n = state.next { ex = n.exercise; set = n.set }
                 model.beginWorkout(state.ref, kind: state.workout.kind, title: state.workout.title)
                 model.watchSetDone = { setDone() }
+                WorkoutIntentBridge.setDone = { mainAction(now: Date()) }
                 pushToWatch()
             }
-            .onDisappear { model.watchSetDone = nil }
+            .onDisappear {
+                model.watchSetDone = nil
+                WorkoutIntentBridge.setDone = nil
+            }
         }
     }
 
@@ -198,8 +202,8 @@ struct WorkoutPlayer: View {
 
     private func pushToWatch() {
         let e = current
-        model.updateWatch(title: state.workout.title, exercise: e.exercise.name, setLine: "Set \(set)/\(e.exercise.sets) · \(e.exercise.target)",
-                          restUntil: restUntil, progress: "\(state.setsDone)/\(state.setsTotal)")
+        model.updateWorkout(title: state.workout.title, exercise: e.exercise.name, setLine: "Set \(set)/\(e.exercise.sets) · \(e.exercise.target)",
+                            restUntil: restUntil, setsDone: state.setsDone, setsTotal: state.setsTotal)
     }
 
     private func finish(_ status: String) async {

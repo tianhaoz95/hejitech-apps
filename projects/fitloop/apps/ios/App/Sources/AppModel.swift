@@ -10,6 +10,12 @@ import UserNotifications
 final class AppModel {
     enum Phase { case launching, signedOut, ready }
 
+    /// The one model: the app's scene and its App Intents (Siri, Shortcuts) share it.
+    static let shared = AppModel()
+    /// A workout an intent asked to open (Today opens it in the player).
+    var pendingWorkout: String?
+    private var starting = false
+
     var phase: Phase = .launching
     var email: String?
     var date = Day.string()
@@ -30,6 +36,7 @@ final class AppModel {
     /// The last workout saved to Health, for the player's confirmation.
     var savedToHealth: String?
     let phoneWorkouts = PhoneWorkoutSaver()
+    private let liveActivity = WorkoutLiveActivityController()
 
     private(set) var backend: Backend
     let health = HealthSync()
@@ -82,6 +89,12 @@ final class AppModel {
     // MARK: launch and routing
 
     func start() async {
+        // The scene and an intent can both start the model; only the first routes.
+        guard !starting else {
+            while phase == .launching { try? await Task.sleep(for: .milliseconds(100)) }
+            return
+        }
+        starting = true
         watch.activate()
         await route()
     }
@@ -263,7 +276,7 @@ final class AppModel {
         await checkin(NewCheckin(date: date, ref: ref, kind: "workout", status: status, data: CheckinData(durationSec: elapsed, avgHr: heartRate)))
         finished = (date, ref, status, Date())
         let (kind, title) = (workoutKind, workoutTitle)
-        await endWorkout()
+        await endWorkout(finished: true)
         if !usesWatch, await phoneWorkouts.save(kind: kind, title: title, ref: ref, start: start, end: Date()) { savedToHealth = title }
     }
 
@@ -279,13 +292,17 @@ final class AppModel {
                                  data: CheckinData(durationSec: summary.durationSec, avgHr: summary.avgHr, maxHr: summary.maxHr), note: nil))
     }
 
-    func updateWatch(title: String, exercise: String, setLine: String, restUntil: Date?, progress: String) {
+    /// Where the open workout is: to the watch (application context) and the Live Activity.
+    func updateWorkout(title: String, exercise: String, setLine: String, restUntil: Date?, setsDone: Int, setsTotal: Int) {
         guard let ref = activeWorkout else { return }
         watch.send(context: [
             WatchMessage.workoutRef: ref, WatchMessage.workoutTitle: title, WatchMessage.exerciseName: exercise,
-            WatchMessage.setLine: setLine, WatchMessage.restUntil: restUntil?.timeIntervalSince1970 ?? 0, WatchMessage.progress: progress,
+            WatchMessage.setLine: setLine, WatchMessage.restUntil: restUntil?.timeIntervalSince1970 ?? 0, WatchMessage.progress: "\(setsDone)/\(setsTotal)",
             WatchMessage.workoutKind: workoutKind, WatchMessage.saveToHealth: PhoneWorkoutSaver.enabled,
         ])
+        let state = WorkoutActivityAttributes.ContentState(exercise: exercise, setLine: setLine, setsDone: setsDone, setsTotal: setsTotal,
+                                                           restUntil: restUntil, heartRate: heartRate)
+        liveActivity.start(title: title, started: workoutStarted ?? Date(), state: state)
     }
 
     /// Today's completion for the watch face (only today's; browsing another day changes nothing).
@@ -302,7 +319,8 @@ final class AppModel {
         ))
     }
 
-    func endWorkout() async {
+    func endWorkout(finished: Bool = false) async {
+        liveActivity.end(finished: finished)
         activeWorkout = nil
         workoutStarted = nil
         heartRate = nil
@@ -312,6 +330,7 @@ final class AppModel {
 
     private func heartRate(_ hr: Int) async {
         heartRate = hr
+        liveActivity.update(heartRate: hr)
         // Relay to the Worker for the glasses, at most every 4 s.
         guard settings.vitals.liveHr, Date().timeIntervalSince(lastLivePost) > 4 else { return }
         lastLivePost = Date()

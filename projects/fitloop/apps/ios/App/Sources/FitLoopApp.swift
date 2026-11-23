@@ -5,7 +5,7 @@ import UserNotifications
 @main
 struct FitLoopApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @State private var model = AppModel()
+    @State private var model = AppModel.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
