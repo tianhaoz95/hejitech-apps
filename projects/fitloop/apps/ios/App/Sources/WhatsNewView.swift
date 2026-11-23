@@ -20,11 +20,15 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.2.2"
+    static let currentVersion = "1.3.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
-        ReleaseNotes(version: "1.2.2", date: "November 2026", items: [
+        ReleaseNotes(version: "1.3.0", date: "November 2026", items: [
+            WhatsNewItem(icon: "lock.iphone", title: "Your workout on the Lock Screen", description: "While a workout is open, the exercise, your set, the rest timer and your heart rate stay on the Lock Screen and in the Dynamic Island. Tap Set done there without opening FitLoop."),
+            WhatsNewItem(icon: "waveform", title: "Siri and Shortcuts", description: "Say \"Start my FitLoop workout\", \"Log a meal in FitLoop\", \"Tell my FitLoop coach\" or \"What's left today in FitLoop\". They're in Shortcuts and Spotlight too, and you can put one on the Action button."),
+            WhatsNewItem(icon: "heart.text.square", title: "Workouts in Health, as what they were", description: "Workouts your watch runs are saved to Health as strength, cardio, mobility or intervals, with heart rate, energy, the plan's title and a marker for every set. Without a watch, your iPhone saves them. Turn it off in Settings."),
+            WhatsNewItem(icon: "chart.line.uptrend.xyaxis", title: "A coach that sees your trend", description: "Your agent can now see your weeks side by side (completion, volume, effort, heart rate and top loads) and change one day of your plan without rewriting the rest. Every change still comes with a note."),
             WhatsNewItem(icon: "checkmark.seal", title: "One Pro, everywhere", description: "FitLoop Pro now belongs to your account: buy it once, here or on the web, and it works on the web, this iPhone and your glasses wherever you sign in. Already have it? Sign in and it's there."),
         ]),
         ReleaseNotes(version: "1.2.1", date: "November 2026", items: [

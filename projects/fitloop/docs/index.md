@@ -41,16 +41,18 @@ and adjusts tomorrow's plan. Workouts are demo data; people and scenes are AI-ge
 
 ```
 your agent ──MCP (OAuth)──▶ FitLoop Worker ◀── /api ── iPhone (+ Apple Watch: heart rate, set done)
-  get_plan_guide, get_profile,     │               ── web app (today, plan, progress, feedback, settings)
-  validate/publish_plan,           │               ── Even G2 plugin (R1: check in, timers, notes)
-  get_feedback/checkins/vitals,    ▼
-  respond_to_feedback       Supabase `fitloop` schema: plans (versions), check-ins, feedback, vitals, photos
+  get_plan_guide, get_profile,     │               ── Android (+ Wear OS watch, Health Connect)
+  validate/publish/patch_plan,     │               ── web app (today, plan, progress, feedback, settings)
+  get_feedback/checkins/vitals,    │               ── Even G2 plugin (R1: check in, timers, notes)
+  get_trends, respond_to_feedback  ▼
+                            Supabase `fitloop` schema: plans (versions), check-ins, feedback, vitals, photos
 ```
 
 - **One engine.** `@fitloop/core` holds the plan format and its validator (the agent's rules), the
   day state and adherence, the settings and the glasses' screens with the R1 state machine. The
   Worker, the web app, the plugin and the tests all use it; the iPhone app mirrors its JSON.
-- **The agent writes, you adjust.** Plans are versions only the agent publishes. You can skip, swap
+- **The agent writes, you adjust.** Plans are versions only the agent publishes (a whole plan, or a
+  patch to a few days that FitLoop validates and publishes as the next version). You can skip, swap
   or eat less for a day; that's a check-in the agent reads, never an edit to its plan.
 - **Feedback in the moment.** "Too hard", "it hurts", "still hungry" or words, from the glasses'
   menu, any item in the app or the web, tied to the exercise or meal. The agent replies in the app.

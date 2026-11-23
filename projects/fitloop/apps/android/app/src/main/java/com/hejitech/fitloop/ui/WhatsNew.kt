@@ -36,11 +36,10 @@ object WhatsNew {
         Release(version = "1.3.0", month = "November 2026", notes = listOf(
             NoteItem("Health Connect", "Turn on Settings › Daily Health Connect summary and FitLoop reads your weight, resting heart rate, HRV, sleep, steps and active energy once a day, like the iPhone app does with Health. Only what you allow, and your agent sees it only if you share vitals."),
             NoteItem("Workouts saved to Health Connect", "Finish a workout and FitLoop saves it to Health Connect as what it was: strength, cardio, mobility or intervals, with its title and time."),
-            NoteItem("FitLoop on your Wear OS watch", "Open a workout on your phone and your watch follows along: the exercise, the set, the rest timer and your heart rate, which goes to your phone, your glasses and your agent. Tap Set done on your wrist."),
-            NoteItem("What's New", "Notes like these now come with every update. Find them any time in Settings."),
-        )),
-        Release(version = "1.2.2", month = "November 2026", notes = listOf(
+            NoteItem("FitLoop on your Wear OS watch", "Open a workout on your phone and your watch follows along: the exercise, the set, the rest timer and your heart rate, which goes to your phone, your glasses and your agent. Tap Set done on your wrist. The watch app comes from Google Play on your watch."),
+            NoteItem("A coach that sees your trend", "Your agent can now see your weeks side by side (completion, volume, effort, heart rate and top loads) and change one day of your plan without rewriting the rest. Every change still comes with a note."),
             NoteItem("One Pro, everywhere", "FitLoop is free on Google Play, with FitLoop Pro: a free week on the yearly plan, or once for life. Pro belongs to your account, so buying it here, on iPhone or on the web unlocks FitLoop everywhere you sign in."),
+            NoteItem("What's New", "Notes like these now come with every update. Find them any time in Settings."),
         )),
     )
 
