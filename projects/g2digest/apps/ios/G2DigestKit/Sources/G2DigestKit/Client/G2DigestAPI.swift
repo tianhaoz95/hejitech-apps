@@ -239,6 +239,59 @@ public actor G2DigestAPI {
     public func deleteAllData() async throws {
         _ = try await send("/api/account", method: "DELETE")
     }
+
+    // MARK: Bookmarks, signals, build runs, search, drafts, shares
+
+    public func fetchBookmarks() async throws -> [BookmarkItem] {
+        try decode([BookmarkItem].self, try await send("/api/bookmarks"))
+    }
+
+    public func addBookmark(_ item: BookmarkItem) async throws {
+        var payload: [String: Any] = [
+            "edition_date": item.editionDate,
+            "card_slug": item.cardSlug,
+            "card_title": item.cardTitle,
+            "body": item.body,
+        ]
+        if let sec = item.sectionTitle { payload["section_title"] = sec }
+        if let src = item.sourceUrl { payload["source_url"] = src }
+        _ = try await send("/api/bookmarks", method: "POST", json: payload)
+    }
+
+    public func removeBookmark(date: String, slug: String) async throws {
+        _ = try await send("/api/bookmarks/\(date)/\(slug)", method: "DELETE")
+    }
+
+    public func sendSignal(date: String, slug: String, sectionId: String?, signal: String, durationMs: Int? = nil) async throws {
+        var payload: [String: Any] = [
+            "edition_date": date,
+            "card_slug": slug,
+            "signal": signal,
+        ]
+        if let sectionId { payload["section_id"] = sectionId }
+        if let durationMs { payload["duration_ms"] = durationMs }
+        _ = try await send("/api/signals", method: "POST", json: payload)
+    }
+
+    public func fetchBuildRuns() async throws -> [BuildRunItem] {
+        try decode([BuildRunItem].self, try await send("/api/build-runs"))
+    }
+
+    public func searchEditions(query: String) async throws -> [SearchHitItem] {
+        let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        return try decode([SearchHitItem].self, try await send("/api/editions/search?q=\(q)"))
+    }
+
+    public func publishEditionNow(date: String) async throws {
+        _ = try await send("/api/editions/\(date)/publish", method: "POST")
+    }
+
+    public func createShareLink(date: String, cardSlug: String? = nil, label: String? = nil) async throws -> ShareLinkResult {
+        var payload: [String: Any] = ["edition_date": date]
+        if let cardSlug { payload["card_slug"] = cardSlug }
+        if let label { payload["label"] = label }
+        return try decode(ShareLinkResult.self, try await send("/api/shares", method: "POST", json: payload))
+    }
 }
 
 public enum BriefSaveError: LocalizedError, Equatable, Sendable {

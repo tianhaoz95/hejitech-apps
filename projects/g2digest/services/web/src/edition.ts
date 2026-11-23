@@ -11,7 +11,18 @@ const root = document.getElementById("app")!;
 const [page = "edition", which = "latest"] = location.pathname.split("/").filter(Boolean);
 const isPreview = page === "preview";
 
-interface EditionResponse { date: string; title: string; published_at: string; bundle: Bundle; audio: Record<string, string>; preview_snapshot: string }
+interface EditionResponse {
+  date: string;
+  title: string;
+  status?: "published" | "draft" | "scheduled";
+  publish_at?: string | null;
+  published_at: string;
+  bundle: Bundle;
+  audio: Record<string, string>;
+  preview_snapshot: string;
+}
+interface SearchHit { date: string; edition_title: string; card_slug: string; card_title: string; section_title: string | null; snippet: string; source_url: string | null }
+interface BookmarkRow { edition_date: string; card_slug: string; card_title: string; section_title: string | null; body: string; source_url: string | null; created_at: string }
 
 function editionView(b: Bundle, meta: { published_at?: string; snapshot?: string }) {
   const sectionTitle = (id?: string) => b.edition.sections.find((s) => s.section_id === id)?.title ?? id ?? "";
@@ -36,7 +47,7 @@ function editionView(b: Bundle, meta: { published_at?: string; snapshot?: string
     meta.snapshot ? el("details", {}, el("summary", {}, "Preview snapshot from the build"), el("pre", { class: "block" }, meta.snapshot)) : null);
 }
 
-function previewPanel(b: Bundle, audioUrl: (path: string) => string | null) {
+function previewPanel(b: Bundle, audioUrl: (path: string) => string | null, canBookmark = false) {
   const host = el("section", { class: "panel" }, el("h2", {}, "On the glasses"));
   const audio = new HtmlAudio();
   const reader: Reader = new Reader({
@@ -45,18 +56,84 @@ function previewPanel(b: Bundle, audioUrl: (path: string) => string | null) {
     onChange: (lines, r) => { preview.show(lines, positionDots(r.state.index, r.frames.length)); preview.status(previewStatus(r)); },
   });
   const preview = mountPreview(host, { onGesture: (g) => void reader.gesture(g) });
-  host.append(el("p", { class: "muted small" }, "Keys: ↓ / ↑ next / previous card, Space tap, L tap-then-hold, Esc double tap. Or load this edition on real glasses: ",
+  const actions = el("div", { class: "row", style: "margin-top: 8px; flex-wrap: wrap" });
+  const commuteCheck = el("input", { type: "checkbox" });
+  commuteCheck.addEventListener("change", () => { reader.autoAdvance = commuteCheck.checked; });
+  actions.append(el("label", { class: "check small" }, commuteCheck, "Commute mode (auto-advance)"));
+  if (canBookmark) {
+    actions.append(el("button", { class: "btn secondary", type: "button", onclick: async (e) => {
+      const c = b.cards[reader.state.index];
+      if (!c) return;
+      const sec = c.section_id ? b.edition.sections.find((s) => s.section_id === c.section_id)?.title : undefined;
+      const r = await api("/api/bookmarks", {
+        method: "POST",
+        body: JSON.stringify({ edition_date: b.date, card_slug: c.slug, card_title: c.title, section_title: sec, body: c.body, source_url: c.source_url }),
+      });
+      if (r.ok) (e.target as HTMLButtonElement).textContent = "Bookmarked";
+    } }, "Bookmark card"));
+  }
+  host.append(actions, el("p", { class: "muted small" }, "Keys: ↓ / ↑ next / previous card, Space tap, L tap-then-hold, Esc double tap. Or load this edition on real glasses: ",
     el("code", {}, `evenhub qr --url ${location.origin}/glasses/`), "."));
   reader.load(b);
   return host;
 }
 
 async function editionsPicker(current: string) {
-  const r = await api<{ date: string; title: string }[]>("/api/editions");
+  const r = await api<{ date: string; title: string; status?: string }[]>("/api/editions");
   if (!r.ok || !r.body.length) return null;
-  const s = el("select", { "aria-label": "Edition" }, ...r.body.map((e) => el("option", { value: e.date, ...(e.date === current ? { selected: true } : {}) }, `${e.date} · ${e.title}`)));
+  const s = el("select", { "aria-label": "Edition" }, ...r.body.map((e) =>
+    el("option", { value: e.date, ...(e.date === current ? { selected: true } : {}) },
+      `${e.date} · ${e.title}${e.status && e.status !== "published" ? ` [${e.status}]` : ""}`)));
   s.addEventListener("change", () => (location.href = `/${page}/${s.value}`));
   return s;
+}
+
+function searchAndBookmarksBar() {
+  const results = el("ul", { class: "list", hidden: true });
+  const input = el("input", { type: "search", placeholder: "Search kept editions (titles, sources, numbers)…", style: "flex: 1; min-width: 220px" });
+  const doSearch = async () => {
+    const q = input.value.trim();
+    if (!q) { results.hidden = true; results.replaceChildren(); return; }
+    const r = await api<SearchHit[]>(`/api/editions/search?q=${encodeURIComponent(q)}`);
+    results.hidden = false;
+    if (!r.ok || !r.body.length) {
+      results.replaceChildren(el("li", { class: "muted small" }, `No matches for "${q}".`));
+      return;
+    }
+    results.replaceChildren(...r.body.map((h) => el("li", {},
+      el("div", {},
+        el("a", { href: `/${page}/${h.date}` }, el("b", {}, `${h.date} · ${h.card_title}`)),
+        h.section_title ? el("span", { class: "badge", style: "margin-left: 6px" }, h.section_title) : null,
+        el("div", { class: "muted small" }, h.snippet)))));
+  };
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") void doSearch(); });
+
+  const bmList = el("ul", { class: "list" });
+  const bmDetails = el("details", { style: "margin-top: 8px" }, el("summary", {}, "Bookmarked cards"), bmList);
+  bmDetails.addEventListener("toggle", async () => {
+    if (!bmDetails.open) return;
+    const r = await api<BookmarkRow[]>("/api/bookmarks");
+    if (!r.ok || !r.body.length) {
+      bmList.replaceChildren(el("li", { class: "muted small" }, "No bookmarked cards yet. Bookmark from your glasses, iPhone, or preview."));
+      return;
+    }
+    bmList.replaceChildren(...r.body.map((m) => el("li", {},
+      el("div", {},
+        el("a", { href: `/${page}/${m.edition_date}` }, el("b", {}, `${m.edition_date} · ${m.card_title}`)),
+        m.section_title ? el("span", { class: "badge", style: "margin-left: 6px" }, m.section_title) : null,
+        el("div", { class: "muted small" }, m.body),
+        m.source_url ? el("a", { href: m.source_url, target: "_blank", rel: "noopener noreferrer", class: "small" }, "Source ↗") : null),
+      el("button", { class: "btn danger", type: "button", onclick: async () => {
+        await api(`/api/bookmarks/${m.edition_date}/${m.card_slug}`, { method: "DELETE" });
+        bmDetails.open = false;
+        bmDetails.open = true;
+      } }, "Remove"))));
+  });
+
+  return el("section", { class: "panel stack", style: "margin-bottom: 14px" },
+    el("div", { class: "row" }, input, el("button", { class: "btn secondary", type: "button", onclick: () => void doSearch() }, "Search")),
+    results,
+    bmDetails);
 }
 
 async function render() {
@@ -72,7 +149,7 @@ async function render() {
   if (!session) return;
   const r = await api<EditionResponse & { error?: string }>(`/api/editions/${which}`);
   if (!r.ok) {
-    root.replaceChildren(el("div", { class: "panel narrow" },
+    root.replaceChildren(searchAndBookmarksBar(), el("div", { class: "panel narrow" },
       el("h1", {}, r.status === 404 ? "No edition yet" : "Couldn't load the edition"),
       el("p", { class: "muted" }, r.status === 404 ? "Your build agent hasn't published one for this date. Check your brief, connect an agent, or look at the sample." : r.body.error ?? ""),
       el("div", { class: "row" }, el("a", { class: "btn primary", href: "/brief/" }, "Your brief"), el("a", { class: "btn secondary", href: "/agents/" }, "Build agents"), el("a", { class: "btn secondary", href: "/preview/fixture" }, "Sample"))));
@@ -80,11 +157,37 @@ async function render() {
   }
   const b = r.body.bundle;
   const picker = await editionsPicker(r.body.date);
-  const top = el("div", { class: "row", style: "justify-content: space-between; margin-bottom: 14px" },
-    el("div", { class: "row" }, picker, el("a", { class: "btn secondary", href: `/${isPreview ? "edition" : "preview"}/${r.body.date}` }, isPreview ? "Full edition only" : "Preview")),
+  const shareOut = el("div", { class: "small" });
+  const shareBtn = el("button", { class: "btn secondary", type: "button", onclick: async () => {
+    const res = await api<{ url?: string; error?: string }>("/api/shares", {
+      method: "POST",
+      body: JSON.stringify({ edition_date: r.body.date, label: b.edition.title }),
+    });
+    if (res.ok && res.body.url) {
+      void navigator.clipboard.writeText(res.body.url).catch(() => undefined);
+      shareOut.replaceChildren(el("span", { class: "muted" }, "Share link copied (14 days): "), el("a", { href: res.body.url, target: "_blank" }, res.body.url));
+    } else {
+      shareOut.textContent = res.body.error ?? "Couldn't create share link.";
+    }
+  } }, "Share link");
+
+  const draftBanner = r.body.status && r.body.status !== "published"
+    ? el("div", { class: "panel row", style: "justify-content: space-between; margin-bottom: 14px" },
+      el("span", {}, el("b", {}, r.body.status === "scheduled" ? `Scheduled for ${r.body.publish_at ? new Date(r.body.publish_at).toLocaleString() : "later"}` : "Draft edition"), " — not yet visible on glasses or podcast feed."),
+      el("button", { class: "btn primary", type: "button", onclick: async () => {
+        const res = await api(`/api/editions/${r.body.date}/publish`, { method: "POST" });
+        if (res.ok) location.reload();
+      } }, "Publish now"))
+    : null;
+
+  const top = el("div", { class: "row", style: "justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px" },
+    el("div", { class: "row" }, picker, el("a", { class: "btn secondary", href: `/${isPreview ? "edition" : "preview"}/${r.body.date}` }, isPreview ? "Full edition only" : "Preview"), shareBtn),
     isPreview ? el("a", { class: "btn secondary", href: "/pair/" }, "Pairing code") : null);
-  const preview = previewPanel(b, (p) => r.body.audio[p] ?? null);
+  const preview = previewPanel(b, (p) => r.body.audio[p] ?? null, true);
   const edition = editionView(b, { published_at: r.body.published_at, snapshot: r.body.preview_snapshot });
-  root.replaceChildren(top, el("div", { class: isPreview ? "grid2" : "grid2 rev" }, ...(isPreview ? [preview, edition] : [edition, preview])));
+  const nodes: (Node | string)[] = [searchAndBookmarksBar()];
+  if (draftBanner) nodes.push(draftBanner);
+  nodes.push(top, shareOut, el("div", { class: isPreview ? "grid2" : "grid2 rev" }, ...(isPreview ? [preview, edition] : [edition, preview])));
+  root.replaceChildren(...nodes);
 }
 void render();

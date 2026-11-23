@@ -88,4 +88,18 @@ describe("Reader", () => {
     reader.flash("OFFLINE");
     expect(shown.at(-1)!.at(-1)).toBe("[ OFFLINE ]");
   });
+  it("commute mode auto-advances to the next audio card and jumpTo moves directly", async () => {
+    const { reader, end, calls } = setup();
+    reader.autoAdvance = true;
+    await reader.gesture("next");
+    await reader.gesture("tap");
+    const startIdx = reader.state.index;
+    end();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(reader.state.index).toBeGreaterThan(startIdx);
+    expect(calls.filter((c) => c.startsWith("play")).length).toBe(2);
+    reader.jumpTo(0);
+    expect(reader.state.index).toBe(0);
+    expect(reader.state.audio).toBeNull();
+  });
 });

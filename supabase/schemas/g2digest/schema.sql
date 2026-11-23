@@ -83,6 +83,8 @@ create table g2digest.editions (
   preview_hash text not null,
   -- The ASCII preview snapshot from validate_cards (the run log keeps the same one).
   preview_snapshot text not null,
+  status text not null default 'published' check (status in ('published', 'draft', 'scheduled')),
+  publish_at timestamptz,
   published_at timestamptz not null default now(),
   unique (user_id, date)
 );
@@ -198,4 +200,97 @@ create table g2digest.pro_grants (
 );
 alter table g2digest.pro_grants enable row level security;
 grant select, insert, update, delete on table g2digest.pro_grants to service_role;
+
+-- Bookmarked cards saved from glasses, iPhone, Android or web.
+create table g2digest.bookmarks (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  edition_date date not null,
+  card_slug text not null,
+  card_title text not null,
+  section_title text,
+  body text not null,
+  source_url text,
+  created_at timestamptz not null default now(),
+  primary key (user_id, edition_date, card_slug)
+);
+create index bookmarks_user_created on g2digest.bookmarks(user_id, created_at desc);
+alter table g2digest.bookmarks enable row level security;
+create policy "own bookmarks" on g2digest.bookmarks for select using (user_id = auth.uid());
+grant select on table g2digest.bookmarks to authenticated;
+grant select, insert, update, delete on table g2digest.bookmarks to service_role;
+
+-- Lightweight reader engagement signals exposed to build agents via get_reader_signals.
+create table g2digest.reader_signals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  edition_date date not null,
+  card_slug text not null,
+  section_id text,
+  signal text not null check (signal in ('deep_dive_played', 'glance_played', 'bookmarked', 'skipped_fast', 'opened')),
+  duration_ms integer,
+  created_at timestamptz not null default now()
+);
+create index reader_signals_user_created on g2digest.reader_signals(user_id, created_at desc);
+alter table g2digest.reader_signals enable row level security;
+grant select, insert, update, delete on table g2digest.reader_signals to service_role;
+
+-- Agent build run log (validate_cards / publish_cards attempts) for diagnostics in web and mobile apps.
+create table g2digest.build_runs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  action text not null check (action in ('validate', 'publish')),
+  edition_date text,
+  status text not null check (status in ('ok', 'error')),
+  error_count integer not null default 0,
+  warning_count integer not null default 0,
+  errors jsonb not null default '[]'::jsonb,
+  agent_name text,
+  created_at timestamptz not null default now()
+);
+create index build_runs_user_created on g2digest.build_runs(user_id, created_at desc);
+alter table g2digest.build_runs enable row level security;
+create policy "own build runs" on g2digest.build_runs for select using (user_id = auth.uid());
+grant select on table g2digest.build_runs to authenticated;
+grant select, insert, update, delete on table g2digest.build_runs to service_role;
+
+-- Revocable read-only share links for a single edition or a single card.
+create table g2digest.edition_shares (
+  token_hash text primary key,
+  id uuid not null unique default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  edition_date date not null,
+  card_slug text,
+  label text,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz,
+  revoked_at timestamptz
+);
+create index edition_shares_user on g2digest.edition_shares(user_id, created_at desc);
+alter table g2digest.edition_shares enable row level security;
+create policy "own edition shares" on g2digest.edition_shares for select using (user_id = auth.uid());
+grant select on table g2digest.edition_shares to authenticated;
+grant select, insert, update, delete on table g2digest.edition_shares to service_role;
+
+-- Audio file byte sizes stored at upload time for podcast RSS enclosure lengths.
+create table g2digest.audio_meta (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  audio_path text not null,
+  bytes integer not null check (bytes >= 0),
+  content_type text,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, audio_path)
+);
+alter table g2digest.audio_meta enable row level security;
+grant select, insert, update, delete on table g2digest.audio_meta to service_role;
+
+-- Android phones that receive FCM notifications when a new edition is published.
+create table g2digest.fcm_devices (
+  fcm_token text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  last_sent_at timestamptz
+);
+create index fcm_devices_user on g2digest.fcm_devices(user_id);
+alter table g2digest.fcm_devices enable row level security;
+grant select, insert, update, delete on table g2digest.fcm_devices to service_role;
 

@@ -4,6 +4,7 @@ import G2DigestKit
 public struct EditionsHistorySheet: View {
     @ObservedObject var appModel: AppModel
     @Environment(\.dismiss) private var dismiss
+    @State private var searchText = ""
 
     public init(appModel: AppModel) {
         self.appModel = appModel
@@ -12,6 +13,49 @@ public struct EditionsHistorySheet: View {
     public var body: some View {
         NavigationStack {
             List {
+                if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Section("Search Results") {
+                        if appModel.searchHits.isEmpty {
+                            Text("No matches across kept editions.").foregroundStyle(.secondary)
+                        } else {
+                            ForEach(appModel.searchHits) { hit in
+                                Button {
+                                    Task {
+                                        await appModel.loadEdition(date: hit.date)
+                                        dismiss()
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("\(hit.date) · \(hit.cardTitle)").font(.headline).foregroundStyle(.primary)
+                                        Text(hit.snippet).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if !appModel.bookmarks.isEmpty {
+                    Section("Bookmarked Cards") {
+                        ForEach(appModel.bookmarks) { bm in
+                            Button {
+                                Task {
+                                    await appModel.loadEdition(date: bm.editionDate)
+                                    dismiss()
+                                }
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("\(bm.editionDate) · \(bm.cardTitle)").font(.subheadline.bold()).foregroundStyle(.primary)
+                                    Text(bm.body).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                }
+                            }
+                            .swipeActions {
+                                Button("Remove", role: .destructive) { Task { await appModel.removeBookmark(bm) } }
+                            }
+                        }
+                    }
+                }
+
                 Section("Available Editions") {
                     if appModel.editions.isEmpty {
                         Text(appModel.hasAccess
@@ -78,6 +122,10 @@ public struct EditionsHistorySheet: View {
                 }
             }
             .refreshable { await appModel.refreshAll() }
+            .searchable(text: $searchText, prompt: "Search editions, sources, numbers")
+            .onChange(of: searchText) { newValue in
+                Task { await appModel.searchEditions(query: newValue) }
+            }
             .navigationTitle("Editions Archive")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

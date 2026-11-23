@@ -41,13 +41,29 @@ const DOTS = { id: 3, name: "dots" };
 const LIST_PAGE = 8;
 /** A list row holds at most 64 characters. */
 const ROW_CHARS = 60;
-const K = { token: "g2digest:device_token", bundle: "g2digest:bundle", list: "g2digest:editions", mode: "g2digest:audio_mode" };
+/** Keep up to 5 recent editions offline for commutes and flights. */
+const MAX_OFFLINE_EDITIONS = 5;
+const K = {
+  token: "g2digest:device_token",
+  bundle: "g2digest:bundle",
+  bundles: "g2digest:bundles_cache",
+  list: "g2digest:editions",
+  mode: "g2digest:audio_mode",
+  read: "g2digest:read_dates",
+  commute: "g2digest:auto_advance",
+  pendingBookmarks: "g2digest:pending_bookmarks",
+};
+
+type MenuAction = Gesture | "exit" | "editions" | "bookmark" | "jump" | "commute";
 
 /** Contextual menu (tap, then long-press on the R1 when the firmware routes it to a menu). */
-const MENU: { id: number; name: string; gesture: Gesture | "exit" | "editions" }[] = [
+const MENU: { id: number; name: string; gesture: MenuAction }[] = [
   { id: 1, name: "Deep dive", gesture: "long_press" },
   { id: 2, name: "Glance audio", gesture: "tap" },
   { id: 3, name: "Stop audio", gesture: "stop" },
+  { id: 7, name: "Bookmark card", gesture: "bookmark" },
+  { id: 8, name: "Jump to section", gesture: "jump" },
+  { id: 9, name: "Commute mode", gesture: "commute" },
   { id: 4, name: "Next card", gesture: "next" },
   { id: 6, name: "All editions", gesture: "editions" },
   { id: 5, name: "Exit", gesture: "exit" },
@@ -74,8 +90,17 @@ interface EditionRow {
   title: string;
 }
 
-/** A row of the glasses' list: an edition, or a link to the next page of older/newer ones. */
-type ListRow = { label: string; date?: string; page?: number };
+/** A row of the glasses' list: an edition, a page link, or a section jump target. */
+type ListRow = { label: string; date?: string; page?: number; cardIndex?: number };
+
+interface PendingBookmark {
+  edition_date: string;
+  card_slug: string;
+  card_title: string;
+  section_title?: string;
+  body: string;
+  source_url?: string;
+}
 
 interface KV {
   get(k: string): Promise<string | null>;
@@ -121,13 +146,14 @@ export async function bootPlugin(opts: PluginOptions) {
 
   // ------------------------------------------------------------------ glasses output
   /** Which page the glasses show (null before the first one is drawn). */
-  let page: "cards" | "list" | null = null;
+  let page: "cards" | "list" | "sections" | null = null;
   /** The root page: the list of editions, or the tour when there's nothing to read. */
   let home: "list" | "tour" = "tour";
   let editions: EditionRow[] = [];
   let listOffset = 0;
   let listRows: ListRow[] = [];
   let shownRows = "";
+  let readDates = new Set<string>(JSON.parse((await kv.get(K.read)) ?? "[]") as string[]);
   let lastText = "", lastDots = "", pushedText = "", pushedDots = "";
   // The card frame and the list share the same border, so both pages look like one app.
   const frame = {
@@ -189,6 +215,16 @@ export async function bootPlugin(opts: PluginOptions) {
     audioUrl: (p) => cache.resolve(p),
     onBack: () => void goHome(),
     onEditions: () => (home === "list" ? void showList(listOffset) : reader.flash("END OF THE TOUR")),
+    onSignal: (ev) => {
+      if (isTour(reader.bundle)) return;
+      void sendAuthed("/api/signals", {
+        edition_date: ev.date,
+        card_slug: ev.slug,
+        section_id: ev.section_id,
+        signal: ev.signal,
+        duration_ms: ev.duration_ms,
+      });
+    },
     onChange: (lines, r) => {
       const dots = positionDots(r.state.index, r.frames.length);
       void push(screenText(lines), dots.join("\n"));
@@ -215,6 +251,9 @@ export async function bootPlugin(opts: PluginOptions) {
         const m = MENU.find((x) => x.id === event.menuItemClickEvent!.itemID);
         if (m?.gesture === "exit") void bridge.shutDownPageContainer(1).catch(() => false);
         else if (m?.gesture === "editions") reader.gesture("stop").then(() => goHome());
+        else if (m?.gesture === "bookmark") void bookmarkCurrentCard();
+        else if (m?.gesture === "jump") void showSections();
+        else if (m?.gesture === "commute") void toggleCommute();
         else if (m) void reader.gesture(m.gesture);
         return;
       }
@@ -230,6 +269,11 @@ export async function bootPlugin(opts: PluginOptions) {
         void refresh();
         return;
       }
+      if (page === "sections") {
+        if (type === OsEventTypeList.DOUBLE_CLICK_EVENT) void showCards();
+        else if (type === OsEventTypeList.CLICK_EVENT && event.listEvent) void pickSectionRow(event.listEvent.currentSelectItemIndex ?? 0);
+        return;
+      }
       if (page === "list") {
         // The root page: a double tap asks to exit.
         if (type === OsEventTypeList.DOUBLE_CLICK_EVENT) void bridge.shutDownPageContainer(1).catch(() => false);
@@ -242,12 +286,25 @@ export async function bootPlugin(opts: PluginOptions) {
   }
 
   reader.mode = ((await kv.get(K.mode)) as AudioMode | null) ?? "webview";
+  reader.autoAdvance = (await kv.get(K.commute)) === "1";
   ui.setMode(reader.mode);
+  ui.setCommute(reader.autoAdvance);
   ui.onMode(async (m) => {
     reader.mode = m;
     audio.stop();
     await kv.set(K.mode, m);
   });
+  ui.onCommute(async (on) => {
+    reader.autoAdvance = on;
+    await kv.set(K.commute, on ? "1" : "0");
+  });
+
+  async function toggleCommute() {
+    reader.autoAdvance = !reader.autoAdvance;
+    ui.setCommute(reader.autoAdvance);
+    await kv.set(K.commute, reader.autoAdvance ? "1" : "0");
+    reader.flash(reader.autoAdvance ? "COMMUTE MODE ON" : "COMMUTE MODE OFF");
+  }
 
   // ------------------------------------------------------------------ the list of editions
   const authed = async (path: string) => {
@@ -255,8 +312,109 @@ export async function bootPlugin(opts: PluginOptions) {
     if (!token) return null;
     return fetch(`${api}${path}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
   };
+  const sendAuthed = async (path: string, body: unknown) => {
+    const token = await kv.get(K.token);
+    if (!token) return null;
+    return fetch(`${api}${path}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).catch(() => null);
+  };
+  async function loadCachedBundles(): Promise<Record<string, Stored>> {
+    const map = JSON.parse((await kv.get(K.bundles)) ?? "{}") as Record<string, Stored>;
+    const legacy = JSON.parse((await kv.get(K.bundle)) ?? "null") as Stored | null;
+    if (legacy && !map[legacy.bundle.date]) map[legacy.bundle.date] = legacy;
+    return map;
+  }
+  async function saveCachedBundle(stored: Stored) {
+    const map = await loadCachedBundles();
+    map[stored.bundle.date] = stored;
+    const dates = Object.keys(map).sort().reverse().slice(0, MAX_OFFLINE_EDITIONS);
+    const trimmed: Record<string, Stored> = {};
+    for (const d of dates) trimmed[d] = map[d];
+    await kv.set(K.bundles, JSON.stringify(trimmed));
+    if (dates[0] === stored.bundle.date) await kv.set(K.bundle, JSON.stringify(stored));
+    const keepAudio = dates.flatMap((d) => audioPaths(trimmed[d].bundle));
+    await cache.prune(keepAudio);
+  }
+  async function markRead(date: string) {
+    if (readDates.has(date)) return;
+    readDates.add(date);
+    const recent = [...readDates].sort().reverse().slice(0, 30);
+    readDates = new Set(recent);
+    await kv.set(K.read, JSON.stringify(recent));
+    renderPhoneList();
+  }
+  async function bookmarkCurrentCard() {
+    const b = reader.bundle;
+    if (!b || isTour(b)) return reader.flash("PAIR TO BOOKMARK");
+    const c = b.cards[reader.state.index];
+    if (!c) return;
+    const secTitle = c.section_id ? b.edition.sections.find((s) => s.section_id === c.section_id)?.title : undefined;
+    const item: PendingBookmark = {
+      edition_date: b.date,
+      card_slug: c.slug,
+      card_title: c.title,
+      section_title: secTitle,
+      body: c.body,
+      source_url: c.source_url,
+    };
+    const res = await sendAuthed("/api/bookmarks", item);
+    if (res?.ok) {
+      reader.flash("BOOKMARKED");
+    } else {
+      const q = JSON.parse((await kv.get(K.pendingBookmarks)) ?? "[]") as PendingBookmark[];
+      if (!q.some((x) => x.edition_date === item.edition_date && x.card_slug === item.card_slug)) q.push(item);
+      await kv.set(K.pendingBookmarks, JSON.stringify(q));
+      reader.flash("BOOKMARK QUEUED");
+    }
+  }
+  async function flushPendingBookmarks() {
+    const q = JSON.parse((await kv.get(K.pendingBookmarks)) ?? "[]") as PendingBookmark[];
+    if (!q.length) return;
+    const left: PendingBookmark[] = [];
+    for (const item of q) {
+      const res = await sendAuthed("/api/bookmarks", item);
+      if (!res?.ok) left.push(item);
+    }
+    await kv.set(K.pendingBookmarks, JSON.stringify(left));
+  }
+  async function showSections() {
+    const b = reader.bundle;
+    if (!b || !bridge) return;
+    const rows: ListRow[] = [];
+    const firstAlert = b.cards.findIndex((c) => c.alert);
+    if (firstAlert >= 0) rows.push({ label: "! Alerts", cardIndex: firstAlert });
+    const seen = new Set<string>();
+    b.cards.forEach((c, idx) => {
+      if (c.kind === "section" && c.section_id && !seen.has(c.section_id)) {
+        seen.add(c.section_id);
+        const title = b.edition.sections.find((s) => s.section_id === c.section_id)?.title ?? c.section_id;
+        rows.push({ label: title, cardIndex: idx });
+      }
+    });
+    if (!rows.length) return reader.flash("NO SECTIONS");
+    audio.stop();
+    listRows = rows.slice(0, LIST_PAGE);
+    shownRows = "";
+    await draw({
+      containerTotalNum: 1,
+      listObject: [new ListContainerProperty({
+        ...frame, containerID: LIST.id, containerName: LIST.name,
+        itemContainer: new ListItemContainerProperty({ itemCount: listRows.length, itemWidth: 0, isItemSelectBorderEn: 1, itemName: listRows.map((r) => r.label) }),
+      })],
+    });
+    page = "sections";
+  }
+  async function pickSectionRow(i: number) {
+    const row = listRows[i];
+    if (row?.cardIndex !== undefined) reader.jumpTo(row.cardIndex);
+    await showCards();
+  }
   const rowLabel = (e: EditionRow, i: number) => {
-    const label = `${dateKicker(e.date)} · ${e.title}${i === 0 ? " (latest)" : ""}`;
+    const prefix = readDates.has(e.date) ? "" : "● ";
+    const label = `${prefix}${dateKicker(e.date)} · ${e.title}${i === 0 ? " (latest)" : ""}`;
     return [...label].length > ROW_CHARS ? [...label].slice(0, ROW_CHARS - 1).join("") + "…" : label;
   };
   /** The glasses' list, newest first, a page at a time (redrawn only when it changes, so the highlight stays put). */
@@ -288,18 +446,20 @@ export async function bootPlugin(opts: PluginOptions) {
     if (row.page !== undefined) return showList(row.page);
     if (row.date) await openEdition(row.date);
   }
-  /** Open one edition at its first card: the kept copy of the latest when it's that one and we're offline. */
+  /** Open one edition at its first card, falling back to multi-edition offline cache when offline. */
   async function openEdition(date: string) {
     const res = await authed(`/api/editions/${date}`);
     let stored: Stored | null = null;
     if (res?.ok) {
       const body = (await res.json()) as { bundle: Bundle; audio: Record<string, string> };
       stored = { fetched_at: new Date().toISOString(), bundle: body.bundle, audio: body.audio };
+      void saveCachedBundle(stored);
     } else {
-      const kept = JSON.parse((await kv.get(K.bundle)) ?? "null") as Stored | null;
-      if (kept?.bundle.date === date) stored = kept;
+      const map = await loadCachedBundles();
+      stored = map[date] ?? null;
     }
-    if (!stored) return ui.state("reading", "Offline: only the latest edition is kept on the phone.");
+    if (!stored) return ui.state("reading", "Offline: this edition isn't cached on the phone yet.");
+    await markRead(stored.bundle.date);
     cache.setUrls(stored.audio);
     reader.load(stored.bundle, 0);
     ui.state("reading", `${stored.bundle.edition.title} · ${stored.bundle.date}${res?.ok ? "" : " · offline"}`);
@@ -330,12 +490,15 @@ export async function bootPlugin(opts: PluginOptions) {
       // Revoked from the web app: fail closed.
       await kv.set(K.token, "");
       await kv.set(K.bundle, "");
+      await kv.set(K.bundles, "");
       await kv.set(K.list, "");
+      await kv.set(K.pendingBookmarks, "");
       return showTour("pair", "This device was unpaired. Pair it again with a new code.");
     }
     if (res?.status === 402) {
       // The account has no G2 Digest Pro (any store): the tour, ending with how to get it.
       await kv.set(K.bundle, "");
+      await kv.set(K.bundles, "");
       await kv.set(K.list, "");
       return showTour("pro", "Your editions on these glasses need G2 Digest Pro: start a free week in the G2 Digest app or on the web.");
     }
@@ -343,10 +506,14 @@ export async function bootPlugin(opts: PluginOptions) {
     if (res?.ok) {
       list = (await res.json()) as EditionRow[];
       await kv.set(K.list, JSON.stringify(list));
+      void flushPendingBookmarks();
     } else {
-      // Offline: the last list, narrowed to what's kept on the phone.
-      const kept = JSON.parse((await kv.get(K.bundle)) ?? "null") as Stored | null;
-      list = kept ? [{ date: kept.bundle.date, title: kept.bundle.edition.title }] : null;
+      // Offline: show every edition cached on the phone (newest first).
+      const map = await loadCachedBundles();
+      const cachedList = Object.values(map)
+        .sort((a, b) => b.bundle.date.localeCompare(a.bundle.date))
+        .map((s) => ({ date: s.bundle.date, title: s.bundle.edition.title }));
+      list = cachedList.length ? cachedList : null;
       if (!list) return showTour("offline", "Offline and nothing fetched yet.");
     }
     if (!list.length) return showTour("waiting", "Paired. No edition published yet: connect the agent that builds your editions (Agents on the web app).");
@@ -360,14 +527,14 @@ export async function bootPlugin(opts: PluginOptions) {
   }
   /** Keep the newest edition and its audio on the phone for a commute without signal. */
   async function keepLatest(date: string) {
-    const kept = JSON.parse((await kv.get(K.bundle)) ?? "null") as Stored | null;
-    if (kept?.bundle.date === date) return;
+    const map = await loadCachedBundles();
+    if (map[date]) return;
     const res = await authed("/api/editions/latest");
     if (!res?.ok) return;
     const body = (await res.json()) as { bundle: Bundle; audio: Record<string, string> };
-    await kv.set(K.bundle, JSON.stringify({ fetched_at: new Date().toISOString(), bundle: body.bundle, audio: body.audio }));
+    const stored: Stored = { fetched_at: new Date().toISOString(), bundle: body.bundle, audio: body.audio };
+    await saveCachedBundle(stored);
     cache.setUrls(body.audio);
-    await cache.prune(audioPaths(body.bundle));
     void cache.prefetch(audioPaths(body.bundle));
   }
 
@@ -388,7 +555,9 @@ export async function bootPlugin(opts: PluginOptions) {
     audio.stop();
     await kv.set(K.token, "");
     await kv.set(K.bundle, "");
+    await kv.set(K.bundles, "");
     await kv.set(K.list, "");
+    await kv.set(K.pendingBookmarks, "");
     await refresh();
   });
 
@@ -436,6 +605,7 @@ function phonePage(root: HTMLElement, onGlasses: boolean, api: string) {
           <legend>Audio</legend>
           <label><input type="radio" name="mode" value="webview" /> Play here</label>
           <label><input type="radio" name="mode" value="podcast" /> In my podcast app (the glasses say which episode)</label>
+          <label><input type="checkbox" name="commute" /> Commute mode (auto-advance cards &amp; audio)</label>
         </fieldset>
         <section class="past" hidden>
           <h3>Past editions</h3>
@@ -480,6 +650,13 @@ function phonePage(root: HTMLElement, onGlasses: boolean, api: string) {
     },
     onMode(cb: (m: AudioMode) => void) {
       root.querySelectorAll<HTMLInputElement>("input[name=mode]").forEach((r) => r.addEventListener("change", () => r.checked && cb(r.value as AudioMode)));
+    },
+    setCommute(on: boolean) {
+      $<HTMLInputElement>("input[name=commute]").checked = on;
+    },
+    onCommute(cb: (on: boolean) => void) {
+      const el = $<HTMLInputElement>("input[name=commute]");
+      el.addEventListener("change", () => cb(el.checked));
     },
     onPair(cb: (code: string, label: string) => Promise<string | null>) {
       pairHandler = cb;

@@ -50,6 +50,12 @@ public struct AudioPlayerBarView: View {
                             .clipShape(Capsule())
                     }
 
+                    if player.hasPreviousTrack {
+                        Button { player.previousTrack() } label: {
+                            Image(systemName: "backward.end.fill").font(.callout)
+                        }
+                    }
+
                     // Play / Pause toggle
                     Button {
                         player.togglePlayPause()
@@ -60,6 +66,12 @@ public struct AudioPlayerBarView: View {
                             .background(Color.accentColor)
                             .foregroundStyle(Color.black)
                             .clipShape(Circle())
+                    }
+
+                    if player.hasNextTrack {
+                        Button { player.nextTrack() } label: {
+                            Image(systemName: "forward.end.fill").font(.callout)
+                        }
                     }
 
                     // Stop / Dismiss

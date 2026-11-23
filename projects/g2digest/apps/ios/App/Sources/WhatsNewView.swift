@@ -29,10 +29,16 @@ public struct ReleaseNotes: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.5.2"
+    public static let currentVersion = "0.6.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.6.0", date: "November 2026", items: [
+            WhatsNewItem(icon: "headphones", title: "Continuous Audio & Live Activities", description: "Play all glances or deep dives continuously with Lock Screen and Dynamic Island controls, AirPods next/previous card skipping, and automatic offline audio caching."),
+            WhatsNewItem(icon: "rectangle.grid.2x2", title: "Widgets & Shortcuts", description: "Add G2 Digest Home Screen and Lock Screen widgets, or ask Siri to read today's headline or start your morning briefing."),
+            WhatsNewItem(icon: "bookmark", title: "Bookmarks, Archive Search & Sharing", description: "Bookmark cards from your glasses or phone, search across kept editions, and copy revocable read-only share links."),
+            WhatsNewItem(icon: "eyeglasses", title: "Smarter Glasses & Agent Diagnostics", description: "Unread dots, 5-edition offline cache, Commute Mode, and quick section/alert jumps on Even G2 — plus build-run diagnostics, scheduled delivery, and reader signals for your build agent."),
+        ]),
         ReleaseNotes(version: "0.5.2", date: "November 2026", items: [
             WhatsNewItem(icon: "checkmark.seal", title: "One Pro, everywhere", description: "G2 Digest Pro now belongs to your account: buy it once, here or on the web, and it works on the web, this iPhone and your glasses wherever you sign in. Already have it? Sign in and it's there."),
             WhatsNewItem(icon: "hammer", title: "Ready for iOS 27", description: "G2 Digest is now built with the iOS 27 SDK."),

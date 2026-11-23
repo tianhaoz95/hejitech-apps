@@ -34,6 +34,131 @@ export function starterBrief(timezone = "America/Los_Angeles"): Brief {
   };
 }
 
+export interface BriefPreset {
+  id: string;
+  name: string;
+  summary: string;
+  build: (timezone?: string) => Brief;
+}
+
+/** Topic-neutral structural presets for the brief wizard (no topic, company or source names). */
+export const BRIEF_PRESETS: readonly BriefPreset[] = [
+  {
+    id: "morning-scan",
+    name: "5-min morning scan",
+    summary: "TL;DR plus two short discovery sections with glance audio and optional deep dives.",
+    build: (timezone = "America/Los_Angeles") => ({
+      title: "Morning scan",
+      tldr: true,
+      total_card_budget: 9,
+      total_audio_budget_sec: 480,
+      language: "en",
+      units: { temperature: "C", distance: "km" },
+      glossary: [],
+      no_gloss: [],
+      delivery: { time: "07:00", timezone, days: ["mon", "tue", "wed", "thu", "fri"] },
+      sections: [
+        {
+          id: "section-1",
+          title: "Lead updates",
+          template: "discovery",
+          source: { kind: "web_news", entities: [], query: "" },
+          instructions: "Pick the top developments worth knowing today. Rank by impact; omit noise on quiet days.",
+          max_cards: 3,
+          quiet_behavior: "omit",
+          audio: { glance: true, deep_dive: "on_alert" },
+        },
+        {
+          id: "section-2",
+          title: "Key numbers",
+          template: "metric",
+          source: { kind: "web_news", entities: [], query: "" },
+          instructions: "Track up to three headline metrics with exact figures from the full edition.",
+          max_cards: 2,
+          quiet_behavior: "show_last",
+          audio: { glance: true, deep_dive: "never" },
+        },
+      ],
+    }),
+  },
+  {
+    id: "status-deep-dive",
+    name: "Status tracker + deep dive",
+    summary: "One alert-capable status section plus one required deep-dive research section.",
+    build: (timezone = "America/Los_Angeles") => ({
+      title: "Daily briefing",
+      tldr: true,
+      total_card_budget: 12,
+      total_audio_budget_sec: 1200,
+      language: "en",
+      units: { temperature: "C", distance: "km" },
+      glossary: [],
+      no_gloss: [],
+      delivery: { time: "07:30", timezone, days: ["mon", "tue", "wed", "thu", "fri"] },
+      sections: [
+        {
+          id: "section-1",
+          title: "Status watch",
+          template: "status",
+          source: { kind: "web_news", entities: [], query: "" },
+          instructions: "Monitor critical changes. Mark urgent items as alerts; show a calm status card on quiet days.",
+          max_cards: 3,
+          quiet_behavior: "show_status",
+          audio: { glance: true, deep_dive: "on_alert" },
+        },
+        {
+          id: "section-2",
+          title: "Deep research",
+          template: "discovery",
+          source: { kind: "web_news", entities: [], query: "" },
+          instructions: "Cover notable findings with clear methodology in the full edition and a spoken deep dive.",
+          max_cards: 3,
+          quiet_behavior: "omit",
+          audio: { glance: true, deep_dive: "required" },
+        },
+      ],
+    }),
+  },
+  {
+    id: "quiet-monitor",
+    name: "Quiet-day monitor",
+    summary: "Compact 6-card layout that stays silent unless something changes, plus agenda notes.",
+    build: (timezone = "America/Los_Angeles") => ({
+      title: "Signal monitor",
+      tldr: false,
+      total_card_budget: 6,
+      total_audio_budget_sec: 600,
+      language: "en",
+      units: { temperature: "C", distance: "km" },
+      glossary: [],
+      no_gloss: [],
+      delivery: { time: "08:00", timezone, days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] },
+      sections: [
+        {
+          id: "section-1",
+          title: "Alerts",
+          template: "status",
+          source: { kind: "web_news", entities: [], query: "" },
+          instructions: "Only report material changes. Show a single quiet card when nothing changed.",
+          max_cards: 2,
+          quiet_behavior: "show_status",
+          audio: { glance: true, deep_dive: "on_alert" },
+        },
+        {
+          id: "section-2",
+          title: "Schedule",
+          template: "agenda",
+          source: { kind: "calendar", entities: [], query: "" },
+          instructions: "Summarize upcoming dates and milestones concisely.",
+          max_cards: 2,
+          quiet_behavior: "omit",
+          audio: { glance: false, deep_dive: "never" },
+        },
+      ],
+    }),
+  },
+];
+
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const isStrArr = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === "string");
 const intIn = (v: unknown, lo: number, hi: number) => Number.isInteger(v) && (v as number) >= lo && (v as number) <= hi;

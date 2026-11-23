@@ -2,7 +2,7 @@
 // user only; saving a changed brief bumps brief_version, and the next edition follows it with no
 // other change anywhere. Checked live with the same rules the Worker applies before saving.
 import {
-  checkBrief, DEEP_DIVE_POLICIES, QUIET_BEHAVIORS, SOURCE_KINDS, starterSection, TEMPLATES, WEEKDAYS,
+  BRIEF_PRESETS, checkBrief, DEEP_DIVE_POLICIES, QUIET_BEHAVIORS, SOURCE_KINDS, starterSection, TEMPLATES, WEEKDAYS,
   type Brief, type Section,
 } from "@g2digest/core";
 import { api, el, requireSession, spinner } from "./supabase.ts";
@@ -172,6 +172,21 @@ function draw() {
         field("Temperature", select(["C", "F"] as const, () => brief.units.temperature, (v) => (brief.units.temperature = v))),
         field("Distance", select(["km", "mi"] as const, () => brief.units.distance, (v) => (brief.units.distance = v)))),
       el("div", { class: "field", style: "margin-top: 12px" }, el("span", {}, el("b", {}, "Days")), days)),
+    el("section", { class: "panel" },
+      el("h2", {}, "Structure presets"),
+      el("p", { class: "muted small" }, "Start from a proven card & audio structure, then fill in your own topics and sources below."),
+      el("div", { class: "row", style: "flex-wrap: wrap; gap: 8px" },
+        ...BRIEF_PRESETS.map((p) => el("button", {
+          class: "btn secondary",
+          type: "button",
+          title: p.summary,
+          onclick: () => {
+            if (!confirm(`Apply "${p.name}" structure? (${p.summary}) You can still edit before saving.`)) return;
+            brief = p.build(brief.delivery.timezone);
+            dirty = true;
+            draw();
+          },
+        }, p.name)))),
     el("section", { class: "panel" },
       el("h2", {}, "Sections"),
       el("p", { class: "muted small" }, "In edition order. When there's more than the budget allows, later sections lose cards first; alerts are never cut."),

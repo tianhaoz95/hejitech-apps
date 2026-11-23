@@ -4,7 +4,7 @@
 import { canonical, SLUG } from "./brief.ts";
 import { textPx } from "./font.ts";
 import { len, LINE_PX, MAX_CHARS, MAX_LINES, render, snapshot } from "./render.ts";
-import type { Audio, Brief, Bundle, CardInput, Frame, Issue, Section } from "./types.ts";
+import type { Audio, Brief, Bundle, CardInput, Frame, Issue, OverflowHint, Section } from "./types.ts";
 
 export interface ValidateContext {
   brief: Brief;
@@ -46,7 +46,8 @@ const SCRIPT_NUMBER_RE = /[$€£¥]\s?\d|\d(?:[.,]\d+)?\s?(?:bn|[kKmMbBtT])\b|\
 export function validate(bundle: unknown, ctx: ValidateContext): ValidationResult {
   const errors: Issue[] = [];
   const warnings: Issue[] = [];
-  const err = (code: string, message: string, card?: string) => errors.push({ code, message, card });
+  const err = (code: string, message: string, card?: string, hint?: OverflowHint) =>
+    errors.push(hint ? { code, message, card, hint } : { code, message, card });
   const warn = (code: string, message: string, card?: string) => warnings.push({ code, message, card });
   const done = (frames: Frame[] = []): ValidationResult => ({ ok: errors.length === 0, errors, warnings, frames, snapshot: snapshot(frames) });
 
@@ -130,12 +131,39 @@ export function validate(bundle: unknown, ctx: ValidateContext): ValidationResul
     if (c.alert && (c.kind !== "section" || c.template !== "status")) err("E_TEMPLATE", "only status cards can be alerts", c.slug);
     if (c.quiet && (c.kind !== "section" || c.template !== "status")) err("E_QUIET", "only status cards can be quiet cards", c.slug);
 
-    // form (§2.1), measured on the rendered frame
-    if (f.lines.length > MAX_LINES) err("E_LINES", `${f.lines.length} lines (max ${MAX_LINES}): shorten the title or body`, c.slug);
-    for (const l of f.lines) if (textPx(l) > LINE_PX) err("E_LINE_WIDTH", `"${l}" is ${textPx(l)} px wide (max ${LINE_PX}): a word that long can't wrap`, c.slug);
+    // form (§2.1), measured on the rendered frame (with pixel-accurate hints for agents)
+    if (f.lines.length > MAX_LINES) {
+      const overflowLines = f.lines.length - MAX_LINES;
+      const offending = Array.from({ length: overflowLines }, (_, k) => MAX_LINES + k + 1);
+      const overflowChars = f.lines.slice(MAX_LINES - 1, -1).reduce((n, l) => n + len(l), 0);
+      const approxTrim = Math.max(12 * overflowLines, overflowChars);
+      err(
+        "E_LINES",
+        `${f.lines.length} lines (max ${MAX_LINES}): shorten the title or body (trim ~${approxTrim} chars)`,
+        c.slug,
+        { overflow_lines: overflowLines, offending_lines: offending, approx_chars_to_trim: approxTrim },
+      );
+    }
+    f.lines.forEach((l, lineIdx) => {
+      const px = textPx(l);
+      if (px > LINE_PX) {
+        const excess = px - LINE_PX;
+        const avgCharPx = l.length ? px / l.length : 12;
+        const approxTrim = Math.max(1, Math.ceil(excess / Math.max(6, avgCharPx)));
+        err(
+          "E_LINE_WIDTH",
+          `line ${lineIdx + 1} ("${l}") is ${px} px wide (max ${LINE_PX}, +${excess} px): shorten or split by ~${approxTrim} chars`,
+          c.slug,
+          { offending_lines: [lineIdx + 1], max_line_px: px, limit_px: LINE_PX, excess_px: excess, approx_chars_to_trim: approxTrim },
+        );
+      }
+    });
     // Alignment padding (a metric line's dots) counts as one space, as the guide says.
     const chars = f.lines.reduce((n, l) => n + len(l.replace(/ \.{3,} /g, " ")), 0);
-    if (chars > MAX_CHARS) err("E_CHARS", `${chars} characters (max ${MAX_CHARS})`, c.slug);
+    if (chars > MAX_CHARS) {
+      const trim = chars - MAX_CHARS;
+      err("E_CHARS", `${chars} characters (max ${MAX_CHARS}, trim ${trim} chars)`, c.slug, { approx_chars_to_trim: trim });
+    }
 
     // never on a card (§2.4)
     const shown = [c.title, c.body, c.method_keyword ?? "", ...(c.metrics ?? []).flatMap((x) => [x.label, x.value])].join("\n");

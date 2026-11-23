@@ -23,6 +23,10 @@ export interface Env {
   APNS_KEY_ID?: string;
   APNS_PRIVATE_KEY?: string;
   APNS_TOPIC?: string;
+  /** FCM (shared HEJI Firebase project): for "your edition is ready" on Android. */
+  FCM_PROJECT_ID?: string;
+  FCM_CLIENT_EMAIL?: string;
+  FCM_PRIVATE_KEY?: string;
 }
 
 export const SCHEMA = "g2digest";
@@ -40,8 +44,8 @@ export function admin(env: Env): Db {
 
 // ---------------------------------------------------------------- tokens
 
-/** Token prefixes: agent (MCP personal access token), glasses device, podcast feed. */
-export const PREFIX = { agent: "g2a_", device: "g2d_", feed: "g2f_" } as const;
+/** Token prefixes: agent (MCP personal access token), glasses device, podcast feed, share link. */
+export const PREFIX = { agent: "g2a_", device: "g2d_", feed: "g2f_", share: "g2s_" } as const;
 
 export async function sha256(s: string): Promise<string> {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
@@ -133,18 +137,58 @@ export interface EditionRow {
   total_audio_sec: number;
   bundle: Bundle;
   preview_snapshot: string;
+  status: "published" | "draft" | "scheduled";
+  publish_at: string | null;
   published_at: string;
 }
 
-export async function getEdition(db: Db, userId: string, date: string | "latest"): Promise<EditionRow | null> {
-  let q = db.from("editions").select("id, date, title, guide_version, brief_version, total_cards, total_audio_sec, bundle, preview_snapshot, published_at").eq("user_id", userId);
+/** Promote any scheduled editions whose publish_at has arrived. Returns promoted editions for push alerts. */
+export async function promoteDueEditions(db: Db, userId?: string): Promise<{ user_id: string; date: string; title: string; cards: number; lead_title?: string; alert_count?: number }[]> {
+  let q = db
+    .from("editions")
+    .select("id, user_id, date, title, total_cards, bundle")
+    .eq("status", "scheduled")
+    .lte("publish_at", new Date().toISOString());
+  if (userId) q = q.eq("user_id", userId);
+  const { data } = await q;
+  const rows = (data ?? []) as { id: string; user_id: string; date: string; title: string; total_cards: number; bundle: Bundle }[];
+  if (!rows.length) return [];
+  const nowIso = new Date().toISOString();
+  await db.from("editions").update({ status: "published", published_at: nowIso }).in("id", rows.map((r) => r.id));
+  return rows.map((r) => {
+    const firstSection = r.bundle?.cards?.find((c) => c.kind === "section");
+    const alerts = r.bundle?.cards?.filter((c) => c.alert).length ?? 0;
+    return {
+      user_id: r.user_id,
+      date: r.date,
+      title: r.title,
+      cards: r.total_cards,
+      lead_title: firstSection?.title,
+      alert_count: alerts,
+    };
+  });
+}
+
+export async function getEdition(db: Db, userId: string, date: string | "latest", includeDrafts = false): Promise<EditionRow | null> {
+  await promoteDueEditions(db, userId).catch(() => undefined);
+  let q = db
+    .from("editions")
+    .select("id, date, title, guide_version, brief_version, total_cards, total_audio_sec, bundle, preview_snapshot, status, publish_at, published_at")
+    .eq("user_id", userId);
+  if (!includeDrafts) q = q.eq("status", "published");
   q = date === "latest" ? q.order("date", { ascending: false }).limit(1) : q.eq("date", date).limit(1);
   const { data } = await q;
   return ((data ?? [])[0] as EditionRow | undefined) ?? null;
 }
 
-export async function listEditions(db: Db, userId: string, limit = 60) {
-  const { data } = await db.from("editions").select("date, title, total_cards, total_audio_sec, published_at").eq("user_id", userId).order("date", { ascending: false }).limit(limit);
+export async function listEditions(db: Db, userId: string, limit = 60, includeDrafts = false) {
+  await promoteDueEditions(db, userId).catch(() => undefined);
+  let q = db
+    .from("editions")
+    .select("date, title, total_cards, total_audio_sec, status, publish_at, published_at")
+    .eq("user_id", userId);
+  if (!includeDrafts) q = q.eq("status", "published");
+  const { data } = await q.order("date", { ascending: false }).limit(limit);
   return data ?? [];
 }
 
@@ -222,7 +266,22 @@ export async function deleteUserData(db: Db, userId: string): Promise<void> {
     const paths = (files ?? []).map((f) => `${userId}/${d.name}/${f.name}`);
     if (paths.length) await bucket.remove(paths);
   }
-  for (const table of ["cards", "editions", "pairing_codes", "device_tokens", "push_devices", "access_tokens", "briefs", "profiles"]) {
+  for (const table of [
+    "bookmarks",
+    "reader_signals",
+    "build_runs",
+    "edition_shares",
+    "audio_meta",
+    "fcm_devices",
+    "cards",
+    "editions",
+    "pairing_codes",
+    "device_tokens",
+    "push_devices",
+    "access_tokens",
+    "briefs",
+    "profiles",
+  ]) {
     const { error } = await db.from(table).delete().eq("user_id", userId);
     if (error) throw new Error(`delete ${table}: ${error.message}`);
   }

@@ -103,6 +103,35 @@ struct AgentsView: View {
                 Text("Swipe an assistant to disconnect it.")
             }
 
+            Section {
+                if appModel.buildRuns.isEmpty {
+                    Text("No agent runs recorded yet.").foregroundStyle(.secondary)
+                } else {
+                    ForEach(appModel.buildRuns.prefix(10)) { run in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("\(run.action.capitalized) · \(run.editionDate ?? "unknown")")
+                                    .font(.subheadline.bold())
+                                Spacer()
+                                Text(run.status == "ok" ? "OK" : "\(run.errorCount) err")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(run.status == "ok" ? .green : .red)
+                            }
+                            Text("\(when(run.createdAt))\(run.agentName.map { " · \($0)" } ?? "")")
+                                .font(.caption).foregroundStyle(.secondary)
+                            ForEach(run.errors.prefix(3), id: \.message) { e in
+                                Text("• \(e.code): \(e.message)")
+                                    .font(.caption2).foregroundStyle(.red)
+                            }
+                        }
+                    }
+                }
+            } header: {
+                Text("Recent build runs")
+            } footer: {
+                Text("Shows recent validate_cards and publish_cards calls so you can spot why an edition failed.")
+            }
+
             if let err = appModel.errorMessage {
                 Section { Text(err).font(.footnote).foregroundStyle(.red) }
             }

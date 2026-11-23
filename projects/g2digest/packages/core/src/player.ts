@@ -101,6 +101,33 @@ export function step(state: PlayerState, gesture: Gesture, frames: Frame[], now:
 /** The player finished a file: back to skimming. */
 export const ended = (state: PlayerState): PlayerState => ({ ...state, audio: null });
 
+/**
+ * Hands-free commute mode: when audio finishes and autoAdvance is on, advance to the next card
+ * that has audio (matching the finished kind when available, otherwise glance) and start playing.
+ */
+export function endedNext(
+  state: PlayerState,
+  frames: Frame[],
+  autoAdvance: boolean,
+): { state: PlayerState; commands: PlayerCommand[] } {
+  const finishedKind = state.audio?.kind ?? "glance";
+  if (!autoAdvance) return { state: ended(state), commands: [] };
+  for (let i = state.index + 1; i < frames.length; i++) {
+    const f = frames[i];
+    const kind: AudioKind | null =
+      finishedKind === "deep_dive" && f.has_deep_dive ? "deep_dive" :
+      f.has_glance ? "glance" :
+      f.has_deep_dive ? "deep_dive" : null;
+    if (kind) {
+      return {
+        state: { index: i, audio: { slug: f.slug, kind, playing: true }, flash: null },
+        commands: [{ kind: "persist", index: i }, { kind: "play", slug: f.slug, audio: kind }],
+      };
+    }
+  }
+  return { state: ended(state), commands: [] };
+}
+
 /** The lines on screen: the card, with its footer replaced by the player state or a flash. */
 export function view(state: PlayerState, frames: Frame[], now: number): string[] {
   const frame = frames[state.index];

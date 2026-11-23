@@ -14,7 +14,7 @@ settings:
     DEVELOPMENT_TEAM: 68CTFST8W2
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.4.1" # local default; releases ship apps/glasses/package.json's version
+    MARKETING_VERSION: "0.6.0" # local default; releases ship apps/glasses/package.json's version
     CURRENT_PROJECT_VERSION: "1"
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 
@@ -28,11 +28,13 @@ targets:
     platform: iOS
     sources:
       - path: App/Sources
+      - path: Shared
       - path: App/Resources
       - path: ../../pipeline/build-prompt.md
         buildPhase: resources
     dependencies:
       - package: G2DigestKit
+      - target: Widgets
     settings:
       base:
         PRODUCT_NAME: G2Digest
@@ -54,6 +56,35 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UIBackgroundModes: [audio]
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.hejitech.g2digest
+            CFBundleURLSchemes: [g2digest]
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         ITSAppUsesNonExemptEncryption: false
+
+  Widgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Widgets
+      - path: Shared
+    dependencies:
+      - package: G2DigestKit
+    settings:
+      base:
+        PRODUCT_NAME: G2DigestWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG).widgets
+        INFOPLIST_KEY_CFBundleDisplayName: "G2 Digest Widgets"
+        TARGETED_DEVICE_FAMILY: "1"
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: "G2 Digest Widgets"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        NSSupportsLiveActivities: true

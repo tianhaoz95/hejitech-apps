@@ -48,7 +48,37 @@ public struct MainView: View {
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 12) {
+                    HStack(spacing: 10) {
+                        if appModel.hasAccess, let bundle = appModel.currentBundle, !TourBuilder.isTour(bundle) {
+                            Menu {
+                                Button { appModel.playAll(mode: .glance) } label: {
+                                    Label("Play All Glances", systemImage: "play.circle")
+                                }
+                                Button { appModel.playAll(mode: .deepDive) } label: {
+                                    Label("Play All Deep Dives", systemImage: "headphones")
+                                }
+                                Divider()
+                                Button {
+                                    Task { _ = await appModel.bookmarkCurrentCard() }
+                                } label: {
+                                    Label("Bookmark Card", systemImage: "bookmark")
+                                }
+                                if appModel.isSignedIn {
+                                    Button {
+                                        Task {
+                                            if let url = await appModel.createShareLinkForCurrentEdition() {
+                                                UIPasteboard.general.string = url
+                                            }
+                                        }
+                                    } label: {
+                                        Label("Copy Share Link", systemImage: "square.and.arrow.up")
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis.circle")
+                            }
+                        }
+
                         if appModel.isSignedIn {
                             Button {
                                 appModel.showBriefSheet = true
@@ -91,6 +121,20 @@ public struct MainView: View {
             .onChange(of: scenePhase) { phase in
                 // Back from the background: pick up editions published meanwhile.
                 if phase == .active { Task { await appModel.refreshAll() } }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .g2DigestOpenLatest)) { _ in
+                Task { await appModel.refreshAll() }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .g2DigestPlayAllGlances)) { _ in
+                Task {
+                    await appModel.refreshAll()
+                    appModel.playAll(mode: .glance)
+                }
+            }
+            .onOpenURL { url in
+                if url.scheme == "g2digest" {
+                    Task { await appModel.refreshAll() }
+                }
             }
             .task {
                 if appModel.notificationsOn { await PushRelay.shared.refreshRegistration() }

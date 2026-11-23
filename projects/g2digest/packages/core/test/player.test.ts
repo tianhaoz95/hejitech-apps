@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { textPx } from "../src/font.ts";
 import { LINE_PX, render } from "../src/render.ts";
-import { ended, initialState, NO_DEEP_DIVE, step, view, type Gesture, type PlayerState } from "../src/player.ts";
+import { ended, endedNext, initialState, NO_DEEP_DIVE, step, view, type Gesture, type PlayerState } from "../src/player.ts";
 import { fixtureBundle } from "./helpers.ts";
 
 const frames = render(fixtureBundle());
@@ -72,9 +72,13 @@ describe("gesture map (PRD §7.1)", () => {
     expect(all.at(-1)).toEqual({ kind: "pause" });
     expect(s.audio?.kind).toBe("deep_dive");
   });
-  it("audio ending returns to skimming", () => {
+  it("audio ending returns to skimming, or advances in commute mode", () => {
     const { s } = run(["next", "tap"]);
     expect(ended(s).audio).toBeNull();
+    const adv = endedNext(s, frames, true);
+    expect(adv.state.index).toBeGreaterThan(s.index);
+    expect(adv.state.audio?.playing).toBe(true);
+    expect(adv.commands.some((c) => c.kind === "play")).toBe(true);
   });
   it("every player footer fits the line width", () => {
     for (const g of [["next", "tap"], ["next", "tap", "tap"], ["next", "next", "next", "long_press"], ["next", "next", "next", "long_press", "tap"], ["long_press"]] as Gesture[][]) {

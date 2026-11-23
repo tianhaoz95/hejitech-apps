@@ -20,7 +20,7 @@ import { handleApi } from "./api.ts";
 import { handleNotification } from "./appstore.ts";
 import { handleStripeWebhook, proRequired, proStatus } from "./billing.ts";
 import { handleMcp, type Caller } from "./mcp.ts";
-import { admin, deleteUserData, json, PREFIX, sha256, supabaseUser, type Env as BaseEnv } from "./store.ts";
+import { admin, deleteUserData, json, PREFIX, promoteDueEditions, sha256, supabaseUser, type Env as BaseEnv } from "./store.ts";
 
 export interface Env extends BaseEnv {
   OAUTH_PROVIDER: OAuthHelpers;
@@ -29,13 +29,14 @@ export interface Env extends BaseEnv {
 interface Props {
   userId: string;
   via: "oauth" | "token";
+  agentName?: string;
 }
 
 const mcpHandler = {
   async fetch(req: Request, env: Env, ctx: ExecutionContext & { props?: Props }): Promise<Response> {
     const props = ctx.props;
     if (!props?.userId) return new Response("unauthorized", { status: 401 });
-    const caller: Caller = { userId: props.userId, via: props.via };
+    const caller: Caller = { userId: props.userId, via: props.via, agentName: props.agentName };
     const db = admin(env);
     // Assistants need Pro, like the web and the glasses (billing.ts).
     const email = (await db.auth.admin.getUserById(props.userId).catch(() => null))?.data.user?.email;
@@ -151,6 +152,7 @@ const app = {
     // Pretty routes for one date: the page reads the date from location.pathname.
     const page = url.pathname.match(/^\/(edition|preview)\/(?:\d{4}-\d{2}-\d{2}|latest|fixture)\/?$/);
     if (page) return env.ASSETS.fetch(new Request(new URL(`/${page[1]}/`, url), req));
+    if (url.pathname.startsWith("/share/")) return env.ASSETS.fetch(new Request(new URL("/share/", url), req));
     return env.ASSETS.fetch(req);
   },
 };
@@ -178,10 +180,16 @@ function getProvider(env: Env): OAuthProvider<Env> {
     // Build agents that can't do OAuth (a cron job, another vendor's agent) use g2a_… tokens from the web app.
     resolveExternalToken: async ({ token, env: e }) => {
       if (!token.startsWith(PREFIX.agent)) return null;
-      const { data } = await admin(e as Env).rpc("resolve_access_token", { p_token_hash: await sha256(token) });
-      const row = Array.isArray(data) ? (data[0] as { user_id: string } | undefined) : undefined;
+      const db = admin(e as Env);
+      const { data } = await db.rpc("resolve_access_token", { p_token_hash: await sha256(token) });
+      const row = Array.isArray(data) ? (data[0] as { token_id?: string; user_id: string } | undefined) : undefined;
       if (!row) return null;
-      const props: Props = { userId: row.user_id, via: "token" };
+      let agentName: string | undefined;
+      if (row.token_id) {
+        const { data: tok } = await db.from("access_tokens").select("name").eq("id", row.token_id).maybeSingle();
+        if (tok?.name) agentName = String(tok.name);
+      }
+      const props: Props = { userId: row.user_id, via: "token", agentName };
       return { props, audience: resource };
     },
   });
@@ -190,4 +198,17 @@ function getProvider(env: Env): OAuthProvider<Env> {
 
 export default {
   fetch: (req: Request, env: Env, ctx: ExecutionContext) => getProvider(env).fetch(req, env, ctx),
+  async scheduled(_controller: ScheduledController, env: Env) {
+    const db = admin(env);
+    const promoted = await promoteDueEditions(db);
+    for (const e of promoted) {
+      await notifyEdition(env, db, e.user_id, {
+        date: e.date,
+        title: e.title,
+        cards: e.cards,
+        lead_title: e.lead_title,
+        alert_count: e.alert_count,
+      }).catch(() => undefined);
+    }
+  },
 } satisfies ExportedHandler<Env>;

@@ -17,6 +17,7 @@ const EXT: Record<string, string> = { "audio/mpeg": "mp3", "audio/mp3": "mp3", "
 export interface Caller {
   userId: string;
   via: "oauth" | "token";
+  agentName?: string;
 }
 
 const cors = {
@@ -70,8 +71,17 @@ export const TOOLS = [
   {
     name: "publish_cards",
     title: "Publish an edition",
-    description: "Publishes the validated bundle as the user's edition for its date (replacing an earlier one for that date). Only the 10 newest editions are kept: publishing an 11th deletes the oldest and its audio (`pruned` lists their dates). Needs the preview_hash from an error-free validate_cards of this exact bundle; refused if the guide or brief changed since.",
-    inputSchema: { type: "object", required: ["bundle", "preview_hash"], properties: { bundle: BUNDLE, preview_hash: { type: "string" } } },
+    description: "Publishes the validated bundle as the user's edition for its date (replacing an earlier one for that date). Optionally pass draft=true to stage a preview without notifying readers, or publish_at (ISO-8601) to schedule release. Only the 10 newest editions are kept (`pruned` lists deleted dates). Needs the preview_hash from an error-free validate_cards of this exact bundle.",
+    inputSchema: {
+      type: "object",
+      required: ["bundle", "preview_hash"],
+      properties: {
+        bundle: BUNDLE,
+        preview_hash: { type: "string" },
+        draft: { type: "boolean", description: "Optional: save as draft for preview; user publishes manually." },
+        publish_at: { type: "string", description: "Optional: ISO-8601 timestamp to release and notify at the user's delivery window." },
+      },
+    },
     annotations: { title: "Publish an edition", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
@@ -81,10 +91,22 @@ export const TOOLS = [
     inputSchema: { type: "object", required: ["section_id", "before"], properties: { section_id: { type: "string" }, before: { type: "string", description: "Today's edition date, YYYY-MM-DD." } } },
     annotations: { title: "Get a section's last published card", readOnlyHint: true, openWorldHint: false },
   },
+  {
+    name: "get_reader_signals",
+    title: "Get recent reader engagement signals",
+    description: "Lightweight engagement summary from recent editions (which cards had deep dives played, glances played, bookmarks, or fast skips) grouped by section so you can calibrate depth and emphasis.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        days: { type: "integer", description: "Lookback window in days (1–30, default 14)." },
+      },
+    },
+    annotations: { title: "Get recent reader engagement signals", readOnlyHint: true, openWorldHint: false },
+  },
 ];
 
-/** Called after a successful publish_cards (the Worker sends the iPhone notification). */
-export type OnPublished = (userId: string, e: { date: string; title: string; cards: number }) => Promise<unknown>;
+/** Called after a successful live publish_cards (the Worker sends iPhone + Android notifications). */
+export type OnPublished = (userId: string, e: { date: string; title: string; cards: number; lead_title?: string; alert_count?: number }) => Promise<unknown>;
 
 async function callTool(name: string, args: Record<string, unknown>, caller: Caller, db: Db, kv: KVNamespace, onPublished?: OnPublished): Promise<unknown> {
   const userId = caller.userId;
@@ -111,6 +133,7 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
         if (bytes.length > INLINE_AUDIO_MAX_BYTES) throw new Error("data_base64 is over 3 MB: use the upload_url instead");
         const { error } = await db.storage.from(BUCKET).upload(key, bytes, { contentType: type, upsert: true });
         if (error) throw new Error(`upload failed: ${error.message}`);
+        await db.from("audio_meta").upsert({ user_id: userId, audio_path, bytes: bytes.length, content_type: type, updated_at: new Date().toISOString() }, { onConflict: "user_id,audio_path" });
         return { audio_path, stored: true, bytes: bytes.length };
       }
       const { data, error } = await db.storage.from(BUCKET).createSignedUploadUrl(key, { upsert: true });
@@ -118,12 +141,25 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
       return { audio_path, upload_url: data.signedUrl, method: "PUT", headers: { "Content-Type": type }, expires_in_sec: 7200 };
     }
     case "validate_cards":
-      return validateForUser(db, kv, userId, args.bundle);
+      return validateForUser(db, kv, userId, args.bundle, caller.agentName);
     case "publish_cards": {
-      const r = await publishForUser(db, kv, userId, args.bundle, args.preview_hash);
-      if (r.published && r.date && onPublished) {
-        const b = args.bundle as { edition?: { title?: string }; cards?: unknown[] };
-        await onPublished(userId, { date: r.date, title: String(b.edition?.title ?? ""), cards: b.cards?.length ?? 0 }).catch(() => undefined);
+      const r = await publishForUser(db, kv, userId, args.bundle, args.preview_hash, {
+        draft: args.draft === true,
+        publish_at: typeof args.publish_at === "string" ? args.publish_at : undefined,
+        agentName: caller.agentName,
+      });
+      if (r.published && r.status === "published" && r.date && onPublished) {
+        const b = args.bundle as Partial<Bundle>;
+        const cards = Array.isArray(b.cards) ? b.cards : [];
+        const lead = cards.find((c) => c.kind === "section")?.title;
+        const alertCount = cards.filter((c) => c.alert).length;
+        await onPublished(userId, {
+          date: r.date,
+          title: String(b.edition?.title ?? ""),
+          cards: cards.length,
+          lead_title: lead,
+          alert_count: alertCount,
+        }).catch(() => undefined);
       }
       return r;
     }
@@ -137,6 +173,21 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
         if (cards.length) return { date: e.date, cards: cards.map((c) => ({ ...c, carried_from: c.carried_from ?? e.date })) };
       }
       return { date: null, cards: [] };
+    }
+    case "get_reader_signals": {
+      const days = Math.max(1, Math.min(30, Number(args.days ?? 14) || 14));
+      const since = new Date(Date.now() - days * 86400_000).toISOString();
+      const [{ data: sigs }, { data: marks }] = await Promise.all([
+        db.from("reader_signals").select("edition_date, card_slug, section_id, signal, duration_ms, created_at").eq("user_id", userId).gte("created_at", since).order("created_at", { ascending: false }).limit(200),
+        db.from("bookmarks").select("edition_date, card_slug, card_title, section_title, created_at").eq("user_id", userId).gte("created_at", since).order("created_at", { ascending: false }).limit(50),
+      ]);
+      const bySection: Record<string, { deep_dive_played: number; glance_played: number; bookmarked: number; skipped_fast: number }> = {};
+      for (const row of (sigs ?? []) as { section_id: string | null; signal: string }[]) {
+        const sec = row.section_id ?? "_general";
+        if (!bySection[sec]) bySection[sec] = { deep_dive_played: 0, glance_played: 0, bookmarked: 0, skipped_fast: 0 };
+        if (row.signal in bySection[sec]) bySection[sec][row.signal as keyof (typeof bySection)[string]]++;
+      }
+      return { days, since, by_section: bySection, recent_bookmarks: marks ?? [], total_signals: (sigs ?? []).length };
     }
   }
   throw new Error(`unknown tool ${name}`);

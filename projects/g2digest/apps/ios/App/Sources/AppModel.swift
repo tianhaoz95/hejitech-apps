@@ -52,6 +52,10 @@ public final class AppModel: ObservableObject {
     @Published public var briefVersion: Int = 0
     @Published public var tokens: [AgentToken] = []
     @Published public var assistants: [ConnectedAssistant] = []
+    @Published public var bookmarks: [BookmarkItem] = []
+    @Published public var buildRuns: [BuildRunItem] = []
+    @Published public var searchHits: [SearchHitItem] = []
+    @Published public var lastShareURL: String?
     /// New-edition notifications on this iPhone (asks iOS the first time it's turned on).
     @Published public var notificationsOn: Bool = UserDefaults.standard.bool(forKey: "g2digest_notifications") {
         didSet { UserDefaults.standard.set(notificationsOn, forKey: "g2digest_notifications") }
@@ -92,11 +96,28 @@ public final class AppModel: ObservableObject {
 
         wireAuth()
         PushRelay.shared.onToken = { [weak self] token in Task { await self?.didRegisterForPush(token: token) } }
-        PushRelay.shared.onOpenEdition = { [weak self] date in
+        PushRelay.shared.onOpenEdition = { [weak self] date, autoPlay in
             Task {
                 guard let self else { return }
                 await self.refreshAll()
                 if let date { await self.loadEdition(date: date) }
+                if autoPlay { self.playAll(mode: .glance) }
+            }
+        }
+        AudioPlayerService.shared.onTrackChanged = { [weak self] card, mode in
+            guard let self, let bundle = self.currentBundle else { return }
+            if let idx = bundle.cards.firstIndex(where: { $0.slug == card.slug }) {
+                self.currentCardIndex = idx
+            }
+            if !TourBuilder.isTour(bundle) {
+                Task {
+                    try? await self.api.sendSignal(
+                        date: bundle.date,
+                        slug: card.slug,
+                        sectionId: card.sectionId,
+                        signal: mode == .deepDive ? "deep_dive_played" : "glance_played"
+                    )
+                }
             }
         }
         // The built-in tour until the first refresh brings an edition.
@@ -300,8 +321,73 @@ public final class AppModel: ObservableObject {
         do {
             async let t = api.fetchTokens()
             async let g = api.fetchGrants()
+            async let r = api.fetchBuildRuns()
             (tokens, assistants) = try await (t, g)
+            buildRuns = (try? await r) ?? []
         } catch { errorMessage = error.localizedDescription }
+    }
+
+    // MARK: playlists, bookmarks, search, sharing
+
+    public func playAll(mode: AudioTrackMode) {
+        guard let bundle = currentBundle, !TourBuilder.isTour(bundle) else { return }
+        AudioPlayerService.shared.playQueue(
+            cards: bundle.cards,
+            mode: mode,
+            editionTitle: bundle.edition.title,
+            editionDate: bundle.date
+        )
+    }
+
+    public func loadBookmarks() async {
+        guard isSignedIn else { return }
+        bookmarks = (try? await api.fetchBookmarks()) ?? []
+    }
+
+    public func bookmarkCurrentCard() async -> Bool {
+        guard let bundle = currentBundle, !TourBuilder.isTour(bundle), let card = currentCard else { return false }
+        let sec = card.sectionId.flatMap { id in bundle.edition.sections.first(where: { $0.sectionId == id })?.title }
+        let item = BookmarkItem(
+            editionDate: bundle.date,
+            cardSlug: card.slug,
+            cardTitle: card.title,
+            sectionTitle: sec,
+            body: card.body,
+            sourceUrl: card.sourceURL
+        )
+        do {
+            try await api.addBookmark(item)
+            if isSignedIn { await loadBookmarks() }
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    public func removeBookmark(_ item: BookmarkItem) async {
+        do {
+            try await api.removeBookmark(date: item.editionDate, slug: item.cardSlug)
+            bookmarks.removeAll { $0.id == item.id }
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    public func searchEditions(query: String) async {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isSignedIn, !q.isEmpty else { searchHits = []; return }
+        searchHits = (try? await api.searchEditions(query: q)) ?? []
+    }
+
+    public func createShareLinkForCurrentEdition() async -> String? {
+        guard isSignedIn, let bundle = currentBundle, !TourBuilder.isTour(bundle) else { return nil }
+        do {
+            let res = try await api.createShareLink(date: bundle.date, label: bundle.edition.title)
+            lastShareURL = res.url
+            return res.url
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
     }
 
     public func createToken(name: String) async -> String? {
@@ -417,7 +503,14 @@ public final class AppModel: ObservableObject {
             if isPaired && !isSignedIn { unpair() }
             errorMessage = APIError.unauthenticated.errorDescription
         } catch let e as APIError {
-            if case .networkError = e { isOffline = true }
+            if case .networkError = e {
+                isOffline = true
+                if let cached = await OfflineStore.shared.loadLatestEdition() {
+                    currentBundle = cached
+                    errorMessage = nil
+                    return
+                }
+            }
             errorMessage = e.localizedDescription
             if currentBundle == nil {
                 currentBundle = TourBuilder.makeTour(reason: .offline)
@@ -433,6 +526,7 @@ public final class AppModel: ObservableObject {
                 briefVersion = r.briefVersion
             }
             await loadDevices()
+            await loadBookmarks()
             await syncPushRegistration()
         } else {
             userBrief = nil
@@ -447,6 +541,12 @@ public final class AppModel: ObservableObject {
             apply(try await api.fetchEdition(date: date))
             currentCardIndex = 0
         } catch {
+            if let cached = await OfflineStore.shared.loadEdition(date: date) {
+                isOffline = true
+                currentBundle = cached
+                currentCardIndex = 0
+                return
+            }
             self.errorMessage = "Couldn't open the \(date) edition: \(error.localizedDescription)"
         }
     }
@@ -456,6 +556,8 @@ public final class AppModel: ObservableObject {
         signedAudioMap = res.audio ?? [:]
         AudioPlayerService.shared.updateSignedAudioMap(signedAudioMap)
         if currentCardIndex >= res.bundle.cards.count { currentCardIndex = 0 }
+        let audio = signedAudioMap
+        Task { await OfflineStore.shared.save(bundle: res.bundle, audioURLs: audio) }
     }
 }
 

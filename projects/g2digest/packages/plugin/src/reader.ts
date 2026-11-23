@@ -1,7 +1,7 @@
 // Reader: one edition on screen. Binds the core render function and gesture state machine to an
 // audio output, for both surfaces: the glasses plugin (gestures from the R1 ring) and the browser
 // preview (on-screen controls). Whatever drives it, the same frames and the same state machine.
-import { episodes, ended, initialState, render, step, view, type Bundle, type Frame, type Gesture, type PlayerCommand, type PlayerState } from "@g2digest/core";
+import { episodes, endedNext, initialState, render, step, view, type Bundle, type Frame, type Gesture, type PlayerCommand, type PlayerState } from "@g2digest/core";
 
 export interface AudioOut {
   play(url: string): Promise<void>;
@@ -27,6 +27,8 @@ export interface ReaderOptions {
   onBack?: () => void;
   /** Swipe up on the last card: show the list of editions. */
   onEditions?: () => void;
+  /** Lightweight reader engagement signal (best-effort telemetry for build agents). */
+  onSignal?: (ev: { date: string; slug: string; section_id?: string; signal: "deep_dive_played" | "glance_played" | "skipped_fast"; duration_ms?: number }) => void;
   now?: () => number;
 }
 
@@ -35,14 +37,24 @@ export class Reader {
   frames: Frame[] = [];
   state: PlayerState = initialState();
   mode: AudioMode = "webview";
+  /** Hands-free commute mode: automatically advance to the next card and play its audio when a clip finishes. */
+  autoAdvance = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private podcastFlash: string | null = null;
+  private cardShownAt = 0;
 
   constructor(private opts: ReaderOptions) {
     opts.audio.onEnded(() => {
-      this.state = ended(this.state);
-      this.emit();
+      void this.handleEnded();
     });
+  }
+
+  private async handleEnded() {
+    const { state, commands } = endedNext(this.state, this.frames, this.autoAdvance && this.mode === "webview");
+    this.state = state;
+    if (commands.length) this.cardShownAt = this.now();
+    for (const c of commands) await this.run(c);
+    this.emit();
   }
 
   private now() {
@@ -54,6 +66,19 @@ export class Reader {
     this.bundle = bundle;
     this.frames = render(bundle);
     this.state = initialState(Math.max(0, Math.min(index, this.frames.length - 1)));
+    this.cardShownAt = this.now();
+    this.emit();
+  }
+
+  /** Jump directly to a card index (e.g. from the section/alert quick-jump list). */
+  jumpTo(index: number) {
+    if (!this.bundle || !this.frames.length) return;
+    const to = Math.max(0, Math.min(index, this.frames.length - 1));
+    this.opts.audio.stop();
+    this.podcastFlash = null;
+    this.state = { index: to, audio: null, flash: null };
+    this.cardShownAt = this.now();
+    this.opts.persist?.(this.bundle.date, to);
     this.emit();
   }
 
@@ -66,7 +91,22 @@ export class Reader {
 
   async gesture(g: Gesture) {
     if (!this.bundle) return;
+    const prevIdx = this.state.index;
+    const elapsed = this.now() - this.cardShownAt;
     const { state, commands } = step(this.state, g, this.frames, this.now());
+    if (g === "next" && state.index !== prevIdx && elapsed > 0 && elapsed < 2000) {
+      const prevCard = this.bundle.cards[prevIdx];
+      if (prevCard && prevCard.kind === "section") {
+        this.opts.onSignal?.({
+          date: this.bundle.date,
+          slug: prevCard.slug,
+          section_id: prevCard.section_id,
+          signal: "skipped_fast",
+          duration_ms: Math.round(elapsed),
+        });
+      }
+    }
+    if (state.index !== prevIdx) this.cardShownAt = this.now();
     this.state = state;
     this.podcastFlash = null;
     for (const c of commands) await this.run(c);
@@ -109,7 +149,16 @@ export class Reader {
           this.state = { ...this.state, audio: null, flash: { text: "AUDIO OFFLINE", until: this.now() + 1500 } };
           return;
         }
-        await a.play(url).catch(() => {
+        await a.play(url).then(() => {
+          if (this.bundle && card) {
+            this.opts.onSignal?.({
+              date: this.bundle.date,
+              slug: card.slug,
+              section_id: card.section_id,
+              signal: c.audio === "deep_dive" ? "deep_dive_played" : "glance_played",
+            });
+          }
+        }).catch(() => {
           this.state = { ...this.state, audio: null, flash: { text: "CAN'T PLAY", until: this.now() + 1500 } };
         });
       }

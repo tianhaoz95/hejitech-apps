@@ -11,6 +11,7 @@ const pages = {
   brief: "brief/index.html",
   edition: "edition/index.html",
   preview: "preview/index.html",
+  share: "share/index.html",
   agents: "agents/index.html",
   consent: "oauth/consent/index.html",
   glasses: "glasses/index.html",

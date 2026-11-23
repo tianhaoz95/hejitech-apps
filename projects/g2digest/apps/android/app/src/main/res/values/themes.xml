@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.G2Digest" parent="android:Theme.Material.NoActionBar" />
+</resources>

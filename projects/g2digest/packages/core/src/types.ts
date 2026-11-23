@@ -106,9 +106,26 @@ export interface Frame {
   has_deep_dive: boolean;
 }
 
+export interface OverflowHint {
+  /** 1-based line numbers that overflowed (or exceeded max lines). */
+  offending_lines?: number[];
+  /** Widest offending line in pixels. */
+  max_line_px?: number;
+  /** Maximum allowed line width in pixels (LINE_PX). */
+  limit_px?: number;
+  /** Pixels over the limit (or total excess characters). */
+  excess_px?: number;
+  /** Number of rendered lines over MAX_LINES. */
+  overflow_lines?: number;
+  /** Approximate characters to trim to fit. */
+  approx_chars_to_trim?: number;
+}
+
 export interface Issue {
   code: string;
   message: string;
   /** Card slug (or index) the issue is about. */
   card?: string;
+  /** Exact layout/trim hint for build agents to fix overflow in one retry. */
+  hint?: OverflowHint;
 }

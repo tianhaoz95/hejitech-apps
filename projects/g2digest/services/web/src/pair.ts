@@ -62,9 +62,13 @@ async function render() {
     el("p", { class: "muted small" }, "A private feed of every card's audio, for a podcast app that keeps playing with the phone locked. The glasses then tell you which episode to play. Anyone with the link can listen, so keep it to yourself; revoke it above."),
     feedOut,
     el("button", { class: "btn secondary", type: "button", onclick: async () => {
-      const r = await api<{ url: string; error?: string }>("/api/feeds", { method: "POST" });
+      const r = await api<{ url: string; glance_url?: string; deep_dive_url?: string; error?: string }>("/api/feeds", { method: "POST" });
       feedOut.replaceChildren(r.ok
-        ? el("div", {}, el("p", { class: "small" }, "Add this URL in your podcast app (shown once):"), el("div", { class: "secret mono" }, r.body.url))
+        ? el("div", { class: "stack" },
+          el("p", { class: "small" }, "Add one of these URLs in your podcast app (shown once):"),
+          el("div", {}, el("b", { class: "small" }, "All audio"), el("div", { class: "secret mono" }, r.body.url)),
+          r.body.glance_url ? el("div", {}, el("b", { class: "small" }, "Glances only"), el("div", { class: "secret mono" }, r.body.glance_url)) : null,
+          r.body.deep_dive_url ? el("div", {}, el("b", { class: "small" }, "Deep dives only"), el("div", { class: "secret mono" }, r.body.deep_dive_url)) : null)
         : el("p", { class: "error" }, r.body.error ?? "Couldn't make a feed."));
       void loadDevices();
     } }, "Make a feed link"));
