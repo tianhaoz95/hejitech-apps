@@ -45,6 +45,7 @@ targets:
       path: VoxbriefApp/App/Info.plist
       properties:
         NSMicrophoneUsageDescription: "Voxbrief uses your microphone to record voice notes and capture ideas."
+        NSSpeechRecognitionUsageDescription: "If you choose Apple Speech in Settings, Voxbrief transcribes your recordings with the speech recognition built into iOS, on this iPhone."
         NSRemindersUsageDescription: "Voxbrief can export action items from your voice notes into Apple Reminders."
         NSRemindersFullAccessUsageDescription: "Voxbrief can export action items from your voice notes into Apple Reminders."
         NSCalendarsUsageDescription: "Voxbrief can export voice notes as scheduled events into Apple Calendar."

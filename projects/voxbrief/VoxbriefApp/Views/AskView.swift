@@ -36,6 +36,10 @@ struct AskView: View {
 
     private var isAsking: Bool { currentTask != nil }
 
+    /// A question from Siri or Shortcuts (`AskVoxbriefIntent`), asked as soon as the sheet opens.
+    var initialQuestion: String? = nil
+    @State private var askedInitial = false
+
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
@@ -52,6 +56,12 @@ struct AskView: View {
                     .padding()
                 }
                 .scrollDismissesKeyboard(.interactively)
+                .onAppear {
+                    if let q = initialQuestion, !askedInitial {
+                        askedInitial = true
+                        send(q)
+                    }
+                }
                 .onChange(of: exchanges.count) { _, _ in
                     if let last = exchanges.last {
                         withAnimation { proxy.scrollTo(last.id, anchor: .top) }

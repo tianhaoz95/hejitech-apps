@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.37.1"
+    public static let currentVersion = "1.38.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,47 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.38.0",
+            date: "November 2026",
+            tagline: "Your Notes, Everywhere You Ask",
+            features: [
+                WhatsNewItem(
+                    icon: "calendar.badge.clock",
+                    tint: .indigo,
+                    title: "Ask About Days and To-Dos",
+                    description: "With Flash or Apple Intelligence, Ask now looks up the notes of a day or a week (\"what did I record on Monday?\") and your open to-dos (\"what's left to do?\") directly, instead of guessing from keywords.",
+                    highlights: [
+                        "\"What did I record yesterday?\" lists that day's notes",
+                        "\"What's left to do?\" finds every to-do you haven't checked off",
+                        "Answers still cite the notes they came from"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "mic.badge.plus",
+                    tint: .purple,
+                    title: "Siri and Shortcuts",
+                    description: "Say \"Ask Voxbrief\" to ask about your notes, \"Find notes in Voxbrief\" to search them, or \"What's left to do in Voxbrief\" to hear your open to-dos. Your notes also show up in the Shortcuts app, to open them or pass their text along.",
+                    highlights: [
+                        "Ask Voxbrief opens the app with your question answered",
+                        "Find notes and open to-dos work without opening the app",
+                        "Locked notes never leave Voxbrief"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "waveform.badge.magnifyingglass",
+                    tint: .teal,
+                    title: "Apple Speech, If You Want It",
+                    description: "On iOS 26 and later you can switch transcription to the speech recognition built into iOS: many languages, no extra download from Voxbrief, made for long recordings. Whisper stays the default. Settings → Stage 1: Speech-to-Text → Engine.",
+                    highlights: [
+                        "Pick it in Settings → Stage 1: Speech-to-Text",
+                        "Runs on your iPhone like Whisper",
+                        "If it can't transcribe a recording, Whisper does"
+                    ]
+                )
+            ],
+            improvementsAndFixes: []
+        ),
         ReleaseHistoryItem(
             version: "1.37.1",
             date: "November 2026",

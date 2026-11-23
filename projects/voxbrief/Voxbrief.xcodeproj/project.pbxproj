@@ -101,6 +101,7 @@
 		63F5235EC3050441DBC98E0A /* NoteTopics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067A4108EBDB4F9E5EE0F739 /* NoteTopics.swift */; };
 		64449EC42EE8123A116A08EB /* TemplateEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B14742A80B04804C7A613CF4 /* TemplateEditView.swift */; };
 		65B4281350BF78246279DA3F /* NoteBriefTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD0324A16BEFB23E75F23E50 /* NoteBriefTests.swift */; };
+		667A8B79BC355698C3859D3F /* NoteIntentsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE2760F7421EDB69025F4BC2 /* NoteIntentsTests.swift */; };
 		67642845892E3B515B0D78D2 /* AudioConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988E0BDCC158250481339E11 /* AudioConstants.swift */; };
 		689757FD1E6FA235DD108957 /* LongMemoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55974E872286B4E9013399AE /* LongMemoTests.swift */; };
 		691B6C26A9E7585D09DB058C /* LLMCopywriterServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9E58587D34FC957F4AE403 /* LLMCopywriterServiceTests.swift */; };
@@ -171,6 +172,7 @@
 		A7E10608B705DAC5B379ED1C /* VoiceCommandProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D3F046FB5B1E53224E38BF /* VoiceCommandProcessor.swift */; };
 		A808D4C88874D0E9F9B5E423 /* TemplateStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFAE3474C430320E937A5196 /* TemplateStoreTests.swift */; };
 		A86C54BEF5F63D130A04800A /* FormattingExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F20D0BCE0BE7D3E7E931A7 /* FormattingExtensions.swift */; };
+		ABE2CC52C6B416E2B6BC40E7 /* NoteIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B26C988ECA4796D0E0AC3B6 /* NoteIntents.swift */; };
 		AC516D74FDEFF94F2309199B /* DictionaryEntryEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD4292051768197FA3A125E /* DictionaryEntryEditView.swift */; };
 		ADB6871DEBDFCDD7C91574C0 /* RemindersExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8172E2275DD7247F30084A5 /* RemindersExportService.swift */; };
 		AF051E0DA4FAE480AFD3E810 /* AskServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5CDF159F713F6245D1F4C78 /* AskServiceTests.swift */; };
@@ -239,6 +241,7 @@
 		ECCD86C67706C6FB7641FDE3 /* DictionaryCorrector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61F11F8A2D3B21ECC69ECA27 /* DictionaryCorrector.swift */; };
 		EE370E893918BA3212C8D5C6 /* PipelineTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D888CA21CC53213F886B1CD /* PipelineTimeline.swift */; };
 		EFABD30DCB5816DAF0AC2723 /* AllDayRecording.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77295B60F21DA08D173E6904 /* AllDayRecording.swift */; };
+		F226CB7FF8751631C75FD8D5 /* AppleSpeechTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF81BB2A5A5FC59CE39A099D /* AppleSpeechTranscriber.swift */; };
 		F39F847D156570E22EC28858 /* NoteDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85FA4EC385ED9D0FC96F7955 /* NoteDetailViewModel.swift */; };
 		F5C9810D4553F163281C72F5 /* VoiceNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17FEE0D93589E948738A6156 /* VoiceNote.swift */; };
 		F63937096F8F8E2E385FBF26 /* NoteTopics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 067A4108EBDB4F9E5EE0F739 /* NoteTopics.swift */; };
@@ -376,6 +379,7 @@
 		4769D6DA1245703C529EFE21 /* PasteInjector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteInjector.swift; sourceTree = "<group>"; };
 		48925CE7621616AF282F7CAF /* VoxbriefWatchWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoxbriefWatchWidgets.swift; sourceTree = "<group>"; };
 		496BFAFDCF52A425981CEADC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		4B26C988ECA4796D0E0AC3B6 /* NoteIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteIntents.swift; sourceTree = "<group>"; };
 		4BF5A0AD3173094058B72D91 /* VoxbriefMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoxbriefMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C496EDD4874B9782D7DDAF5 /* SpeakerDiarizationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerDiarizationService.swift; sourceTree = "<group>"; };
 		4C7490BC66ADC2FB729D084B /* VoxbriefLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoxbriefLiveActivity.swift; sourceTree = "<group>"; };
@@ -459,6 +463,7 @@
 		B8DA59D4AB6880238B419BA0 /* GlobalHotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotkeyManager.swift; sourceTree = "<group>"; };
 		BC332A1924B1BEA723D9B145 /* ConversationBubblesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationBubblesView.swift; sourceTree = "<group>"; };
 		BC9595E1BFBE6BF8F12CCB9E /* DailyBriefWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyBriefWidget.swift; sourceTree = "<group>"; };
+		BE2760F7421EDB69025F4BC2 /* NoteIntentsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteIntentsTests.swift; sourceTree = "<group>"; };
 		BFF47C7AC8DE99A52D14D5E7 /* Voxbrief.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Voxbrief.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C41C69644021D649EBA14B88 /* OnDeviceLLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceLLMService.swift; sourceTree = "<group>"; };
 		C4DEA392C84B36408EE59E0A /* DailyBriefSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyBriefSnapshot.swift; sourceTree = "<group>"; };
@@ -480,6 +485,7 @@
 		DCD4292051768197FA3A125E /* DictionaryEntryEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryEntryEditView.swift; sourceTree = "<group>"; };
 		DDF370D074CADB2C25254782 /* MarkdownLiteText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownLiteText.swift; sourceTree = "<group>"; };
 		DE514F4FCBBBF278BDF6591E /* NoteSearchIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteSearchIndex.swift; sourceTree = "<group>"; };
+		DF81BB2A5A5FC59CE39A099D /* AppleSpeechTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechTranscriber.swift; sourceTree = "<group>"; };
 		DFEB07D6090DC24A5902E9AE /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
 		E004A40CF847931BF177BD73 /* BiometricAuthServiceMacTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthServiceMacTests.swift; sourceTree = "<group>"; };
 		E1FC365CE5867E64F4170D4A /* ProcessingCheckpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingCheckpoint.swift; sourceTree = "<group>"; };
@@ -546,6 +552,7 @@
 			isa = PBXGroup;
 			children = (
 				A55BD86ABB9C619659AB8C0E /* AppleFoundationModelService.swift */,
+				DF81BB2A5A5FC59CE39A099D /* AppleSpeechTranscriber.swift */,
 				CE87D7287DCE466F347E5168 /* AskService.swift */,
 				CEAD3B4021131DA58668E5C9 /* ASRService.swift */,
 				805582BA92BDC768F983C370 /* AudioFileManager.swift */,
@@ -871,6 +878,7 @@
 			isa = PBXGroup;
 			children = (
 				3485189A77FCBD8DF9269E1D /* ControlLaunchIntent.swift */,
+				4B26C988ECA4796D0E0AC3B6 /* NoteIntents.swift */,
 				F573238A907947FE34CFE239 /* VoxbriefIntents.swift */,
 			);
 			path = Intents;
@@ -951,6 +959,7 @@
 				CD0324A16BEFB23E75F23E50 /* NoteBriefTests.swift */,
 				1408F482A93D5BC763F22E74 /* NoteDetailViewModelTests.swift */,
 				EF5CDE95EFC5F0A340223DED /* NoteExportServiceTests.swift */,
+				BE2760F7421EDB69025F4BC2 /* NoteIntentsTests.swift */,
 				A722022C9E282A8840CA734E /* NoteListViewModelTests.swift */,
 				692D6EB7A748E001F15872BD /* NoteProcessingPipelineTests.swift */,
 				28512E25F720540CC78E0532 /* NoteRepositoryExtendedTests.swift */,
@@ -1315,6 +1324,7 @@
 				65B4281350BF78246279DA3F /* NoteBriefTests.swift in Sources */,
 				C18574E5E77EE031411CBCA2 /* NoteDetailViewModelTests.swift in Sources */,
 				8E62084FAAC0B96BF129C31A /* NoteExportServiceTests.swift in Sources */,
+				667A8B79BC355698C3859D3F /* NoteIntentsTests.swift in Sources */,
 				0AD043C3BB7E0B09A1667977 /* NoteListViewModelTests.swift in Sources */,
 				34A5560EA93CB6451772516B /* NoteProcessingPipelineTests.swift in Sources */,
 				0C5993A5339E44F47299C1BE /* NoteRepositoryExtendedTests.swift in Sources */,
@@ -1391,6 +1401,7 @@
 				DC71FBD73553C549FADA4B5F /* AllDayRecording.swift in Sources */,
 				1D0AC4A6117C731DE7B9ACF2 /* AppGroup.swift in Sources */,
 				6FAA4F848EB104338AE8033E /* AppleFoundationModelService.swift in Sources */,
+				F226CB7FF8751631C75FD8D5 /* AppleSpeechTranscriber.swift in Sources */,
 				275B4403976F111E79E3767E /* AskService.swift in Sources */,
 				2F7AAE9C8169FC2E3684BF53 /* AskView.swift in Sources */,
 				B573595E0689A89D4E29A477 /* AudioConstants.swift in Sources */,
@@ -1419,6 +1430,7 @@
 				A43DE437BF1B5614D5BAB5E7 /* NoteDetailView.swift in Sources */,
 				F39F847D156570E22EC28858 /* NoteDetailViewModel.swift in Sources */,
 				BE88A4CECC3B12120B6C2919 /* NoteExportService.swift in Sources */,
+				ABE2CC52C6B416E2B6BC40E7 /* NoteIntents.swift in Sources */,
 				0B5921AC2A3160AAF042406A /* NoteListView.swift in Sources */,
 				57711FA260DA9B0BE7DA8F44 /* NoteListViewModel.swift in Sources */,
 				7524CA93D74217B1B6652CB9 /* NoteMergePickerSheet.swift in Sources */,
@@ -1774,7 +1786,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.35.1;
+				MARKETING_VERSION = 1.37.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1874,7 +1886,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 1.35.1;
+				MARKETING_VERSION = 1.37.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

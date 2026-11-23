@@ -1,9 +1,10 @@
-"""Ask Voxbrief tool-use eval: does the model call search_notes and answer from what it finds?
+"""Ask Voxbrief tool-use eval: does the model call its tools and answer from what it finds?
 
-Mirrors `AskConversation` (VoxbriefApp/Services/AskService.swift): the same system prompt and
-tool spec, Qwen3's native tool format, the Lite rule (each question's first reply is started as
-a search call) and Flash's retry (an answer before any search is redone as a search), and at
-most four model calls a question. Keep the prompt and tool text in step with the Swift file.
+Mirrors `AskConversation` (VoxbriefApp/Services/AskService.swift): the same system prompts and
+tool specs, Qwen3's native tool format, the Lite rule (search_notes alone; each question's first
+reply is started as a search call), Flash's three tools (search_notes, notes_on_dates,
+open_todos) and its retry (an answer before any tool call is redone as a search), and at most
+four model calls a question. Keep the prompt and tool text in step with the Swift file.
 The notes and search are a small stand-in for `NoteSearchIndex`; what's measured is the
 model's tool use and answers, scored by expected words.
 
@@ -27,6 +28,14 @@ NOTES = [
     ("Book recommendations from Sam", 12, "Sam recommended Piranesi and The Remains of the Day. He said Piranesi is short and strange in a good way."),
     ("Car maintenance", 20, "Oil change is due at 45,000 miles; the tires should be rotated at the same time. The shop on Pine Street quoted 89 dollars."),
 ]
+
+# Open to-dos per note title (what open_todos reads), the rest of each note's items checked off.
+TODOS = {
+    "Budget sync with Priya": ["Check Priya's revised spreadsheet"],
+    "Dentist reminder": ["Call Dr. Lee's office to move the cleaning"],
+    "Standup notes": ["Review Tom's pull request"],
+    "Trip to Lisbon": ["Renew the passport"],
+}
 
 import os
 FORMAT = os.environ.get("ASK_FORMAT", "C")
@@ -62,6 +71,22 @@ def _search(query, days_back=None):
         out.append(passage(n, title, date, "transcript", text))
     return "\n".join(out) if out else None
 
+def notes_on_dates(frm, to=None):
+    try:
+        a = dt.date.fromisoformat(frm.strip()); b = dt.date.fromisoformat((to or frm).strip())
+    except Exception:
+        return f'"{frm}" isn\'t a date. Pass days as YYYY-MM-DD.'
+    if b < a: b = a
+    rows = sorted([(TODAY - dt.timedelta(days=ago), t, x) for t, ago, x in NOTES if a <= TODAY - dt.timedelta(days=ago) <= b])
+    if not rows: return f"No notes were recorded {'on' if a == b else 'between'} {frm}{'' if a == b else ' to ' + (to or frm)}."
+    return "\n".join(passage(n, t, d.strftime("%b %d"), "overview", x) for n, (d, t, x) in enumerate(rows, 1))
+
+def open_todos(days_back=None):
+    rows = [(ago, t) for t, ago, _ in NOTES if t in TODOS and (days_back is None or ago <= days_back)]
+    rows.sort()
+    if not rows: return "No open to-dos."
+    return "\n".join(passage(n, t, (TODAY - dt.timedelta(days=ago)).strftime("%b %d"), "to-dos", "Open to-dos:\n" + "\n".join("- " + i for i in TODOS[t])) for n, (ago, t) in enumerate(rows, 1))
+
 TOOLS = [{
     "type": "function",
     "function": {
@@ -86,6 +111,46 @@ SYSTEM = (
     "to the user as \"you\", with specifics (names, dates, amounts) from the passages, and cite "
     "the passages you used like [2]. Answer in your own words: never copy a passage or its "
     "\"Note ... :\" heading. If the passages don't answer it, say you couldn't find it in the notes."
+)
+
+TOOLS_ALL = TOOLS + [{
+    "type": "function",
+    "function": {
+        "name": "notes_on_dates",
+        "description": "List the notes recorded on a day or between two days, each with its summary. Use it when the question is about when (\"what did I record on Monday\", \"my notes from last week\") rather than a topic.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "from": {"type": "string", "description": "The first day, as YYYY-MM-DD."},
+                "to": {"type": "string", "description": "The last day, as YYYY-MM-DD. Leave it out for a single day."},
+            },
+            "required": ["from"],
+        },
+    },
+}, {
+    "type": "function",
+    "function": {
+        "name": "open_todos",
+        "description": "List the to-dos from the notes that aren't checked off yet, newest note first. Use it for questions about tasks, to-dos or what's left to do.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "days_back": {"type": "integer", "description": "Only to-dos from notes of the last N days. Leave it out for all."},
+            },
+        },
+    },
+}]
+
+SYSTEM_ALL = (
+    f"You are Voxbrief's assistant. You answer questions about the user's own voice notes. "
+    f"Today is {TODAY:%A, %B %d, %Y} ({TODAY.isoformat()}). You can't see the notes. For every new question, your first "
+    "reply must be a tool call: notes_on_dates when the question is about a day or a period "
+    "(work out the dates from today), open_todos when it's about tasks or what's left to do, "
+    "search_notes for anything else. Answer only after you've read the results, and look "
+    "again another way if they don't answer it. Then answer in one to four sentences, speaking "
+    "to the user as \"you\", with specifics (names, dates, amounts) from the passages, and cite "
+    "the passages you used like [2]. Answer in your own words: never copy a passage or its "
+    "heading. If the passages don't answer it, say you couldn't find it in the notes."
 )
 
 ROUTER = (
@@ -121,8 +186,22 @@ def call_in(out):
         try: obj = json.loads(txt[:txt.rfind("}")+1])
         except Exception: return None
     a = obj.get("arguments", obj)
+    if isinstance(a, str):
+        try: a = json.loads(a)
+        except Exception: a = {}
     d = a.get("days_back") or a.get("days")
-    return a.get("query", ""), (d if isinstance(d, int) and d > 0 else None)
+    if isinstance(d, str) and d.isdigit(): d = int(d)
+    d = d if isinstance(d, int) and d > 0 else None
+    name = obj.get("name", "search_notes")
+    if name == "notes_on_dates": return name, (a.get("from") or a.get("date") or "", a.get("to"))
+    if name == "open_todos": return name, (d,)
+    return "search_notes", (a.get("query", ""), d)
+
+def run_tool(c):
+    name, args = c
+    if name == "notes_on_dates": return notes_on_dates(*args)
+    if name == "open_todos": return open_todos(*args)
+    return search(*args)
 
 def is_chat(question):
     msgs = [{"role": "system", "content": ROUTER}, {"role": "user", "content": question}]
@@ -138,9 +217,9 @@ def run(history, question, have_passages):
     searched = False; trace = []
     for step in range(4):
         last = step == 3
-        msgs = [{"role": "system", "content": SYSTEM}] + history + turn
+        msgs = [{"role": "system", "content": SYSTEM if LITE else SYSTEM_ALL}] + history + turn
         pre = PRE if (not searched and step == 0 and LITE) else ""
-        tools = [] if last else TOOLS
+        tools = [] if last else (TOOLS if LITE else TOOLS_ALL)
         out = gen(msgs, tools or None, pre)
         if not last and not searched and not have_passages and call_in(out) is None and not pre:
             if is_chat(question):
@@ -148,12 +227,11 @@ def run(history, question, have_passages):
                 trace.append(("chat", out))
                 turn.append({"role": "assistant", "content": out})
                 return out, trace, history + turn, have_passages
-            trace.append(("retry", out[:80])); out = gen(msgs, TOOLS, PRE)
+            trace.append(("retry", out[:80])); out = gen(msgs, TOOLS if LITE else TOOLS_ALL, PRE)
         c = None if last else call_in(out)
         if c:
-            q, d = c
-            res = search(q, d)
-            trace.append(("call", f"{q!r} days={d}"))
+            res = run_tool(c)
+            trace.append(("call", f"{c[0]} {c[1]!r}"))
             turn += [{"role": "assistant", "content": out}, {"role": "tool", "content": res}]
             searched = True; have_passages = True
             continue
@@ -175,7 +253,13 @@ CONVOS = [
     (["How much did the shop quote for the oil change?"], [["89"]]),
     (["What should I plant before the frost?"], [["garlic"]]),
     (["What do I need to review today?"], [["pull request", "tom"]]),
+    # Dates and to-dos (Flash's notes_on_dates and open_todos; Lite answers them by searching).
+    (["What did I record yesterday?"], [["budget", "priya", "42"]]),
+    (["What did I record on November 14?"], [["garden", "garlic", "mulch"]]),
+    (["What's left on my to-do list?"], [["passport", "pull request", "dr. lee", "spreadsheet"]]),
+    (["Any open tasks from the last two days?"], [["pull request", "spreadsheet", "dr. lee", "budget"]]),
 ]
+TOOLS_USED = {}
 ok = searched_turns = chat_turns = total = 0
 for convo, expects in CONVOS:
     history = []; have = False
@@ -186,7 +270,9 @@ for convo, expects in CONVOS:
         hit = any(e in ans.lower() for e in exp) and not copied
         ok += hit
         if any(t[0] == "call" for t in trace): searched_turns += 1
+        for k, t in trace:
+            if k == "call": TOOLS_USED[t.split(" ")[0]] = TOOLS_USED.get(t.split(" ")[0], 0) + 1
         if any(t[0] == "chat" for t in trace): chat_turns += 1
         print(("PASS" if hit else "FAIL"), "Q:", q)
         for k, t in trace: print(f"     {k}: {t[:220]}")
-print(f"\n{MODEL.split('/')[-1]}: correct {ok}/{total}, searched in {searched_turns}/{total} turns, chat in {chat_turns}")
+print(f"\n{MODEL.split('/')[-1]}: correct {ok}/{total}, tools in {searched_turns}/{total} turns, chat in {chat_turns}, calls {TOOLS_USED}")

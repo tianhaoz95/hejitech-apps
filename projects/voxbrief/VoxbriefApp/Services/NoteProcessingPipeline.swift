@@ -71,8 +71,18 @@ public final class NoteProcessingPipeline: ObservableObject {
     /// the system withholding the GPU, and it runs fine once the app is back.
     public static var isAppInBackground: @MainActor () -> Bool = { false }
 
+    /// Stage 1 on iPhone goes through the engine picked in Settings (Whisper by default, or Apple
+    /// Speech, `TranscriptionRouter`); the Mac app transcribes with Whisper.
+    public nonisolated static var defaultASR: ASRServiceProtocol {
+        #if os(iOS)
+        return TranscriptionRouter.shared
+        #else
+        return ASRService.shared
+        #endif
+    }
+
     public init(
-        asrService: ASRServiceProtocol = ASRService.shared,
+        asrService: ASRServiceProtocol = NoteProcessingPipeline.defaultASR,
         llmService: LLMCopywriterServiceProtocol = LLMCopywriterService.shared,
         repository: NoteRepository = .shared,
         audioFileManager: AudioFileManager = .shared,

@@ -74,6 +74,8 @@
 	<string>Voxbrief can export action items from your voice notes into Apple Reminders.</string>
 	<key>NSRemindersUsageDescription</key>
 	<string>Voxbrief can export action items from your voice notes into Apple Reminders.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>If you choose Apple Speech in Settings, Voxbrief transcribes your recordings with the speech recognition built into iOS, on this iPhone.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

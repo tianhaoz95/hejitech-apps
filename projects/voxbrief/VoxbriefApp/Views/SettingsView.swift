@@ -7,6 +7,8 @@ public struct SettingsView: View {
     @AppStorage("local_llm_endpoint_url") private var localLLMUrl: String = "http://127.0.0.1:11434/api/generate"
     @AppStorage(LLMCopywriterService.localLLMModelNameKey) private var localLLMModel: String = LLMCopywriterService.defaultLocalLLMModelName
     @AppStorage(ASRService.languageStorageKey) private var asrLanguage: String = "auto"
+    @AppStorage(TranscriptionEngine.storageKey) private var transcriptionEngine: String = TranscriptionEngine.whisper.rawValue
+    @State private var appleSpeechStatus: String?
     @AppStorage("app_appearance") private var appearance: String = "system"
     @AppStorage(NoteProcessingPipeline.defaultTemplateChoiceKey) private var defaultTemplateChoice: TemplateChoice = .none
     @AppStorage(LiveTranscriber.enabledKey) private var liveTranscriptEnabled: Bool = true
@@ -43,6 +45,30 @@ public struct SettingsView: View {
 
     public init() {}
 
+    /// Picking Apple Speech has iOS install the language's model now, so the first recording
+    /// doesn't wait for it; if that fails, Whisper stays.
+    private func pickEngine(_ raw: String) {
+        guard raw == TranscriptionEngine.appleSpeech.rawValue else {
+            transcriptionEngine = raw
+            appleSpeechStatus = nil
+            return
+        }
+        guard #available(iOS 26.0, *), TranscriptionEngine.appleSpeechSupported else {
+            appleSpeechStatus = "Apple Speech needs iOS 26 or later."
+            return
+        }
+        appleSpeechStatus = "Getting Apple Speech ready…"
+        Task {
+            do {
+                try await AppleSpeechTranscriber.prepareAssets()
+                transcriptionEngine = raw
+                appleSpeechStatus = "Apple Speech is ready."
+            } catch {
+                appleSpeechStatus = "Apple Speech couldn't be set up: \(error.localizedDescription) Whisper stays on."
+            }
+        }
+    }
+
     public var body: some View {
         NavigationStack {
             Form {
@@ -57,8 +83,22 @@ public struct SettingsView: View {
 
                 Section(
                     header: Text("Stage 1: Speech-to-Text (ASR)"),
-                    footer: Text("WhisperKit runs completely on-device. Set language to bias speech recognition, or leave on Auto-detect.")
+                    footer: Text(transcriptionEngine == TranscriptionEngine.appleSpeech.rawValue
+                        ? "Apple Speech is built into iOS and runs on this iPhone: many languages, no download from Voxbrief, made for long recordings. Live text while recording stays on Whisper, and if Apple Speech can't transcribe a recording, Whisper does."
+                        : "WhisperKit runs completely on-device. Set language to bias speech recognition, or leave on Auto-detect. Apple Speech is the other engine on iOS 26 and later.")
                 ) {
+                    Picker(selection: Binding(get: { transcriptionEngine }, set: { pickEngine($0) })) {
+                        ForEach(TranscriptionEngine.allCases) { engine in
+                            Text(engine.displayName).tag(engine.rawValue)
+                        }
+                    } label: {
+                        Text("Engine")
+                    }
+                    if let appleSpeechStatus {
+                        Text(appleSpeechStatus)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     Picker("Dictation Language", selection: $asrLanguage) {
                         Text("Auto-detect / English").tag("auto")
                         Text("English (en)").tag("en")
@@ -303,14 +343,16 @@ public struct SettingsView: View {
                     HStack {
                         Label("Recognition Engine", systemImage: "waveform")
                         Spacer()
-                        Text("Whisper (on-device, WhisperKit)")
+                        Text(transcriptionEngine == TranscriptionEngine.appleSpeech.rawValue ? "Apple Speech (built into iOS)" : "Whisper (on-device, WhisperKit)")
                             .foregroundColor(.secondary)
                     }
-                    HStack {
-                        Label("Model", systemImage: "cpu")
-                        Spacer()
-                        Text(ASRService.defaultModel)
-                            .foregroundColor(.secondary)
+                    if transcriptionEngine == TranscriptionEngine.whisper.rawValue {
+                        HStack {
+                            Label("Model", systemImage: "cpu")
+                            Spacer()
+                            Text(ASRService.defaultModel)
+                                .foregroundColor(.secondary)
+                        }
                     }
                     HStack {
                         Label("Language", systemImage: "globe")

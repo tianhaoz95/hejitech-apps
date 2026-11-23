@@ -94,6 +94,36 @@ public struct VoxbriefShortcuts: AppShortcutsProvider {
             systemImageName: "waveform.badge.plus"
         )
         AppShortcut(
+            intent: AskVoxbriefIntent(),
+            phrases: [
+                "Ask \(.applicationName)",
+                "Ask \(.applicationName) about my notes",
+                "Ask my notes in \(.applicationName)"
+            ],
+            shortTitle: "Ask Voxbrief",
+            systemImageName: "bubble.left.and.text.bubble.right"
+        )
+        AppShortcut(
+            intent: FindNotesIntent(),
+            phrases: [
+                "Find notes in \(.applicationName)",
+                "Search my \(.applicationName) notes",
+                "Search \(.applicationName)"
+            ],
+            shortTitle: "Find Notes",
+            systemImageName: "magnifyingglass"
+        )
+        AppShortcut(
+            intent: OpenTodosIntent(),
+            phrases: [
+                "What's left to do in \(.applicationName)",
+                "Show my to-dos in \(.applicationName)",
+                "Open to-dos in \(.applicationName)"
+            ],
+            shortTitle: "Open To-Dos",
+            systemImageName: "checklist"
+        )
+        AppShortcut(
             intent: OpenVoxbriefIntent(),
             phrases: [
                 "Open \(.applicationName)",

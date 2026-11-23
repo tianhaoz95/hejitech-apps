@@ -62,10 +62,11 @@ struct AskEngine: Sendable {
 }
 
 /// Ask Voxbrief: a chat about the user's own notes, answered by the on-device model, which
-/// finds what the notes say with one tool, `search_notes` (keyword search over the notes,
-/// `NoteSearchIndex`). The model decides what to search for, can search again, and answers
-/// from the passages it read, citing them as [n]. More tools (dates, to-dos) can be added as
-/// the models get better at using them.
+/// finds what the notes say with tools: `search_notes` (keyword search over the notes,
+/// `NoteSearchIndex`), and for Flash and Apple Intelligence also `notes_on_dates` (the notes of
+/// a day or a period) and `open_todos` (to-dos not checked off yet). Lite keeps the search tool
+/// alone (it doesn't pick tools by itself). The model decides what to look up, can look again,
+/// and answers from the passages it read, citing them as [n].
 ///
 /// One conversation per Ask sheet: follow-up questions see the earlier turns. Apple
 /// Intelligence runs it with FoundationModels' own tool calling (one session per
@@ -171,21 +172,22 @@ final class AskConversation {
 
         for step in 0..<Self.maxSteps {
             let last = step == Self.maxSteps - 1
-            let messages = [AskMessage(role: .system, content: Self.systemPrompt(now: now()))]
+            let messages = [AskMessage(role: .system, content: Self.systemPrompt(now: now(), allTools: !engine.startsWithSearch))]
                 + Self.trimmed(history) + turn
             // A model that answers before it has read anything is made to search first.
             var prefill = !searched && step == 0 && engine.startsWithSearch ? Self.searchCallPrefill : ""
-            var reply = try await engine.respond(messages, last ? [] : [Self.searchToolSpec], prefill, 400)
+            let tools = Self.tools(for: engine)
+            var reply = try await engine.respond(messages, last ? [] : tools, prefill, 400)
             if !last, !searched, passages.isEmpty, Self.toolCall(in: reply) == nil, prefill.isEmpty {
                 // An answer to small talk stands; any other answer before a search is redone as one.
                 if try await Self.isSmallTalk(question, engine: engine) {
                     return keep(finish(reply, engine: engine.label), turn: turn)
                 }
                 prefill = Self.searchCallPrefill
-                reply = try await engine.respond(messages, [Self.searchToolSpec], prefill, 400)
+                reply = try await engine.respond(messages, tools, prefill, 400)
             }
             if !last, let call = Self.toolCall(in: reply) {
-                let result = search(query: call.query, daysBack: call.daysBack)
+                let result = run(call)
                 turn.append(AskMessage(role: .assistant, content: Self.normalizedCall(call)))
                 turn.append(AskMessage(role: .tool, content: result))
                 searched = true
@@ -273,20 +275,34 @@ final class AskConversation {
     }
 
     static func normalizedCall(_ call: ToolCall) -> String {
-        var arguments: [String: Any] = ["query": call.query]
-        if let days = call.daysBack { arguments["days_back"] = days }
-        let object: [String: Any] = ["name": "search_notes", "arguments": arguments]
+        var arguments: [String: Any] = [:]
+        switch call.name {
+        case Self.datesToolName:
+            arguments["from"] = call.from ?? ""
+            if let to = call.to { arguments["to"] = to }
+        case Self.todosToolName:
+            if let days = call.daysBack { arguments["days_back"] = days }
+        default:
+            arguments["query"] = call.query
+            if let days = call.daysBack { arguments["days_back"] = days }
+        }
+        let object: [String: Any] = ["name": call.name, "arguments": arguments]
         let data = (try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])) ?? Data()
         return "<tool_call>\n\(String(decoding: data, as: UTF8.self))\n</tool_call>"
     }
 
     struct ToolCall: Equatable {
+        var name: String = AskConversation.searchToolName
         let query: String
         let daysBack: Int?
+        /// notes_on_dates: the first and last day, as the model wrote them (YYYY-MM-DD).
+        var from: String? = nil
+        var to: String? = nil
     }
 
-    /// The first `search_notes` call in a reply, leniently: a missing closing tag (cut off),
-    /// arguments as a JSON string, `days`/`days_back` as a string, 0 days as no limit.
+    /// The first tool call in a reply, leniently: a missing closing tag (cut off), arguments as
+    /// a JSON string, `days`/`days_back` as a string, 0 days as no limit. An unknown tool name
+    /// is taken as a search (the only tool Lite has).
     static func toolCall(in reply: String) -> ToolCall? {
         guard let open = reply.range(of: "<tool_call>") else { return nil }
         let body = String(reply[open.upperBound...])
@@ -301,7 +317,17 @@ final class AskConversation {
         let query = (args["query"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let rawDays = args["days_back"] ?? args["days"]
         let days = (rawDays as? Int) ?? (rawDays as? String).flatMap { Int($0) }
-        return ToolCall(query: query, daysBack: days.flatMap { $0 > 0 && $0 <= 3_650 ? $0 : nil })
+        let daysBack = days.flatMap { $0 > 0 && $0 <= 3_650 ? $0 : nil }
+        switch object["name"] as? String {
+        case Self.datesToolName?:
+            let from = (args["from"] as? String ?? args["date"] as? String ?? "").trimmingCharacters(in: .whitespaces)
+            let to = (args["to"] as? String)?.trimmingCharacters(in: .whitespaces)
+            return ToolCall(name: Self.datesToolName, query: "", daysBack: nil, from: from, to: to?.isEmpty == true ? nil : to)
+        case Self.todosToolName?:
+            return ToolCall(name: Self.todosToolName, query: "", daysBack: daysBack)
+        default:
+            return ToolCall(query: query, daysBack: daysBack)
+        }
     }
 
     // MARK: - Apple Intelligence (FoundationModels tools)
@@ -311,10 +337,16 @@ final class AskConversation {
         #if canImport(FoundationModels)
         if #available(iOS 26.0, macOS 26.0, *) {
             func newSession() -> LanguageModelSession {
-                let tool = SearchNotesTool { [weak self] query, days in
+                let search = SearchNotesTool { [weak self] query, days in
                     await MainActor.run { self?.search(query: query, daysBack: days) ?? "No notes matched." }
                 }
-                return LanguageModelSession(tools: [tool], instructions: Self.systemPrompt(now: now()))
+                let dates = NotesOnDatesTool { [weak self] from, to in
+                    await MainActor.run { self?.notesOnDates(from: from, to: to) ?? "No notes on those days." }
+                }
+                let todos = OpenTodosTool { [weak self] days in
+                    await MainActor.run { self?.openTodos(daysBack: days) ?? "No open to-dos." }
+                }
+                return LanguageModelSession(tools: [search, dates, todos], instructions: Self.systemPrompt(now: now(), allTools: true))
             }
             let session = (appleSession as? LanguageModelSession) ?? newSession()
             appleSession = session
@@ -332,6 +364,131 @@ final class AskConversation {
         }
         #endif
         throw AppleFoundationModelError.unsupportedPlatform
+    }
+
+    // MARK: - The tools
+
+    static let searchToolName = "search_notes"
+    static let datesToolName = "notes_on_dates"
+    static let todosToolName = "open_todos"
+
+    /// Lite has the search tool alone (it never picks a tool itself: its first reply is started
+    /// as a search); Flash and Apple Intelligence also get the dates and to-do tools.
+    static func tools(for engine: AskEngine) -> [[String: any Sendable]] {
+        engine.startsWithSearch ? [searchToolSpec] : [searchToolSpec, datesToolSpec, todosToolSpec]
+    }
+
+    /// Runs a tool call and returns what the model reads.
+    func run(_ call: ToolCall) -> String {
+        switch call.name {
+        case Self.datesToolName: return notesOnDates(from: call.from ?? "", to: call.to)
+        case Self.todosToolName: return openTodos(daysBack: call.daysBack)
+        default: return search(query: call.query, daysBack: call.daysBack)
+        }
+    }
+
+    static let datesToolDescription = "List the notes recorded on a day or between two days, each with its summary. Use it when the question is about when (\"what did I record on Monday\", \"my notes from last week\") rather than a topic."
+    static let fromDescription = "The first day, as YYYY-MM-DD."
+    static let toDescription = "The last day, as YYYY-MM-DD. Leave it out for a single day."
+    static let todosToolDescription = "List the to-dos from the notes that aren't checked off yet, newest note first. Use it for questions about tasks, to-dos or what's left to do."
+
+    static let datesToolSpec: [String: any Sendable] = [
+        "type": "function",
+        "function": [
+            "name": datesToolName,
+            "description": datesToolDescription,
+            "parameters": [
+                "type": "object",
+                "properties": [
+                    "from": ["type": "string", "description": fromDescription] as [String: any Sendable],
+                    "to": ["type": "string", "description": toDescription] as [String: any Sendable],
+                ] as [String: any Sendable],
+                "required": ["from"],
+            ] as [String: any Sendable],
+        ] as [String: any Sendable],
+    ]
+
+    static let todosToolSpec: [String: any Sendable] = [
+        "type": "function",
+        "function": [
+            "name": todosToolName,
+            "description": todosToolDescription,
+            "parameters": [
+                "type": "object",
+                "properties": [
+                    "days_back": ["type": "integer", "description": "Only to-dos from notes of the last N days. Leave it out for all."] as [String: any Sendable],
+                ] as [String: any Sendable],
+            ] as [String: any Sendable],
+        ] as [String: any Sendable],
+    ]
+
+    /// The notes a search can see: ready, not archived, not locked.
+    private func visibleNotes() -> [VoiceNote] {
+        notes().filter { !$0.isArchived && !$0.isLocked && $0.status == .ready }
+    }
+
+    /// A day the model wrote: YYYY-MM-DD (the format the tool asks for), or a few lenient forms.
+    static func day(_ text: String, calendar: Calendar = .current) -> Date? {
+        let t = text.trimmingCharacters(in: .whitespaces)
+        for format in ["yyyy-MM-dd", "yyyy/MM/dd", "MMM d, yyyy", "MMMM d, yyyy"] {
+            let f = DateFormatter()
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.calendar = calendar
+            f.timeZone = calendar.timeZone
+            f.dateFormat = format
+            if let d = f.date(from: t) { return calendar.startOfDay(for: d) }
+        }
+        return nil
+    }
+
+    /// `notes_on_dates`: each note recorded in the days, as an overview passage (title, summary,
+    /// open to-dos), oldest first, numbered for citing like search results.
+    func notesOnDates(from: String, to: String?) -> String {
+        let calendar = Calendar.current
+        guard let start = Self.day(from, calendar: calendar) else {
+            searchesThisQuestion.append(AskAnswer.Search(query: "dates \(from)", daysBack: nil, resultCount: 0))
+            return "\"\(from)\" isn't a date. Pass days as YYYY-MM-DD."
+        }
+        var end = to.flatMap { Self.day($0, calendar: calendar) } ?? start
+        if end < start { end = start }
+        let until = calendar.date(byAdding: .day, value: 1, to: end) ?? end
+        let found = visibleNotes()
+            .filter { $0.createdAt >= start && $0.createdAt < until }
+            .sorted { $0.createdAt < $1.createdAt }
+            .compactMap { note in NoteSearchIndex.makePassages(for: note).first { $0.kind == .overview } }
+        let capped = Self.cappedByWords(Array(found.prefix(Self.maxPassagesPerSearch * 2)))
+        let span = to == nil || end == start ? from : "\(from) to \(to ?? from)"
+        searchesThisQuestion.append(AskAnswer.Search(query: "notes \(span)", daysBack: nil, resultCount: capped.count))
+        guard !capped.isEmpty else { return "No notes were recorded \(end == start ? "on" : "between") \(span)." }
+        let first = passages.count + 1
+        passages += capped
+        var text = capped.enumerated().map { Self.render($1, number: first + $0) }.joined(separator: "\n\n")
+        if capped.count < found.count { text += "\n\n(\(found.count - capped.count) more notes in those days; ask about a shorter span.)" }
+        return text
+    }
+
+    /// `open_todos`: the to-dos not checked off yet, one passage per note, newest note first.
+    func openTodos(daysBack: Int?) -> String {
+        let since = daysBack.map { now().addingTimeInterval(-Double($0) * 86_400) }
+        let withTodos = visibleNotes()
+            .filter { note in since.map { note.createdAt >= $0 } ?? true }
+            .sorted { $0.createdAt > $1.createdAt }
+            .compactMap { note -> NoteSearchIndex.Passage? in
+                let open = note.actionItems.filter { !note.completedActionItems.contains($0) }
+                guard !open.isEmpty else { return nil }
+                return NoteSearchIndex.Passage(
+                    noteId: note.id, noteTitle: note.title, noteDate: note.createdAt, kind: .section("To-dos"),
+                    text: "Open to-dos:\n" + open.map { "- \($0)" }.joined(separator: "\n"), startTime: nil
+                )
+            }
+        let capped = Self.cappedByWords(Array(withTodos.prefix(Self.maxPassagesPerSearch * 2)))
+        searchesThisQuestion.append(AskAnswer.Search(query: "open to-dos", daysBack: daysBack, resultCount: capped.count))
+        guard !capped.isEmpty else {
+            return daysBack.map { "No open to-dos in notes from the last \($0) days." } ?? "No open to-dos: everything in the notes is checked off, or no note has to-dos."
+        }
+        let first = passages.count + 1
+        passages += capped
+        return capped.enumerated().map { Self.render($1, number: first + $0) }.joined(separator: "\n\n")
     }
 
     // MARK: - The search tool
@@ -419,8 +576,24 @@ final class AskConversation {
 
     // MARK: - The answer
 
-    static func systemPrompt(now: Date) -> String {
+    /// `allTools`: Flash and Apple Intelligence, which also have `notes_on_dates` and
+    /// `open_todos`; Lite's prompt (search only) is unchanged.
+    static func systemPrompt(now: Date, allTools: Bool = false) -> String {
         let today = now.formatted(date: .complete, time: .omitted)
+        if allTools {
+            let iso = now.formatted(.iso8601.year().month().day())
+            return """
+            You are Voxbrief's assistant. You answer questions about the user's own voice notes. \
+            Today is \(today) (\(iso)). You can't see the notes. For every new question, your first \
+            reply must be a tool call: notes_on_dates when the question is about a day or a period \
+            (work out the dates from today), open_todos when it's about tasks or what's left to do, \
+            search_notes for anything else. Answer only after you've read the results, and look \
+            again another way if they don't answer it. Then answer in one to four sentences, speaking \
+            to the user as "you", with specifics (names, dates, amounts) from the passages, and cite \
+            the passages you used like [2]. Answer in your own words: never copy a passage or its \
+            heading. If the passages don't answer it, say you couldn't find it in the notes.
+            """
+        }
         return """
         You are Voxbrief's assistant. You answer questions about the user's own voice notes. \
         Today is \(today). You can't see the notes. For every new question, your first reply \
@@ -525,6 +698,44 @@ struct SearchNotesTool: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         await run(arguments.query, arguments.daysBack.flatMap { $0 > 0 ? $0 : nil })
+    }
+}
+
+/// `notes_on_dates` for Apple Intelligence.
+@available(iOS 26.0, macOS 26.0, *)
+struct NotesOnDatesTool: Tool {
+    let name = AskConversation.datesToolName
+    let description = AskConversation.datesToolDescription
+    let run: @Sendable (String, String?) async -> String
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "The first day, as YYYY-MM-DD.")
+        var from: String
+        @Guide(description: "The last day, as YYYY-MM-DD. Leave it out for a single day.")
+        var to: String?
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await run(arguments.from, arguments.to)
+    }
+}
+
+/// `open_todos` for Apple Intelligence.
+@available(iOS 26.0, macOS 26.0, *)
+struct OpenTodosTool: Tool {
+    let name = AskConversation.todosToolName
+    let description = AskConversation.todosToolDescription
+    let run: @Sendable (Int?) async -> String
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "Only to-dos from notes of the last N days. Leave it out for all.")
+        var daysBack: Int?
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await run(arguments.daysBack.flatMap { $0 > 0 ? $0 : nil })
     }
 }
 #endif

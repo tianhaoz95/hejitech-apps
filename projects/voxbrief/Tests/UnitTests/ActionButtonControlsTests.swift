@@ -98,7 +98,7 @@ final class ActionButtonControlsTests: XCTestCase {
 
     func testVoxbriefShortcutsProviderConfigured() {
         let shortcuts = VoxbriefShortcuts.appShortcuts
-        XCTAssertEqual(shortcuts.count, 3)
+        XCTAssertEqual(shortcuts.count, 6, "Capture, Quick Memo, Ask, Find Notes, Open To-Dos, Open")
     }
 
     func testControlLinkIntentOpensAppAndKeepsURL() throws {

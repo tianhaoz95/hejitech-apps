@@ -21,6 +21,8 @@ public struct NoteListView: View {
     @ScaledMetric(relativeTo: .body) private var captureButtonSize: CGFloat = 66
     @FocusState private var isSearchFieldFocused: Bool
     @State private var showingAsk = false
+    /// A question from Siri or Shortcuts for the Ask sheet (`AskVoxbriefIntent`).
+    @State private var askQuestion: String?
     @State private var showingBrief = false
     @State private var showingAudioImporter = false
     @State private var importError: String?
@@ -131,8 +133,8 @@ public struct NoteListView: View {
             } message: {
                 Text(importError ?? "")
             }
-            .sheet(isPresented: $showingAsk) {
-                AskView()
+            .sheet(isPresented: $showingAsk, onDismiss: { askQuestion = nil }) {
+                AskView(initialQuestion: askQuestion)
                     .environmentObject(NoteRepository.shared)
             }
             .confirmationDialog("Delete Selected Notes?", isPresented: $showingBatchDeleteAlert, titleVisibility: .visible) {
@@ -160,11 +162,24 @@ public struct NoteListView: View {
             .trackFeedbackScreen("NoteList")
             .onAppear {
                 applyLaunchArguments()
+                // Siri asked before the list was on screen (the app was closed).
+                if let q = AskVoxbriefIntent.pending {
+                    AskVoxbriefIntent.pending = nil
+                    openAsk(q)
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .voxbriefNavigate)) { notification in
                 guard let userInfo = notification.userInfo as? [String: String],
                       let screen = userInfo["screen"] else { return }
-                applyNavigation(screen: screen, tab: userInfo["tab"])
+                if screen == "ask" {
+                    AskVoxbriefIntent.pending = nil
+                    openAsk(userInfo["question"])
+                } else if screen == "note", let id = userInfo["id"].flatMap(UUID.init(uuidString:)) {
+                    applyNavigation(screen: "list", tab: nil)
+                    selectedDetailNote = viewModel.notes.first { $0.id == id }
+                } else {
+                    applyNavigation(screen: screen, tab: userInfo["tab"])
+                }
             }
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active {
@@ -186,6 +201,14 @@ public struct NoteListView: View {
                 }
             }
         }
+    }
+
+    /// The Ask sheet, asking `question` right away when given (a fresh sheet each time).
+    private func openAsk(_ question: String?) {
+        applyNavigation(screen: "list", tab: nil)
+        showingAsk = false
+        askQuestion = question
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showingAsk = true }
     }
 
     private func applyLaunchArguments() {
