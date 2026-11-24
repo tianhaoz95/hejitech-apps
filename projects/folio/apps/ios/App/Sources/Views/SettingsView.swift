@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var confirmDelete = false
     @State private var showWhatsNew = false
     @State private var inviteLink = ""
+    @AppStorage(HomeSpacing.storageKey) private var homeSpacing: HomeSpacing = .compact
 
     var body: some View {
         @Bindable var model = model
@@ -43,6 +44,16 @@ struct SettingsView: View {
                     Text("Plan")
                 } footer: {
                     Text("Webhooks (Pro) are set up on Folio's site, in Settings.")
+                }
+
+                Section {
+                    Picker("Spacing", selection: $homeSpacing) {
+                        ForEach(HomeSpacing.allCases) { Text($0.label).tag($0) }
+                    }
+                } header: {
+                    Text("Home screen")
+                } footer: {
+                    Text("Compact fits the most on screen. Comfortable and Spacious give each artifact more room.")
                 }
 
                 Section("Agents") {

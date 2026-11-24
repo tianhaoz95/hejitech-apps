@@ -17,6 +17,7 @@ struct HomeView: View {
     @State private var pendingRemoval: ArtifactSummary?
     /// Artifacts whose files contain the words (GET /api/search), minus the title matches above.
     @State private var fileHits: [SearchHit] = []
+    @AppStorage(HomeSpacing.storageKey) private var spacing: HomeSpacing = .compact
 
     private var matches: [ArtifactSummary] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -44,6 +45,8 @@ struct HomeView: View {
             }
             .listStyle(.plain)
             .environment(\.defaultMinListRowHeight, 0)
+            .environment(\.homeSpacing, spacing)
+            .animation(.snappy, value: spacing)
             .paperBackground()
             .animation(.default, value: model.artifacts)
             .confirmationDialog(removalTitle, isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } }), titleVisibility: .visible, presenting: pendingRemoval) { a in
@@ -175,12 +178,12 @@ struct HomeView: View {
         if !home.review.isEmpty {
             header("To review")
             ForEach(home.review) { a in
-                row(a, top: 3, bottom: 3) { ReviewRow(a: a) }
+                row(a, top: spacing.reviewPadding, bottom: spacing.reviewPadding) { ReviewRow(a: a) }
             }
         }
         if !home.favorites.isEmpty {
             header("Favorites")
-            FavoriteChips(artifacts: home.favorites) { a in
+            FavoriteChips(artifacts: home.favorites, spacing: spacing.chipSpacing) { a in
                 model.path.append(Destination.artifact(a.slug))
             } unfavorite: { a in
                 Task { await model.toggleFavorite(a) }
@@ -198,7 +201,7 @@ struct HomeView: View {
             .font(.footnote.weight(.semibold))
             .foregroundStyle(.primary)
             .accessibilityAddTraits(.isHeader)
-            .homeRow(top: 16, bottom: 4)
+            .homeRow(top: spacing.headerTop, bottom: 4)
     }
 }
 
@@ -210,7 +213,8 @@ extension HomeView {
 
     /// A row with its swipe actions: favorite from the leading edge, delete (or leave, when it's
     /// shared with you) from the trailing edge, always confirmed first.
-    private func row<Content: View>(_ a: ArtifactSummary, top: CGFloat = 5, bottom: CGFloat = 5, @ViewBuilder content: () -> Content) -> some View {
+    private func row<Content: View>(_ a: ArtifactSummary, top: CGFloat? = nil, bottom: CGFloat? = nil, @ViewBuilder content: () -> Content) -> some View {
+        let top = top ?? spacing.rowPadding, bottom = bottom ?? spacing.rowPadding
         let card = a.needsReview && !searching
         return NavigationLink(value: Destination.artifact(a.slug)) { content() }
             .homeRow(top: top, bottom: bottom, horizontal: card ? 26 : 16, background: card ? Color.coral.opacity(0.1) : .clear)
@@ -281,6 +285,7 @@ private struct StatsStrip: View {
 /// An artifact waiting for review: how many suggestions, the title, and who asked.
 struct ReviewRow: View {
     let a: ArtifactSummary
+    @Environment(\.homeSpacing) private var spacing
 
     var body: some View {
         HStack(spacing: 10) {
@@ -290,7 +295,7 @@ struct ReviewRow: View {
                 .frame(minWidth: 24, minHeight: 24)
                 .background(Color.coral, in: Circle())
                 .accessibilityLabel("\(a.open_suggestions) open suggestion\(a.open_suggestions == 1 ? "" : "s")")
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: spacing.lineSpacing) {
                 Text(a.title).font(.subheadline.weight(.semibold)).lineLimit(1)
                 Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
@@ -308,11 +313,12 @@ struct ReviewRow: View {
 /// One line per artifact: a small tile, the title, its version and access, and when it changed.
 struct CompactRow: View {
     let a: ArtifactSummary
+    @Environment(\.homeSpacing) private var spacing
 
     var body: some View {
         HStack(spacing: 10) {
-            ArtifactTile(size: 34)
-            VStack(alignment: .leading, spacing: 1) {
+            ArtifactTile(size: spacing.tileSize)
+            VStack(alignment: .leading, spacing: spacing.lineSpacing) {
                 HStack(spacing: 4) {
                     if a.isFavorite {
                         Image(systemName: "star.fill").font(.caption2).foregroundStyle(Color.mustard).accessibilityLabel("Favorite")
@@ -350,11 +356,12 @@ struct ArtifactTile: View {
 /// Favorites as chips that wrap; tap to open, long-press to unfavorite or copy for an agent.
 private struct FavoriteChips: View {
     let artifacts: [ArtifactSummary]
+    var spacing: CGFloat = 6
     let open: (ArtifactSummary) -> Void
     let unfavorite: (ArtifactSummary) -> Void
 
     var body: some View {
-        FlowLayout(spacing: 6) {
+        FlowLayout(spacing: spacing) {
             ForEach(artifacts) { a in
                 Button { open(a) } label: {
                     HStack(spacing: 6) {
