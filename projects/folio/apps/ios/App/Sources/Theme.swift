@@ -1,4 +1,50 @@
 import SwiftUI
+import UIKit
+
+/// The app's colour scheme (Settings → Appearance). `.device` follows iOS.
+enum AppTheme: String, CaseIterable, Identifiable {
+    case device, light, dark
+
+    static let storageKey = "appTheme"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .device: "Device"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .device: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+
+    var interfaceStyle: UIUserInterfaceStyle {
+        switch self {
+        case .device: .unspecified
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+
+    /// Sets `overrideUserInterfaceStyle` on every app window so presented sheets, alerts and
+    /// switching back to `.device` update immediately (SwiftUI's `.preferredColorScheme(nil)` can lag).
+    @MainActor
+    func apply() {
+        for scene in UIApplication.shared.connectedScenes {
+            guard let ws = scene as? UIWindowScene else { continue }
+            for window in ws.windows {
+                window.overrideUserInterfaceStyle = interfaceStyle
+            }
+        }
+    }
+}
 
 // Folio's palette, from the Bauhaus app icon (projects/folio/brand/README.md): warm paper behind every
 // screen, navy as the accent (AccentColor), coral and mustard as the icon's secondary colours.

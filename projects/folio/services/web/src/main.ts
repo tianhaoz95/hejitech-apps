@@ -1,5 +1,8 @@
-// Runs on every page: header state (signed in or not) and sign-out.
+// Runs on every page: theme preference, header state (signed in or not) and sign-out.
 import { currentSession, supabase } from "./supabase.ts";
+import { initTheme } from "./theme.ts";
+
+initTheme();
 
 async function header() {
   const s = await currentSession();

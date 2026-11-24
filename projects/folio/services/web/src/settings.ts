@@ -1,6 +1,7 @@
-// Settings: your plan, connected agents (OAuth grants), agent tokens, webhooks (Pro), and deleting
-// everything Folio keeps.
+// Settings: your plan, appearance, connected agents (OAuth grants), agent tokens, webhooks (Pro),
+// and deleting everything Folio keeps.
 import { api, copyText, el, requireSession, spinner, timeAgo, toast } from "./common.ts";
+import { getTheme, THEME_OPTIONS } from "./theme.ts";
 
 const root = document.getElementById("app")!;
 
@@ -31,6 +32,44 @@ async function render() {
       el("a", { class: "btn secondary small", href: "/pro/" }, pro.pro ? "Your plan" : "See Pro")
     )
   );
+  const currentTheme = getTheme();
+  const appearanceSection = el(
+    "section",
+    { class: "section" },
+    el("h2", {}, "Appearance"),
+    el(
+      "div",
+      { class: "list" },
+      el(
+        "div",
+        { class: "list-row", style: "flex-wrap: wrap" },
+        el(
+          "div",
+          {},
+          el("strong", {}, "Theme"),
+          el("div", { class: "muted small" }, "Device follows your browser or system setting.")
+        ),
+        el("span", { class: "spacer" }),
+        el(
+          "div",
+          { class: "segmented", role: "radiogroup", "aria-label": "Theme" },
+          ...THEME_OPTIONS.map((opt) =>
+            el(
+              "button",
+              {
+                type: "button",
+                role: "radio",
+                "aria-checked": opt.value === currentTheme ? "true" : "false",
+                "data-theme-choice": opt.value,
+              },
+              opt.label
+            )
+          )
+        )
+      )
+    )
+  );
+
   const hookSection = webhooksSection(hooks.webhooks, hooks.kinds, pro.pro);
 
   const grantList = el(
@@ -129,6 +168,7 @@ async function render() {
       el("h1", {}, "Settings"),
       el("p", { class: "muted" }, `Signed in as ${s.user.email ?? "your account"}.`),
       planSection,
+      appearanceSection,
       el("section", { class: "section" }, el("h2", {}, "Connected agents"), el("p", { class: "muted small" }, "Agents that signed in to Folio with OAuth."), grantList),
       el(
         "section",

@@ -3,7 +3,7 @@ import SwiftUI
 /// What's New: `scripts/cut_release.sh folio` refuses an iPhone release until `currentVersion` and
 /// the first `releases` entry describe it.
 enum WhatsNew {
-    static let currentVersion = "0.3.2"
+    static let currentVersion = "0.3.3"
 
     struct Release: Identifiable {
         let version: String
@@ -12,6 +12,9 @@ enum WhatsNew {
     }
 
     static let releases: [Release] = [
+        Release(version: "0.3.3", items: [
+            ("circle.lefthalf.filled", "Light, dark, or device", "Pick Light, Dark, or Device in Settings to choose how Folio looks on your iPhone and on the web."),
+        ]),
         Release(version: "0.3.2", items: [
             ("arrow.up.and.down.text.horizontal", "Choose your spacing", "Pick how roomy your list is in Settings: Compact fits the most on screen, Comfortable and Spacious give each artifact more room."),
         ]),

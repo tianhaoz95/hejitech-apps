@@ -5,11 +5,15 @@ import SwiftUI
 struct FolioApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var model = AppModel.shared
+    @AppStorage(AppTheme.storageKey) private var appTheme: AppTheme = .device
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(model)
+                .preferredColorScheme(appTheme.colorScheme)
+                .onAppear { appTheme.apply() }
+                .onChange(of: appTheme) { _, next in next.apply() }
                 .onOpenURL { model.handle(url: $0) }
                 .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { a in
                     if let u = a.webpageURL { model.handle(url: u) }

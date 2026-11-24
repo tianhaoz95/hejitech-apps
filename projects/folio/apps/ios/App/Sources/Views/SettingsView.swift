@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var confirmDelete = false
     @State private var showWhatsNew = false
     @State private var inviteLink = ""
+    @AppStorage(AppTheme.storageKey) private var appTheme: AppTheme = .device
     @AppStorage(HomeSpacing.storageKey) private var homeSpacing: HomeSpacing = .compact
 
     var body: some View {
@@ -44,6 +45,17 @@ struct SettingsView: View {
                     Text("Plan")
                 } footer: {
                     Text("Webhooks (Pro) are set up on Folio's site, in Settings.")
+                }
+
+                Section {
+                    Picker("Theme", selection: $appTheme) {
+                        ForEach(AppTheme.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Appearance")
+                } footer: {
+                    Text("Device follows your iPhone's Light or Dark setting.")
                 }
 
                 Section {
