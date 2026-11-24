@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { LINE_PX, textPx } from "../packages/core/src/font.ts"; // no imports of its own: Node runs it as is
+import { fromDisplayVital, toDisplayVital } from "../packages/core/src/units.ts";
 import { mcpClient } from "./mcp-client.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -185,6 +186,49 @@ await step("check-ins: validated against the plan, from glasses and web, reflect
   const ci = await tool("get_checkins", { from: today, to: today });
   assert.ok(ci.checkins.some((c) => c.source === "glasses" && c.ref === firstMeal.ref));
 });
+await step("exercise & meal swaps: logged via check-ins, shown in today, surfaced in weekly review", async () => {
+  // Invalid set number and status are rejected.
+  if (firstWorkout) {
+    const e0 = firstWorkout.exercises[0];
+    assert.equal((await call("/api/checkins", { method: "POST", auth: session, body: { date: today, ref: `${e0.ref}/99`, kind: "set", status: "done" } })).status, 422);
+    assert.equal((await call("/api/checkins", { method: "POST", auth: session, body: { date: today, ref: e0.ref, kind: "exercise", status: "invalid" } })).status, 422);
+  }
+  const secondEx = firstWorkout?.exercises[1];
+  if (secondEx) {
+    const swap = await call("/api/checkins", {
+      method: "POST", auth: session,
+      body: { date: today, ref: secondEx.ref, kind: "exercise", status: "swapped", data: { swapped_for: secondEx.exercise.alternative ?? "Goblet squat" } },
+    });
+    assert.equal(swap.status, 200, swap.text);
+  }
+  const secondMeal = (await call(`/api/today?date=${today}`, { auth: session })).body.state.meals[1];
+  if (secondMeal) {
+    const swapMeal = await call("/api/checkins", {
+      method: "POST", auth: session,
+      body: { date: today, ref: secondMeal.ref, kind: "meal", status: "swapped", data: { swapped_for: "Chicken wrap" } },
+    });
+    assert.equal(swapMeal.status, 200, swapMeal.text);
+  }
+  const t = await call(`/api/today?date=${today}`, { auth: session });
+  if (secondEx) assert.equal(t.body.state.workouts[0].exercises[1].status, "swapped");
+  if (secondMeal) assert.equal(t.body.state.meals[1].status, "swapped");
+  const w = await tool("get_weekly_review");
+  if (secondEx) assert.ok(w.changes_made_by_user.some((c) => c.ref === secondEx.ref && c.status === "swapped"));
+  if (secondMeal) assert.ok(w.changes_made_by_user.some((c) => c.ref === secondMeal.ref && c.status === "swapped"));
+});
+await step("dated overrides via patch_plan: override one date, then remove it back to the weekday", async () => {
+  const tomorrow = new Date(Date.parse(`${today}T12:00:00Z`) + 86400_000).toISOString().slice(0, 10);
+  const before = (await call(`/api/today?date=${tomorrow}`, { auth: session })).body.state.day.title;
+  const cur = (await tool("get_current_plan")).current;
+  const trip = { title: "Travel day", workouts: [], meals: cur.plan.week.sun.meals };
+  const added = await tool("patch_plan", { changes: { overrides: { [tomorrow]: trip } }, change_note: "Travel day override", base_version: cur.version });
+  assert.equal(added.published, true, JSON.stringify(added));
+  assert.equal((await call(`/api/today?date=${tomorrow}`, { auth: session })).body.state.day.title, "Travel day");
+  const removed = await tool("patch_plan", { changes: { overrides: { [tomorrow]: null } }, change_note: "Back to normal schedule", base_version: added.version });
+  assert.equal(removed.published, true, JSON.stringify(removed));
+  assert.equal((await call(`/api/today?date=${tomorrow}`, { auth: session })).body.state.day.title, before);
+  version = removed.version;
+});
 let fbId;
 await step("feedback in the moment → the agent reads it, replies, the user sees the reply", async () => {
   const f = await call("/api/feedback", { method: "POST", auth: SEED_DEVICE, body: { date: today, ref: firstMeal.ref, tags: ["hungry"] } });
@@ -201,6 +245,13 @@ await step("feedback in the moment → the agent reads it, replies, the user see
   assert.equal(back.status, "addressed");
   assert.match(back.agent_reply, /oats/);
   await assert.rejects(tool("respond_to_feedback", { id: "00000000-0000-4000-8000-000000000000", reply: "x" }), /no such feedback/);
+  // Another user cannot delete my feedback, and deleting my own works.
+  const tempFb = await call("/api/feedback", { method: "POST", auth: session, body: { date: today, text: "temporary note", tags: [] } });
+  assert.equal(tempFb.status, 200);
+  await call(`/api/feedback/${tempFb.body.id}`, { method: "DELETE", auth: other });
+  assert.ok((await call("/api/feedback", { auth: session })).body.some((x) => x.id === tempFb.body.id), "other user couldn't delete");
+  assert.equal((await call(`/api/feedback/${tempFb.body.id}`, { method: "DELETE", auth: session })).status, 200);
+  assert.ok(!(await call("/api/feedback", { auth: session })).body.some((x) => x.id === tempFb.body.id), "owner deleted it");
 });
 await step("progress and the weekly review", async () => {
   const from = new Date(Date.parse(`${today}T12:00:00Z`) - 13 * 86400_000).toISOString().slice(0, 10);
@@ -234,6 +285,38 @@ await step("vitals: sources obey their switches, and so does agent access", asyn
   await assert.rejects(tool("get_vitals"), /hasn't shared vitals/);
   await call("/api/settings", { method: "PUT", auth: session, body: { settings: s } });
 });
+await step("units preference & imperial vitals round-trip via canonical metric storage", async () => {
+  const orig = (await call("/api/settings", { auth: session })).body.settings;
+  const saved = await call("/api/settings", { method: "PUT", auth: session, body: { settings: { ...orig, units: "imperial" } } });
+  assert.equal(saved.status, 200, saved.text);
+  assert.equal(saved.body.settings.units, "imperial");
+  assert.equal((await tool("get_profile")).units, "imperial");
+  // Client converts 165.3 lb and 32 in to canonical kg / cm before POST /api/vitals.
+  const storedWeight = fromDisplayVital("weight", 165.3, "imperial");
+  const storedWaist = fromDisplayVital("waist", 32, "imperial");
+  assert.equal((await call("/api/vitals", { method: "POST", auth: session, body: [
+    { date: today, metric: "weight", value: storedWeight, source: "manual" },
+    { date: today, metric: "waist", value: storedWaist, source: "manual" },
+  ] })).status, 200);
+  const v = await tool("get_vitals", { from: today, to: today });
+  const wEntry = v.entries.findLast((e) => e.metric === "weight");
+  const waistEntry = v.entries.findLast((e) => e.metric === "waist");
+  assert.equal(toDisplayVital("weight", Number(wEntry.value), "imperial"), 165.3);
+  assert.equal(toDisplayVital("waist", Number(waistEntry.value), "imperial"), 32);
+  await call("/api/settings", { method: "PUT", auth: session, body: { settings: orig } });
+});
+await step("agent_access switches: check-ins and feedback hidden when off; photos signed URL when on", async () => {
+  const orig = (await call("/api/settings", { auth: session })).body.settings;
+  await call("/api/settings", {
+    method: "PUT", auth: session,
+    body: { settings: { ...orig, agent_access: { ...orig.agent_access, checkins: false, feedback: false } } },
+  });
+  await assert.rejects(tool("get_checkins", { from: today, to: today }), /hasn't shared check-ins/);
+  await assert.rejects(tool("get_feedback"), /hasn't shared feedback/);
+  const tr = await tool("get_trends", { weeks: 2 });
+  assert.equal(tr.shared.checkins, false);
+  await call("/api/settings", { method: "PUT", auth: session, body: { settings: orig } });
+});
 await step("live heart rate: the phone relays, the glasses read", async () => {
   assert.equal((await call("/api/live", { method: "PUT", auth: session, body: { hr: 142, workout_ref: firstWorkout?.ref ?? "x" } })).status, 200);
   const l = await call("/api/live", { auth: SEED_DEVICE });
@@ -253,6 +336,10 @@ await step("progress photos: off by default, private, agent sees dates unless al
   const agentView = await tool("list_photos", { from: today, to: today });
   assert.equal(agentView.photos.length, 1);
   assert.equal(agentView.photos[0].url, undefined, "dates only without agent_access.photos");
+  await call("/api/settings", { method: "PUT", auth: session, body: { settings: { ...s, vitals: { ...s.vitals, photos: true }, agent_access: { ...s.agent_access, photos: true } } } });
+  const agentWithUrl = await tool("list_photos", { from: today, to: today });
+  assert.ok(agentWithUrl.photos[0].url, "signed URL when agent_access.photos is on");
+  assert.equal((await fetch(agentWithUrl.photos[0].url)).status, 200);
   await call(`/api/photos/${up.body.id}`, { method: "DELETE", auth: session });
   assert.equal((await call("/api/photos", { auth: session })).body.length, 0);
   await call("/api/settings", { method: "PUT", auth: session, body: { settings: s } });
@@ -387,5 +474,19 @@ await step("Pro: one answer per account; without it the web gets 402 and the app
   const junk = await call("/api/appstore/transactions", { method: "POST", auth: other, body: { transactions: ["junk"] } });
   assert.deepEqual(junk.body.rejected, ["not a JWS"]);
   assert.equal((await fetch(`${site}/stripe/webhook`, { method: "POST", body: "{}", headers: { "Stripe-Signature": "t=1,v1=00" } })).status, 400);
+  // Non-Pro user's MCP token and paired glasses token both get 402 pro_required.
+  const tok = await call("/api/tokens", { method: "POST", auth: other, body: { name: "Non-pro agent" } });
+  assert.equal(tok.status, 200, tok.text);
+  assert.equal((await mcpClient(mcpUrl, tok.body.token).rpc("tools/list")).status, 402);
+  await call(`/api/tokens/${tok.body.id}`, { method: "DELETE", auth: other });
+  const code = await call("/api/pairing-code", { method: "POST", auth: other });
+  const pairHeaders = { "CF-Connecting-IP": `198.51.100.${(Date.now() + 7) % 250}` };
+  const paired = await call("/api/pair", { method: "POST", body: { code: code.body.code, label: "Non-pro G2" }, headers: pairHeaders });
+  assert.equal(paired.status, 200, paired.text);
+  const g402 = await call(`/api/today?date=${today}`, { auth: paired.body.device_token });
+  assert.equal(g402.status, 402, g402.text);
+  assert.equal(g402.body.error, "pro_required");
+  const dev = (await call("/api/devices", { auth: other })).body.find((d) => d.label === "Non-pro G2");
+  if (dev) await call(`/api/devices/${dev.id}`, { method: "DELETE", auth: other });
 });
 console.log(`FitLoop integration: ${steps.length} checks passed`);

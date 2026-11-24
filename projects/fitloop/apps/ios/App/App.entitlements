@@ -10,5 +10,9 @@
 	<true/>
 	<key>com.apple.developer.healthkit.access</key>
 	<array/>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.hejitech.fitloop.shared</string>
+	</array>
 </dict>
 </plist>
