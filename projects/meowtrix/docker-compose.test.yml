@@ -38,10 +38,13 @@ services:
       - .:/app
       - /app/node_modules               # Avoids browser package conflicts with host
     working_dir: /app
-    # Installs devDependencies (Playwright) and runs the tests
+    # Installs devDependencies (Playwright) and runs the tests. node-pty is compiled here too (the
+    # image has no compiler): tests that start their own server.js (token auth) need it.
     command: >
       bash -c "
+        apt-get update -qq && apt-get install -y -qq --no-install-recommends make g++ > /dev/null &&
         npm install --include=dev --ignore-scripts &&
+        npm rebuild node-pty &&
         npx playwright test
       "
 

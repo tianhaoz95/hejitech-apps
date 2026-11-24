@@ -27,6 +27,9 @@
           "body": "Start the server with `--auth` or `--token <secret>` (or `install.sh --service --auth`) to protect HTTP and WebSocket connections behind a token unlock page and HttpOnly cookie.",
           "visual": { "type": "glyph", "glyph": "🔑" }
         }
+      ],
+      "fixes": [
+        "The `mtx` command sends the access token from `$MEOWTRIX_TOKEN`, so it keeps working against a server that requires one."
       ]
     },
     {
