@@ -9,8 +9,140 @@ const tls = require('tls');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const crypto = require('crypto');
 const { URL } = require('url');
 const { execFile, spawn } = require('child_process');
+
+const MEOWTRIX_DATA_DIR = process.env.MEOWTRIX_DATA_DIR || path.join(os.homedir(), '.meowtrix');
+const AUTH_FILE = process.env.MEOWTRIX_AUTH_FILE || path.join(MEOWTRIX_DATA_DIR, 'auth.json');
+
+// Optional access-token auth: opt-in via `--token <secret>`, `MEOWTRIX_TOKEN`,
+// `--auth`, or `MEOWTRIX_AUTH=1` (which persists a random token in ~/.meowtrix/auth.json
+// with 0600 permissions). Disabled by default for local loopback runs.
+function resolveAuthToken() {
+  const argv = process.argv.slice(2);
+  const tokenFlag = argv.indexOf('--token');
+  if (tokenFlag !== -1 && argv[tokenFlag + 1]) return argv[tokenFlag + 1].trim();
+  if (process.env.MEOWTRIX_TOKEN && process.env.MEOWTRIX_TOKEN.trim()) {
+    return process.env.MEOWTRIX_TOKEN.trim();
+  }
+  const wantAuth = argv.includes('--auth') || process.env.MEOWTRIX_AUTH === '1' || process.env.MEOWTRIX_AUTH === 'true';
+  if (!wantAuth) return null;
+  try {
+    const existing = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8'));
+    if (existing && typeof existing.token === 'string' && existing.token.trim().length >= 16) {
+      return existing.token.trim();
+    }
+  } catch {}
+  const generated = crypto.randomBytes(24).toString('hex');
+  try {
+    fs.mkdirSync(path.dirname(AUTH_FILE), { recursive: true });
+    fs.writeFileSync(AUTH_FILE, JSON.stringify({ token: generated, createdAt: new Date().toISOString() }, null, 2), { mode: 0o600 });
+    fs.chmodSync(AUTH_FILE, 0o600);
+  } catch (e) {
+    console.warn('⚠️  Could not persist auth token to', AUTH_FILE, e.message);
+  }
+  return generated;
+}
+
+const AUTH_TOKEN = resolveAuthToken();
+const AUTH_COOKIE_NAME = 'meowtrix_auth';
+
+function tokensEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+function parseCookies(header) {
+  const out = {};
+  if (!header || typeof header !== 'string') return out;
+  for (const part of header.split(';')) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    const k = part.slice(0, idx).trim();
+    const v = part.slice(idx + 1).trim();
+    if (k) {
+      try { out[k] = decodeURIComponent(v); } catch { out[k] = v; }
+    }
+  }
+  return out;
+}
+
+function extractRequestToken(req) {
+  const auth = req.headers.authorization;
+  if (typeof auth === 'string' && auth.toLowerCase().startsWith('bearer ')) {
+    return auth.slice(7).trim();
+  }
+  const hdr = req.headers['x-meowtrix-token'];
+  if (typeof hdr === 'string' && hdr.trim()) return hdr.trim();
+  const cookies = parseCookies(req.headers.cookie);
+  if (cookies[AUTH_COOKIE_NAME]) return cookies[AUTH_COOKIE_NAME];
+  return null;
+}
+
+function isAuthorizedRequest(req) {
+  if (!AUTH_TOKEN) return true;
+  return tokensEqual(extractRequestToken(req), AUTH_TOKEN);
+}
+
+function setAuthCookie(res, token) {
+  res.setHeader('Set-Cookie', `${AUTH_COOKIE_NAME}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000`);
+}
+
+function clearAuthCookie(res) {
+  res.setHeader('Set-Cookie', `${AUTH_COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+}
+
+const AUTH_PAGE_HTML = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Meowtrix — Unlock</title>
+<style>
+  :root { color-scheme: dark light; --bg:#0f1117; --card:#171a23; --border:#2a2f3e; --text:#e6e9f2; --muted:#8c95aa; --accent:#7c6cf6; --err:#f87171; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f5f6fa; --card:#ffffff; --border:#dfe3ee; --text:#181b24; --muted:#64708a; --accent:#5b4ce6; --err:#dc2626; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+  .card { width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 28px 24px; box-shadow: 0 18px 40px rgba(0,0,0,.25); }
+  h1 { margin: 0 0 6px; font-size: 19px; display: flex; align-items: center; gap: 8px; }
+  p { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+  input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; outline: none; }
+  input:focus { border-color: var(--accent); }
+  button { margin-top: 12px; width: 100%; padding: 10px 14px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font: 600 14px/1.2 inherit; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: default; }
+  .err { margin-top: 10px; color: var(--err); font-size: 12.5px; min-height: 18px; }
+</style>
+</head>
+<body>
+  <form class="card" id="f">
+    <h1>🐾 Meowtrix</h1>
+    <p>Enter the server access token to unlock this workspace.</p>
+    <input id="tok" type="password" autocomplete="current-password" placeholder="Access token" required autofocus>
+    <button type="submit" id="btn">Unlock</button>
+    <div class="err" id="err"></div>
+  </form>
+  <script>
+    const f = document.getElementById('f'), tok = document.getElementById('tok'), btn = document.getElementById('btn'), err = document.getElementById('err');
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.textContent = '';
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: tok.value.trim() }) });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.ok) { location.href = '/'; return; }
+        err.textContent = data.message || 'Invalid access token.';
+      } catch { err.textContent = 'Could not reach server.'; }
+      btn.disabled = false;
+      tok.select();
+    });
+  </script>
+</body>
+</html>`;
 
 // Detect whether we are running inside a Docker container.
 // /.dockerenv is created by the Docker runtime in every container.
@@ -33,6 +165,10 @@ const wss = new WebSocketServer({
 // hostbrowser-service.js), and everything else is the app's control socket.
 server.on('upgrade', (req, socket, head) => {
   const url = req.url || '';
+  if (AUTH_TOKEN && !isAuthorizedRequest(req)) {
+    socket.end('HTTP/1.1 401 Unauthorized\r\n\r\n');
+    return;
+  }
   if (url.startsWith('/proxy-ws/')) return proxyWsUpgrade(req, socket, head);
   // Opaque-origin documents (sandboxed iframes such as CoDesign specs, see
   // codesign-service.js) send `Origin: null`; they must never reach the PTYs
@@ -51,6 +187,50 @@ app.use(compression());
 // forwarded Content-Length, and form posts would be turned into JSON.
 const jsonParser = express.json();
 app.use((req, res, next) => (req.path === '/proxy' || req.path.startsWith('/proxy/') ? next() : jsonParser(req, res, next)));
+
+// ── Access-token auth routes & gate ──────────────────────────────────────────
+app.get('/api/auth/status', (req, res) => {
+  res.json({ ok: true, enabled: Boolean(AUTH_TOKEN), authenticated: isAuthorizedRequest(req) });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  if (!AUTH_TOKEN) return res.json({ ok: true });
+  const candidate = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+  if (!tokensEqual(candidate, AUTH_TOKEN)) {
+    return res.status(401).json({ ok: false, error: 'invalid-token', message: 'Invalid access token.' });
+  }
+  setAuthCookie(res, AUTH_TOKEN);
+  res.json({ ok: true });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  clearAuthCookie(res);
+  res.json({ ok: true });
+});
+
+app.get('/auth', (req, res) => {
+  if (!AUTH_TOKEN || isAuthorizedRequest(req)) return res.redirect('/');
+  res.setHeader('Cache-Control', 'no-store');
+  res.type('html').send(AUTH_PAGE_HTML);
+});
+
+app.use((req, res, next) => {
+  if (!AUTH_TOKEN) return next();
+  if (req.path === '/auth' || req.path === '/favicon.ico' || req.path === '/favicon.svg' || req.path.startsWith('/api/auth/')) {
+    return next();
+  }
+  // Magic unlock URL: `GET /?token=<secret>` sets the HttpOnly cookie and strips
+  // the token from the URL bar via redirect.
+  if (req.method === 'GET' && req.path === '/' && typeof req.query?.token === 'string' && tokensEqual(req.query.token.trim(), AUTH_TOKEN)) {
+    setAuthCookie(res, AUTH_TOKEN);
+    return res.redirect('/');
+  }
+  if (isAuthorizedRequest(req)) return next();
+  if (req.path.startsWith('/api/') || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+    return res.status(401).json({ ok: false, error: 'unauthorized', message: 'Authentication required' });
+  }
+  return res.redirect('/auth');
+});
 
 // Third-party code served from node_modules (offline-ready, no CDN). Every package here is
 // version-pinned in package.json and only changes on a self-update (which restarts the server),
@@ -139,7 +319,6 @@ app.get('/', (req, res) => {
   res.send(html);
 });
 
-const MEOWTRIX_DATA_DIR = process.env.MEOWTRIX_DATA_DIR || path.join(os.homedir(), '.meowtrix');
 const SETTINGS_FILE = process.env.MEOWTRIX_SETTINGS_FILE || path.join(MEOWTRIX_DATA_DIR, 'settings.json');
 const DEFAULT_SETTINGS = {
   theme: 'auto',
@@ -342,7 +521,8 @@ mountCodesignRoutes(app, {
 });
 
 // ── mtx agent bridge: open URLs/files, read layout, notify (see mtx-service.js) ─
-const { mountMtxRoutes } = require('./mtx-service');
+const ptys = new Map();
+const { mountMtxRoutes, editorRootFor } = require('./mtx-service');
 const mtxBridge = mountMtxRoutes(app, {
   getActiveClient: () => {
     for (const c of sessionClients) {
@@ -350,6 +530,8 @@ const mtxBridge = mountMtxRoutes(app, {
     }
     return null;
   },
+  ptys,
+  getPtyCwd: (pid) => getPtyCwd(pid),
 });
 
 
@@ -638,6 +820,85 @@ app.get('/api/fs/search', (req, res) => {
     }
     res.json({ ok: true, matches });
   });
+});
+
+// List workspace files for fuzzy Quick Open (⌘P): uses `git ls-files` inside a
+// git repo (fast and respects .gitignore), falling back to a bounded walk.
+const QUICK_OPEN_SKIP_DIRS = new Set(['.git', 'node_modules', 'dist', 'build', 'target', '.next', '.nuxt', '.cache', '.venv', 'venv', '__pycache__', '.turbo']);
+app.get('/api/fs/files', (req, res) => {
+  const root = req.query.root;
+  if (!root || typeof root !== 'string') return res.status(400).json({ ok: false, error: 'Missing root' });
+  const resolvedRoot = path.resolve(root);
+  let st;
+  try { st = fs.statSync(resolvedRoot); } catch { return res.status(404).json({ ok: false, error: 'Directory not found' }); }
+  if (!st.isDirectory()) return res.status(400).json({ ok: false, error: 'Not a directory' });
+
+  const requestedLimit = parseInt(req.query.limit, 10);
+  const limit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.min(requestedLimit, 20000) : 5000;
+
+  const fallbackWalk = () => {
+    const files = [];
+    let truncated = false;
+    const queue = [''];
+    while (queue.length > 0 && files.length < limit) {
+      const relDir = queue.shift();
+      const absDir = relDir ? path.join(resolvedRoot, relDir) : resolvedRoot;
+      let entries;
+      try { entries = fs.readdirSync(absDir, { withFileTypes: true }); } catch { continue; }
+      for (const ent of entries) {
+        if (ent.isDirectory()) {
+          if (QUICK_OPEN_SKIP_DIRS.has(ent.name)) continue;
+          queue.push(relDir ? `${relDir}/${ent.name}` : ent.name);
+        } else if (ent.isFile() || ent.isSymbolicLink()) {
+          files.push(relDir ? `${relDir}/${ent.name}` : ent.name);
+          if (files.length >= limit) { truncated = true; break; }
+        }
+      }
+    }
+    if (queue.length > 0) truncated = true;
+    res.json({ ok: true, root: resolvedRoot, files, truncated });
+  };
+
+  execFile('git', ['-C', resolvedRoot, 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], { maxBuffer: 20 * 1024 * 1024 }, (err, stdout) => {
+    if (err || typeof stdout !== 'string') return fallbackWalk();
+    const raw = stdout.split('\0').filter(Boolean);
+    const truncated = raw.length > limit;
+    const files = truncated ? raw.slice(0, limit) : raw;
+    res.json({ ok: true, root: resolvedRoot, files, truncated });
+  });
+});
+
+// Resolve a clicked file path from terminal output against a PTY's current working
+// directory (or an explicit cwd fallback) and verify it exists as a regular file.
+app.get('/api/fs/resolve', async (req, res) => {
+  const rawPath = req.query.path;
+  if (!rawPath || typeof rawPath !== 'string' || rawPath.length > 2048) {
+    return res.status(400).json({ ok: false, error: 'Missing path' });
+  }
+  let candidate = rawPath.trim();
+  if (candidate.startsWith('~/') || candidate === '~') {
+    candidate = path.join(os.homedir(), candidate.slice(1));
+  }
+  let baseDir = typeof req.query.cwd === 'string' && req.query.cwd ? req.query.cwd : null;
+  if (!path.isAbsolute(candidate) && typeof req.query.ptyId === 'string' && req.query.ptyId) {
+    const entry = ptys.get(req.query.ptyId);
+    if (entry?.proc?.pid) {
+      try {
+        const ptyCwd = await getPtyCwd(entry.proc.pid);
+        if (ptyCwd) baseDir = ptyCwd;
+      } catch {}
+    }
+  }
+  const resolved = path.isAbsolute(candidate)
+    ? path.resolve(candidate)
+    : path.resolve(baseDir || os.homedir(), candidate);
+  try {
+    const st = fs.statSync(resolved);
+    if (!st.isFile()) return res.json({ ok: false });
+    return res.json({ ok: true, path: resolved, root: editorRootFor(resolved) });
+  } catch {
+    return res.json({ ok: false });
+  }
 });
 
 // Get all git branches.
@@ -1530,7 +1791,6 @@ const hostBrowser = new HostBrowserService({
 });
 mountHostBrowserRoutes(app, hostBrowser);
 
-const ptys = new Map();
 // Paths *inside* .git/ or node_modules/ (the folders themselves still report).
 const FS_WATCH_IGNORE_RE = /(?:^|\/)(?:\.git|node_modules)\//;
 const spawningPtys = new Map(); // id -> latest {cols, rows} while its spawn awaits an async cwd lookup
@@ -1943,6 +2203,8 @@ wss.on('connection', (ws) => {
         ptyEnv.MEOWTRIX_PTY_ID = id;
         // …and a node binary for `mtx mcp` (the standalone app bundles its own).
         ptyEnv.MEOWTRIX_NODE = process.execPath;
+        // …and the access token when auth is enabled so `mtx` / `mtx mcp` work automatically.
+        if (AUTH_TOKEN) ptyEnv.MEOWTRIX_TOKEN = AUTH_TOKEN;
 
         const spawnPty = (initialCwd) => {
           // An SSH tab spawns `ssh <host>` directly instead of a login shell. The
@@ -1966,7 +2228,7 @@ wss.on('connection', (ws) => {
             cwd: initialCwd || process.env.MEOWTRIX_WORKSPACE || process.env.HOME || process.cwd(),
             env: ptyEnv,
           });
-          const entry = { proc, dataListeners: new Set(), flushers: new Set(), buffer: '', cols, rows };
+          const entry = { proc, dataListeners: new Set(), flushers: new Set(), buffer: '', cols, rows, sshHost: msg.sshHost || null };
           ptys.set(id, entry);
           // Persistently buffer output (independent of any connected WS) so it can
           // be replayed on reconnect. Capped to the most recent PTY_BUFFER_MAX bytes.
@@ -3071,12 +3333,15 @@ const HOST = resolveHost();
 const isLoopback = HOST === '127.0.0.1' || HOST === 'localhost' || HOST === '::1';
 server.listen(PORT, HOST, () => {
   console.log(`Meowtrix running at http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
-  if (isLoopback) {
+  if (AUTH_TOKEN) {
+    console.log('🔑 Access-token authentication is enabled.');
+    console.log(`   Unlock URL: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}/?token=${AUTH_TOKEN}`);
+  } else if (isLoopback) {
     console.log('🔒 Bound to localhost only — not reachable from the network.');
     console.log('   Tunnel in with:  ssh -L ' + PORT + ':localhost:' + PORT + ' <user>@<host>');
-    console.log('   Expose on the network with:  meowtrix --network   (or HOST=0.0.0.0)');
+    console.log('   Expose on the network with:  meowtrix --network --auth   (or HOST=0.0.0.0 MEOWTRIX_AUTH=1)');
   } else {
-    console.log('⚠️  Reachable over the network — anyone who can connect gets a shell on this host.');
-    console.log('   Only do this on a trusted network or behind authentication.');
+    console.log('⚠️  Reachable over the network without authentication — anyone who can connect gets a shell on this host.');
+    console.log('   Protect with a token:  meowtrix --network --auth   (or --token <secret>)');
   }
 });

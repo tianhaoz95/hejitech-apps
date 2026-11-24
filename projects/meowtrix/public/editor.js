@@ -502,16 +502,26 @@ function initEditorTab(tab, viewEl, dir) {
     createInDir(dir, 'dir');
   });
   
+  const quickOpenBtn = document.createElement('button');
+  quickOpenBtn.className = 'editor-sidebar-quickopen';
+  quickOpenBtn.textContent = '⌘P';
+  quickOpenBtn.title = 'Quick Open File (⌘P / Ctrl+P)';
+  quickOpenBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openQuickOpen();
+  });
+
   const refreshBtn = document.createElement('button');
   refreshBtn.className = 'editor-sidebar-refresh';
   refreshBtn.textContent = '↻';
   refreshBtn.title = 'Refresh file tree';
   refreshBtn.addEventListener('click', (e) => {
     e.stopPropagation();
+    quickOpenCache = null;
     refreshFiles();
   });
 
-  sideHeader.append(sideHeaderIcon, sideHeaderName, newFileBtn, newFolderBtn, refreshBtn);
+  sideHeader.append(sideHeaderIcon, sideHeaderName, quickOpenBtn, newFileBtn, newFolderBtn, refreshBtn);
   sideHeader.title = dir || '';
 
   // View switcher: Explorer (file tree), Git (Source Control), and Search.
@@ -702,9 +712,13 @@ function initEditorTab(tab, viewEl, dir) {
   viewEl.append(sidebar, resizer, main);
 
   viewEl.addEventListener('keydown', (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 's') {
       e.preventDefault();
       saveActive();
+    } else if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p') {
+      e.preventDefault();
+      e.stopPropagation();
+      openQuickOpen();
     }
   });
 
@@ -713,6 +727,210 @@ function initEditorTab(tab, viewEl, dir) {
   const open = new Map();      // path -> { model, viewState, dirty, tabEl, dotEl }
   const treeRows = new Map();  // file path -> tree row element (for selection highlight)
   let activePath = null;
+  let quickOpenCache = null;   // cached relative file paths from /api/fs/files
+  const recentFiles = [];      // recently opened relative paths (newest first)
+
+  function recordRecentFile(absPath) {
+    if (!dir || !absPath) return;
+    const prefix = dir.replace(/[/\\]$/, '') + '/';
+    const rel = absPath.startsWith(prefix) ? absPath.slice(prefix.length) : null;
+    if (!rel) return;
+    const idx = recentFiles.indexOf(rel);
+    if (idx !== -1) recentFiles.splice(idx, 1);
+    recentFiles.unshift(rel);
+    if (recentFiles.length > 30) recentFiles.length = 30;
+  }
+
+  function fuzzyScoreFile(query, relPath, recentIdx) {
+    const q = query.toLowerCase();
+    const p = relPath.toLowerCase();
+    const slashIdx = p.lastIndexOf('/');
+    const baseStart = slashIdx + 1;
+    let qi = 0;
+    let score = 0;
+    let consecutive = 0;
+    const positions = [];
+    for (let pi = 0; pi < p.length && qi < q.length; pi++) {
+      if (p[pi] === q[qi]) {
+        positions.push(pi);
+        let pts = 10;
+        if (pi >= baseStart) pts += 12;
+        if (pi === baseStart) pts += 18;
+        else if (pi === 0 || p[pi - 1] === '/' || p[pi - 1] === '.' || p[pi - 1] === '-' || p[pi - 1] === '_') pts += 12;
+        else if (relPath[pi] >= 'A' && relPath[pi] <= 'Z') pts += 8;
+        if (consecutive > 0) pts += 6 * Math.min(consecutive, 5);
+        score += pts;
+        consecutive++;
+        qi++;
+      } else {
+        consecutive = 0;
+      }
+    }
+    if (qi !== q.length) return null;
+    // Prefer shorter paths and recently opened files on tie.
+    score -= Math.min(relPath.length, 200) * 0.15;
+    if (recentIdx !== -1) score += Math.max(0, 25 - recentIdx);
+    return { score, positions };
+  }
+
+  async function openQuickOpen() {
+    if (!dir) return;
+    const existing = document.querySelector('.quick-open-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'quick-open-overlay';
+    overlay.innerHTML = `
+      <div class="quick-open-dialog" role="dialog" aria-label="Quick Open File">
+        <div class="quick-open-header">
+          <input class="quick-open-input" type="text" placeholder="Go to file… (append :line to jump)" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="quick-open-list"></div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const input = overlay.querySelector('.quick-open-input');
+    const listEl = overlay.querySelector('.quick-open-list');
+    let files = quickOpenCache;
+    let items = [];
+    let selectedIdx = 0;
+    let closed = false;
+
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      overlay.remove();
+      if (editor) editor.focus();
+    };
+
+    const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const renderHighlighted = (str, positions, offset) => {
+      if (!positions || !positions.length) return escapeHtml(str);
+      const posSet = new Set(positions.map(p => p - offset).filter(p => p >= 0 && p < str.length));
+      let html = '';
+      for (let i = 0; i < str.length; i++) {
+        const ch = escapeHtml(str[i]);
+        html += posSet.has(i) ? `<mark>${ch}</mark>` : ch;
+      }
+      return html;
+    };
+
+    const parseQuery = (raw) => {
+      const trimmed = raw.trim();
+      const m = trimmed.match(/^(.*?):(\d+)$/);
+      if (m) return { q: m[1].trim(), line: parseInt(m[2], 10) };
+      return { q: trimmed, line: null };
+    };
+
+    const render = () => {
+      if (!files) {
+        listEl.innerHTML = '<div class="quick-open-empty">Loading workspace files…</div>';
+        return;
+      }
+      const { q, line } = parseQuery(input.value);
+      if (!q) {
+        const recentSet = new Set(recentFiles);
+        const ordered = [...recentFiles.filter(f => files.includes(f)), ...files.filter(f => !recentSet.has(f))];
+        items = ordered.slice(0, 40).map(rel => ({ rel, positions: [], line }));
+      } else {
+        const scored = [];
+        for (const rel of files) {
+          const hit = fuzzyScoreFile(q, rel, recentFiles.indexOf(rel));
+          if (hit) scored.push({ rel, score: hit.score, positions: hit.positions, line });
+        }
+        scored.sort((a, b) => b.score - a.score);
+        items = scored.slice(0, 40);
+      }
+
+      if (selectedIdx >= items.length) selectedIdx = Math.max(0, items.length - 1);
+      if (!items.length) {
+        listEl.innerHTML = '<div class="quick-open-empty">No matching files</div>';
+        return;
+      }
+
+      listEl.innerHTML = '';
+      items.forEach((it, idx) => {
+        const row = document.createElement('div');
+        row.className = 'quick-open-item' + (idx === selectedIdx ? ' selected' : '');
+        const slash = it.rel.lastIndexOf('/');
+        const name = slash === -1 ? it.rel : it.rel.slice(slash + 1);
+        const folder = slash === -1 ? '' : it.rel.slice(0, slash);
+        const nameHtml = renderHighlighted(name, it.positions, slash + 1);
+        const folderHtml = folder ? renderHighlighted(folder, it.positions, 0) : '';
+        row.innerHTML = `
+          <span class="quick-open-name">${nameHtml}${it.line ? `<span class="quick-open-line">:${it.line}</span>` : ''}</span>
+          ${folderHtml ? `<span class="quick-open-dir">${folderHtml}</span>` : ''}
+        `;
+        row.addEventListener('mouseenter', () => {
+          selectedIdx = idx;
+          listEl.querySelectorAll('.quick-open-item').forEach((el, i) => el.classList.toggle('selected', i === selectedIdx));
+        });
+        row.addEventListener('click', () => pick(idx));
+        listEl.appendChild(row);
+      });
+    };
+
+    const pick = (idx) => {
+      const it = items[idx];
+      if (!it) return;
+      const base = dir.replace(/[/\\]$/, '');
+      const absPath = `${base}/${it.rel}`;
+      close();
+      openFile(absPath, it.line || null);
+    };
+
+    overlay.addEventListener('mousedown', (e) => {
+      if (e.target === overlay) close();
+    });
+
+    input.addEventListener('input', () => {
+      selectedIdx = 0;
+      render();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (items.length) {
+          selectedIdx = (selectedIdx + 1) % items.length;
+          render();
+          listEl.children[selectedIdx]?.scrollIntoView({ block: 'nearest' });
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (items.length) {
+          selectedIdx = (selectedIdx - 1 + items.length) % items.length;
+          render();
+          listEl.children[selectedIdx]?.scrollIntoView({ block: 'nearest' });
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        pick(selectedIdx);
+      }
+    });
+
+    render();
+    input.focus();
+
+    if (!files) {
+      try {
+        const res = await fetch(`/api/fs/files?root=${encodeURIComponent(dir)}`);
+        const data = await res.json();
+        if (!closed && data && data.ok && Array.isArray(data.files)) {
+          quickOpenCache = data.files;
+          files = quickOpenCache;
+          render();
+        }
+      } catch {
+        if (!closed) listEl.innerHTML = '<div class="quick-open-empty">Failed to list files</div>';
+      }
+    }
+  }
 
   // ── Sidebar resize ──────────────────────────────────────────────────────────
   let dragging = false;
@@ -1888,6 +2106,7 @@ function initEditorTab(tab, viewEl, dir) {
   }
 
   async function openFile(filePath, line = null) {
+    recordRecentFile(filePath);
     if (open.has(filePath)) { setActive(filePath, line); return; }
     
     if (isPdfFile(filePath) || isImageFile(filePath) || isVideoFile(filePath)) {
@@ -1932,6 +2151,7 @@ function initEditorTab(tab, viewEl, dir) {
         scrollBeyondLastLine: false,
       });
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => saveActive());
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP, () => openQuickOpen());
     }
     // Resolve the language explicitly to support extension-less files and trigger lazy loading
     const lang = langFromPath(monaco, filePath);
@@ -2376,6 +2596,7 @@ function initEditorTab(tab, viewEl, dir) {
   // Let external callers (e.g. the new-tab "Add new SSH host" action) open a
   // specific file in this editor once it's been created.
   tab.openFile = openFile;
+  tab.openQuickOpen = openQuickOpen;
 
   tab.updateTheme = () => {
     if (editor) editor.updateOptions({ theme: monacoTheme() });
@@ -2444,6 +2665,7 @@ function initEditorTab(tab, viewEl, dir) {
     if (changeTimeout) clearTimeout(changeTimeout);
     if (filename) changedFiles.add(filename);
     changeTimeout = setTimeout(() => {
+      quickOpenCache = null;
       refreshFiles();
       if (!gitEl.hidden && !gitBtn.hidden) {
         refreshGit();

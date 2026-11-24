@@ -2,6 +2,34 @@
   "_doc": "Release notes for the in-app \"What's new\" sheet (public/whats-new.js). Newest first, keyed by package.json version. `highlights` are the features (the main stage); each may carry a `visual` (timeline | glyph) and a `try` action (settings:<section id> | tab:<type> | split | palette | copy:<text>). `fixes` is a list of one-line strings (bug fixes and small improvements, inline `code` allowed) shown on a secondary page behind a footer button. A fixes-only release omits `highlights` (and may omit `title`/`summary`); upgrading to only fixes-only releases shows a toast instead of opening the sheet.",
   "releases": [
     {
+      "version": "1.36.0",
+      "date": "2026-11-23",
+      "title": "Faster jumps, readable terminals, optional token auth",
+      "summary": "Click stack-trace paths in terminals, jump to any file with ⌘P, let agents read sibling terminals, and lock down network servers with a token.",
+      "highlights": [
+        {
+          "title": "Clickable file paths in terminals",
+          "body": "Paths and stack traces like src/app.ts:42:10 in terminal output are now clickable links that open directly at that line in a code-editor tab.",
+          "visual": { "type": "glyph", "glyph": "🔗" }
+        },
+        {
+          "title": "Quick Open in the code editor (⌘P)",
+          "body": "Press ⌘P (or Ctrl+P) in a code-editor tab — or click the ⌘P button in the sidebar — to fuzzy-search workspace files and jump to :line numbers.",
+          "visual": { "type": "glyph", "glyph": "⚡" }
+        },
+        {
+          "title": "Agent-readable terminal output",
+          "body": "Coding agents can now inspect sibling terminals (dev servers, test watchers) with `mtx term list`, `mtx term read <ptyId>`, or the `list_terminals` and `read_terminal` MCP tools.",
+          "visual": { "type": "glyph", "glyph": "📟" }
+        },
+        {
+          "title": "Optional access-token authentication",
+          "body": "Start the server with `--auth` or `--token <secret>` (or `install.sh --service --auth`) to protect HTTP and WebSocket connections behind a token unlock page and HttpOnly cookie.",
+          "visual": { "type": "glyph", "glyph": "🔑" }
+        }
+      ]
+    },
+    {
       "version": "1.35.1",
       "date": "2026-10-22",
       "fixes": [

@@ -853,6 +853,87 @@ function initTerminalTab(tab, existingPtyId) {
     term.loadAddon(webLinksAddon);
   }
 
+  // Clickable file paths & stack-trace links (`path/to/file.ts:42:10` → open in editor).
+  if (typeof term.registerLinkProvider === 'function') {
+    const TERM_FILE_LINK_RE = /(?:(?:~|\.\.?|\/)?(?:[A-Za-z0-9._@-]+\/)+[A-Za-z0-9._@-]+(?:(?::\d+(?::\d+)?)|\(\d+(?:,\s*\d+)?\))?|[A-Za-z0-9._-]+\.[A-Za-z0-9]{1,8}(?:(?::\d+(?::\d+)?)|\(\d+(?:,\s*\d+)?\)))/g;
+    const MIME_PREFIX_RE = /^(?:application|text|image|audio|video|font|multipart|message)\//i;
+    const NUMERIC_RATIO_RE = /^\d+(?:\/\d+)+$/;
+
+    term.registerLinkProvider({
+      provideLinks(bufferLineNumber, callback) {
+        const line = term.buffer.active.getLine(bufferLineNumber - 1);
+        if (!line) return callback(undefined);
+        const text = line.translateToString(true);
+        if (!text) return callback(undefined);
+
+        const links = [];
+        TERM_FILE_LINK_RE.lastIndex = 0;
+        let m;
+        while ((m = TERM_FILE_LINK_RE.exec(text)) !== null) {
+          const raw = m[0];
+          const startIdx = m.index;
+          // Skip URLs (owned by WebLinksAddon) and embedded tokens inside words.
+          const before = text.slice(Math.max(0, startIdx - 12), startIdx);
+          if (/[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s]*$/.test(before)) continue;
+          if (startIdx > 0 && /[A-Za-z0-9_]/.test(text[startIdx - 1])) continue;
+          if (MIME_PREFIX_RE.test(raw) || NUMERIC_RATIO_RE.test(raw)) continue;
+
+          // Extract path and optional :line[:col] or (line[,col]).
+          let filePath = raw;
+          let lineNo = null;
+          const colonMatch = raw.match(/^(.*?):(\d+)(?::(\d+))?$/);
+          const parenMatch = !colonMatch && raw.match(/^(.*?)\((\d+)(?:,\s*(\d+))?\)$/);
+          if (colonMatch) {
+            filePath = colonMatch[1];
+            lineNo = parseInt(colonMatch[2], 10);
+          } else if (parenMatch) {
+            filePath = parenMatch[1];
+            lineNo = parseInt(parenMatch[2], 10);
+          }
+
+          // For bare relative paths without a line number or leading ./ / ~/ ../,
+          // require a file extension in the basename to avoid false underlines.
+          const hasExplicitPrefix = filePath.startsWith('/') || filePath.startsWith('./') || filePath.startsWith('../') || filePath.startsWith('~/');
+          const base = filePath.split('/').pop() || '';
+          if (!lineNo && !hasExplicitPrefix && !base.includes('.')) continue;
+
+          links.push({
+            range: {
+              start: { x: startIdx + 1, y: bufferLineNumber },
+              end: { x: startIdx + raw.length, y: bufferLineNumber },
+            },
+            text: raw,
+            decorations: { pointerCursor: true, underline: true },
+            activate(event) {
+              event.preventDefault();
+              term.clearSelection();
+              window.getSelection()?.removeAllRanges();
+              window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+              const params = new URLSearchParams({ path: filePath });
+              if (tab.ptyId) params.set('ptyId', tab.ptyId);
+              fetch(`/api/fs/resolve?${params.toString()}`)
+                .then(r => r.json())
+                .then(data => {
+                  if (data && data.ok && data.path) {
+                    if (typeof mtxOpenFile === 'function') {
+                      mtxOpenFile({ path: data.path, root: data.root, line: lineNo, placement: 'auto', ptyId: tab.ptyId });
+                    }
+                  } else if (typeof showToast === 'function') {
+                    showToast(`File not found: ${filePath}`);
+                  }
+                })
+                .catch(() => {
+                  if (typeof showToast === 'function') showToast(`Could not open: ${filePath}`);
+                });
+            },
+          });
+        }
+        callback(links.length ? links : undefined);
+      },
+    });
+  }
+
   term.open(tab.viewEl);
 
   // Load WebGL addon for GPU-accelerated glyph rendering and crisp high-DPI text

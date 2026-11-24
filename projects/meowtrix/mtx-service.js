@@ -48,7 +48,19 @@ function editorRootFor(file) {
   }
 }
 
-function mountMtxRoutes(app, { getActiveClient }) {
+// Strip ANSI/VT escape sequences (CSI, OSC, 2-byte escapes, control chars) and
+// normalize CRLF/CR so agents reading terminal scrollback get clean text.
+const ANSI_ESCAPE_RE = /\x1b(?:\][^\x07\x1b]*(?:\x07|\x1b\\)|\[[0-?]*[ -/]*[@-~]|[@-Z\\-_])/g;
+function stripAnsi(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(ANSI_ESCAPE_RE, '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
+}
+
+function mountMtxRoutes(app, { getActiveClient, ptys, getPtyCwd }) {
   const router = express.Router();
   router.use(express.urlencoded({ extended: false })); // the sh-based `mtx` posts forms
 
@@ -149,8 +161,63 @@ function mountMtxRoutes(app, { getActiveClient }) {
     }));
   });
 
+  // List live PTYs directly from the server's `ptys` map so agents can inspect
+  // sibling terminals (e.g. a dev server or test runner) even without a browser RPC.
+  router.get('/terminals', async (req, res) => {
+    if (!ptys) return res.status(501).json({ ok: false, error: 'unavailable', message: 'Terminal registry not configured' });
+    const callerPtyId = ptyIdOf(req);
+    const entries = [...ptys.entries()];
+    const terminals = await Promise.all(entries.map(async ([id, entry]) => {
+      let cwd = null;
+      if (getPtyCwd && entry.proc?.pid) {
+        try { cwd = await getPtyCwd(entry.proc.pid); } catch {}
+      }
+      return {
+        ptyId: id,
+        pid: entry.proc?.pid || null,
+        cols: entry.cols || 80,
+        rows: entry.rows || 24,
+        cwd,
+        sshHost: entry.sshHost || null,
+        bufferBytes: typeof entry.buffer === 'string' ? entry.buffer.length : 0,
+        isCaller: Boolean(callerPtyId && id === callerPtyId),
+      };
+    }));
+    res.json({ ok: true, terminals });
+  });
+
+  // Read recent scrollback output from a live PTY (ANSI-stripped by default).
+  router.get('/terminals/:ptyId/output', async (req, res) => {
+    if (!ptys) return res.status(501).json({ ok: false, error: 'unavailable', message: 'Terminal registry not configured' });
+    const id = req.params.ptyId;
+    const entry = ptys.get(id);
+    if (!entry) {
+      return res.status(404).json({ ok: false, error: 'not-found', message: `No live terminal with ptyId "${id}"` });
+    }
+    const raw = boolOf(req.query.raw, false);
+    const requestedLines = parseInt(req.query.lines, 10);
+    const maxLines = Number.isFinite(requestedLines) && requestedLines > 0 ? Math.min(requestedLines, 2000) : 100;
+    const text = raw ? (entry.buffer || '') : stripAnsi(entry.buffer || '');
+    const allLines = text.split('\n');
+    const slice = allLines.slice(-maxLines);
+    let cwd = null;
+    if (getPtyCwd && entry.proc?.pid) {
+      try { cwd = await getPtyCwd(entry.proc.pid); } catch {}
+    }
+    res.json({
+      ok: true,
+      ptyId: id,
+      cwd,
+      cols: entry.cols || 80,
+      rows: entry.rows || 24,
+      totalLines: allLines.length,
+      lines: slice.length,
+      output: slice.join('\n'),
+    });
+  });
+
   app.use('/api/mtx', router);
   return { handleRpcResult };
 }
 
-module.exports = { mountMtxRoutes, normalizeUrl };
+module.exports = { mountMtxRoutes, normalizeUrl, editorRootFor, stripAnsi };

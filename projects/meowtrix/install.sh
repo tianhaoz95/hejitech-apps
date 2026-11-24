@@ -8,6 +8,7 @@ LATEST_URL="$REPO/releases/download/meowtrix-latest"
 INSTALL_URL="https://raw.githubusercontent.com/tianhaoz95/hejitech-apps/main/projects/meowtrix/install.sh"
 INSTALL_DIR="$HOME/.meowtrix/app"
 SERVICE=false
+AUTH=false
 
 # Parse flags
 BINARY=false
@@ -15,6 +16,7 @@ SOURCE=false
 for arg in "$@"; do
   case $arg in
     --service) SERVICE=true ;;
+    --auth) AUTH=true ;;
     --binary) BINARY=true ;;
     --source) SOURCE=true ;;
   esac
@@ -151,6 +153,7 @@ if [ "$SERVICE" = true ]; then
   <dict>
     <key>MEOWTRIX_SUPERVISED</key> <string>1</string>
     <key>HOST</key> <string>0.0.0.0</string>
+$([ "$AUTH" = true ] && printf '    <key>MEOWTRIX_AUTH</key> <string>1</string>\n')
   </dict>
   <key>RunAtLoad</key>         <true/>
   <key>KeepAlive</key>         <true/>
@@ -180,6 +183,7 @@ ExecStart=$NODE_BIN $INSTALL_DIR/server.js
 WorkingDirectory=$INSTALL_DIR
 Environment=MEOWTRIX_SUPERVISED=1
 Environment=HOST=0.0.0.0
+$([ "$AUTH" = true ] && printf 'Environment=MEOWTRIX_AUTH=1\n')
 Restart=always
 StandardOutput=append:$HOME/.meowtrix/meowtrix.log
 StandardError=append:$HOME/.meowtrix/meowtrix.log

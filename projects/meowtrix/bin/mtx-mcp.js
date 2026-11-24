@@ -16,6 +16,7 @@ const readline = require('readline');
 
 const BASE = process.env.MEOWTRIX_URL || `http://127.0.0.1:${process.env.MEOWTRIX_PORT || 9123}`;
 const PTY_ID = process.env.MEOWTRIX_PTY_ID || '';
+const TOKEN = process.env.MEOWTRIX_TOKEN || '';
 let VERSION = '0.0.0';
 try { VERSION = require(path.join(__dirname, '..', 'package.json')).version; } catch {}
 
@@ -73,6 +74,24 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: { tabId: { type: 'string' } }, required: ['tabId'] },
   },
   {
+    name: 'list_terminals',
+    description: 'List all live Meowtrix terminal PTYs across panes: ptyId, cwd, cols/rows, bufferBytes, and whether each is your own terminal (isCaller). Use this to find a sibling terminal (e.g. a dev server or test watcher) before calling read_terminal.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'read_terminal',
+    description: 'Read the recent scrollback output of a live Meowtrix terminal PTY (ANSI escape codes stripped by default). Useful for inspecting dev-server logs, build errors, or test output in another pane without asking the user to copy-paste.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ptyId: { type: 'string', description: 'PTY id from list_terminals.' },
+        lines: { type: 'integer', minimum: 1, maximum: 2000, description: 'Number of trailing lines to return (default 100).' },
+        raw: { type: 'boolean', description: 'Return raw output with ANSI escape codes intact. Default false.' },
+      },
+      required: ['ptyId'],
+    },
+  },
+  {
     name: 'notify',
     description: 'Show the user a short notification in Meowtrix (a toast; a system notification if the page is in the background and allowed) and flag your terminal\'s tab until they look at it. Use when a long task finishes or you are blocked waiting for their input.',
     inputSchema: {
@@ -86,14 +105,18 @@ const TOOLS = [
   },
 ];
 
+function authHeaders(extra = {}) {
+  return TOKEN ? { ...extra, Authorization: `Bearer ${TOKEN}` } : extra;
+}
+
 async function api(method, endpoint, params) {
   const body = { ...params, ptyId: PTY_ID };
   let url = `${BASE}/api/mtx/${endpoint}`;
-  const init = { method, signal: AbortSignal.timeout(20000) };
+  const init = { method, signal: AbortSignal.timeout(20000), headers: authHeaders() };
   if (method === 'GET') {
     url += '?' + new URLSearchParams(Object.entries(body).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]));
   } else {
-    init.headers = { 'Content-Type': 'application/json' };
+    init.headers = authHeaders({ 'Content-Type': 'application/json' });
     init.body = JSON.stringify(body);
   }
   try {
@@ -107,7 +130,7 @@ async function api(method, endpoint, params) {
 // GET /api/hostbrowser/tabs<suffix> → raw body (JSON list, PNG or text).
 async function hostBrowser(suffix) {
   try {
-    const res = await fetch(`${BASE}/api/hostbrowser/tabs${suffix}`, { signal: AbortSignal.timeout(30000) });
+    const res = await fetch(`${BASE}/api/hostbrowser/tabs${suffix}`, { signal: AbortSignal.timeout(30000), headers: authHeaders() });
     const body = Buffer.from(await res.arrayBuffer());
     if (!res.ok) return { ok: false, result: { isError: true, content: [{ type: 'text', text: res.status === 404 ? 'No such host-browser tab (see host_browser_list).' : `Request failed (HTTP ${res.status})` }] } };
     return { ok: true, body };
@@ -136,6 +159,15 @@ async function callTool(name, args = {}) {
     case 'get_layout': {
       const r = await api('GET', 'layout', {});
       return text(r, (r) => { const { ok, ...rest } = r; return JSON.stringify(rest, null, 2); });
+    }
+    case 'list_terminals': {
+      const r = await api('GET', 'terminals', {});
+      return text(r, (r) => JSON.stringify(r.terminals, null, 2));
+    }
+    case 'read_terminal': {
+      const id = encodeURIComponent(args.ptyId || '');
+      const r = await api('GET', `terminals/${id}/output`, { lines: args.lines, raw: args.raw });
+      return text(r, (r) => r.output);
     }
     case 'host_browser_list': {
       const r = await hostBrowser('');

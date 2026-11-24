@@ -11,6 +11,7 @@
 #   mtx resolve <id>...   mark review comments as addressed
 #   mtx open <url>        show a web page in a browser tab beside this terminal
 #   mtx browser ...       list / screenshot / read host-browser tabs
+#   mtx term ...          list live terminals / read a terminal's recent output
 #   mtx edit <file>[:line] open a file in an editor tab beside this terminal
 #   mtx layout            print the current pane/tab layout as JSON
 #   mtx notify <message>  toast (and flag this terminal's tab) in the browser
@@ -44,6 +45,8 @@ usage() {
   printf '                        (--host: in a real Chromium on the host)\n' >&2
   printf '  mtx browser list | shot <tab> [file.png] | text <tab> | goto <tab> <url>\n' >&2
   printf '                        inspect host-browser tabs (what the user sees)\n' >&2
+  printf '  mtx term list | read <ptyId> [--lines N] [--raw]\n' >&2
+  printf '                        list live terminals or read recent scrollback output\n' >&2
   printf '  mtx edit <file>[:line] [--split | --pane ID]\n' >&2
   printf '                        open a file in an editor tab beside this terminal\n' >&2
   printf '  mtx layout            print the current pane/tab layout as JSON\n' >&2
@@ -82,6 +85,15 @@ need_curl() {
   command -v curl >/dev/null 2>&1 || { printf 'mtx: curl is required for this command\n' >&2; exit 1; }
 }
 
+# Wrapper around curl that attaches the access token when $MEOWTRIX_TOKEN is set.
+mtx_curl() {
+  if [ -n "${MEOWTRIX_TOKEN:-}" ]; then
+    curl -H "Authorization: Bearer $MEOWTRIX_TOKEN" "$@"
+  else
+    curl "$@"
+  fi
+}
+
 # The CoDesign project: an explicit dir, else the nearest ancestor holding
 # .codesign/spec.html, else $PWD.
 find_project() {
@@ -99,7 +111,7 @@ find_project() {
 
 # Ask the browser to show the CoDesign tab for $1. Fails if the server is down.
 open_spec_tab() {
-  curl -fsS -o /dev/null -X POST --data-urlencode "dir=$1" --data-urlencode "ptyId=${MEOWTRIX_PTY_ID:-}" \
+  mtx_curl -fsS -o /dev/null -X POST --data-urlencode "dir=$1" --data-urlencode "ptyId=${MEOWTRIX_PTY_ID:-}" \
     "$(mtx_url)/api/codesign/open" 2>/dev/null
 }
 
@@ -110,7 +122,7 @@ mtx_api() {
   verb=$1; endpoint=$2; shift 2
   out=$(mktemp "${TMPDIR:-/tmp}/mtx-api.XXXXXX")
   if [ "$verb" = get ]; then set -- -G "$@"; else set -- -X POST "$@"; fi
-  code=$(curl -sS -o "$out" -w '%{http_code}' --max-time 20 "$@" \
+  code=$(mtx_curl -sS -o "$out" -w '%{http_code}' --max-time 20 "$@" \
     --data-urlencode "ptyId=${MEOWTRIX_PTY_ID:-}" "$(mtx_url)/api/mtx/$endpoint" 2>/dev/null)
   mtx_body=$(cat "$out"); rm -f "$out"
   case "$code" in
@@ -236,7 +248,7 @@ case "$cmd" in
         exit 2
       fi
       chunk=$left; [ "$chunk" -gt 50 ] && chunk=50
-      if body=$(curl -sS -f -G -D "$hdr" --max-time $((chunk + 15)) \
+      if body=$(mtx_curl -sS -f -G -D "$hdr" --max-time $((chunk + 15)) \
           --data-urlencode "dir=$proj" --data-urlencode "timeout=$chunk" --data-urlencode "format=text" \
           "$url/api/codesign/wait" 2>/dev/null); then
         fails=0
@@ -264,7 +276,7 @@ case "$cmd" in
       case "$a" in --all) all=1 ;; *) dir_arg=$a ;; esac
     done
     proj=$(find_project "$dir_arg") || exit 1
-    curl -sS -f -G --data-urlencode "dir=$proj" --data-urlencode "format=text" --data-urlencode "all=$all" \
+    mtx_curl -sS -f -G --data-urlencode "dir=$proj" --data-urlencode "format=text" --data-urlencode "all=$all" \
       "$(mtx_url)/api/codesign/feedback" || { printf 'mtx: cannot reach Meowtrix at %s\n' "$(mtx_url)" >&2; exit 1; }
     ;;
   resolve)
@@ -279,7 +291,7 @@ case "$cmd" in
     done
     [ -z "$ids" ] && usage
     proj=$(find_project "$dir_arg") || exit 1
-    curl -sS -f -X POST --data-urlencode "dir=$proj" --data-urlencode "ids=$ids" --data-urlencode "note=$note" \
+    mtx_curl -sS -f -X POST --data-urlencode "dir=$proj" --data-urlencode "ids=$ids" --data-urlencode "note=$note" \
       --data-urlencode "format=text" "$(mtx_url)/api/codesign/resolve" || { printf 'mtx: cannot reach Meowtrix at %s\n' "$(mtx_url)" >&2; exit 1; }
     ;;
   open)
@@ -339,24 +351,51 @@ case "$cmd" in
     sub=${1:-list}; [ $# -gt 0 ] && shift
     case "$sub" in
       list)
-        curl -fsS --max-time 20 "$base" || { printf 'mtx: cannot reach Meowtrix at %s\n' "$(mtx_url)" >&2; exit 1; }
+        mtx_curl -fsS --max-time 20 "$base" || { printf 'mtx: cannot reach Meowtrix at %s\n' "$(mtx_url)" >&2; exit 1; }
         printf '\n'
         ;;
       shot|screenshot)
         [ -z "${1:-}" ] && usage
         dest=${2:-$(mktemp "${TMPDIR:-/tmp}/mtx-browser.XXXXXX").png}
-        curl -fsS --max-time 30 -o "$dest" "$base/$1/screenshot" || { printf 'mtx: no host-browser tab %s\n' "$1" >&2; exit 1; }
+        mtx_curl -fsS --max-time 30 -o "$dest" "$base/$1/screenshot" || { printf 'mtx: no host-browser tab %s\n' "$1" >&2; exit 1; }
         printf '%s\n' "$dest"
         ;;
       text)
         [ -z "${1:-}" ] && usage
-        curl -fsS --max-time 30 "$base/$1/text" || { printf 'mtx: no host-browser tab %s\n' "$1" >&2; exit 1; }
+        mtx_curl -fsS --max-time 30 "$base/$1/text" || { printf 'mtx: no host-browser tab %s\n' "$1" >&2; exit 1; }
         printf '\n'
         ;;
       goto)
         { [ -z "${1:-}" ] || [ -z "${2:-}" ]; } && usage
-        curl -fsS --max-time 30 -o /dev/null -H 'Content-Type: application/json' \
+        mtx_curl -fsS --max-time 30 -o /dev/null -H 'Content-Type: application/json' \
           -d "{\"url\":\"$2\"}" "$base/$1/navigate" || { printf 'mtx: navigation failed\n' >&2; exit 1; }
+        ;;
+      *) usage ;;
+    esac
+    ;;
+  term|terminal)
+    need_curl
+    sub=${1:-list}; [ $# -gt 0 ] && shift
+    case "$sub" in
+      list)
+        mtx_api get terminals || exit 1
+        printf '%s\n' "$mtx_body"
+        ;;
+      read)
+        target_pty=${1:-}
+        [ -z "$target_pty" ] && usage
+        shift
+        lines=100; raw=false
+        while [ $# -gt 0 ]; do
+          case "$1" in
+            --lines|-n) lines=${2:-100}; shift 2 || usage ;;
+            --lines=*) lines=${1#--lines=}; shift ;;
+            --raw) raw=true; shift ;;
+            *) usage ;;
+          esac
+        done
+        mtx_api get "terminals/$target_pty/output" --data-urlencode "lines=$lines" --data-urlencode "raw=$raw" || exit 1
+        "${MEOWTRIX_NODE:-node}" -e 'const d = JSON.parse(process.argv[1]); process.stdout.write((d.output || "") + "\n");' "$mtx_body" 2>/dev/null || printf '%s\n' "$mtx_body"
         ;;
       *) usage ;;
     esac

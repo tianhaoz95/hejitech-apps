@@ -80,6 +80,15 @@ function buildCommands() {
     { icon: typeof getTabIconSvg === 'function' ? getTabIconSvg('hostbrowser') : '›', title: 'New host browser tab (real Chromium on the host)', keywords: 'web chrome chromium remote login sign in google add', run: () => { if (activePane) { addTab(activePane, 'hostbrowser'); saveSessionState(); } } },
     { icon: '›', title: 'Clear embedded-browser cookies (proxy tabs)', keywords: 'browser proxy cookies sign out logout reset', run: async () => { try { const r = await (await fetch('/api/proxy/cookies', { method: 'DELETE' })).json(); if (typeof showToast === 'function') showToast(`Cleared ${r.cleared || 0} proxy cookies`); } catch {} } },
     { icon: typeof getTabIconSvg === 'function' ? getTabIconSvg('editor') : '›', title: 'New code editor tab', keywords: 'edit code vscode monaco add', run: async () => { if (!activePane) return; const dir = await promptForFolder(); if (dir) { addTab(activePane, 'editor', undefined, undefined, undefined, dir); saveSessionState(); } } },
+    { icon: '⚡', title: 'Quick open file in editor', hint: isMac ? '⌘P' : 'Ctrl+P', keywords: 'fuzzy file jump go to open editor path', run: () => {
+      const cur = activePane?.activeTab;
+      if (cur && cur.type === 'editor' && typeof cur.openQuickOpen === 'function') { cur.openQuickOpen(); return; }
+      for (const p of (typeof getAllPanes === 'function' ? getAllPanes() : [])) {
+        const ed = p.tabs.find(t => t.type === 'editor' && typeof t.openQuickOpen === 'function');
+        if (ed) { setActivePane(p); activateTab(p, ed.id); ed.openQuickOpen(); return; }
+      }
+      if (typeof showToast === 'function') showToast('Open a code editor tab first');
+    } },
     { icon: typeof getTabIconSvg === 'function' ? getTabIconSvg('codesign') : '›', title: 'New CoDesign tab (review a design spec)', keywords: 'codesign design spec review mockup annotate comment sign off approve add', run: async () => { if (!activePane) return; const dir = await promptForFolder(); if (dir) triggerOpenCodesign(dir); } },
     { icon: '✕', title: 'Close current tab', hint: '⌘W', run: () => { if (activePane?.activeTab) closeTab(activePane, activePane.activeTab.id); } },
     { icon: '✏️', title: 'Rename current tab', keywords: 'title name label retitle rename', keepOpen: true, run: () => {
