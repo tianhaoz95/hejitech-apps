@@ -17,6 +17,7 @@ on:
       - "projects/meowtrix/website/**"
       - "projects/meowtrix/public/**"
       - "scripts/pages_sync.mjs"
+      - "scripts/status/targets.json"   # both status pages list these surfaces
       # The status page lists every workflow and release line (pages/status.data.ts).
       - ".github/workflows/**"
       - "projects/*/release.env"

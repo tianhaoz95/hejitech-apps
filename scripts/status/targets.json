@@ -1,0 +1,22 @@
+{
+  "$comment": "Every production surface the live status page (pages/live.md) watches and the CI status page lists. probe.mjs (live-status.yml) checks each url every few minutes from GitHub Actions, outside Cloudflare. expect: \"ok\" (default) = HTTP 2xx/3xx; \"reachable\" = anything below 500 (an API endpoint that refuses a plain GET). worker: the Cloudflare Worker's script name, for the account's daily request count.",
+  "limit": 100000,
+  "targets": [
+    { "id": "waypack", "project": "waypack", "name": "Waypack", "surface": "Site, API + MCP", "url": "https://waypack.hejitech.workers.dev/", "worker": "waypack", "via": "Cloudflare Workers Builds" },
+    { "id": "weehours", "project": "weehours", "name": "Wee Hours", "surface": "Site + MCP", "url": "https://weehours.hejitech.workers.dev/", "worker": "weehours", "via": "Cloudflare Workers Builds" },
+    { "id": "g2digest", "project": "g2digest", "name": "G2 Digest", "surface": "Web app, API + MCP", "url": "https://g2digest.hejitech.workers.dev/", "worker": "g2digest", "via": "Cloudflare Workers Builds" },
+    { "id": "headway", "project": "headway", "name": "Headway", "surface": "Site, API, alerts + MCP", "url": "https://headway.hejitech.workers.dev/", "worker": "headway", "via": "Cloudflare Workers Builds" },
+    { "id": "fitloop", "project": "fitloop", "name": "FitLoop", "surface": "Web app, API + MCP", "url": "https://fitloop.hejitech.workers.dev/", "worker": "fitloop", "via": "Cloudflare Workers Builds" },
+    { "id": "tether", "project": "tether", "name": "Tether", "surface": "Web workspace, API + MCP", "url": "https://tether.hejitech.workers.dev/", "worker": "tether", "via": "Cloudflare Workers Builds" },
+    { "id": "tradeboard", "project": "tradeboard", "name": "Trading Plan Board", "surface": "Portal, Board MCP + executor API", "url": "https://tradeboard.hejitech.workers.dev/", "worker": "tradeboard", "via": "Cloudflare Workers Builds" },
+    { "id": "folio", "project": "folio", "name": "Folio", "surface": "Site, app, API + MCP", "url": "https://folio.hejitech.workers.dev/", "worker": "folio", "via": "Cloudflare Workers Builds" },
+    { "id": "contempo", "project": "contempo", "name": "Contempo", "surface": "Web app + API", "url": "https://contempo.hejitech.workers.dev/", "worker": "contempo", "via": "Cloudflare Workers" },
+    { "id": "icecap", "project": "icecap", "name": "Icecap", "surface": "Site, web app + API", "url": "https://icecap.hejitech.workers.dev/", "worker": "icecap", "via": "Cloudflare Workers Builds" },
+    { "id": "hq", "project": "hq", "name": "HQ", "surface": "Portal, API + MCP", "url": "https://hq.hejitech.workers.dev/", "worker": "hq", "via": "Cloudflare Workers Builds" },
+    { "id": "feedbackkit", "project": "feedbackkit", "name": "FeedbackKit", "surface": "Dashboard", "url": "https://feedback-kit.hejitech.workers.dev/", "worker": "feedback-kit", "via": "Cloudflare Workers Builds" },
+    { "id": "feedbackkit-ingest", "project": "feedbackkit", "name": "FeedbackKit", "surface": "Feedback intake (Supabase Edge Function)", "url": "https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-feedback", "expect": "reachable", "via": "GitHub Actions → Supabase", "workflow": "feedbackkit-deploy-functions.yml" },
+    { "id": "toddlercam-site", "project": "toddlercam", "name": "ToddlerCam", "surface": "Site (App Store privacy/support URLs)", "url": "https://tianhaoz95.github.io/hejitech-apps/toddlercam/site/", "via": "GitHub Pages", "workflow": "pages.yml" },
+    { "id": "tinytouch-site", "project": "tinytouch", "name": "TinyTouch", "surface": "Site (App Store privacy/support URLs)", "url": "https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/", "via": "GitHub Pages", "workflow": "pages.yml" },
+    { "id": "site", "project": "shared", "name": "HEJI Apps site", "surface": "Docs + this page", "url": "https://tianhaoz95.github.io/hejitech-apps/", "via": "GitHub Pages", "workflow": "pages.yml" }
+  ]
+}

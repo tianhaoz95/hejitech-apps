@@ -99,6 +99,8 @@ projects/<name>/
 - Docs: `docs/index.md` (VitePress home layout) + `pages.json` appear at
   `https://tianhaoz95.github.io/hejitech-apps/<name>/`; add a card to `pages/index.md`, the
   FeedbackKit key to `pages/.vitepress/theme/index.ts`, and a row to the root README table.
+- Live status: once the Worker is live, add it (URL + `worker` script name) to
+  `scripts/status/targets.json` so the probe watches it and its requests count toward the quota view.
 
 ## 7. Go live
 

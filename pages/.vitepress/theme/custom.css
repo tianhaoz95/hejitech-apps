@@ -103,15 +103,15 @@
 }
 
 /* ---------- status page (status.md, StatusBoard.vue) ---------- */
-/* The top bar's Status link is a button. */
-.VPNavBarMenuLink[href$="/status"] {
+/* The top bar's Status link (the live product status) is a button. */
+.VPNavBarMenuLink[href$="/live"] {
   margin: 0 4px 0 8px; padding: 0 14px; height: 32px; line-height: 30px; align-self: center;
   border-radius: 16px; border: 1px solid var(--vp-button-brand-border);
   background: var(--vp-button-brand-bg); color: var(--vp-button-brand-text) !important;
   font-weight: 600; transition: background-color .2s;
 }
-.VPNavBarMenuLink[href$="/status"]:hover { background: var(--vp-button-brand-hover-bg); }
-.VPNavBarMenuLink[href$="/status"].active { box-shadow: 0 0 0 2px var(--vp-c-brand-soft); }
+.VPNavBarMenuLink[href$="/live"]:hover { background: var(--vp-button-brand-hover-bg); }
+.VPNavBarMenuLink[href$="/live"].active { box-shadow: 0 0 0 2px var(--vp-c-brand-soft); }
 .heji-status-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 0 4px; }
 .heji-status-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .heji-status-actions button { cursor: pointer; }
@@ -143,6 +143,50 @@
 .heji-status-page .VPDoc .content-container,
 .heji-status-page .VPDoc .container { max-width: 1152px !important; }
 .heji-status-page .VPDoc .content { max-width: none !important; }
+
+/* ---------- live status page (live.md, LiveStatus.vue) ---------- */
+.heji-live-summary { display: inline-flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; color: var(--vp-c-green-1); }
+.heji-live-summary.bad { color: var(--vp-c-danger-1); }
+.heji-live-summary.stale { color: var(--vp-c-warning-1); }
+.heji-live-dot { width: 12px; height: 12px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 22%, transparent); }
+.heji-live-alerts { display: grid; gap: 8px; margin: 16px 0 0; }
+.heji-live-alert { padding: 10px 14px; border-radius: 8px; font-size: 14px; background: var(--vp-c-danger-soft); color: var(--vp-c-text-1); }
+.heji-live-list { display: grid; gap: 4px; margin: 12px 0; }
+.heji-live-row { padding: 12px 0; border-bottom: 1px solid var(--vp-c-divider); }
+.heji-live-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.heji-live-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
+.heji-live-name a { font-weight: 600; }
+.heji-live-surface { font-size: 13px; color: var(--vp-c-text-2); }
+.heji-live-now { display: flex; align-items: center; gap: 10px; }
+.heji-live-ms { font-size: 12px; color: var(--vp-c-text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.heji-live-spark { width: 90px; height: 24px; overflow: visible; }
+.heji-live-spark polyline { stroke: var(--vp-c-brand-1); stroke-width: 1.5; }
+.heji-live-spark .fail { fill: var(--vp-c-danger-1); }
+.heji-live-bars { display: flex; gap: 2px; height: 28px; margin: 10px 0 4px; }
+.heji-live-bars span { flex: 1 1 0; min-width: 1px; border-radius: 2px; background: var(--vp-c-default-soft); }
+.heji-live-bars span.up { background: var(--vp-c-green-2); }
+.heji-live-bars span.minor { background: var(--vp-c-warning-2); }
+.heji-live-bars span.major { background: var(--vp-c-danger-2); }
+.heji-live-bars span:hover { opacity: .7; }
+.heji-live-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--vp-c-text-2); }
+.heji-live-quota { margin: 16px 0; padding: 16px; border: 1px solid var(--vp-c-divider); border-radius: 12px; background: var(--vp-c-bg-soft); }
+.heji-live-quota-nums { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 14px; color: var(--vp-c-text-2); }
+.heji-live-quota-nums strong { font-size: 20px; color: var(--vp-c-text-1); }
+.heji-live-meter { position: relative; height: 12px; margin: 12px 0 20px; border-radius: 6px; background: var(--vp-c-default-soft); }
+.heji-live-meter .fill { position: absolute; inset: 0 auto 0 0; min-width: 3px; border-radius: 6px; background: var(--vp-c-green-2); }
+.heji-live-meter.warn .fill { background: var(--vp-c-danger-2); }
+.heji-live-meter .tick { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--vp-c-warning-1); }
+.heji-live-meter .pace { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--vp-c-text-3); }
+.heji-live-days { display: flex; align-items: flex-end; gap: 3px; height: 64px; }
+.heji-live-days span { flex: 1 1 0; min-width: 2px; border-radius: 2px 2px 0 0; background: var(--vp-c-brand-2); }
+.heji-live-days span:hover { opacity: .7; }
+.heji-live-incidents { padding-left: 0 !important; list-style: none; }
+.heji-live-incidents li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 8px 0; }
+.heji-live-incidents .heji-status-when { margin-left: 0; }
+@media (max-width: 640px) {
+  .heji-live-spark { width: 64px; }
+  .heji-live-bars { gap: 1px; }
+}
 
 /* Keep the scrollbar's space when the search box locks scrolling, so the page doesn't jump sideways. */
 html { scrollbar-gutter: stable; }

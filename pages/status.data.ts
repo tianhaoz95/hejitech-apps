@@ -53,20 +53,20 @@ export interface StatusData {
   deployments: Deployment[];
 }
 
-// Production URLs aren't in any one file the build can read, so they're listed here.
-const DEPLOYMENTS: Deployment[] = [
-  { name: "Waypack site, API + MCP", project: "waypack", url: "https://waypack.hejitech.workers.dev", via: "Cloudflare Workers Builds" },
-  { name: "Wee Hours site + MCP", project: "weehours", url: "https://weehours.hejitech.workers.dev", via: "Cloudflare Workers Builds" },
-  { name: "Contempo web app + API", project: "contempo", url: "https://contempo.hejitech.workers.dev", via: "Cloudflare Workers" },
-  { name: "Icecap site, web app + API", project: "icecap", url: "https://icecap.hejitech.workers.dev", via: "Cloudflare Workers Builds" },
-  { name: "Folio site, app, API + MCP", project: "folio", url: "https://folio.hejitech.workers.dev", via: "Cloudflare Workers" },
-  { name: "HQ portal, API + MCP", project: "hq", url: "https://hq.hejitech.workers.dev", via: "Cloudflare Workers" },
-  { name: "FeedbackKit dashboard", project: "feedbackkit", url: "https://feedback-kit.hejitech.workers.dev", via: "Cloudflare Workers Builds" },
-  { name: "FeedbackKit Edge Functions", project: "feedbackkit", url: "https://gpucoladcyvijefdjudf.supabase.co/functions/v1/ingest-feedback", via: "GitHub Actions → Supabase", workflow: "feedbackkit-deploy-functions.yml", health: false },
-  { name: "ToddlerCam site (App Store privacy/support URLs)", project: "toddlercam", url: "https://tianhaoz95.github.io/hejitech-apps/toddlercam/site/", via: "GitHub Pages", workflow: "pages.yml" },
-  { name: "TinyTouch site (App Store privacy/support URLs)", project: "tinytouch", url: "https://tianhaoz95.github.io/hejitech-apps/tinytouch/site/", via: "GitHub Pages", workflow: "pages.yml" },
-  { name: "HEJI Apps site (this one)", project: "shared", url: "https://tianhaoz95.github.io/hejitech-apps/", via: "GitHub Pages", workflow: "pages.yml" },
-];
+/** Production surfaces come from scripts/status/targets.json, the list the live status probe checks. */
+function readDeployments(root: string): Deployment[] {
+  const { targets } = JSON.parse(readFileSync(join(root, "scripts", "status", "targets.json"), "utf8")) as {
+    targets: { name: string; surface: string; project: string; url: string; via: string; workflow?: string; expect?: string }[];
+  };
+  return targets.map((t) => ({
+    name: `${t.name}: ${t.surface}`,
+    project: t.project,
+    url: t.url,
+    via: t.via,
+    workflow: t.workflow,
+    health: t.expect !== "reachable",
+  }));
+}
 
 const TRIGGERS = ["push", "pull_request", "pull_request_target", "release", "schedule", "workflow_dispatch", "workflow_call", "issues", "issue_comment", "workflow_run"];
 
@@ -123,7 +123,7 @@ async function latestRun(file: string): Promise<RunInfo | null> {
 // A plain object (not `defineLoader`): VitePress loads this file as CommonJS, and vitepress is ESM.
 export default {
   // Paths are relative to the site root (pages/).
-  watch: ["../.github/workflows/*.yml", "../projects/*/release.env"],
+  watch: ["../.github/workflows/*.yml", "../projects/*/release.env", "../scripts/status/targets.json"],
   async load(): Promise<StatusData> {
     // `npm run pages:dev` / `pages:build` run from the repo root.
     const root = process.cwd();
@@ -144,7 +144,7 @@ export default {
     });
     const shared = workflows.filter((w) => !ids.some((id) => w.file.startsWith(`${id}-`)));
     projects.push({ id: "shared", name: "Shared", tagPrefix: null, workflows: sorted(shared) });
-    return { projects, deployments: DEPLOYMENTS };
+    return { projects, deployments: readDeployments(root) };
   },
 };
 

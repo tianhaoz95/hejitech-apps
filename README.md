@@ -37,6 +37,7 @@ scripts/cut_release.sh  releases one project: scripts/cut_release.sh <name> [pat
 scripts/review_account.sh <name>   App Review demo account: Worker secrets, live check, App Store Connect (asc_review_details.mjs)
 scripts/db_migration.sh new migration for one project; check_supabase.mjs keeps projects apart
 scripts/check_isolation.mjs, graduation_check.sh   each project can leave for its own Supabase (supabase/GRADUATION.md)
+scripts/status/          live status probe (live-status.yml, every 5 min, outside Cloudflare): targets.json lists every production URL; /live on the site
 branding/               marketing for every product: promo-videos/ (one Remotion project, media git-ignored; branding/README.md)
 pages/                  the GitHub Pages site for every app (npm run pages:dev); project docs come from projects/<name>/docs
 .claude/skills/         agent skills: heji-new-project, heji-migrate-project, heji-candidate-review, heji-fix-ci, heji-new-skill, heji-archive-reports, heji-build-next, heji-even-hub-submit, heji-update-toolchain, heji-report, heji-review-account, heji-app-store-connect, heji-app-store-iap, heji-google-play, heji-android-app, heji-remotion, heji-promo-video, heji-demo-video, heji-google-flow, heji-youtube-studio-upload, heji-machine-setup (.agents/skills/ links them for Codex, Antigravity, Gemini CLI, Cursor…)

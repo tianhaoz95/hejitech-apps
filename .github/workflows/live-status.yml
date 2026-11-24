@@ -1,0 +1,39 @@
+name: Live status probe
+
+# Checks every production surface in scripts/status/targets.json from outside Cloudflare and keeps
+# the live status page (https://tianhaoz95.github.io/hejitech-apps/live) up to date: history in the
+# locked `status-data` issue, an `incident` issue per outage (closed on recovery) and a `quota` issue
+# when the Cloudflare account nears its daily Worker request limit. Writes no commits. Products
+# being down doesn't fail this workflow; only a broken probe does. See scripts/status/probe.mjs.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: live-status
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: Check every product
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/status
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test scripts/status/probe.test.mjs
+      - run: node scripts/status/probe.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Account Analytics: Read only (the daily request count); without it the page shows uptime only.
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ANALYTICS_TOKEN: ${{ secrets.CLOUDFLARE_ANALYTICS_TOKEN }}

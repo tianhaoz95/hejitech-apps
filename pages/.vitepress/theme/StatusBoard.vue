@@ -10,6 +10,7 @@ import { data, type RunInfo, type Workflow } from "../../status.data";
 const REPO = "tianhaoz95/hejitech-apps";
 
 interface Run {
+  id: number;
   path: string;
   status: string;
   conclusion: string | null;
@@ -94,7 +95,7 @@ const visibleProjects = computed(() =>
 const releaseProjects = computed(() => data.projects.filter((p) => p.tagPrefix));
 const deployChecks = computed(() => checks.value.filter((c) => /cloudflare/i.test(`${c.app?.slug ?? ""} ${c.name}`)));
 
-const CACHE_KEY = "heji-status-v2";
+const CACHE_KEY = "heji-status-v3";
 async function load(force = false) {
   loading.value = true;
   liveError.value = null;
@@ -109,14 +110,23 @@ async function load(force = false) {
     }
     const api = `https://api.github.com/repos/${REPO}`;
     const headers = { Accept: "application/vnd.github+json" };
-    const [r1, r2, r3] = await Promise.all([
+    // The live status probe runs every 5 minutes on a schedule and fills the plain list of the last
+    // 100 runs within hours, so push and release runs are fetched on their own too.
+    const [r1, r2, r3, r4, r5] = await Promise.all([
       fetch(`${api}/actions/runs?per_page=100`, { headers }),
       fetch(`${api}/commits/main/check-runs?per_page=100`, { headers }),
       fetch(`${api}/releases?per_page=100`, { headers }),
+      fetch(`${api}/actions/runs?per_page=100&event=push`, { headers }),
+      fetch(`${api}/actions/runs?per_page=100&event=release`, { headers }),
     ]);
     if (r1.status === 403 || r1.status === 429) throw new Error("GitHub's API rate limit for this network is used up; badges still show the latest state.");
     if (!r1.ok) throw new Error(`GitHub API: ${r1.status}`);
-    const runList = ((await r1.json()).workflow_runs ?? []) as Run[];
+    const byId = new Map<number, Run>();
+    for (const r of [r1, r4, r5]) {
+      if (r.ok) for (const run of ((await r.json()).workflow_runs ?? []) as Run[]) byId.set(run.id, run);
+    }
+    // Newest first, as apply() expects.
+    const runList = [...byId.values()].sort((a, b) => (b.run_started_at ?? b.updated_at).localeCompare(a.run_started_at ?? a.updated_at));
     const checkList = r2.ok ? (((await r2.json()).check_runs ?? []) as CheckRun[]) : [];
     const releaseList = r3.ok ? ((await r3.json()) as Release[]) : [];
     try {

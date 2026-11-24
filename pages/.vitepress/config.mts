@@ -67,8 +67,9 @@ export default withMermaid(
         { text: "Apps", link: "/#apps" },
         { text: "Videos", link: "/videos" },
         { text: "Monorepo", link: "/monorepo" },
-        // Styled as a button in custom.css (.VPNavBarMenuLink[href$="/status"]).
-        { text: "● Status", link: "/status", activeMatch: "^/status" },
+        { text: "CI", link: "/status", activeMatch: "^/status" },
+        // Product status (live.md, measured outside Cloudflare); styled as a button in custom.css.
+        { text: "● Status", link: "/live", activeMatch: "^/live" },
       ],
       sidebar: Object.fromEntries(projects.map((p) => [`/${p}/`, sidebarFor(p)])),
       socialLinks: [

@@ -304,5 +304,6 @@ and confirm no drift. List the historical migrations in `LEGACY_MIGRATIONS` (che
   drop tests that assert on the old workflow file or secret-upload helpers.
 - **`docs/` holding the public site:** move it to `site/` (`docs/` is the monorepo's VitePress page).
 - **Status page:** projects and workflows appear automatically (`pages/status.data.ts` reads
-  `projects/*/CLAUDE.md`, `release.env`, `<name>-*.yml`); add production URLs (sites, Workers) to
-  its `DEPLOYMENTS` by hand.
+  `projects/*/CLAUDE.md`, `release.env`, `<name>-*.yml`); add production URLs (sites, Workers, with
+  the Worker's script name) to `scripts/status/targets.json` by hand: the CI page lists them and the
+  live status probe (`live-status.yml`) checks them every 5 minutes.
