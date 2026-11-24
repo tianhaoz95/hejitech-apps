@@ -118,17 +118,4 @@ class CoreTest {
         assertEquals(128, WearProtocol.hrOf(WearProtocol.hr(128)))
         assertEquals(null, WearProtocol.decode("not json".toByteArray()))
     }
-
-    @Test
-    fun unitFormatConvertsImperialAndKeepsMetric() {
-        assertEquals("Weight (kg)", UnitFormat.label("weight", "metric"))
-        assertEquals("Weight (lb)", UnitFormat.label("weight", "imperial"))
-        assertEquals("Waist (in)", UnitFormat.label("waist", "imperial"))
-        assertEquals(165.3, UnitFormat.toDisplay(75.0, "weight", "imperial"), 0.001)
-        assertEquals(74.98, UnitFormat.fromDisplay(165.3, "weight", "imperial"), 0.001)
-        assertEquals(32.0, UnitFormat.toDisplay(81.28, "waist", "imperial"), 0.001)
-        assertEquals(81.28, UnitFormat.fromDisplay(32.0, "waist", "imperial"), 0.001)
-        assertEquals("2.5 L water", UnitFormat.water(2.5, "metric"))
-        assertEquals("85 fl oz water", UnitFormat.water(2.5, "imperial"))
-    }
 }

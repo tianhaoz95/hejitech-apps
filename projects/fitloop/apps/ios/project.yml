@@ -74,9 +74,6 @@ targets:
         com.apple.developer.applesignin: [Default]
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.access: []
-        # Shared with the Home Screen / Lock Screen Today widget (no App Group: CI's API key can't register one).
-        keychain-access-groups:
-          - $(AppIdentifierPrefix)com.hejitech.fitloop.shared
 
   WatchApp:
     type: application
@@ -163,11 +160,6 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
         ITSAppUsesNonExemptEncryption: false
-    entitlements:
-      path: LiveActivity/LiveActivity.entitlements
-      properties:
-        keychain-access-groups:
-          - $(AppIdentifierPrefix)com.hejitech.fitloop.shared
 
 schemes:
   App:

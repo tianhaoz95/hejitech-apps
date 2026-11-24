@@ -14,13 +14,6 @@ struct FitLoopApp: App {
                 .environment(model)
                 .tint(.accentColor)
                 .task { await model.start() }
-                .onOpenURL { url in
-                    guard url.scheme == "fitloop" else { return }
-                    if url.host == "workout" {
-                        let ref = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-                        if !ref.isEmpty { model.pendingWorkout = ref }
-                    }
-                }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active, model.phase == .ready {
                         // A new day since the app was last open: show it.

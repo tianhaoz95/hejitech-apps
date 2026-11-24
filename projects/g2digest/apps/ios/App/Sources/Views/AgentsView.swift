@@ -12,32 +12,6 @@ struct AgentsView: View {
 
     var body: some View {
         Form {
-            if let status = appModel.onboardingStatus {
-                if status.delivery.missed {
-                    Section {
-                        Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Missed delivery for \(status.delivery.expectedDate)")
-                                    .font(.subheadline.bold())
-                                Text("Expected by \(status.delivery.deliveryTime) (\(status.delivery.timezone)). Check recent build runs below.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        } icon: {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                        }
-                    }
-                }
-
-                Section("Setup Checklist") {
-                    checklistRow(done: status.briefConfigured, title: "Configure your brief")
-                    checklistRow(done: status.agentConnected, title: "Connect a build agent")
-                    checklistRow(done: status.firstValidationPassed, title: "Pass first validation dry-run")
-                    checklistRow(done: status.firstEditionPublished, title: "Publish first edition")
-                }
-            }
-
             Section {
                 Text("An agent compiles each edition ahead of time: it reads your brief, researches each section, writes the edition and the cards, makes the audio, checks everything and publishes. Any agent that can use an MCP server and produce audio can do it, on any schedule.")
                     .font(.callout)
@@ -184,15 +158,6 @@ struct AgentsView: View {
                 }
                 Text(value).font(mono ? .caption.monospaced() : .caption).foregroundStyle(.secondary).lineLimit(3)
             }
-        }
-    }
-
-    private func checklistRow(done: Bool, title: String) -> some View {
-        HStack {
-            Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(done ? .green : .secondary)
-            Text(title)
-                .foregroundStyle(done ? .primary : .secondary)
         }
     }
 

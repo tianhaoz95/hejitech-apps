@@ -21,19 +21,13 @@ data class Macros(
     @SerialName("protein_g") val proteinG: Double? = null,
     @SerialName("carbs_g") val carbsG: Double? = null,
     @SerialName("fat_g") val fatG: Double? = null,
-    @SerialName("water_l") val waterL: Double? = null,
 ) {
     /** "680 kcal · 48 g protein". */
     val summary: String
-        get() = summary("metric")
-
-    fun summary(units: String): String = listOfNotNull(
-        calories?.let { "${it.toInt()} kcal" },
-        proteinG?.let { "${it.toInt()} g protein" },
-        carbsG?.let { "${it.toInt()} g carbs" },
-        fatG?.let { "${it.toInt()} g fat" },
-        waterL?.let { UnitFormat.water(it, units) },
-    ).joinToString(" · ")
+        get() = listOfNotNull(
+            calories?.let { "${it.toInt()} kcal" }, proteinG?.let { "${it.toInt()} g protein" },
+            carbsG?.let { "${it.toInt()} g carbs" }, fatG?.let { "${it.toInt()} g fat" },
+        ).joinToString(" · ")
 }
 
 @Serializable

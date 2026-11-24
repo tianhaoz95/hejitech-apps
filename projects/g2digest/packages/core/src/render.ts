@@ -3,7 +3,7 @@
 // validator measures them. Pure and deterministic: no DOM, no clock, no brief lookups (section
 // titles come from the bundle's own edition). Lines wrap by the glasses' own glyph widths
 // (font.ts), so they use the whole width of the display.
-import { isCjkChar, LINE_PITCH_PX, textPx } from "./font.ts";
+import { LINE_PITCH_PX, textPx } from "./font.ts";
 import type { Bundle, CardInput, Frame } from "./types.ts";
 
 export const DISPLAY = { width: 576, height: 288 } as const;
@@ -26,57 +26,17 @@ export const TOUR_GUIDE_VERSION = "tour";
 /** Code points, so "♪" or "·" count as one character like on the display. */
 export const len = (s: string) => [...s].length;
 
-/** Closing CJK punctuation that should stay with the preceding character when possible. */
-const CJK_NO_START = new Set([..."，。！？：；、）」】》〉』"]);
-
-/**
- * Word-wraps at spaces by pixel width, and breaks CJK runs between characters when they don't use
- * spaces. A single non-CJK word wider than `widthPx` keeps its own (too wide) line for the
- * validator to flag.
- */
+/** Word-wraps at spaces by pixel width. A word wider than `widthPx` keeps its own (too wide) line for the validator to flag. */
 export function wrap(text: string, widthPx = LINE_PX): string[] {
   const words = text.trim().split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let line = "";
-
-  const pushCjkWord = (word: string) => {
-    for (const ch of word) {
-      if (!line) {
-        line = ch;
-      } else if (textPx(line + ch) <= widthPx) {
-        line += ch;
-      } else if (CJK_NO_START.has(ch) && line.length > 1) {
-        // Pull the last character onto the next line with its closing punctuation.
-        const chars = [...line];
-        const prev = chars.pop()!;
-        lines.push(chars.join(""));
-        line = prev + ch;
-      } else {
-        lines.push(line);
-        line = ch;
-      }
-    }
-  };
-
   for (const w of words) {
-    const hasCjk = [...w].some(isCjkChar);
-    if (!hasCjk) {
-      if (!line) line = w;
-      else if (textPx(`${line} ${w}`) <= widthPx) line += " " + w;
-      else {
-        lines.push(line);
-        line = w;
-      }
-    } else {
-      if (!line) {
-        pushCjkWord(w);
-      } else if (textPx(`${line} ${w}`) <= widthPx) {
-        line += " " + w;
-      } else {
-        lines.push(line);
-        line = "";
-        pushCjkWord(w);
-      }
+    if (!line) line = w;
+    else if (textPx(`${line} ${w}`) <= widthPx) line += " " + w;
+    else {
+      lines.push(line);
+      line = w;
     }
   }
   if (line) lines.push(line);

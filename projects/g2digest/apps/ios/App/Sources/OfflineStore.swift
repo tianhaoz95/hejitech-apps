@@ -53,18 +53,12 @@ public actor OfflineStore {
     }
 
     public func loadLatestEdition() -> BundleData? {
-        loadAllCachedEditions().first
-    }
-
-    public func loadAllCachedEditions() -> [BundleData] {
         let files = (try? FileManager.default.contentsOfDirectory(at: rootDir, includingPropertiesForKeys: nil)) ?? []
         let editions = files
             .filter { $0.lastPathComponent.hasPrefix("edition-") && $0.pathExtension == "json" }
             .sorted { $0.lastPathComponent > $1.lastPathComponent }
-        return editions.compactMap { url in
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            return try? JSONDecoder().decode(BundleData.self, from: data)
-        }
+        guard let first = editions.first, let data = try? Data(contentsOf: first) else { return nil }
+        return try? JSONDecoder().decode(BundleData.self, from: data)
     }
 
     public nonisolated func localAudioURL(for audioPath: String) -> URL? {

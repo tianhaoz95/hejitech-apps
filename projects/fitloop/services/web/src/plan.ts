@@ -1,6 +1,6 @@
 // /plan: the current plan (goals, what it planned around, targets, the week) and its versions with
 // the agent's change notes.
-import { formatWater, setTarget, WEEKDAYS, type DayPlan, type PublishedPlan, type Settings } from "@fitloop/core";
+import { setTarget, WEEKDAYS, type DayPlan, type PublishedPlan } from "@fitloop/core";
 import { api, el, fill, requireSession, spinner } from "./supabase.ts";
 
 const root = document.getElementById("app")!;
@@ -18,11 +18,7 @@ function dayView(name: string, d: DayPlan) {
 async function render() {
   const session = await requireSession(root, render);
   if (!session) return;
-  const [r, s] = await Promise.all([
-    api<{ current: PublishedPlan | null; versions: { version: number; title: string; change_note: string; starts_on: string; published_at: string }[] }>("/api/plan"),
-    api<{ settings: Settings }>("/api/settings"),
-  ]);
-  const units = s.ok ? s.body.settings.units : "metric";
+  const r = await api<{ current: PublishedPlan | null; versions: { version: number; title: string; change_note: string; starts_on: string; published_at: string }[] }>("/api/plan");
   const cur = r.body.current;
   if (!r.ok || !cur) {
     fill(root, el("section", { class: "panel" }, el("h1", {}, "No plan yet"), el("p", { class: "muted" }, "Your agent publishes plans through FitLoop's MCP connector. Connect it in Settings, then ask it to build your plan."), el("a", { class: "btn primary", href: "/settings/" }, "Connect your agent")));
@@ -36,7 +32,7 @@ async function render() {
     el("section", { class: "panel" }, el("p", {}, p.summary), cur.change_note ? el("p", { class: "small reply" }, `What changed: ${cur.change_note}`) : null),
     el("section", { class: "panel" }, el("h2", {}, "Goals"), el("ul", {}, ...p.goals.map((g) => el("li", {}, g.text, g.target !== undefined ? el("span", { class: "muted small" }, ` (${g.metric ?? ""} ${g.target}${g.unit ? " " + g.unit : ""}${g.by ? " by " + g.by : ""})`) : null)))),
     p.constraints.length ? el("section", { class: "panel" }, el("h2", {}, "Planned around"), el("ul", {}, ...p.constraints.map((c) => el("li", {}, c)))) : null,
-    t ? el("section", { class: "panel" }, el("h2", {}, "Daily targets"), el("p", {}, [t.calories && `${t.calories} kcal`, t.protein_g && `${t.protein_g} g protein`, t.carbs_g && `${t.carbs_g} g carbs`, t.fat_g && `${t.fat_g} g fat`, t.water_l && formatWater(t.water_l, units)].filter(Boolean).join(" · "))) : null,
+    t ? el("section", { class: "panel" }, el("h2", {}, "Daily targets"), el("p", {}, [t.calories && `${t.calories} kcal`, t.protein_g && `${t.protein_g} g protein`, t.carbs_g && `${t.carbs_g} g carbs`, t.fat_g && `${t.fat_g} g fat`, t.water_l && `${t.water_l} L water`].filter(Boolean).join(" · "))) : null,
     el("h2", { style: "margin-top: 18px" }, "The week"),
     el("div", { class: "stack" }, ...WEEKDAYS.map((d) => dayView(DAY_NAMES[d], p.week[d]))),
     p.overrides && Object.keys(p.overrides).length ? el("h2", { style: "margin-top: 18px" }, "Special days") : null,

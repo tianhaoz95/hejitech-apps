@@ -90,37 +90,6 @@ public struct ShareLinkResult: Codable, Hashable, Sendable {
     }
 }
 
-public struct DeliveryStatus: Codable, Hashable, Sendable {
-    public let missed: Bool
-    public let expectedDate: String
-    public let deliveryTime: String
-    public let timezone: String
-    public let latestEditionDate: String?
-
-    public enum CodingKeys: String, CodingKey {
-        case missed, timezone
-        case expectedDate = "expected_date"
-        case deliveryTime = "delivery_time"
-        case latestEditionDate = "latest_edition_date"
-    }
-}
-
-public struct OnboardingStatus: Codable, Hashable, Sendable {
-    public let briefConfigured: Bool
-    public let agentConnected: Bool
-    public let firstValidationPassed: Bool
-    public let firstEditionPublished: Bool
-    public let delivery: DeliveryStatus
-
-    public enum CodingKeys: String, CodingKey {
-        case delivery
-        case briefConfigured = "brief_configured"
-        case agentConnected = "agent_connected"
-        case firstValidationPassed = "first_validation_passed"
-        case firstEditionPublished = "first_edition_published"
-    }
-}
-
 /// Shared summary written for WidgetKit & Siri App Intents (no private brief data).
 public struct WidgetEditionSnapshot: Codable, Hashable, Sendable {
     public let date: String

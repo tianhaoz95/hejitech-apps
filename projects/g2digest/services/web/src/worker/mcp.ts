@@ -103,18 +103,6 @@ export const TOOLS = [
     },
     annotations: { title: "Get recent reader engagement signals", readOnlyHint: true, openWorldHint: false },
   },
-  {
-    name: "get_bookmarks",
-    title: "Get the user's bookmarked cards",
-    description: "Returns cards the reader explicitly bookmarked from recent editions (title, section, body, source URL, date) so you can recognize threads worth following up on. Never treat bookmarks as a structural template.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        limit: { type: "integer", description: "Maximum number of bookmarks to return (1–50, default 20)." },
-      },
-    },
-    annotations: { title: "Get the user's bookmarked cards", readOnlyHint: true, openWorldHint: false },
-  },
 ];
 
 /** Called after a successful live publish_cards (the Worker sends iPhone + Android notifications). */
@@ -201,16 +189,6 @@ async function callTool(name: string, args: Record<string, unknown>, caller: Cal
       }
       return { days, since, by_section: bySection, recent_bookmarks: marks ?? [], total_signals: (sigs ?? []).length };
     }
-    case "get_bookmarks": {
-      const limit = Math.max(1, Math.min(50, Number(args.limit ?? 20) || 20));
-      const { data: marks } = await db
-        .from("bookmarks")
-        .select("edition_date, card_slug, card_title, section_title, body, source_url, created_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(limit);
-      return { bookmarks: marks ?? [], count: (marks ?? []).length };
-    }
   }
   throw new Error(`unknown tool ${name}`);
 }
@@ -237,7 +215,7 @@ export async function handleMcp(req: Request, caller: Caller, db: Db, kv: KVName
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: "g2digest", version: SERVER_VERSION },
         instructions:
-          "Builds one user's G2 Digest edition: fetch the guide and the brief (plus get_reader_signals and get_bookmarks to calibrate emphasis and follow-ups), write the full edition, derive the cards, make and upload the audio, validate until there are no errors, keep the snapshot, then publish with the preview_hash (using publish_at for scheduled delivery or draft=true if staging for review). The guide (get_card_authoring_guide) has the full sequence and every rule.",
+          "Builds one user's G2 Digest edition: fetch the guide and the brief, write the full edition, derive the cards, make and upload the audio, validate until there are no errors, keep the snapshot, then publish with the preview_hash. The guide (get_card_authoring_guide) has the full sequence and every rule.",
       });
     case "notifications/initialized":
       return new Response(null, { status: 202, headers: cors });

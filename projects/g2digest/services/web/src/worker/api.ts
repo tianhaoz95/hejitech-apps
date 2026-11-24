@@ -7,7 +7,7 @@
 //   feed token g2f_… in the URL  /feed/<token>/podcast.xml and its audio (podcast apps can't send headers)
 import { checkBrief, type Brief, type Bundle } from "@g2digest/core";
 import {
-  admin, checkDeliveryStatus, Conflict, getEdition, json, listEditions, loadBrief, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken,
+  admin, Conflict, getEdition, json, listEditions, loadBrief, pairingCode, PAIRING_CODE_TTL_MS, PREFIX, randomToken,
   resolveDevice, saveBrief, sha256, signedAudio, supabaseUser, type Db, type Env,
 } from "./store.ts";
 import { checkout, fromBrowser, offers, portal, proRequired, proStatus, StripeError } from "./billing.ts";
@@ -280,25 +280,7 @@ export async function handleApi(req: Request, env: Env, url: URL): Promise<Respo
     return reply({ ok: true });
   }
 
-  // ------------------------------------------------------------ build runs, onboarding & reader signals
-  if (path === "/api/onboarding" && req.method === "GET") {
-    const [briefRes, tokRes, runRes, edRes] = await Promise.all([
-      loadBrief(db, userId),
-      db.from("access_tokens").select("id").eq("user_id", userId).is("revoked_at", null).limit(1),
-      db.from("build_runs").select("action, status").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
-      db.from("editions").select("date").eq("user_id", userId).eq("status", "published").order("date", { ascending: false }).limit(1),
-    ]);
-    const runs = (runRes.data ?? []) as { action: string; status: string }[];
-    const latestDate = ((edRes.data ?? [])[0] as { date?: string } | undefined)?.date ?? null;
-    const delivery = checkDeliveryStatus(briefRes.brief, latestDate);
-    return reply({
-      brief_configured: briefRes.brief_version > 1 || briefRes.brief.sections.length > 1,
-      agent_connected: ((tokRes.data ?? []).length > 0) || runs.length > 0,
-      first_validation_passed: runs.some((r) => r.action === "validate" && r.status === "ok"),
-      first_edition_published: latestDate !== null,
-      delivery,
-    });
-  }
+  // ------------------------------------------------------------ build runs & reader signals
   if (path === "/api/build-runs" && req.method === "GET") {
     const { data } = await db.from("build_runs").select("id, action, edition_date, status, error_count, warning_count, errors, agent_name, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(25);
     return reply(data ?? []);

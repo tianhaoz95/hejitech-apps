@@ -15,12 +15,12 @@
 //   everything else               static assets
 
 import { AuthorizationError, OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
-import { notifyEdition, notifyMissedDelivery } from "./push.ts";
+import { notifyEdition } from "./push.ts";
 import { handleApi } from "./api.ts";
 import { handleNotification } from "./appstore.ts";
 import { handleStripeWebhook, proRequired, proStatus } from "./billing.ts";
 import { handleMcp, type Caller } from "./mcp.ts";
-import { admin, checkDeliveryStatus, deleteUserData, json, loadBrief, PREFIX, promoteDueEditions, sha256, supabaseUser, type Env as BaseEnv } from "./store.ts";
+import { admin, deleteUserData, json, PREFIX, promoteDueEditions, sha256, supabaseUser, type Env as BaseEnv } from "./store.ts";
 
 export interface Env extends BaseEnv {
   OAUTH_PROVIDER: OAuthHelpers;
@@ -209,34 +209,6 @@ export default {
         lead_title: e.lead_title,
         alert_count: e.alert_count,
       }).catch(() => undefined);
-    }
-    // Check for missed deliveries for users who have push devices registered.
-    const [{ data: apnsUsers }, { data: fcmUsers }] = await Promise.all([
-      db.from("push_devices").select("user_id"),
-      db.from("fcm_devices").select("user_id"),
-    ]);
-    const userIds = [...new Set([
-      ...((apnsUsers ?? []) as { user_id: string }[]).map((r) => r.user_id),
-      ...((fcmUsers ?? []) as { user_id: string }[]).map((r) => r.user_id),
-    ])];
-    for (const userId of userIds) {
-      try {
-        const [{ brief }, { data: latest }] = await Promise.all([
-          loadBrief(db, userId),
-          db.from("editions").select("date").eq("user_id", userId).eq("status", "published").order("date", { ascending: false }).limit(1),
-        ]);
-        const latestDate = ((latest ?? [])[0] as { date?: string } | undefined)?.date ?? null;
-        // Only alert users who have published at least once (avoid nagging before setup finishes).
-        if (!latestDate) continue;
-        const status = checkDeliveryStatus(brief, latestDate);
-        if (!status.missed) continue;
-        const kvKey = `missed:${userId}:${status.expected_date}`;
-        if (await env.OAUTH_KV.get(kvKey)) continue;
-        await notifyMissedDelivery(env, db, userId, status);
-        await env.OAUTH_KV.put(kvKey, "1", { expirationTtl: 86400 });
-      } catch {
-        /* best effort per user */
-      }
     }
   },
 } satisfies ExportedHandler<Env>;

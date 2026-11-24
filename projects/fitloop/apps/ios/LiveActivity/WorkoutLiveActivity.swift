@@ -5,10 +5,7 @@ import WidgetKit
 
 @main
 struct FitLoopLiveActivities: WidgetBundle {
-    var body: some Widget {
-        WorkoutLiveActivity()
-        FitLoopTodayWidget()
-    }
+    var body: some Widget { WorkoutLiveActivity() }
 }
 
 /// The open workout on the Lock Screen and in the Dynamic Island.

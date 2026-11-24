@@ -68,7 +68,6 @@ import com.hejitech.fitloop.core.FeedbackTag
 import com.hejitech.fitloop.core.Photo
 import com.hejitech.fitloop.core.Plan
 import com.hejitech.fitloop.core.ProgressResponse
-import com.hejitech.fitloop.core.UnitFormat
 import com.hejitech.fitloop.core.Vital
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -103,7 +102,7 @@ fun PlanScreen(model: AppModel, modifier: Modifier = Modifier) {
                 }
                 if (p.goals.isNotEmpty()) item { Section("Goals") { p.goals.forEach { Text(it.text) } } }
                 if (p.constraints.isNotEmpty()) item { Section("Planned around") { p.constraints.forEach { Text(it) } } }
-                p.targets?.let { t -> item { Section("Daily targets") { Text(t.summary(model.settings.units)) } } }
+                p.targets?.let { t -> item { Section("Daily targets") { Text(t.summary) } } }
                 item {
                     Section("The week") {
                         Plan.WEEKDAYS.forEachIndexed { i, d ->
@@ -140,6 +139,11 @@ fun PlanScreen(model: AppModel, modifier: Modifier = Modifier) {
     }
 }
 
+private val vitalLabels = mapOf(
+    "weight" to "Weight (kg)", "waist" to "Waist (cm)", "body_fat" to "Body fat (%)", "energy" to "Energy (1-5)", "mood" to "Mood (1-5)",
+    "soreness" to "Soreness (1-5)", "sleep_hours" to "Sleep (h)", "resting_hr" to "Resting HR", "hrv" to "HRV (ms)", "steps" to "Steps",
+    "active_energy" to "Active energy (kcal)",
+)
 private val manualMetrics = listOf("weight", "waist", "body_fat", "energy", "mood", "soreness", "sleep_hours")
 
 /** The Progress tab: adherence over four weeks, vitals, manual entries and progress photos (each shown only when its option is on). */
@@ -212,20 +216,19 @@ fun ProgressScreen(model: AppModel, modifier: Modifier = Modifier) {
                 }
                 item {
                     Section("Vitals") {
-                        val units = model.settings.units
                         val latest = progress?.vitals.orEmpty().groupBy { it.metric }
                         if (latest.isEmpty()) Secondary("Nothing yet.")
                         for (k in latest.keys.sorted()) {
                             val v = latest.getValue(k).last().value
-                            LabeledRow(UnitFormat.label(k, units), UnitFormat.format(v, k, units))
+                            LabeledRow(vitalLabels[k] ?: k, if (v % 1.0 == 0.0) v.toLong().toString() else "%.1f".format(v))
                         }
                         if (model.settings.vitals.manual) {
                             var menu by remember { mutableStateOf(false) }
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Box(Modifier.weight(1f)) {
-                                    OutlinedButton(onClick = { menu = true }) { Text(UnitFormat.label(metric, units)) }
+                                    OutlinedButton(onClick = { menu = true }) { Text(vitalLabels.getValue(metric)) }
                                     DropdownMenu(menu, { menu = false }) {
-                                        for (m in manualMetrics) DropdownMenuItem({ Text(UnitFormat.label(m, units)) }, { metric = m; menu = false })
+                                        for (m in manualMetrics) DropdownMenuItem({ Text(vitalLabels.getValue(m)) }, { metric = m; menu = false })
                                     }
                                 }
                                 OutlinedTextField(value, { value = it }, Modifier.width(90.dp), singleLine = true, placeholder = { Text("Value") },
@@ -233,8 +236,7 @@ fun ProgressScreen(model: AppModel, modifier: Modifier = Modifier) {
                                 TextButton(enabled = value.toDoubleOrNull() != null, onClick = {
                                     scope.launch {
                                         try {
-                                            val stored = UnitFormat.fromDisplay(value.toDouble(), metric, units)
-                                            model.backend.sendVitals(listOf(Vital(Day.today(), metric, stored, "manual")))
+                                            model.backend.sendVitals(listOf(Vital(Day.today(), metric, value.toDouble(), "manual")))
                                             value = ""
                                             load()
                                         } catch (e: Exception) { error = e.message }

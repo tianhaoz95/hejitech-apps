@@ -8,24 +8,16 @@ public struct Macros: Codable, Hashable, Sendable {
     public var proteinG: Double?
     public var carbsG: Double?
     public var fatG: Double?
-    public var waterL: Double?
 
     enum CodingKeys: String, CodingKey {
         case calories
-        case proteinG = "protein_g", carbsG = "carbs_g", fatG = "fat_g", waterL = "water_l"
+        case proteinG = "protein_g", carbsG = "carbs_g", fatG = "fat_g"
     }
 
     /// "680 kcal · 48 g protein".
-    public var summary: String { summary(units: "metric") }
-
-    public func summary(units: String) -> String {
-        [
-            calories.map { "\(Int($0)) kcal" },
-            proteinG.map { "\(Int($0)) g protein" },
-            carbsG.map { "\(Int($0)) g carbs" },
-            fatG.map { "\(Int($0)) g fat" },
-            waterL.map { UnitFormat.water($0, units: units) },
-        ].compactMap { $0 }.joined(separator: " · ")
+    public var summary: String {
+        [calories.map { "\(Int($0)) kcal" }, proteinG.map { "\(Int($0)) g protein" }, carbsG.map { "\(Int($0)) g carbs" }, fatG.map { "\(Int($0)) g fat" }]
+            .compactMap { $0 }.joined(separator: " · ")
     }
 }
 

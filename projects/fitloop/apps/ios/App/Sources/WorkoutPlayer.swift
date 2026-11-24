@@ -1,7 +1,5 @@
-import AudioToolbox
 import FitLoopKit
 import SwiftUI
-import UserNotifications
 import WebKit
 
 /// The workout player: one exercise at a time with its set target, how-to and cues; "Set done"
@@ -16,11 +14,7 @@ struct WorkoutPlayer: View {
     @State private var restUntil: Date?
     @State private var workStarted: Date?
     @State private var note: NoteTarget?
-    @State private var swapSheet = false
-    @State private var swapText = ""
     @State private var confirmEnd = false
-
-    private static let restNotificationID = "fitloop.rest-timer"
 
     /// The latest state of this workout (check-ins refresh model.today).
     private var state: WorkoutState { model.today?.state.workouts.first { $0.ref == initial.ref } ?? initial }
@@ -42,14 +36,7 @@ struct WorkoutPlayer: View {
                             }
                         }
                         if let how = current.exercise.instructions { DisclosureGroup("How to") { Text(how).font(.callout) } }
-                        if let alt = current.exercise.alternative {
-                            Button { openSwap(prefill: alt) } label: {
-                                Label("Instead: \(alt)", systemImage: "arrow.triangle.swap")
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
+                        if let alt = current.exercise.alternative { Label("Instead: \(alt)", systemImage: "arrow.triangle.swap").font(.footnote).foregroundStyle(.secondary) }
                         upNext
                     }
                     .padding()
@@ -61,7 +48,6 @@ struct WorkoutPlayer: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { close() } }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
-                        Button("Swap exercise", systemImage: "arrow.triangle.swap") { openSwap(prefill: current.exercise.alternative ?? "") }
                         Button("Skip this exercise", systemImage: "forward") { skipExercise() }
                         Button("Note for my agent", systemImage: "bubble.left") { note = NoteTarget(ref: current.ref, title: current.exercise.name, tags: [.tooHard, .tooEasy, .pain, .lovedIt, .other]) }
                         Button("End workout", systemImage: "flag.checkered") { confirmEnd = true }
@@ -69,24 +55,8 @@ struct WorkoutPlayer: View {
                 }
             }
             .sheet(item: $note) { NoteSheet(target: $0) }
-            .sheet(isPresented: $swapSheet) { swapExerciseSheet }
             .confirmationDialog("End the workout?", isPresented: $confirmEnd, titleVisibility: .visible) {
                 Button("End and save") { Task { await finish(state.setsDone >= state.setsTotal ? "done" : "partial") } }
-            }
-            .task(id: restUntil) {
-                guard let until = restUntil else { return }
-                let delay = until.timeIntervalSinceNow
-                if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
-                guard !Task.isCancelled, restUntil == until else { return }
-                cancelRestNotification()
-                playTimerDoneAlert()
-            }
-            .task(id: workStarted) {
-                guard let started = workStarted, let d = current.exercise.durationSec else { return }
-                let delay = started.addingTimeInterval(TimeInterval(d)).timeIntervalSinceNow
-                if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
-                guard !Task.isCancelled, workStarted == started else { return }
-                playTimerDoneAlert()
             }
             .onAppear {
                 if let n = state.next { ex = n.exercise; set = n.set }
@@ -96,7 +66,6 @@ struct WorkoutPlayer: View {
                 pushToWatch()
             }
             .onDisappear {
-                cancelRestNotification()
                 model.watchSetDone = nil
                 WorkoutIntentBridge.setDone = nil
             }
@@ -159,7 +128,7 @@ struct WorkoutPlayer: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("This workout").font(.headline)
             ForEach(Array(state.exercises.enumerated()), id: \.element.ref) { i, e in
-                Button { ex = i; set = min(e.setsDone + 1, e.exercise.sets); restUntil = nil; workStarted = nil; cancelRestNotification(); pushToWatch() } label: {
+                Button { ex = i; set = min(e.setsDone + 1, e.exercise.sets); restUntil = nil; workStarted = nil; pushToWatch() } label: {
                     HStack {
                         Image(systemName: e.status == "done" ? "checkmark.circle.fill" : i == ex ? "circle.inset.filled" : "circle").foregroundStyle(e.status == "done" ? .green : .accentColor)
                         Text(e.exercise.name)
@@ -188,7 +157,6 @@ struct WorkoutPlayer: View {
         if current.exercise.durationSec != nil, workStarted == nil {
             workStarted = now
             restUntil = nil
-            cancelRestNotification()
             return
         }
         setDone()
@@ -200,7 +168,6 @@ struct WorkoutPlayer: View {
         if let started = workStarted { data.durationSec = Int(Date().timeIntervalSince(started)) }
         let setNumber = set
         workStarted = nil
-        cancelRestNotification()
         let last = setNumber >= e.exercise.sets
         Task {
             await model.checkin(NewCheckin(date: model.date, ref: "\(e.ref)/\(setNumber)", kind: "set", status: "done", data: data))
@@ -208,99 +175,19 @@ struct WorkoutPlayer: View {
                 await model.checkin(NewCheckin(date: model.date, ref: e.ref, kind: "exercise", status: "done"))
                 if state.next == nil { await finish("done"); return }
             }
+            if model.settings.glasses.autoRestTimer, e.exercise.restSec > 0 { restUntil = Date().addingTimeInterval(TimeInterval(e.exercise.restSec)) }
             if last { if let n = state.next { ex = n.exercise; set = n.set } } else { set = setNumber + 1 }
-            if model.settings.glasses.autoRestTimer, e.exercise.restSec > 0 {
-                let until = Date().addingTimeInterval(TimeInterval(e.exercise.restSec))
-                restUntil = until
-                scheduleRestNotification(until: until, exercise: current.exercise.name, setNumber: set, setsTotal: current.exercise.sets)
-            } else {
-                restUntil = nil
-            }
             pushToWatch()
         }
     }
 
     private func skipExercise() {
         let e = current
-        restUntil = nil
-        workStarted = nil
-        cancelRestNotification()
         Task {
             await model.checkin(NewCheckin(date: model.date, ref: e.ref, kind: "exercise", status: "skipped"))
             if let n = state.next { ex = n.exercise; set = n.set }
             pushToWatch()
         }
-    }
-
-    private func openSwap(prefill: String) {
-        swapText = prefill
-        swapSheet = true
-    }
-
-    private func swapExercise(to replacement: String) {
-        let trimmed = replacement.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        let e = current
-        swapSheet = false
-        restUntil = nil
-        workStarted = nil
-        cancelRestNotification()
-        Task {
-            await model.checkin(NewCheckin(date: model.date, ref: e.ref, kind: "exercise", status: "swapped", data: CheckinData(swappedFor: trimmed)))
-            if let n = state.next { ex = n.exercise; set = n.set }
-            pushToWatch()
-        }
-    }
-
-    private var swapExerciseSheet: some View {
-        NavigationStack {
-            Form {
-                if let alt = current.exercise.alternative, !alt.isEmpty {
-                    Section("Planned alternative") {
-                        Button { swapExercise(to: alt) } label: {
-                            Label("Use \(alt)", systemImage: "arrow.triangle.swap")
-                        }
-                    }
-                }
-                Section("What did you do instead of \(current.exercise.name)?") {
-                    TextField("Exercise name", text: $swapText)
-                }
-            }
-            .navigationTitle("Swap exercise")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { swapSheet = false } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { swapExercise(to: swapText) }
-                        .disabled(swapText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
-        }
-        .presentationDetents([.medium])
-    }
-
-    private func scheduleRestNotification(until: Date, exercise: String, setNumber: Int, setsTotal: Int) {
-        let delay = until.timeIntervalSinceNow
-        guard delay > 1 else { return }
-        let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [Self.restNotificationID])
-        let content = UNMutableNotificationContent()
-        content.title = "Rest done"
-        content.body = "Next: \(exercise) · Set \(setNumber)/\(setsTotal)"
-        content.sound = .default
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
-        let req = UNNotificationRequest(identifier: Self.restNotificationID, content: content, trigger: trigger)
-        center.add(req)
-    }
-
-    private func cancelRestNotification() {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.restNotificationID])
-        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [Self.restNotificationID])
-    }
-
-    private func playTimerDoneAlert() {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        AudioServicesPlaySystemSound(1057)
     }
 
     private func next() { move(1) }
@@ -310,7 +197,6 @@ struct WorkoutPlayer: View {
         set = min(current.setsDone + 1, current.exercise.sets)
         restUntil = nil
         workStarted = nil
-        cancelRestNotification()
         pushToWatch()
     }
 
@@ -321,13 +207,11 @@ struct WorkoutPlayer: View {
     }
 
     private func finish(_ status: String) async {
-        cancelRestNotification()
         await model.finishWorkout(state.ref, status: status)
         dismiss()
     }
 
     private func close() {
-        cancelRestNotification()
         Task { await model.endWorkout() }
         dismiss()
     }

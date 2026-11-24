@@ -1,6 +1,6 @@
 // /progress: adherence over the last weeks, vitals (and a manual entry form when manual entries are
 // on) and progress photos (when that option is on).
-import { formatVital, fromDisplayVital, metricLabel, METRICS, toDisplayVital, type Adherence, type Metric, type Settings } from "@fitloop/core";
+import { METRICS, type Adherence, type Metric, type Settings } from "@fitloop/core";
 import { api, el, fill, requireSession, spinner } from "./supabase.ts";
 
 const root = document.getElementById("app")!;
@@ -23,7 +23,7 @@ async function render() {
   const byMetric = new Map<string, { date: string; value: number; source: string }[]>();
   for (const v of p.body.vitals) byMetric.set(v.metric, [...(byMetric.get(v.metric) ?? []), v]);
 
-  const manual = settings.vitals.manual ? manualForm(settings.units) : null;
+  const manual = settings.vitals.manual ? manualForm() : null;
   fill(root, 
     el("h1", {}, "Progress"),
     el("section", { class: "panel" },
@@ -38,27 +38,20 @@ async function render() {
       byMetric.size ? el("table", { class: "small" },
         el("tr", {}, el("th", {}, "Metric"), el("th", {}, "Latest"), el("th", {}, "4 weeks ago"), el("th", {}, "Source")),
         ...[...byMetric].map(([m, rows]) => {
-          const metric = m as Metric;
-          const meta = METRICS[metric];
-          return el("tr", {},
-            el("td", {}, meta?.label ?? m),
-            el("td", {}, formatVital(metric, rows.at(-1)!.value, settings.units)),
-            el("td", {}, String(toDisplayVital(metric, rows[0].value, settings.units))),
-            el("td", {}, rows.at(-1)!.source));
+          const meta = METRICS[m as Metric];
+          return el("tr", {}, el("td", {}, meta?.label ?? m), el("td", {}, `${rows.at(-1)!.value} ${meta?.unit ?? ""}`), el("td", {}, `${rows[0].value}`), el("td", {}, rows.at(-1)!.source));
         })) : el("p", { class: "muted" }, "Nothing yet. The iPhone app syncs Apple Health daily when that's on; add entries by hand below."),
       manual),
     settings.vitals.photos ? await photosPanel() : null);
 }
 
-function manualForm(units: Settings["units"]) {
-  const metric = el("select", {}, ...(["weight", "waist", "body_fat", "energy", "mood", "soreness", "sleep_hours"] as Metric[]).map((m) => el("option", { value: m }, metricLabel(m, units))));
+function manualForm() {
+  const metric = el("select", {}, ...(["weight", "waist", "body_fat", "energy", "mood", "soreness", "sleep_hours"] as Metric[]).map((m) => el("option", { value: m }, `${METRICS[m].label} (${METRICS[m].unit})`)));
   const value = el("input", { type: "number", step: "0.1", inputmode: "decimal", placeholder: "Value" });
   const status = el("span", { class: "small" });
   const save = el("button", { class: "btn primary", type: "button" }, "Add");
   save.addEventListener("click", async () => {
-    const m = metric.value as Metric;
-    const stored = fromDisplayVital(m, Number(value.value), units);
-    const r = await api("/api/vitals", { method: "POST", body: JSON.stringify([{ date: iso(new Date()), metric: m, value: stored, source: "manual" }]) });
+    const r = await api("/api/vitals", { method: "POST", body: JSON.stringify([{ date: iso(new Date()), metric: metric.value, value: Number(value.value), source: "manual" }]) });
     status.textContent = r.ok ? "Saved." : (r.body as { error?: string }).error ?? "Couldn't save";
     if (r.ok) void render();
   });

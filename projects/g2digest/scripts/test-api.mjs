@@ -90,7 +90,7 @@ await step("the agent's token can't edit the brief or read another user's", asyn
 });
 
 // ---------------------------------------------------------------- MCP + pipeline
-await step("MCP: 401 with the OAuth hint, metadata, initialize, eight tools", async () => {
+await step("MCP: 401 with the OAuth hint, metadata, initialize, seven tools", async () => {
   const r = await mcpClient(mcpUrl, null).rpc("tools/list");
   assert.equal(r.status, 401);
   assert.match(r.headers.get("WWW-Authenticate") ?? "", /resource_metadata=/);
@@ -98,7 +98,7 @@ await step("MCP: 401 with the OAuth hint, metadata, initialize, eight tools", as
   assert.equal(as.token_endpoint, `${site}/token`);
   assert.equal((await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } })).body.result.serverInfo.name, "g2digest");
   const names = (await rpc("tools/list")).body.result.tools.map((t) => t.name);
-  assert.deepEqual(names.sort(), ["create_audio_upload", "get_bookmarks", "get_card_authoring_guide", "get_last_cards", "get_reader_signals", "get_user_brief", "publish_cards", "validate_cards"]);
+  assert.deepEqual(names.sort(), ["create_audio_upload", "get_card_authoring_guide", "get_last_cards", "get_reader_signals", "get_user_brief", "publish_cards", "validate_cards"]);
   const g = await tool("get_card_authoring_guide");
   assert.match(g.guide, /guide_version: 0\.4/);
 });

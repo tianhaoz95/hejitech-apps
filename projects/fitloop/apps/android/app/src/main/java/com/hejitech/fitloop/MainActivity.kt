@@ -96,12 +96,8 @@ class MainActivity : ComponentActivity() {
         if (model.phase == Phase.READY) lifecycleScope.launch { pro.refresh() }
     }
 
-    /** `fitloop://login-callback?code=…` from OAuth, or widget taps asking to open today's workout. */
+    /** `fitloop://login-callback?code=…`: the browser coming back from Google or Apple sign-in. */
     private fun handle(intent: Intent) {
-        if (intent.getBooleanExtra("fromWidget", false) && intent.getBooleanExtra("openWorkout", false)) {
-            model.openFirstWorkout = true
-            intent.removeExtra("fromWidget")
-        }
         val data = intent.data ?: return
         if (data.scheme == "fitloop" && data.host == "login-callback") {
             model.finishOAuth(data)
