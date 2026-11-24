@@ -9,16 +9,19 @@ struct AskView: View {
     @State private var draft = ""
     @State private var currentTask: Task<Void, Never>?
     /// The chat: the model sees the earlier questions and answers, so follow-ups work.
-    @State private var conversation = AskConversation()
+    /// Created lazily on first use with `repository.notes` so macOS's non-shared repository works.
+    @State private var conversation: AskConversation?
     @FocusState private var isInputFocused: Bool
     /// The note the next question is about (the paperclip); cleared once it's sent.
     @State private var attached: VoiceNote?
     @State private var showingNotePicker = false
+    #if os(iOS)
     /// Asking by voice: its own live transcriber (`shared` belongs to recordings).
     @StateObject private var dictation = LiveTranscriber()
     @State private var isStartingDictation = false
     @State private var isFinishingDictation = false
     @State private var dictationError: String?
+    #endif
 
     private struct Exchange: Identifiable {
         let id = UUID()
@@ -38,7 +41,19 @@ struct AskView: View {
 
     /// A question from Siri or Shortcuts (`AskVoxbriefIntent`), asked as soon as the sheet opens.
     var initialQuestion: String? = nil
+    /// Optional audio playback service override (macOS passes its own instance).
+    var playbackService: AudioPlaybackService = .shared
+    /// Optional callback when a citation is tapped (macOS selects the note in `NotesBrowserView`).
+    var onSelectNote: ((UUID) -> Void)? = nil
     @State private var askedInitial = false
+
+    private func activeConversation() -> AskConversation {
+        if let conversation { return conversation }
+        let repo = repository
+        let created = AskConversation(notes: { repo.notes })
+        conversation = created
+        return created
+    }
 
     var body: some View {
         NavigationStack {
@@ -55,7 +70,9 @@ struct AskView: View {
                     }
                     .padding()
                 }
+                #if os(iOS)
                 .scrollDismissesKeyboard(.interactively)
+                #endif
                 .onAppear {
                     if let q = initialQuestion, !askedInitial {
                         askedInitial = true
@@ -71,7 +88,9 @@ struct AskView: View {
             .safeAreaInset(edge: .bottom) { inputBar }
             .background(AppPageBackground())
             .navigationTitle("Ask Voxbrief")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
@@ -79,18 +98,22 @@ struct AskView: View {
             }
             .onDisappear {
                 currentTask?.cancel()
+                #if os(iOS)
                 dictation.cancelDictation()
+                #endif
             }
             .sheet(isPresented: $showingNotePicker) {
                 AskNotePicker(notes: Self.attachableNotes(repository.notes)) { note in
                     attached = note
                 }
             }
+            #if os(iOS)
             .alert("Ask by Voice", isPresented: Binding(get: { dictationError != nil }, set: { if !$0 { dictationError = nil } })) {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(dictationError ?? "")
             }
+            #endif
         }
     }
 
@@ -184,9 +207,15 @@ struct AskView: View {
             }
 
             Divider()
+            #if os(macOS)
+            Label("Answered on this Mac · \(CleanupEngineLabel.displayName(for: answer.engine))", systemImage: "cpu")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            #else
             Label("Answered on this iPhone · \(CleanupEngineLabel.displayName(for: answer.engine))", systemImage: "cpu")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+            #endif
         }
         .padding(14)
         .background(Color.appSecondaryBackground, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -212,15 +241,25 @@ struct AskView: View {
     private func citationChip(_ citation: AskAnswer.Citation) -> some View {
         if let note = repository.note(withId: citation.noteId) {
             HStack(spacing: 4) {
-                NavigationLink {
-                    NoteDetailView(note: note)
-                } label: {
-                    Label(citation.noteTitle, systemImage: "doc.text")
-                        .lineLimit(1)
+                if let onSelectNote {
+                    Button {
+                        onSelectNote(note.id)
+                        dismiss()
+                    } label: {
+                        Label(citation.noteTitle, systemImage: "doc.text")
+                            .lineLimit(1)
+                    }
+                } else {
+                    NavigationLink {
+                        NoteDetailView(note: note, repository: repository, playbackService: playbackService)
+                    } label: {
+                        Label(citation.noteTitle, systemImage: "doc.text")
+                            .lineLimit(1)
+                    }
                 }
                 if let time = citation.startTime, let fileName = note.audioFileName {
                     Button {
-                        AudioPlaybackService.shared.play(fileName: fileName, startingAt: time)
+                        playbackService.play(fileName: fileName, startingAt: time)
                     } label: {
                         Label(time.formattedDuration, systemImage: "play.fill")
                     }
@@ -236,7 +275,13 @@ struct AskView: View {
         }
     }
 
-    private var isListening: Bool { dictation.isActive || isStartingDictation || isFinishingDictation }
+    private var isListening: Bool {
+        #if os(iOS)
+        return dictation.isActive || isStartingDictation || isFinishingDictation
+        #else
+        return false
+        #endif
+    }
 
     private var inputBar: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -254,6 +299,7 @@ struct AskView: View {
                 .disabled(isListening)
                 .accessibilityLabel(attached == nil ? "Attach a note" : "Attach a different note")
 
+                #if os(iOS)
                 if isListening {
                     listeningText
                         .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
@@ -276,6 +322,14 @@ struct AskView: View {
                 }
                 .disabled(isAsking || isStartingDictation || isFinishingDictation)
                 .accessibilityLabel(dictation.isActive ? "Stop listening" : "Ask by voice")
+                #else
+                TextField(attached == nil ? "Ask about your notes…" : "Ask about this note…", text: $draft, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(1...4)
+                    .focused($isInputFocused)
+                    .onSubmit { send(draft) }
+                    .frame(minHeight: 28)
+                #endif
 
                 if !isListening {
                     Button {
@@ -297,6 +351,7 @@ struct AskView: View {
         .padding(.bottom, 8)
     }
 
+    #if os(iOS)
     /// What's been heard so far: confirmed words solid, the still-changing tail grey.
     private var listeningText: some View {
         Group {
@@ -317,6 +372,7 @@ struct AskView: View {
         }
         .font(.body)
     }
+    #endif
 
     private func attachmentChip(_ note: VoiceNote) -> some View {
         HStack(spacing: 6) {
@@ -341,6 +397,7 @@ struct AskView: View {
         .padding(.top, 2)
     }
 
+    #if os(iOS)
     private func toggleDictation() {
         if dictation.isActive {
             isFinishingDictation = true
@@ -367,6 +424,7 @@ struct AskView: View {
             }
         }
     }
+    #endif
 
     private func send(_ text: String) {
         let question = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -377,9 +435,10 @@ struct AskView: View {
         attached = nil
         let exchange = Exchange(question: question, attachedTitle: note.map { $0.title.isEmpty ? "Untitled note" : $0.title })
         exchanges.append(exchange)
+        let conv = activeConversation()
         currentTask = Task {
             do {
-                let answer = try await conversation.ask(question, attached: note)
+                let answer = try await conv.ask(question, attached: note)
                 update(exchange.id) { $0.answer = answer }
             } catch is CancellationError {
                 // Sheet closed.
@@ -494,13 +553,19 @@ struct AskNotePicker: View {
             }
             .searchable(text: $query, prompt: "Search notes")
             .navigationTitle("Attach a Note")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
             }
         }
+        #if os(iOS)
         .presentationDetents([.medium, .large])
+        #else
+        .frame(minWidth: 380, minHeight: 420)
+        #endif
     }
 }

@@ -26,9 +26,9 @@ public enum TranscriptionEngine: String, CaseIterable, Identifiable, Sendable {
         set { UserDefaults.standard.set(newValue.rawValue, forKey: storageKey) }
     }
 
-    /// Apple Speech needs iOS 26's SpeechAnalyzer.
+    /// Apple Speech needs iOS 26 / macOS 26's SpeechAnalyzer.
     public static var appleSpeechSupported: Bool {
-        if #available(iOS 26.0, *) { return SpeechTranscriber.isAvailable }
+        if #available(iOS 26.0, macOS 26.0, *) { return SpeechTranscriber.isAvailable }
         return false
     }
 }
@@ -52,7 +52,7 @@ public actor TranscriptionRouter: ASRServiceProtocol {
         self.engine = engine
         if let apple {
             self.apple = apple
-        } else if #available(iOS 26.0, *) {
+        } else if #available(iOS 26.0, macOS 26.0, *) {
             self.apple = AppleSpeechTranscriber.shared
         } else {
             self.apple = nil
@@ -103,7 +103,7 @@ public enum AppleSpeechError: LocalizedError, Sendable {
 /// device. The language is Settings' language, else the device's; its assets are installed by iOS
 /// the first time (`AssetInventory`). Personal-dictionary terms go in as contextual strings, the
 /// way Whisper gets them as its prompt. Each final result becomes one timed segment.
-@available(iOS 26.0, *)
+@available(iOS 26.0, macOS 26.0, *)
 public actor AppleSpeechTranscriber: ASRServiceProtocol {
     public static let shared = AppleSpeechTranscriber()
 

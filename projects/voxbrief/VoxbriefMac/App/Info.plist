@@ -22,5 +22,7 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Voxbrief uses your microphone to capture what you dictate.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>If you choose Apple Speech in Settings, Voxbrief transcribes your recordings with the speech recognition built into macOS, on this Mac.</string>
 </dict>
 </plist>

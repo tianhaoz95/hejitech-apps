@@ -17,13 +17,21 @@ struct NotesBrowserView: View {
     private let repository: NoteRepository
     private let pipeline: NoteProcessingPipeline
     private let playbackService: AudioPlaybackService
+    @ObservedObject private var meetingRecorder: MacMeetingRecorderService
 
     @State private var selectedNoteId: VoiceNote.ID?
+    @State private var showingAsk: Bool = false
 
-    init(repository: NoteRepository, pipeline: NoteProcessingPipeline, playbackService: AudioPlaybackService) {
+    init(
+        repository: NoteRepository,
+        pipeline: NoteProcessingPipeline,
+        playbackService: AudioPlaybackService,
+        meetingRecorder: MacMeetingRecorderService
+    ) {
         self.repository = repository
         self.pipeline = pipeline
         self.playbackService = playbackService
+        self.meetingRecorder = meetingRecorder
         _viewModel = StateObject(wrappedValue: NoteListViewModel(repository: repository, pipeline: pipeline))
     }
 
@@ -40,10 +48,30 @@ struct NotesBrowserView: View {
                     .background(AppPageBackground())
             }
         }
+        .sheet(isPresented: $showingAsk) {
+            AskView(playbackService: playbackService) { noteId in
+                selectedNoteId = noteId
+            }
+            .environmentObject(repository)
+            .frame(minWidth: 520, minHeight: 560)
+        }
         .sheet(item: $viewModel.mergeSourceNote) { source in
             NoteMergePickerSheet(source: source, candidates: viewModel.mergeCandidates(excluding: source)) { target in
                 viewModel.confirmMerge(source: source, into: target)
             }
+        }
+        .alert("Meeting Recording", isPresented: Binding(
+            get: { meetingRecorder.errorMessage != nil },
+            set: { if !$0 { meetingRecorder.errorMessage = nil } }
+        )) {
+            Button("Open System Settings") {
+                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(meetingRecorder.errorMessage ?? "")
         }
         .frame(minWidth: 760, minHeight: 480)
         .trackFeedbackScreen("NotesBrowser")
@@ -56,6 +84,10 @@ struct NotesBrowserView: View {
 
     private var sidebar: some View {
         VStack(spacing: 0) {
+            if meetingRecorder.isRecording {
+                meetingRecordingBanner
+            }
+
             if !viewModel.allTags.isEmpty {
                 tagFilterBar
             }
@@ -64,7 +96,7 @@ struct NotesBrowserView: View {
                 ContentUnavailableView(
                     "No Notes Yet",
                     systemImage: "waveform",
-                    description: Text("Press both ⌘ keys anywhere to capture your first note.")
+                    description: Text("Press both ⌘ keys anywhere to capture your first note, or start a meeting recording.")
                 )
             } else {
                 List(selection: $selectedNoteId) {
@@ -82,10 +114,42 @@ struct NotesBrowserView: View {
         .searchable(text: $viewModel.searchText, prompt: "Search notes, requirements, tags...")
         .toolbar {
             ToolbarItem {
+                Button {
+                    if meetingRecorder.isRecording {
+                        Task {
+                            if let noteId = await meetingRecorder.stopAndProcess() {
+                                selectedNoteId = noteId
+                            }
+                        }
+                    } else {
+                        Task { await meetingRecorder.startMeetingRecording() }
+                    }
+                } label: {
+                    Label(
+                        meetingRecorder.isRecording ? "Stop Meeting" : "Record Meeting",
+                        systemImage: meetingRecorder.isRecording ? "stop.circle.fill" : "person.2.wave.2"
+                    )
+                    .foregroundStyle(meetingRecorder.isRecording ? .red : .primary)
+                }
+                .help(meetingRecorder.isRecording ? "Stop and transcribe meeting" : "Record meeting (Mic + System Audio)")
+            }
+
+            ToolbarItem {
+                Button {
+                    showingAsk = true
+                } label: {
+                    Label("Ask Voxbrief", systemImage: "sparkles")
+                }
+                .keyboardShortcut("k", modifiers: .command)
+                .help("Ask Voxbrief (⌘K)")
+            }
+
+            ToolbarItem {
                 Menu {
                     Picker("Source Filter", selection: $viewModel.filterSource) {
                         Text("All Sources").tag(NoteSource?.none)
                         Text("Mac").tag(NoteSource?.some(.macApp))
+                        Text("Mac Meeting").tag(NoteSource?.some(.macMeeting))
                         Text("Apple Watch").tag(NoteSource?.some(.watchApp))
                         Text("Watch Complication").tag(NoteSource?.some(.watchComplication))
                         Text("Watch Live Activity").tag(NoteSource?.some(.watchLiveActivity))
@@ -111,6 +175,73 @@ struct NotesBrowserView: View {
                     Image(systemName: "gearshape")
                 }
             }
+        }
+    }
+
+    private var meetingRecordingBanner: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(meetingRecorder.isPaused ? Color.yellow : Color.red)
+                    .frame(width: 8, height: 8)
+                Text(meetingRecorder.isPaused ? "Meeting Paused" : "Recording Meeting")
+                    .font(.caption.weight(.semibold))
+                Spacer()
+                Text(meetingRecorder.recordingDuration.formattedDuration)
+                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 8) {
+                meterBar(label: "Mic", level: meetingRecorder.micLevel, color: .accentColor)
+                meterBar(label: "Sys", level: meetingRecorder.systemLevel, color: .green)
+            }
+
+            HStack(spacing: 8) {
+                Button(meetingRecorder.isPaused ? "Resume" : "Pause") {
+                    meetingRecorder.togglePause()
+                }
+                .controlSize(.small)
+
+                Button("Stop & Save") {
+                    Task {
+                        if let noteId = await meetingRecorder.stopAndProcess() {
+                            selectedNoteId = noteId
+                        }
+                    }
+                }
+                .controlSize(.small)
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+
+                Spacer()
+
+                Button("Cancel") {
+                    meetingRecorder.cancelRecording()
+                }
+                .controlSize(.small)
+                .buttonStyle(.borderless)
+            }
+        }
+        .padding(10)
+        .background(Color.red.opacity(0.08))
+        .overlay(alignment: .bottom) { Divider() }
+    }
+
+    private func meterBar(label: String, level: Float, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.secondary.opacity(0.18))
+                    Capsule()
+                        .fill(color)
+                        .frame(width: max(2, geo.size.width * CGFloat(level)))
+                }
+            }
+            .frame(height: 5)
         }
     }
 

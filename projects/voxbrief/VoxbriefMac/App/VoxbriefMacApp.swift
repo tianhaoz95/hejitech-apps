@@ -10,6 +10,7 @@ struct VoxbriefMacApp: App {
     @StateObject private var repository: NoteRepository
     @StateObject private var recorder: MacAudioRecorderService
     @StateObject private var coordinator: CaptureCoordinator
+    @StateObject private var meetingRecorder: MacMeetingRecorderService
     @StateObject private var updateChecker = UpdateChecker.shared
 
     private let pipeline: NoteProcessingPipeline
@@ -28,18 +29,36 @@ struct VoxbriefMacApp: App {
             audioFileManager: audioFileManager,
             customStorageURL: appSupportRoot.appendingPathComponent("notes_store.json")
         )
+        repository.autoExportService = AutoExportService.shared
+        CloudSyncService.shared.attach(
+            repository: repository,
+            audioFileManager: audioFileManager,
+            dictionaryStore: PersonalDictionaryStore.shared,
+            templateStore: TemplateStore.shared
+        )
+
         let recorder = MacAudioRecorderService(audioFileManager: audioFileManager)
-        let pipeline = NoteProcessingPipeline(repository: repository, audioFileManager: audioFileManager)
+        let pipeline = NoteProcessingPipeline(
+            repository: repository,
+            audioFileManager: audioFileManager,
+            speakerDetector: SpeakerDiarizationService.shared
+        )
         let coordinator = CaptureCoordinator(
             recorder: recorder,
             repository: repository,
             pipeline: pipeline,
             pasteInjector: PasteInjector()
         )
+        let meetingRecorder = MacMeetingRecorderService(
+            repository: repository,
+            pipeline: pipeline,
+            audioFileManager: audioFileManager
+        )
 
         _repository = StateObject(wrappedValue: repository)
         _recorder = StateObject(wrappedValue: recorder)
         _coordinator = StateObject(wrappedValue: coordinator)
+        _meetingRecorder = StateObject(wrappedValue: meetingRecorder)
         self.pipeline = pipeline
         self.playbackService = AudioPlaybackService(audioFileManager: audioFileManager)
         overlayController = OverlayWindowController(coordinator: coordinator, recorder: recorder)
@@ -70,14 +89,31 @@ struct VoxbriefMacApp: App {
 
     var body: some Scene {
         MenuBarExtra("Voxbrief", systemImage: menuBarSymbolName) {
-            MenuBarContentView(accessibility: accessibility, coordinator: coordinator, hotkeyManager: hotkeyManager, updateChecker: updateChecker)
+            MenuBarContentView(
+                accessibility: accessibility,
+                coordinator: coordinator,
+                meetingRecorder: meetingRecorder,
+                hotkeyManager: hotkeyManager,
+                updateChecker: updateChecker
+            )
         }
         .menuBarExtraStyle(.menu)
 
         Window("Voxbrief Notes", id: "notes") {
-            NotesBrowserView(repository: repository, pipeline: pipeline, playbackService: playbackService)
-                .environmentObject(coordinator)
-                .environmentObject(recorder)
+            NotesBrowserView(
+                repository: repository,
+                pipeline: pipeline,
+                playbackService: playbackService,
+                meetingRecorder: meetingRecorder
+            )
+            .environmentObject(coordinator)
+            .environmentObject(recorder)
+        }
+
+        Window("Ask Voxbrief", id: "ask") {
+            AskView(playbackService: playbackService)
+                .environmentObject(repository)
+                .frame(minWidth: 520, minHeight: 560)
         }
 
         Window("Personal Dictionary", id: "dictionary") {
@@ -88,11 +124,14 @@ struct VoxbriefMacApp: App {
         }
 
         Settings {
-            PreferencesView(accessibility: accessibility)
+            PreferencesView(accessibility: accessibility, repository: repository)
         }
     }
 
     private var menuBarSymbolName: String {
+        if meetingRecorder.isRecording {
+            return meetingRecorder.isPaused ? "pause.circle.fill" : "record.circle.fill"
+        }
         switch coordinator.state {
         case .idle: return "waveform"
         case .listening: return "waveform.circle.fill"
@@ -110,6 +149,7 @@ struct VoxbriefMacApp: App {
 private struct MenuBarContentView: View {
     @ObservedObject var accessibility: AccessibilityPermissionManager
     @ObservedObject var coordinator: CaptureCoordinator
+    @ObservedObject var meetingRecorder: MacMeetingRecorderService
     let hotkeyManager: GlobalHotkeyManager
     @ObservedObject var updateChecker: UpdateChecker
 
@@ -120,13 +160,44 @@ private struct MenuBarContentView: View {
         Group {
             if accessibility.isTrusted {
                 Text("Press both ⌘ keys to capture")
-                Button("Open Notes…") { openWindow(id: "notes") }
             } else {
                 Button("Grant Accessibility Access…") {
                     accessibility.requestAccessOrOpenSettings()
                 }
                 Text("Required for the global hotkey and paste.")
             }
+
+            Divider()
+
+            if meetingRecorder.isRecording {
+                Text("Meeting Recording · \(meetingRecorder.recordingDuration.formattedDuration)")
+                Button(meetingRecorder.isPaused ? "Resume Meeting Recording" : "Pause Meeting Recording") {
+                    meetingRecorder.togglePause()
+                }
+                Button("Stop & Save Meeting") {
+                    Task {
+                        _ = await meetingRecorder.stopAndProcess()
+                        openWindow(id: "notes")
+                    }
+                }
+                Button("Cancel Meeting Recording") {
+                    meetingRecorder.cancelRecording()
+                }
+            } else {
+                Button("Record Meeting (Mic + System Audio)") {
+                    Task {
+                        await meetingRecorder.startMeetingRecording()
+                        if meetingRecorder.errorMessage != nil {
+                            openWindow(id: "notes")
+                        }
+                    }
+                }
+            }
+
+            Divider()
+
+            Button("Open Notes…") { openWindow(id: "notes") }
+            Button("Ask Voxbrief…") { openWindow(id: "ask") }
 
             if case .updateAvailable(let update) = updateChecker.state {
                 Divider()

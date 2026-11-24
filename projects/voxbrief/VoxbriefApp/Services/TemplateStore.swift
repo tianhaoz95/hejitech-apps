@@ -21,6 +21,10 @@ public final class TemplateStore: ObservableObject {
     /// LLM is told to avoid it.
     @Published public private(set) var disabledTemplateIDs: Set<UUID> = []
 
+    /// Fired after local custom-template mutations for iCloud sync.
+    public var onTemplateSaved: ((NoteTemplate) -> Void)?
+    public var onTemplateDeleted: ((UUID) -> Void)?
+
     private let storageURL: URL
 
     public init(customStorageURL: URL? = nil) {
@@ -91,6 +95,7 @@ public final class TemplateStore: ObservableObject {
         )
         customTemplates.append(template)
         sortAndPersist()
+        onTemplateSaved?(template)
         return template
     }
 
@@ -110,10 +115,28 @@ public final class TemplateStore: ObservableObject {
         updated.sections = rebuiltSections
         customTemplates[index] = updated
         sortAndPersist()
+        onTemplateSaved?(updated)
     }
 
     /// No-ops for a built-in template's ID -- there's nothing in `customTemplates` to remove.
     public func delete(id: UUID) {
+        customTemplates.removeAll { $0.id == id }
+        disabledTemplateIDs.remove(id)
+        persist()
+        onTemplateDeleted?(id)
+    }
+
+    public func applyRemoteTemplate(_ template: NoteTemplate) {
+        guard !template.isBuiltIn else { return }
+        if let index = customTemplates.firstIndex(where: { $0.id == template.id }) {
+            customTemplates[index] = template
+        } else {
+            customTemplates.append(template)
+        }
+        sortAndPersist()
+    }
+
+    public func removeRemoteTemplate(id: UUID) {
         customTemplates.removeAll { $0.id == id }
         disabledTemplateIDs.remove(id)
         persist()

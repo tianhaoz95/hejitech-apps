@@ -6,7 +6,7 @@ import SwiftUI
 final class WhatsNewViewTests: XCTestCase {
 
     func testCurrentVersionMatchesReleases() {
-        XCTAssertEqual(WhatsNewView.currentVersion, "1.38.1")
+        XCTAssertEqual(WhatsNewView.currentVersion, "1.39.0")
         let latest = WhatsNewView.releases.first
         XCTAssertNotNil(latest)
         XCTAssertEqual(latest?.version, WhatsNewView.currentVersion)
@@ -14,9 +14,13 @@ final class WhatsNewViewTests: XCTestCase {
 
     func testCurrentReleaseContent() {
         let current = WhatsNewView.releases.first
-        XCTAssertEqual(current?.version, "1.38.1")
-        XCTAssertEqual(current?.features.count, 0)
-        XCTAssertEqual(current?.improvementsAndFixes.filter { $0.kind == .fix }.count, 1)
+        XCTAssertEqual(current?.version, "1.39.0")
+        XCTAssertEqual(current?.features.count, 4)
+        XCTAssertEqual(current?.improvementsAndFixes.count, 0)
+
+        let onTopic = WhatsNewView.releases.first { $0.version == "1.38.1" }
+        XCTAssertEqual(onTopic?.features.count, 0)
+        XCTAssertEqual(onTopic?.improvementsAndFixes.filter { $0.kind == .fix }.count, 1)
 
         let days = WhatsNewView.releases.first { $0.version == "1.38.0" }
         XCTAssertEqual(days?.features.count, 3)

@@ -97,7 +97,7 @@ public struct ReleaseHistoryItem: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "1.38.1"
+    public static let currentVersion = "1.39.0"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static var shouldShowAutomatically: Bool {
@@ -106,6 +106,57 @@ public struct WhatsNewView: View {
     }
 
     public static let releases: [ReleaseHistoryItem] = [
+        ReleaseHistoryItem(
+            version: "1.39.0",
+            date: "November 2026",
+            tagline: "Bot-Free Mac Meetings, iCloud Sync & Auto-Export",
+            features: [
+                WhatsNewItem(
+                    icon: "person.2.wave.2",
+                    tint: .red,
+                    title: "Bot-Free Meeting Capture on Mac",
+                    description: "Record system audio and your microphone together on Mac from the menu bar or Notes window, with on-device speaker detection and conversation reports — no meeting bot required.",
+                    highlights: [
+                        "Captures Zoom, Meet, Teams, FaceTime, or browser audio alongside your mic",
+                        "Live mic & system audio meters with Pause and Stop controls",
+                        "On-device speaker detection produces speaker turns and a conversation report"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "icloud",
+                    tint: .blue,
+                    title: "Private iCloud Sync",
+                    description: "Opt in from Settings to sync your notes, personal dictionary, and custom templates between iPhone and Mac through your own private iCloud account, with optional audio file sync.",
+                    highlights: [
+                        "Syncs notes, personal dictionary terms, and custom templates",
+                        "Optional audio file sync toggle to manage iCloud storage",
+                        "End-to-end private in your iCloud account — still zero Voxbrief servers"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "sparkles",
+                    tint: .purple,
+                    title: "Ask Voxbrief & Apple Speech on Mac",
+                    description: "Press ⌘K in the Mac Notes window or choose Ask Voxbrief from the menu bar to chat with your notes on-device, and optionally pick Apple Speech as your Mac transcription engine.",
+                    highlights: [
+                        "Ask Voxbrief searches notes, dates, and open to-dos right on your Mac",
+                        "Click any citation chip to jump straight to that note or play its audio",
+                        "Apple Speech joins Whisper in Mac Settings on macOS 26+"
+                    ]
+                ),
+                WhatsNewItem(
+                    icon: "folder.badge.plus",
+                    tint: .green,
+                    title: "Auto-Export to a Markdown Folder",
+                    description: "Pick an Obsidian vault on Mac or an iCloud Drive folder on iPhone and Voxbrief automatically writes and updates YAML-frontmatter Markdown files as notes finish processing.",
+                    highlights: [
+                        "Works with Obsidian, Logseq, and any plain-Markdown workflow",
+                        "Updates filenames cleanly on rename and removes files when deleted or locked",
+                        "Includes one-tap Export All Notes Now to backfill existing notes"
+                    ]
+                )
+            ]
+        ),
         ReleaseHistoryItem(
             version: "1.38.1",
             date: "November 2026",

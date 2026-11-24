@@ -7,6 +7,14 @@ public final class NoteRepository: ObservableObject {
 
     @Published public private(set) var notes: [VoiceNote] = []
 
+    /// Fired after any local note creation or mutation (used by `AutoExportService` and
+    /// `CloudSyncService`). Not invoked by `applyRemoteNote` so remote sync never loops.
+    public var onNoteSaved: ((VoiceNote) -> Void)?
+    /// Fired after a local note deletion. Not invoked by `removeRemoteNote`.
+    public var onNoteDeleted: ((UUID) -> Void)?
+    /// Optional auto-export hook fired for both local and remote note updates/deletions.
+    public var autoExportService: AutoExportService?
+
     private let storageURL: URL
     private let audioFileManager: AudioFileManager
     private let persistenceWriter = NotePersistenceWriter()
@@ -33,12 +41,57 @@ public final class NoteRepository: ObservableObject {
     // MARK: - CRUD Operations
     
     public func save(_ note: VoiceNote) {
+        var stamped = note
+        stamped.modifiedAt = Date()
+        if let index = notes.firstIndex(where: { $0.id == stamped.id }) {
+            notes[index] = stamped
+        } else {
+            notes.insert(stamped, at: 0)
+        }
+        persistNotes()
+        notifyLocalSave(stamped)
+    }
+
+    /// Applies a note fetched from iCloud without re-stamping `modifiedAt` or triggering
+    /// `onNoteSaved` (which would echo it back to iCloud).
+    public func applyRemoteNote(_ note: VoiceNote) {
         if let index = notes.firstIndex(where: { $0.id == note.id }) {
             notes[index] = note
         } else {
-            notes.insert(note, at: 0)
+            notes.append(note)
+            notes.sort(by: { $0.createdAt > $1.createdAt })
         }
         persistNotes()
+        autoExportService?.syncNote(note)
+    }
+
+    /// Applies a remote iCloud deletion without echoing back to `onNoteDeleted`.
+    public func removeRemoteNote(id: UUID) {
+        guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        let note = notes[index]
+        var fileNames = Set(note.segments.map(\.audioFileName))
+        if let audioFileName = note.audioFileName {
+            fileNames.insert(audioFileName)
+        }
+        for fileName in fileNames where !fileName.isEmpty {
+            audioFileManager.deleteAudioFile(fileName: fileName)
+        }
+        notes.remove(at: index)
+        persistNotes()
+        autoExportService?.removeExportedFile(forNoteId: id)
+    }
+
+    private func notifyLocalSave(_ note: VoiceNote) {
+        onNoteSaved?(note)
+        autoExportService?.syncNote(note)
+    }
+
+    private func mutateNote(at index: Int, _ transform: (inout VoiceNote) -> Void) {
+        transform(&notes[index])
+        notes[index].modifiedAt = Date()
+        let updated = notes[index]
+        persistNotes()
+        notifyLocalSave(updated)
     }
     
     public func updateStatus(for noteId: UUID, status: NoteProcessingStatus, errorMessage: String? = nil) {
@@ -47,6 +100,7 @@ public final class NoteRepository: ObservableObject {
         if let errorMessage = errorMessage {
             notes[index].errorMessage = errorMessage
         }
+        notes[index].modifiedAt = Date()
         persistNotes()
     }
     
@@ -62,6 +116,8 @@ public final class NoteRepository: ObservableObject {
             }
             notes.remove(at: index)
             persistNotes()
+            onNoteDeleted?(id)
+            autoExportService?.removeExportedFile(forNoteId: id)
         }
     }
 
@@ -72,49 +128,44 @@ public final class NoteRepository: ObservableObject {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
         notes.remove(at: index)
         persistNotes()
+        onNoteDeleted?(id)
+        autoExportService?.removeExportedFile(forNoteId: id)
     }
     
     public func toggleFavorite(id: UUID) {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
-        notes[index].isFavorite.toggle()
-        persistNotes()
+        mutateNote(at: index) { $0.isFavorite.toggle() }
     }
 
     public func togglePinned(id: UUID) {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
-        notes[index].isPinned.toggle()
-        persistNotes()
+        mutateNote(at: index) { $0.isPinned.toggle() }
     }
 
     public func toggleArchived(id: UUID) {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
-        notes[index].isArchived.toggle()
-        persistNotes()
+        mutateNote(at: index) { $0.isArchived.toggle() }
     }
 
     public func setColorTag(id: UUID, colorTag: String?) {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
-        notes[index].colorTag = colorTag
-        persistNotes()
+        mutateNote(at: index) { $0.colorTag = colorTag }
     }
 
     public func toggleLocked(id: UUID) {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
-        notes[index].isLocked.toggle()
-        persistNotes()
+        mutateNote(at: index) { $0.isLocked.toggle() }
     }
 
     public func updateTitle(id: UUID, title: String) {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        notes[index].title = trimmed.isEmpty ? "Untitled Note" : trimmed
-        persistNotes()
+        mutateNote(at: index) { $0.title = trimmed.isEmpty ? "Untitled Note" : trimmed }
     }
 
     public func updateCleanedNote(id: UUID, cleanedNote: String) {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
-        notes[index].cleanedNote = cleanedNote
-        persistNotes()
+        mutateNote(at: index) { $0.cleanedNote = cleanedNote }
     }
 
     public func addTag(id: UUID, tag: String) {
@@ -123,15 +174,13 @@ public final class NoteRepository: ObservableObject {
         guard !cleanTag.isEmpty else { return }
         let formattedTag = cleanTag.hasPrefix("#") ? cleanTag : "#\(cleanTag)"
         if !notes[index].tags.contains(formattedTag) {
-            notes[index].tags.append(formattedTag)
-            persistNotes()
+            mutateNote(at: index) { $0.tags.append(formattedTag) }
         }
     }
 
     public func removeTag(id: UUID, tag: String) {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
-        notes[index].tags.removeAll(where: { $0 == tag })
-        persistNotes()
+        mutateNote(at: index) { $0.tags.removeAll(where: { $0 == tag }) }
     }
 
     @discardableResult

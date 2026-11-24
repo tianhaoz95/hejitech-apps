@@ -7,6 +7,8 @@ public enum NoteSource: String, Codable, CaseIterable, Sendable {
     case watchApp = "watch_app"
     case phoneApp = "phone_app"
     case macApp = "mac_app"
+    /// A Mac meeting capture recording both system audio and the local microphone.
+    case macMeeting = "mac_meeting"
     /// A file shared or imported into Voxbrief (share sheet, Files), not recorded by it.
     case imported = "imported"
 
@@ -24,6 +26,7 @@ public enum NoteSource: String, Codable, CaseIterable, Sendable {
         case .watchApp: return "Apple Watch"
         case .phoneApp: return "iPhone"
         case .macApp: return "Mac"
+        case .macMeeting: return "Mac Meeting"
         case .imported: return "Imported"
         }
     }
@@ -35,6 +38,7 @@ public enum NoteSource: String, Codable, CaseIterable, Sendable {
         case .watchApp: return "applewatch"
         case .phoneApp: return "iphone"
         case .macApp: return "macbook"
+        case .macMeeting: return "person.2.wave.2"
         case .imported: return "square.and.arrow.down"
         }
     }
@@ -249,6 +253,9 @@ public struct ProcessingTiming: Codable, Hashable, Sendable {
 public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     public let id: UUID
     public var createdAt: Date
+    /// Last modification timestamp for conflict resolution during iCloud sync; defaults to `createdAt`
+    /// for notes persisted before this field existed.
+    public var modifiedAt: Date
     public var duration: TimeInterval
     public var audioFileName: String?
 
@@ -348,6 +355,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     public init(
         id: UUID = UUID(),
         createdAt: Date = Date(),
+        modifiedAt: Date? = nil,
         duration: TimeInterval = 0,
         audioFileName: String? = nil,
         segments: [NoteSegment] = [],
@@ -380,6 +388,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
     ) {
         self.id = id
         self.createdAt = createdAt
+        self.modifiedAt = modifiedAt ?? createdAt
         self.duration = duration
         self.audioFileName = audioFileName
         self.segments = segments
@@ -418,6 +427,7 @@ public struct VoiceNote: Identifiable, Codable, Hashable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
+        modifiedAt = try container.decodeIfPresent(Date.self, forKey: .modifiedAt) ?? createdAt
         duration = try container.decode(TimeInterval.self, forKey: .duration)
         audioFileName = try container.decodeIfPresent(String.self, forKey: .audioFileName)
         segments = try container.decodeIfPresent([NoteSegment].self, forKey: .segments) ?? []

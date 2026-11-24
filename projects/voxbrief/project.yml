@@ -98,6 +98,10 @@ targets:
       properties:
         com.apple.security.application-groups:
           - group.com.jacksonzhou666.voxbrief
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.jacksonzhou666.voxbrief
+        com.apple.developer.icloud-services:
+          - CloudKit
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.app
       TARGETED_DEVICE_FAMILY: "1,2"
@@ -126,6 +130,7 @@ targets:
       - framework: ActivityKit.framework
       - framework: EventKit.framework
       - framework: AppIntents.framework
+      - framework: CloudKit.framework
     scheme:
       testTargets:
         - VoxbriefTests
@@ -276,6 +281,12 @@ targets:
       # Reused as-is from the iOS app: plain Foundation/WhisperKit/MLX, no UIKit or AVAudioSession,
       # and already take their dependencies via injectable init params -- see CLAUDE.md.
       - path: VoxbriefApp/Services/ASRService.swift
+      - path: VoxbriefApp/Services/AppleSpeechTranscriber.swift
+      - path: VoxbriefApp/Services/SpeakerDiarizationService.swift
+      - path: VoxbriefApp/Services/NoteSearchIndex.swift
+      - path: VoxbriefApp/Services/AskService.swift
+      - path: VoxbriefApp/Services/AutoExportService.swift
+      - path: VoxbriefApp/Services/CloudSyncService.swift
       - path: VoxbriefApp/Services/LLMCopywriterService.swift
       - path: VoxbriefApp/Services/AppleFoundationModelService.swift
       - path: VoxbriefApp/Services/OnDeviceLLMService.swift
@@ -317,6 +328,7 @@ targets:
       - path: VoxbriefApp/Views/WhatsNewView.swift
       - path: VoxbriefApp/Views/TemplateDetailView.swift
       - path: VoxbriefApp/Views/TemplateChoiceMenu.swift
+      - path: VoxbriefApp/Views/AskView.swift
       - path: VoxbriefApp/Resources/Models/Qwen3-0.6B-4bit
         type: folder
         buildPhase: resources
@@ -324,6 +336,7 @@ targets:
       path: VoxbriefMac/App/Info.plist
       properties:
         NSMicrophoneUsageDescription: "Voxbrief uses your microphone to capture what you dictate."
+        NSSpeechRecognitionUsageDescription: "If you choose Apple Speech in Settings, Voxbrief transcribes your recordings with the speech recognition built into macOS, on this Mac."
         LSUIElement: true
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
@@ -345,12 +358,18 @@ targets:
       # since the OS never actually asks.
       properties:
         com.apple.security.device.audio-input: true
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.jacksonzhou666.voxbrief
+        com.apple.developer.icloud-services:
+          - CloudKit
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.jacksonzhou666.voxbrief.mac
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - package: ArgmaxOSS
         product: WhisperKit
+      - package: ArgmaxOSS
+        product: SpeakerKit
       - package: MLXSwiftExamples
         product: MLXLLM
       - package: MLXSwiftExamples
@@ -365,6 +384,8 @@ targets:
       - framework: ApplicationServices.framework
       - framework: CoreGraphics.framework
       - framework: EventKit.framework
+      - framework: ScreenCaptureKit.framework
+      - framework: CloudKit.framework
 
   VoxbriefMacTests:
     type: bundle.unit-test

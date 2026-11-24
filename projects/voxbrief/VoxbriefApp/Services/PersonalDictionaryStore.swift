@@ -9,6 +9,10 @@ public final class PersonalDictionaryStore: ObservableObject {
 
     @Published public private(set) var entries: [DictionaryEntry] = []
 
+    /// Fired after local mutations for iCloud sync (not fired by `applyRemoteEntry`/`removeRemoteEntry`).
+    public var onEntrySaved: ((DictionaryEntry) -> Void)?
+    public var onEntryDeleted: ((UUID) -> Void)?
+
     private let storageURL: URL
 
     public init(customStorageURL: URL? = nil) {
@@ -37,6 +41,7 @@ public final class PersonalDictionaryStore: ObservableObject {
         let entry = DictionaryEntry(term: trimmedTerm, aliases: cleanedAliases, contextHint: Self.cleanedHint(contextHint))
         entries.append(entry)
         sortAndPersist()
+        onEntrySaved?(entry)
         return entry
     }
 
@@ -51,6 +56,7 @@ public final class PersonalDictionaryStore: ObservableObject {
         guard !updated.term.isEmpty else { return }
         entries[index] = updated
         sortAndPersist()
+        onEntrySaved?(updated)
     }
 
     /// Trims whitespace and collapses an all-blank hint to `nil`, so an empty text field never
@@ -63,10 +69,27 @@ public final class PersonalDictionaryStore: ObservableObject {
     public func delete(id: UUID) {
         entries.removeAll { $0.id == id }
         persist()
+        onEntryDeleted?(id)
     }
 
     public func delete(at offsets: IndexSet) {
+        let removedIds = offsets.map { entries[$0].id }
         entries.remove(atOffsets: offsets)
+        persist()
+        for id in removedIds { onEntryDeleted?(id) }
+    }
+
+    public func applyRemoteEntry(_ entry: DictionaryEntry) {
+        if let index = entries.firstIndex(where: { $0.id == entry.id }) {
+            entries[index] = entry
+        } else {
+            entries.append(entry)
+        }
+        sortAndPersist()
+    }
+
+    public func removeRemoteEntry(id: UUID) {
+        entries.removeAll { $0.id == id }
         persist()
     }
 

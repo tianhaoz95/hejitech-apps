@@ -12,6 +12,13 @@ struct VoxbriefApp: App {
 
     init() {
         BackgroundProcessingManager.shared.install()
+        NoteRepository.shared.autoExportService = AutoExportService.shared
+        CloudSyncService.shared.attach(
+            repository: NoteRepository.shared,
+            audioFileManager: AudioFileManager.shared,
+            dictionaryStore: PersonalDictionaryStore.shared,
+            templateStore: TemplateStore.shared
+        )
 
         #if canImport(FeedbackKit)
         FeedbackKit.configure(.init(

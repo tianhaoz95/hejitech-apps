@@ -1,3 +1,4 @@
+import AppKit
 import ServiceManagement
 import SwiftUI
 
@@ -8,6 +9,8 @@ struct PreferencesView: View {
     @AppStorage("use_local_llm_endpoint") private var useLocalLLM: Bool = false
     @AppStorage("local_llm_endpoint_url") private var localLLMUrl: String = "http://127.0.0.1:11434/api/generate"
     @AppStorage(LLMCopywriterService.localLLMModelNameKey) private var localLLMModel: String = LLMCopywriterService.defaultLocalLLMModelName
+    @AppStorage(ASRService.languageStorageKey) private var asrLanguage: String = "auto"
+    @AppStorage(TranscriptionEngine.storageKey) private var transcriptionEngine: String = TranscriptionEngine.whisper.rawValue
     @AppStorage("launch_at_login") private var launchAtLoginStored: Bool = false
     @AppStorage("auto_check_for_updates") private var autoCheckForUpdates: Bool = true
     @AppStorage(NoteProcessingPipeline.defaultTemplateChoiceKey) private var defaultTemplateChoice: TemplateChoice = .none
@@ -22,12 +25,17 @@ struct PreferencesView: View {
     }
 
     @ObservedObject var accessibility: AccessibilityPermissionManager
+    let repository: NoteRepository
     @StateObject private var microphone = MicrophonePermissionManager.shared
     @StateObject private var llmService = OnDeviceLLMService.shared
     @StateObject private var dictionaryStore = PersonalDictionaryStore.shared
     @StateObject private var updateChecker = UpdateChecker.shared
     @StateObject private var shortcutStore = FeedbackShortcutStore.shared
     @StateObject private var captureShortcutStore = CaptureShortcutStore.shared
+    @StateObject private var cloudSync = CloudSyncService.shared
+    @StateObject private var autoExport = AutoExportService.shared
+    @State private var appleSpeechStatus: String?
+    @State private var exportStatusMessage: String?
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openURL) private var openURL
 
@@ -93,6 +101,37 @@ struct PreferencesView: View {
                     isGranted: accessibility.isTrusted,
                     onFix: accessibility.isTrusted ? nil : { accessibility.requestAccessOrOpenSettings() }
                 )
+            }
+
+            Section {
+                Picker("Engine", selection: Binding(get: { transcriptionEngine }, set: { pickEngine($0) })) {
+                    ForEach(TranscriptionEngine.allCases) { engine in
+                        Text(engine.displayName).tag(engine.rawValue)
+                    }
+                }
+                if let appleSpeechStatus {
+                    Text(appleSpeechStatus)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Picker("Dictation Language", selection: $asrLanguage) {
+                    Text("Auto-detect / English").tag("auto")
+                    Text("English (en)").tag("en")
+                    Text("Spanish (es)").tag("es")
+                    Text("French (fr)").tag("fr")
+                    Text("German (de)").tag("de")
+                    Text("Italian (it)").tag("it")
+                    Text("Portuguese (pt)").tag("pt")
+                    Text("Chinese (zh)").tag("zh")
+                    Text("Japanese (ja)").tag("ja")
+                    Text("Korean (ko)").tag("ko")
+                }
+            } header: {
+                Text("Stage 1: Speech-to-Text (ASR)")
+            } footer: {
+                Text(transcriptionEngine == TranscriptionEngine.appleSpeech.rawValue
+                    ? "Apple Speech runs on this Mac using macOS's built-in speech recognizer. If it can't transcribe a recording, Whisper is used automatically."
+                    : "WhisperKit runs completely on-device. Apple Speech is also available on macOS 26 and later.")
             }
 
             Section {
@@ -213,6 +252,69 @@ struct PreferencesView: View {
                     }
                 }
                 .buttonStyle(.plain)
+            }
+
+            Section {
+                Toggle("Sync with iCloud", isOn: $cloudSync.isEnabled)
+                if cloudSync.isEnabled {
+                    Toggle("Include Audio Files", isOn: $cloudSync.syncAudioFiles)
+                    LabeledContent("Status") {
+                        Text(cloudSync.status.displayText)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let last = cloudSync.lastSyncedAt {
+                        LabeledContent("Last Synced") {
+                            Text(last.formatted(date: .abbreviated, time: .shortened))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Button("Sync Now") {
+                        cloudSync.syncNow()
+                    }
+                }
+            } header: {
+                Text("iCloud Sync")
+            } footer: {
+                Text("Privately syncs your notes, personal dictionary, and custom templates between your iPhone and Mac through your own iCloud account. No Voxbrief server is ever used.")
+            }
+
+            Section {
+                Toggle("Auto-Export Markdown Files", isOn: $autoExport.isEnabled)
+                    .disabled(!autoExport.hasFolder)
+
+                LabeledContent("Folder") {
+                    HStack(spacing: 8) {
+                        Text(autoExport.folderDisplayName ?? "Not Selected")
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Button(autoExport.hasFolder ? "Change…" : "Choose Folder…") {
+                            chooseAutoExportFolder()
+                        }
+                    }
+                }
+
+                if autoExport.hasFolder {
+                    HStack(spacing: 10) {
+                        Button("Export All Notes Now") {
+                            let count = autoExport.exportAll(repository.notes)
+                            exportStatusMessage = "Exported \(count) note\(count == 1 ? "" : "s")."
+                        }
+                        Button("Clear Folder", role: .destructive) {
+                            autoExport.clearFolder()
+                            exportStatusMessage = nil
+                        }
+                    }
+                }
+
+                if let msg = exportStatusMessage ?? autoExport.lastError {
+                    Text(msg)
+                        .font(.caption)
+                        .foregroundStyle(autoExport.lastError != nil ? .red : .secondary)
+                }
+            } header: {
+                Text("Auto-Export Folder (Obsidian / Markdown)")
+            } footer: {
+                Text("Automatically writes and updates a Markdown file with YAML frontmatter whenever a note finishes processing or is edited. Locked notes are never exported.")
             }
 
 
@@ -396,6 +498,44 @@ struct PreferencesView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    private func pickEngine(_ raw: String) {
+        guard raw == TranscriptionEngine.appleSpeech.rawValue else {
+            transcriptionEngine = raw
+            appleSpeechStatus = nil
+            return
+        }
+        guard #available(macOS 26.0, *), TranscriptionEngine.appleSpeechSupported else {
+            appleSpeechStatus = "Apple Speech needs macOS 26 or later."
+            return
+        }
+        appleSpeechStatus = "Getting Apple Speech ready…"
+        Task {
+            do {
+                try await AppleSpeechTranscriber.prepareAssets()
+                transcriptionEngine = raw
+                appleSpeechStatus = "Apple Speech is ready."
+            } catch {
+                appleSpeechStatus = "Apple Speech couldn't be set up: \(error.localizedDescription) Whisper stays on."
+            }
+        }
+    }
+
+    private func chooseAutoExportFolder() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose Markdown Export Folder"
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try autoExport.setFolder(url)
+            exportStatusMessage = "Export folder set to \(url.lastPathComponent)."
+        } catch {
+            exportStatusMessage = "Couldn't set folder: \(error.localizedDescription)"
         }
     }
 }

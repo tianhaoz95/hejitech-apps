@@ -8,11 +8,7 @@ public protocol SpeakerDetecting: Sendable {
 
 @MainActor
 public final class NoteProcessingPipeline: ObservableObject {
-    #if os(iOS)
     public static let shared = NoteProcessingPipeline(speakerDetector: SpeakerDiarizationService.shared)
-    #else
-    public static let shared = NoteProcessingPipeline()
-    #endif
     
     private let asrService: ASRServiceProtocol
     private let llmService: LLMCopywriterServiceProtocol
@@ -71,14 +67,10 @@ public final class NoteProcessingPipeline: ObservableObject {
     /// the system withholding the GPU, and it runs fine once the app is back.
     public static var isAppInBackground: @MainActor () -> Bool = { false }
 
-    /// Stage 1 on iPhone goes through the engine picked in Settings (Whisper by default, or Apple
-    /// Speech, `TranscriptionRouter`); the Mac app transcribes with Whisper.
+    /// Stage 1 goes through the engine picked in Settings/Preferences (Whisper by default, or
+    /// Apple Speech via `TranscriptionRouter` on iOS 26+ / macOS 26+).
     public nonisolated static var defaultASR: ASRServiceProtocol {
-        #if os(iOS)
-        return TranscriptionRouter.shared
-        #else
-        return ASRService.shared
-        #endif
+        TranscriptionRouter.shared
     }
 
     public init(

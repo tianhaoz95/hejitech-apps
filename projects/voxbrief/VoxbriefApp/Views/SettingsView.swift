@@ -27,6 +27,8 @@ public struct SettingsView: View {
         return options
     }
     @StateObject private var watchSync = WatchSyncService.shared
+    @StateObject private var cloudSync = CloudSyncService.shared
+    @StateObject private var autoExport = AutoExportService.shared
     @State private var showingSimulationAlert = false
     @State private var simulatedTitle = ""
     @State private var storageUsage: AudioFileManager.StorageUsage = AudioFileManager.shared.calculateStorageUsage()
@@ -34,6 +36,8 @@ public struct SettingsView: View {
     @State private var purgeResult = ""
     @State private var showingWhatsNew = false
     @State private var showingFileImporter = false
+    @State private var showingAutoExportFolderPicker = false
+    @State private var autoExportStatusMessage: String?
     @State private var showingBackupAlert = false
     @State private var backupAlertMessage = ""
 
@@ -430,6 +434,79 @@ public struct SettingsView: View {
                 }
 
                 Section(
+                    header: Text("iCloud Sync"),
+                    footer: Text("Privately syncs your notes, personal dictionary, and custom templates between your iPhone and Mac using your own iCloud account. No Voxbrief server is ever used.")
+                ) {
+                    Toggle("Sync with iCloud", isOn: $cloudSync.isEnabled)
+                    if cloudSync.isEnabled {
+                        Toggle("Include Audio Files", isOn: $cloudSync.syncAudioFiles)
+                        HStack {
+                            Text("Status")
+                            Spacer()
+                            Text(cloudSync.status.displayText)
+                                .foregroundColor(.secondary)
+                        }
+                        if let last = cloudSync.lastSyncedAt {
+                            HStack {
+                                Text("Last Synced")
+                                Spacer()
+                                Text(last.formatted(date: .abbreviated, time: .shortened))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        Button {
+                            cloudSync.syncNow()
+                        } label: {
+                            Label("Sync Now", systemImage: "icloud.and.arrow.up")
+                        }
+                    }
+                }
+
+                Section(
+                    header: Text("Auto-Export Folder (Obsidian / Markdown)"),
+                    footer: Text("Pick a folder in Files or iCloud Drive to automatically write and update a Markdown file with YAML frontmatter whenever a note finishes processing or is edited. Locked notes are never exported.")
+                ) {
+                    Toggle("Auto-Export Markdown Files", isOn: $autoExport.isEnabled)
+                        .disabled(!autoExport.hasFolder)
+
+                    Button {
+                        showingAutoExportFolderPicker = true
+                    } label: {
+                        HStack {
+                            Label(autoExport.hasFolder ? "Change Export Folder" : "Choose Export Folder", systemImage: "folder.badge.plus")
+                            Spacer()
+                            if let name = autoExport.folderDisplayName {
+                                Text(name)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+
+                    if autoExport.hasFolder {
+                        Button {
+                            let count = autoExport.exportAll(NoteRepository.shared.notes)
+                            autoExportStatusMessage = "Exported \(count) note\(count == 1 ? "" : "s")."
+                        } label: {
+                            Label("Export All Notes Now", systemImage: "doc.on.doc")
+                        }
+
+                        Button(role: .destructive) {
+                            autoExport.clearFolder()
+                            autoExportStatusMessage = nil
+                        } label: {
+                            Label("Clear Export Folder", systemImage: "folder.badge.minus")
+                        }
+                    }
+
+                    if let msg = autoExportStatusMessage ?? autoExport.lastError {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundColor(autoExport.lastError != nil ? .red : .secondary)
+                    }
+                }
+
+                Section(
                     header: Text("Data Management & Backups"),
                     footer: Text("Export your entire note library to a portable JSON backup file, or restore previously exported notes.")
                 ) {
@@ -491,6 +568,24 @@ public struct SettingsView: View {
             }
             .sheet(isPresented: $showingWhatsNew) {
                 WhatsNewView()
+            }
+            .fileImporter(
+                isPresented: $showingAutoExportFolderPicker,
+                allowedContentTypes: [.folder],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    guard let folderURL = urls.first else { return }
+                    do {
+                        try autoExport.setFolder(folderURL)
+                        autoExportStatusMessage = "Export folder set to \(folderURL.lastPathComponent)."
+                    } catch {
+                        autoExportStatusMessage = "Couldn't set folder: \(error.localizedDescription)"
+                    }
+                case .failure(let error):
+                    autoExportStatusMessage = "Folder selection failed: \(error.localizedDescription)"
+                }
             }
             .fileImporter(
                 isPresented: $showingFileImporter,
