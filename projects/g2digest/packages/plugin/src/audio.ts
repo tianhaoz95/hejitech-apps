@@ -8,12 +8,22 @@ export class HtmlAudio implements AudioOut {
   readonly el: HTMLAudioElement;
   private ended: (() => void) | null = null;
   private objectUrl: string | null = null;
+  private rate = 1;
+  private timeListeners = new Set<(cur: number, dur: number, active: boolean) => void>();
 
   constructor(opts: { onRemote?: (action: "play" | "pause" | "stop") => void } = {}) {
     this.el = new Audio();
     this.el.preload = "auto";
     this.el.setAttribute("playsinline", "");
-    this.el.addEventListener("ended", () => this.ended?.());
+    this.el.addEventListener("ended", () => {
+      this.notifyTime(false);
+      this.ended?.();
+    });
+    const emit = () => this.notifyTime(Boolean(this.el.getAttribute("src")));
+    this.el.addEventListener("timeupdate", emit);
+    this.el.addEventListener("loadedmetadata", emit);
+    this.el.addEventListener("play", emit);
+    this.el.addEventListener("pause", emit);
     const ms = typeof navigator !== "undefined" ? navigator.mediaSession : undefined;
     if (ms && opts.onRemote) {
       ms.setActionHandler("play", () => opts.onRemote!("play"));
@@ -26,12 +36,15 @@ export class HtmlAudio implements AudioOut {
     this.release();
     if (url.startsWith("blob:")) this.objectUrl = url;
     this.el.src = url;
+    this.el.playbackRate = this.rate;
     await this.el.play();
+    this.notifyTime(true);
   }
   pause() {
     this.el.pause();
   }
   resume() {
+    this.el.playbackRate = this.rate;
     void this.el.play();
   }
   stop() {
@@ -39,6 +52,29 @@ export class HtmlAudio implements AudioOut {
     this.el.removeAttribute("src");
     this.el.load();
     this.release();
+    this.notifyTime(false);
+  }
+  get playbackRate(): number {
+    return this.rate;
+  }
+  setRate(rate: number) {
+    this.rate = rate;
+    this.el.playbackRate = rate;
+  }
+  seek(seconds: number) {
+    if (Number.isFinite(this.el.duration) && this.el.duration > 0) {
+      this.el.currentTime = Math.max(0, Math.min(seconds, this.el.duration));
+      this.notifyTime(true);
+    }
+  }
+  onTimeUpdate(cb: (cur: number, dur: number, active: boolean) => void): () => void {
+    this.timeListeners.add(cb);
+    return () => this.timeListeners.delete(cb);
+  }
+  private notifyTime(active: boolean) {
+    const dur = Number.isFinite(this.el.duration) ? this.el.duration : 0;
+    const cur = Number.isFinite(this.el.currentTime) ? this.el.currentTime : 0;
+    for (const cb of this.timeListeners) cb(cur, dur, active);
   }
   onEnded(cb: () => void) {
     this.ended = cb;

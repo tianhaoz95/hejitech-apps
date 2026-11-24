@@ -42,6 +42,8 @@ public final class AppModel: ObservableObject {
     @Published public var isOffline: Bool = false
     @Published public var isLoading: Bool = false
     @Published public var errorMessage: String?
+    @Published public var toastMessage: String?
+    private var toastTask: Task<Void, Never>?
     @Published public var showPairingSheet: Bool = false
     @Published public var showHistorySheet: Bool = false
     @Published public var showBriefSheet: Bool = false
@@ -357,6 +359,41 @@ public final class AppModel: ObservableObject {
     public func loadBookmarks() async {
         guard isSignedIn else { return }
         bookmarks = (try? await api.fetchBookmarks()) ?? []
+    }
+
+    public func showToast(_ message: String) {
+        toastTask?.cancel()
+        withAnimation(.easeInOut(duration: 0.2)) {
+            toastMessage = message
+        }
+        toastTask = Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.25)) {
+                if toastMessage == message { toastMessage = nil }
+            }
+        }
+    }
+
+    public func isCardBookmarked(_ card: CardInput) -> Bool {
+        guard let date = currentBundle?.date else { return false }
+        return bookmarks.contains { $0.editionDate == date && $0.cardSlug == card.slug }
+    }
+
+    public var isCurrentCardBookmarked: Bool {
+        guard let card = currentCard else { return false }
+        return isCardBookmarked(card)
+    }
+
+    public func toggleBookmarkForCurrentCard() async {
+        guard let bundle = currentBundle, !TourBuilder.isTour(bundle), let card = currentCard else { return }
+        if let existing = bookmarks.first(where: { $0.editionDate == bundle.date && $0.cardSlug == card.slug }) {
+            await removeBookmark(existing)
+            showToast("Bookmark removed")
+        } else {
+            let ok = await bookmarkCurrentCard()
+            if ok { showToast("Bookmarked") }
+        }
     }
 
     public func bookmarkCurrentCard() async -> Bool {

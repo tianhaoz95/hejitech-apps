@@ -50,6 +50,7 @@ const K = {
   list: "g2digest:editions",
   mode: "g2digest:audio_mode",
   read: "g2digest:read_dates",
+  positions: "g2digest:positions",
   commute: "g2digest:auto_advance",
   pendingBookmarks: "g2digest:pending_bookmarks",
 };
@@ -91,7 +92,7 @@ interface EditionRow {
 }
 
 /** A row of the glasses' list: an edition, a page link, or a section jump target. */
-type ListRow = { label: string; date?: string; page?: number; cardIndex?: number };
+type ListRow = { label: string; date?: string; page?: number; cardIndex?: number; sectionPage?: number };
 
 interface PendingBookmark {
   edition_date: string;
@@ -154,6 +155,9 @@ export async function bootPlugin(opts: PluginOptions) {
   let listRows: ListRow[] = [];
   let shownRows = "";
   let readDates = new Set<string>(JSON.parse((await kv.get(K.read)) ?? "[]") as string[]);
+  let positions: Record<string, number> = JSON.parse((await kv.get(K.positions)) ?? "{}") as Record<string, number>;
+  let cachedDates = new Set<string>();
+  let activeDate: string | null = null;
   let lastText = "", lastDots = "", pushedText = "", pushedDots = "";
   // The card frame and the list share the same border, so both pages look like one app.
   const frame = {
@@ -210,9 +214,20 @@ export async function bootPlugin(opts: PluginOptions) {
   const audio = new HtmlAudio({
     onRemote: (a) => void reader.gesture(a === "stop" ? "stop" : "tap"),
   });
+  const savePosition = (date: string, index: number) => {
+    positions[date] = index;
+    const keys = Object.keys(positions).sort().reverse().slice(0, 30);
+    const trimmed: Record<string, number> = {};
+    for (const k of keys) trimmed[k] = positions[k];
+    positions = trimmed;
+    void kv.set(K.positions, JSON.stringify(positions));
+  };
   const reader: Reader = new Reader({
     audio,
     audioUrl: (p) => cache.resolve(p),
+    persist: (date, index) => {
+      if (!isTour(reader.bundle)) savePosition(date, index);
+    },
     onBack: () => void goHome(),
     onEditions: () => (home === "list" ? void showList(listOffset) : reader.flash("END OF THE TOUR")),
     onSignal: (ev) => {
@@ -243,7 +258,7 @@ export async function bootPlugin(opts: PluginOptions) {
 
   // ------------------------------------------------------------------ phone page
   const ui = phonePage(opts.root, Boolean(bridge), api);
-  const preview = mountPreview(ui.mirror, { onGesture: (g) => void reader.gesture(g), note: !bridge });
+  const preview = mountPreview(ui.mirror, { onGesture: (g) => void reader.gesture(g), note: !bridge, audio });
 
   if (bridge) {
     bridge.onEvenHubEvent((event: EvenHubEvent) => {
@@ -333,10 +348,12 @@ export async function bootPlugin(opts: PluginOptions) {
     const dates = Object.keys(map).sort().reverse().slice(0, MAX_OFFLINE_EDITIONS);
     const trimmed: Record<string, Stored> = {};
     for (const d of dates) trimmed[d] = map[d];
+    cachedDates = new Set(dates);
     await kv.set(K.bundles, JSON.stringify(trimmed));
     if (dates[0] === stored.bundle.date) await kv.set(K.bundle, JSON.stringify(stored));
     const keepAudio = dates.flatMap((d) => audioPaths(trimmed[d].bundle));
     await cache.prune(keepAudio);
+    renderPhoneList();
   }
   async function markRead(date: string) {
     if (readDates.has(date)) return;
@@ -380,23 +397,28 @@ export async function bootPlugin(opts: PluginOptions) {
     }
     await kv.set(K.pendingBookmarks, JSON.stringify(left));
   }
-  async function showSections() {
+  async function showSections(offset = 0) {
     const b = reader.bundle;
     if (!b || !bridge) return;
-    const rows: ListRow[] = [];
+    const allRows: ListRow[] = [];
     const firstAlert = b.cards.findIndex((c) => c.alert);
-    if (firstAlert >= 0) rows.push({ label: "! Alerts", cardIndex: firstAlert });
+    if (firstAlert >= 0) allRows.push({ label: "! Alerts", cardIndex: firstAlert });
     const seen = new Set<string>();
     b.cards.forEach((c, idx) => {
       if (c.kind === "section" && c.section_id && !seen.has(c.section_id)) {
         seen.add(c.section_id);
         const title = b.edition.sections.find((s) => s.section_id === c.section_id)?.title ?? c.section_id;
-        rows.push({ label: title, cardIndex: idx });
+        allRows.push({ label: title, cardIndex: idx });
       }
     });
-    if (!rows.length) return reader.flash("NO SECTIONS");
+    if (!allRows.length) return reader.flash("NO SECTIONS");
     audio.stop();
-    listRows = rows.slice(0, LIST_PAGE);
+    const rows: ListRow[] = [];
+    const pageSize = allRows.length > LIST_PAGE ? LIST_PAGE - 2 : LIST_PAGE;
+    if (offset > 0) rows.push({ label: "Previous sections", sectionPage: Math.max(0, offset - pageSize) });
+    rows.push(...allRows.slice(offset, offset + pageSize));
+    if (offset + pageSize < allRows.length) rows.push({ label: "More sections", sectionPage: offset + pageSize });
+    listRows = rows;
     shownRows = "";
     await draw({
       containerTotalNum: 1,
@@ -409,6 +431,7 @@ export async function bootPlugin(opts: PluginOptions) {
   }
   async function pickSectionRow(i: number) {
     const row = listRows[i];
+    if (row?.sectionPage !== undefined) return showSections(row.sectionPage);
     if (row?.cardIndex !== undefined) reader.jumpTo(row.cardIndex);
     await showCards();
   }
@@ -446,7 +469,7 @@ export async function bootPlugin(opts: PluginOptions) {
     if (row.page !== undefined) return showList(row.page);
     if (row.date) await openEdition(row.date);
   }
-  /** Open one edition at its first card, falling back to multi-edition offline cache when offline. */
+  /** Open one edition (resuming where left off, or from card 0 if finished), falling back to offline cache. */
   async function openEdition(date: string) {
     const res = await authed(`/api/editions/${date}`);
     let stored: Stored | null = null;
@@ -459,15 +482,27 @@ export async function bootPlugin(opts: PluginOptions) {
       stored = map[date] ?? null;
     }
     if (!stored) return ui.state("reading", "Offline: this edition isn't cached on the phone yet.");
+    activeDate = stored.bundle.date;
     await markRead(stored.bundle.date);
     cache.setUrls(stored.audio);
-    reader.load(stored.bundle, 0);
+    const savedIdx = positions[stored.bundle.date] ?? 0;
+    const startIdx = savedIdx > 0 && savedIdx < stored.bundle.cards.length - 1 ? savedIdx : 0;
+    reader.load(stored.bundle, startIdx);
+    renderPhoneList();
     ui.state("reading", `${stored.bundle.edition.title} · ${stored.bundle.date}${res?.ok ? "" : " · offline"}`);
     void cache.prefetch(audioPaths(stored.bundle)).then((n) => ui.cacheNote(n, audioPaths(stored.bundle).length));
     await showCards();
   }
   function renderPhoneList() {
-    ui.setEditions(editions.map((e, i) => ({ date: e.date, label: rowLabel(e, i) })), (date) => void openEdition(date));
+    ui.setEditions(
+      editions.map((e, i) => ({
+        date: e.date,
+        label: rowLabel(e, i),
+        active: e.date === activeDate,
+        cached: cachedDates.has(e.date),
+      })),
+      (date) => void openEdition(date),
+    );
   }
 
   /** No edition to read: the tour is the root page, ending with what to do next. */
@@ -520,6 +555,7 @@ export async function bootPlugin(opts: PluginOptions) {
     const wasTour = home === "tour";
     home = "list";
     editions = list;
+    cachedDates = new Set(Object.keys(await loadCachedBundles()));
     renderPhoneList();
     if (res?.ok) void keepLatest(list[0].date);
     // Stay on the cards while an edition is being read; otherwise (re)draw the list.
@@ -553,10 +589,14 @@ export async function bootPlugin(opts: PluginOptions) {
   ui.onRefresh(() => void refresh());
   ui.onUnpair(async () => {
     audio.stop();
+    activeDate = null;
+    positions = {};
+    cachedDates = new Set();
     await kv.set(K.token, "");
     await kv.set(K.bundle, "");
     await kv.set(K.bundles, "");
     await kv.set(K.list, "");
+    await kv.set(K.positions, "");
     await kv.set(K.pendingBookmarks, "");
     await refresh();
   });
@@ -665,16 +705,46 @@ function phonePage(root: HTMLElement, onGlasses: boolean, api: string) {
       $<HTMLButtonElement>(".refresh").addEventListener("click", cb);
     },
     onUnpair(cb: () => void) {
-      $<HTMLButtonElement>(".unpair").addEventListener("click", cb);
+      const btn = $<HTMLButtonElement>(".unpair");
+      let armed = false;
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const disarm = () => {
+        armed = false;
+        btn.textContent = "Unpair";
+        btn.classList.remove("confirming");
+        if (timer) clearTimeout(timer);
+        timer = null;
+      };
+      btn.addEventListener("click", () => {
+        if (!armed) {
+          armed = true;
+          btn.textContent = "Tap again to unpair";
+          btn.classList.add("confirming");
+          timer = setTimeout(disarm, 4000);
+          return;
+        }
+        disarm();
+        cb();
+      });
     },
     /** The same editions the glasses list, as buttons. */
-    setEditions(rows: { date: string; label: string }[], pick: (date: string) => void) {
+    setEditions(rows: { date: string; label: string; active?: boolean; cached?: boolean }[], pick: (date: string) => void) {
       const list = $<HTMLElement>(".editions");
       list.replaceChildren(...rows.map((row) => {
         const li = document.createElement("li");
+        if (row.active) li.className = "active";
         const b = document.createElement("button");
         b.type = "button";
-        b.textContent = row.label;
+        if (row.active) b.setAttribute("aria-current", "true");
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = row.label;
+        b.append(labelSpan);
+        if (row.cached) {
+          const tag = document.createElement("span");
+          tag.className = "offline-tag";
+          tag.textContent = "offline";
+          b.append(tag);
+        }
         b.addEventListener("click", () => pick(row.date));
         li.append(b);
         return li;

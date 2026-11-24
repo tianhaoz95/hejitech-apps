@@ -29,10 +29,15 @@ public struct ReleaseNotes: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.7.1"
+    public static let currentVersion = "0.7.2"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "0.7.2", date: "November 2026", items: [
+            WhatsNewItem(icon: "bookmark", title: "Faster bookmarking & cleaner reader", description: "Toggle bookmarks with instant confirmation, see a cleaner windowed position indicator on long editions, and read cards with refined spacing and layout."),
+            WhatsNewItem(icon: "speedometer", title: "Audio speed & scrubbing on web", description: "Adjust playback speed and scrub through Glance and Deep Dive audio in the web and glasses preview player."),
+            WhatsNewItem(icon: "slider.horizontal.3", title: "Clearer brief editor on web", description: "A live card-budget meter, sticky save bar, and contextual source fields make tuning your daily brief faster."),
+        ]),
         ReleaseNotes(version: "0.7.1", date: "November 2026", items: [
             WhatsNewItem(icon: "applewatch", title: "G2 Digest on your watch", description: "Today's TL;DR, alerts and cards on your wrist, with controls for the briefing playing on your iPhone."),
             WhatsNewItem(icon: "exclamationmark.triangle", title: "Know when a delivery is missed", description: "Agents now warns you when today's edition didn't arrive on time and walks you through a setup checklist for your build agent."),        ]),

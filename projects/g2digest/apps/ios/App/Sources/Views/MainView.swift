@@ -9,28 +9,39 @@ public struct MainView: View {
 
     public var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
-                VStack(spacing: 0) {
-                    // Mode Picker Header
-                    Picker("Reader Mode", selection: $appModel.viewMode) {
-                        ForEach(ReaderViewMode.allCases) { mode in
-                            Text(mode.label).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-
-                    // Content View based on selected mode
-                    switch appModel.viewMode {
-                    case .native: NativeReaderView(appModel: appModel)
-                    case .article: ArticleReaderView(appModel: appModel)
-                    case .hud: G2HUDView(appModel: appModel)
+            VStack(spacing: 0) {
+                // Mode Picker Header
+                Picker("Reader Mode", selection: $appModel.viewMode) {
+                    ForEach(ReaderViewMode.allCases) { mode in
+                        Text(mode.label).tag(mode)
                     }
                 }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
 
-                // Floating Audio Player Bar
+                // Content View based on selected mode
+                switch appModel.viewMode {
+                case .native: NativeReaderView(appModel: appModel)
+                case .article: ArticleReaderView(appModel: appModel)
+                case .hud: G2HUDView(appModel: appModel)
+                }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 AudioPlayerBarView()
+            }
+            .overlay(alignment: .top) {
+                if let toast = appModel.toastMessage {
+                    Text(toast)
+                        .font(.footnote.weight(.semibold))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(Capsule().stroke(Color.accentColor.opacity(0.4), lineWidth: 1))
+                        .shadow(color: Color.black.opacity(0.12), radius: 8, y: 3)
+                        .padding(.top, 52)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
             .navigationTitle(appModel.currentBundle?.edition.title ?? "G2 Digest")
             .navigationBarTitleDisplayMode(.inline)
@@ -59,15 +70,19 @@ public struct MainView: View {
                                 }
                                 Divider()
                                 Button {
-                                    Task { _ = await appModel.bookmarkCurrentCard() }
+                                    Task { await appModel.toggleBookmarkForCurrentCard() }
                                 } label: {
-                                    Label("Bookmark Card", systemImage: "bookmark")
+                                    Label(
+                                        appModel.isCurrentCardBookmarked ? "Remove Bookmark" : "Bookmark Card",
+                                        systemImage: appModel.isCurrentCardBookmarked ? "bookmark.fill" : "bookmark"
+                                    )
                                 }
                                 if appModel.isSignedIn {
                                     Button {
                                         Task {
                                             if let url = await appModel.createShareLinkForCurrentEdition() {
                                                 UIPasteboard.general.string = url
+                                                appModel.showToast("Share link copied")
                                             }
                                         }
                                     } label: {

@@ -5,6 +5,20 @@
 import { screenText, type Gesture } from "@g2digest/core";
 import type { Reader } from "./reader.ts";
 
+export interface PreviewAudio {
+  readonly playbackRate: number;
+  setRate(rate: number): void;
+  seek(seconds: number): void;
+  onTimeUpdate(cb: (cur: number, dur: number, active: boolean) => void): () => void;
+}
+
+const RATES = [1, 1.25, 1.5, 2] as const;
+
+function fmtTime(sec: number): string {
+  const s = Math.max(0, Math.floor(sec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
 export const FIDELITY_NOTE =
   "Faithful for layout and wrapping. Not for Bluetooth lag, the glasses' own font metrics, or hardware container limits. Check on the glasses before calling a layout change done.";
 
@@ -27,7 +41,7 @@ export interface PreviewHandle {
   status(text: string): void;
 }
 
-export function mountPreview(host: HTMLElement, opts: { onGesture: (g: Gesture) => void; controls?: boolean; keyboard?: boolean; note?: boolean }): PreviewHandle {
+export function mountPreview(host: HTMLElement, opts: { onGesture: (g: Gesture) => void; controls?: boolean; keyboard?: boolean; note?: boolean; audio?: PreviewAudio }): PreviewHandle {
   const root = document.createElement("div");
   root.className = "g2-preview";
   const frame = document.createElement("div");
@@ -48,6 +62,47 @@ export function mountPreview(host: HTMLElement, opts: { onGesture: (g: Gesture) 
   const status = document.createElement("div");
   status.className = "g2-status";
   root.append(status);
+
+  if (opts.audio) {
+    const audio = opts.audio;
+    const bar = document.createElement("div");
+    bar.className = "g2-audio-bar";
+    bar.hidden = true;
+    const scrub = document.createElement("input");
+    scrub.type = "range";
+    scrub.min = "0";
+    scrub.max = "100";
+    scrub.step = "0.25";
+    scrub.value = "0";
+    scrub.setAttribute("aria-label", "Audio position");
+    const timeLabel = document.createElement("span");
+    timeLabel.className = "g2-audio-time";
+    timeLabel.textContent = "0:00 / 0:00";
+    const speedBtn = document.createElement("button");
+    speedBtn.type = "button";
+    speedBtn.className = "g2-speed-btn";
+    speedBtn.title = "Cycle playback speed";
+    speedBtn.textContent = `${audio.playbackRate}x`;
+    speedBtn.addEventListener("click", () => {
+      const i = RATES.indexOf(audio.playbackRate as (typeof RATES)[number]);
+      const next = RATES[(i + 1) % RATES.length];
+      audio.setRate(next);
+      speedBtn.textContent = `${next}x`;
+    });
+    let scrubbing = false;
+    scrub.addEventListener("pointerdown", () => { scrubbing = true; });
+    scrub.addEventListener("pointerup", () => { scrubbing = false; });
+    scrub.addEventListener("input", () => audio.seek(Number(scrub.value)));
+    audio.onTimeUpdate((cur, dur, active) => {
+      bar.hidden = !active || dur <= 0;
+      if (!active || dur <= 0) return;
+      scrub.max = String(dur);
+      if (!scrubbing) scrub.value = String(cur);
+      timeLabel.textContent = `${fmtTime(cur)} / ${fmtTime(dur)}`;
+    });
+    bar.append(scrub, timeLabel, speedBtn);
+    root.append(bar);
+  }
 
   if (opts.controls !== false) {
     const row = document.createElement("div");

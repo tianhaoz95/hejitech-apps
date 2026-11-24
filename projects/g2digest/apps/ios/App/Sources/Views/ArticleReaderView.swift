@@ -6,6 +6,7 @@ import G2DigestKit
 /// with a table of contents and a jump to each section's cards.
 struct ArticleReaderView: View {
     @ObservedObject var appModel: AppModel
+    @ObservedObject private var player = AudioPlayerService.shared
     @AppStorage("g2digest_article_serif") private var serif = true
 
     var body: some View {
@@ -68,7 +69,7 @@ struct ArticleReaderView: View {
                     }
                     .padding(.horizontal, 22)
                     .padding(.top, 12)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 32)
                     .frame(maxWidth: 680, alignment: .leading)
                     .frame(maxWidth: .infinity)
                 }
@@ -92,15 +93,42 @@ struct ArticleReaderView: View {
                     .textSelection(.enabled)
             }
 
+            let sectionCards = cards.filter { $0.sectionId == s.sectionId }
+            let firstGlance = sectionCards.first { $0.glance != nil }
+            let firstDeep = sectionCards.first { $0.deepDive != nil }
             if let first = cards.firstIndex(where: { $0.sectionId == s.sectionId }) {
-                Button {
-                    appModel.goToCard(index: first)
-                    appModel.viewMode = .native
-                } label: {
-                    Label("Read as cards", systemImage: "rectangle.stack")
-                        .font(.subheadline.weight(.medium))
+                HStack(spacing: 8) {
+                    Button {
+                        appModel.goToCard(index: first)
+                        appModel.viewMode = .native
+                    } label: {
+                        Label("Cards", systemImage: "rectangle.stack")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .buttonStyle(.bordered)
+
+                    if let gc = firstGlance {
+                        let active = player.currentCard?.slug == gc.slug && player.currentMode == .glance && player.isPlaying
+                        Button {
+                            player.play(card: gc, mode: .glance)
+                        } label: {
+                            Label("Glance", systemImage: active ? "pause.fill" : "play.fill")
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    if let dc = firstDeep {
+                        let active = player.currentCard?.slug == dc.slug && player.currentMode == .deepDive && player.isPlaying
+                        Button {
+                            player.play(card: dc, mode: .deepDive)
+                        } label: {
+                            Label("Deep dive", systemImage: active ? "pause.fill" : "headphones")
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .buttonStyle(.bordered)
+                    }
                 }
-                .buttonStyle(.bordered)
             }
 
             if let m = s.methodology, !m.isEmpty {

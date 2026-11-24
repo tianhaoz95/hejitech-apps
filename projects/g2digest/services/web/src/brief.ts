@@ -32,13 +32,43 @@ function changed() {
 
 const issuesBox = el("ul", { class: "issues" });
 const saveBtn = el("button", { class: "btn primary", type: "button" }, "Save brief");
+const stickySaveBtn = el("button", { class: "btn primary", type: "button" }, "Save brief");
 const status = el("span", { class: "muted small" });
+const stickyStatus = el("span", { class: "small" });
+const stickyBar = el("div", { class: "sticky-save-bar", hidden: true }, stickyStatus, stickySaveBtn);
+const budgetMeter = el("div", { class: "budget-meter" });
+
+function updateBudgetMeter() {
+  if (!brief) return;
+  const fixed = 2 + (brief.tldr ? 1 : 0); // Cover + End + optional TL;DR
+  const sectionSum = brief.sections.reduce((acc, s) => acc + (Number.isFinite(s.max_cards) ? s.max_cards : 0), 0);
+  const totalMax = fixed + sectionSum;
+  const budget = Math.max(1, Number.isFinite(brief.total_card_budget) ? brief.total_card_budget : 1);
+  const pct = Math.min(100, Math.round((totalMax / budget) * 100));
+  const over = totalMax - budget;
+  budgetMeter.replaceChildren(
+    el("div", { class: "row", style: "justify-content: space-between; font-size: 13px" },
+      el("span", {}, el("b", {}, "Card ceiling: "), `${totalMax} of ${budget} budget (${fixed} fixed + ${sectionSum} in sections)`),
+      over > 0
+        ? el("span", { class: "warn" }, `Over by ${over} — later sections trim first`)
+        : el("span", { class: "muted" }, `${budget - totalMax} headroom`)),
+    el("div", { class: "budget-bar" },
+      el("div", { class: `budget-fill${over > 0 ? " over" : ""}`, style: `width: ${pct}%` })));
+}
 
 function checkNow() {
   const issues = checkBrief(brief);
   issuesBox.replaceChildren(...issues.map((i) => el("li", {}, i.message)));
-  saveBtn.disabled = issues.length > 0 || !dirty;
-  status.textContent = dirty ? "Unsaved changes" : `Saved · version ${version}`;
+  const disabled = issues.length > 0 || !dirty;
+  saveBtn.disabled = disabled;
+  stickySaveBtn.disabled = disabled;
+  const label = dirty ? "Unsaved changes" : `Saved · version ${version}`;
+  status.textContent = label;
+  stickyStatus.textContent = issues.length
+    ? `${issues.length} issue${issues.length === 1 ? "" : "s"} to fix before saving`
+    : label;
+  stickyBar.hidden = !dirty && issues.length === 0;
+  updateBudgetMeter();
 }
 
 function field(label: string, input: HTMLElement, hint?: string) {
@@ -80,27 +110,41 @@ function sectionCard(s: Section, i: number): HTMLElement {
     changed();
     drawSections();
   };
-  return el("div", { class: "section-card" },
-    el("header", {},
-      el("b", {}, `${i + 1}. ${s.title || "Untitled"}`),
+  const kind = s.source.kind;
+  const showEntities = kind === "web_news" || kind === "finance";
+  const showQuery = kind === "web_news" || kind === "rss" || kind === "feed";
+  const showUrls = kind === "rss" || kind === "feed";
+
+  const sourceSelect = select(SOURCE_KINDS, () => s.source.kind, (v) => {
+    s.source.kind = v;
+    drawSections();
+  }, SOURCE_HELP);
+
+  const sourceFields: HTMLElement[] = [field("Source", sourceSelect)];
+  if (showEntities) sourceFields.push(field("Entities", text(() => (s.source.entities ?? []).join(", "), (v) => (s.source.entities = list(v))), "comma-separated"));
+  if (showQuery) sourceFields.push(field("Query", text(() => s.source.query ?? "", (v) => (s.source.query = v || undefined))));
+
+  return el("details", { class: "section-card", open: true },
+    el("summary", { class: "section-card-head" },
+      el("span", { class: "row", style: "gap: 6px" },
+        el("b", {}, `${i + 1}. ${s.title || "Untitled"}`),
+        el("span", { class: "badge" }, `${s.template} · max ${s.max_cards} · ${s.source.kind}`)),
       el("div", { class: "row" },
-        el("button", { class: "btn", type: "button", title: "Move up", onclick: move(-1) }, "↑"),
-        el("button", { class: "btn", type: "button", title: "Move down", onclick: move(1) }, "↓"),
-        el("button", { class: "btn danger", type: "button", onclick: () => { brief.sections.splice(i, 1); changed(); drawSections(); } }, "Remove"))),
-    el("div", { class: "fields" },
-      field("Title", text(() => s.title, (v) => (s.title = v), { maxlength: "18" }), "card kicker"),
-      field("Id", text(() => s.id, (v) => (s.id = v)), "kebab-case"),
-      field("Template", select(TEMPLATES, () => s.template, (v) => (s.template = v), TEMPLATE_HELP)),
-      field("Max cards", num(() => s.max_cards, (v) => (s.max_cards = v), { min: "1", max: "10" }), "a ceiling, not a quota"),
-      field("Quiet day", select(QUIET_BEHAVIORS, () => s.quiet_behavior, (v) => (s.quiet_behavior = v), QUIET_HELP)),
-      field("Deep dive", select(DEEP_DIVE_POLICIES, () => s.audio.deep_dive, (v) => (s.audio.deep_dive = v))),
-      el("div", { class: "field" }, el("span", {}, el("b", {}, "Glance audio")), check("every card gets a ~30 s glance", () => s.audio.glance, (v) => (s.audio.glance = v)))),
-    el("div", { class: "fields" },
-      field("Source", select(SOURCE_KINDS, () => s.source.kind, (v) => (s.source.kind = v), SOURCE_HELP)),
-      field("Entities", text(() => (s.source.entities ?? []).join(", "), (v) => (s.source.entities = list(v))), "comma-separated"),
-      field("Query", text(() => s.source.query ?? "", (v) => (s.source.query = v || undefined)))),
-    field("Feed URLs", area(() => (s.source.urls ?? []).join("\n"), (v) => (s.source.urls = lines(v).length ? lines(v) : undefined), { rows: "2", placeholder: "one per line (rss, feed)" })),
-    field("Instructions", area(() => s.instructions, (v) => (s.instructions = v), { rows: "4" }), "what counts, how to rank, what a quiet day looks like"));
+        el("button", { class: "btn sm", type: "button", title: "Move up", onclick: (e: Event) => { e.preventDefault(); move(-1)(); } }, "↑"),
+        el("button", { class: "btn sm", type: "button", title: "Move down", onclick: (e: Event) => { e.preventDefault(); move(1)(); } }, "↓"),
+        el("button", { class: "btn sm danger", type: "button", onclick: (e: Event) => { e.preventDefault(); brief.sections.splice(i, 1); changed(); drawSections(); } }, "Remove"))),
+    el("div", { class: "stack", style: "margin-top: 10px" },
+      el("div", { class: "fields" },
+        field("Title", text(() => s.title, (v) => (s.title = v), { maxlength: "18" }), "card kicker"),
+        field("Id", text(() => s.id, (v) => (s.id = v)), "kebab-case"),
+        field("Template", select(TEMPLATES, () => s.template, (v) => (s.template = v), TEMPLATE_HELP)),
+        field("Max cards", num(() => s.max_cards, (v) => (s.max_cards = v), { min: "1", max: "10" }), "a ceiling, not a quota"),
+        field("Quiet day", select(QUIET_BEHAVIORS, () => s.quiet_behavior, (v) => (s.quiet_behavior = v), QUIET_HELP)),
+        field("Deep dive", select(DEEP_DIVE_POLICIES, () => s.audio.deep_dive, (v) => (s.audio.deep_dive = v))),
+        el("div", { class: "field" }, el("span", {}, el("b", {}, "Glance audio")), check("every card gets a ~30 s glance", () => s.audio.glance, (v) => (s.audio.glance = v)))),
+      el("div", { class: "fields" }, ...sourceFields),
+      showUrls ? field("Feed URLs", area(() => (s.source.urls ?? []).join("\n"), (v) => (s.source.urls = lines(v).length ? lines(v) : undefined), { rows: "2", placeholder: "one per line (rss, feed)" })) : null,
+      field("Instructions", area(() => s.instructions, (v) => (s.instructions = v), { rows: "4" }), "what counts, how to rank, what a quiet day looks like")));
 }
 
 const sectionsBox = el("div", { class: "stack" });
@@ -190,34 +234,42 @@ function draw() {
     el("section", { class: "panel" },
       el("h2", {}, "Sections"),
       el("p", { class: "muted small" }, "In edition order. When there's more than the budget allows, later sections lose cards first; alerts are never cut."),
+      budgetMeter,
       sectionsBox),
     el("section", { class: "panel" },
       el("h2", {}, "Glossary"),
       el("p", { class: "muted small" }, "Terms the audio always explains your way."),
       glossaryBox(),
       el("div", { style: "margin-top: 14px" }, field("Never explain", text(() => brief.no_gloss.join(", "), (v) => (brief.no_gloss = list(v))), "comma-separated terms you know"))),
-    jsonPanel);
+    jsonPanel,
+    stickyBar);
   drawSections();
   checkNow();
 }
 
-saveBtn.addEventListener("click", async () => {
+async function doSave() {
   saveBtn.disabled = true;
+  stickySaveBtn.disabled = true;
   status.textContent = "Saving…";
+  stickyStatus.textContent = "Saving…";
   const r = await api<{ brief_version?: number; changed?: boolean; error?: string; issues?: { message: string }[] }>("/api/brief", {
     method: "PUT", body: JSON.stringify({ brief, expected_version: version }),
   });
   if (!r.ok) {
     status.textContent = r.body.error ?? "Couldn't save.";
+    stickyStatus.textContent = r.body.error ?? "Couldn't save.";
     issuesBox.replaceChildren(...(r.body.issues ?? []).map((i) => el("li", {}, i.message)));
     saveBtn.disabled = false;
+    stickySaveBtn.disabled = false;
     return;
   }
   version = r.body.brief_version ?? version;
   dirty = false;
   checkNow();
   status.textContent = r.body.changed ? `Saved · version ${version}. The next edition follows it.` : `No changes · version ${version}`;
-});
+}
+saveBtn.addEventListener("click", () => void doSave());
+stickySaveBtn.addEventListener("click", () => void doSave());
 
 window.addEventListener("beforeunload", (e) => { if (dirty) e.preventDefault(); });
 

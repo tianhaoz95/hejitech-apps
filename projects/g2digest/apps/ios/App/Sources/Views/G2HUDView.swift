@@ -39,62 +39,50 @@ public struct G2HUDView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 10)
 
-                // Virtual Glasses Display Screen
+                // Virtual Glasses Display Screen (576 × 288 = 2:1 aspect ratio)
                 ZStack {
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: 12)
                         .fill(Color.black)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(hudGreen.opacity(0.3), lineWidth: 1.5)
-                        )
 
-                    HStack(spacing: 12) {
+                    // Bordered card container matching core FRAME (2 px border, radius 6)
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(hudGreen.opacity(0.8), lineWidth: 1.5)
+                        .padding(6)
+
+                    HStack(alignment: .top, spacing: 8) {
                         // Card Text Frame
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("┌────────────────────────────┐")
-                                .font(.system(size: 13, weight: .bold, design: .monospaced))
-                                .foregroundStyle(hudGreen.opacity(0.5))
-
+                        VStack(alignment: .leading, spacing: 3) {
                             ForEach(0..<frame.lines.count, id: \.self) { i in
                                 let line = frame.lines[i]
                                 Text(line.isEmpty ? " " : line)
-                                    .font(.system(size: 13, weight: i == 0 ? .bold : .medium, design: .monospaced))
+                                    .font(.system(size: 12, weight: i == 0 ? .bold : .regular, design: .default))
                                     .foregroundStyle(hudGreen)
                                     .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
                             }
 
                             Spacer(minLength: 4)
 
-                            Text("├────────────────────────────┤")
-                                .font(.system(size: 13, weight: .bold, design: .monospaced))
-                                .foregroundStyle(hudGreen.opacity(0.5))
-
                             Text(frame.footer)
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .font(.system(size: 11, weight: .semibold, design: .default))
                                 .foregroundStyle(hudGreen)
                                 .lineLimit(1)
-
-                            Text("└────────────────────────────┘")
-                                .font(.system(size: 13, weight: .bold, design: .monospaced))
-                                .foregroundStyle(hudGreen.opacity(0.5))
                         }
-                        .padding(.vertical, 16)
-                        .padding(.leading, 16)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-                        Spacer()
-
-                        // Position Dots on right edge
-                        VStack(spacing: 8) {
-                            ForEach(0..<total, id: \.self) { i in
-                                Circle()
-                                    .fill(i == currentIdx ? hudGreen : hudGreen.opacity(0.25))
-                                    .frame(width: 6, height: 6)
+                        // Windowed Position Dots on right edge (mirrors core positionDots, 9 rows)
+                        VStack(spacing: 3) {
+                            ForEach(Array(windowedPositionDots(index: currentIdx, total: total).enumerated()), id: \.offset) { _, sym in
+                                Text(sym)
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(sym == "●" ? hudGreen : hudGreen.opacity(0.45))
+                                    .frame(width: 14)
                             }
                         }
-                        .padding(.trailing, 16)
                     }
+                    .padding(14)
                 }
-                .frame(maxHeight: 330)
+                .aspectRatio(2.0, contentMode: .fit)
                 .padding(.horizontal, 16)
                 .gesture(
                     DragGesture()
@@ -218,6 +206,19 @@ public struct G2HUDView: View {
                 systemImage: "eyeglasses",
                 description: Text("Load an edition to preview on G2 glasses.")
             )
+        }
+    }
+
+    /// Mirrors `positionDots` in `packages/core/src/render.ts`: 9-row sliding window with ↑/↓ overflow.
+    private func windowedPositionDots(index: Int, total: Int, rows: Int = 9) -> [String] {
+        guard total > 1 else { return [] }
+        let shown = min(total, rows)
+        let start = max(0, min(index - shown / 2, total - shown))
+        return (0..<shown).map { k in
+            let card = start + k
+            if k == 0 && start > 0 { return "↑" }
+            if k == shown - 1 && start + shown < total { return "↓" }
+            return card == index ? "●" : "○"
         }
     }
 

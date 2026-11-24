@@ -20,6 +20,18 @@
   font: 400 15px/27px "Helvetica Neue", Helvetica, Arial, sans-serif; text-shadow: 0 0 6px rgb(61 255 122 / .45);
 }
 .g2-status { font-size: 13px; color: var(--muted, #7d9483); min-height: 1.2em; }
+.g2-audio-bar {
+  display: flex; align-items: center; gap: 10px; max-width: 576px;
+  padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line, #2c3a30);
+  background: var(--card, #141b16);
+}
+.g2-audio-bar input[type=range] { flex: 1; accent-color: var(--g2); min-width: 0; padding: 0; border: 0; background: transparent; }
+.g2-audio-time { font: 500 12px/1 ui-monospace, Menlo, monospace; color: var(--muted, #7d9483); white-space: nowrap; }
+.g2-speed-btn {
+  padding: 3px 8px; border-radius: 99px; border: 1px solid var(--line, #2c3a30);
+  background: transparent; color: var(--fg, #d6f5dc); font: 600 12px/1.2 ui-monospace, Menlo, monospace; cursor: pointer;
+}
+.g2-speed-btn:hover { border-color: var(--g2); }
 .g2-controls { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; max-width: 576px; }
 .g2-btn {
   display: grid; gap: 2px; padding: 8px 4px; border-radius: 10px; border: 1px solid var(--line, #2c3a30);
@@ -39,3 +51,15 @@
 .plugin .log { font-size: 12px; white-space: pre-wrap; color: var(--muted, #7d9483); max-height: 320px; overflow: auto; }
 .plugin .verdict { font-weight: 700; }
 .plugin .error { color: var(--bad, #ff7a7a); }
+.plugin .editions { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 6px; }
+.plugin .editions li button {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  text-align: left; padding: 9px 12px; border-radius: 10px;
+  border: 1px solid var(--line, #2c3a30); background: var(--card, #141b16); color: var(--fg, #d6f5dc); cursor: pointer;
+}
+.plugin .editions li.active button { border-color: var(--g2); box-shadow: inset 0 0 0 1px var(--g2); }
+.plugin .offline-tag {
+  flex: none; font-size: 11px; padding: 2px 7px; border-radius: 99px;
+  background: rgb(61 255 122 / .14); color: var(--g2);
+}
+.plugin button.unpair.confirming { border-color: var(--bad, #ff7a7a); color: var(--bad, #ff7a7a); font-weight: 700; }
