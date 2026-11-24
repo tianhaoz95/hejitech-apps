@@ -23,7 +23,12 @@ permissions:
 jobs:
   android:
     name: Build & upload Android + Wear OS
-    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'contempo-v')
+    # Off until Contempo is on Google Play with the shared service account and its keystore secrets
+    # are set (2026-11-23: the Play API answers 403 for com.hejitech.contempoapp). Then set the repo
+    # variable CONTEMPO_PLAY_ENABLED=true (heji-google-play skill).
+    if: >-
+      (github.event_name == 'workflow_dispatch' ||
+      (startsWith(github.event.release.tag_name, 'contempo-v') && vars.CONTEMPO_PLAY_ENABLED == 'true'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment:
