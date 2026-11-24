@@ -190,12 +190,10 @@ function mountCodesignRoutes(app, { broadcast }) {
 
   function statePayload(dir) {
     const { review, exists } = syncRevision(dir);
-    let p = projects.get(dir);
-    if (p) {
-      p.lastAccess = Date.now();
-    } else if (exists) {
-      p = project(dir);
-    }
+    // Always start watching (even before spec.html exists) so the CoDesign tab
+    // receives the first codesign:update broadcast when the spec is written;
+    // evictTimer cleans up idle watchers after PROJECT_IDLE_TTL_MS.
+    const p = project(dir);
     let mtime = null;
     try { mtime = fs.statSync(specPath(dir)).mtimeMs; } catch {}
     return {
@@ -209,7 +207,7 @@ function mountCodesignRoutes(app, { broadcast }) {
       decision: review.decision,
       comments: review.comments,
       history: review.history.slice(-20),
-      agentWaiting: p ? p.waiters.size > 0 : false,
+      agentWaiting: p.waiters.size > 0,
       mtime,
     };
   }
