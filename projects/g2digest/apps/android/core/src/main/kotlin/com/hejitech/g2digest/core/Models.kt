@@ -177,3 +177,80 @@ data class AuthSession(
     @SerialName("expires_at") val expiresAtEpochSec: Long = 0,
     val email: String? = null,
 )
+
+@Serializable
+data class DeliveryStatus(
+    val missed: Boolean = false,
+    @SerialName("expected_date") val expectedDate: String = "",
+    @SerialName("delivery_time") val deliveryTime: String = "07:00",
+    val timezone: String = "UTC",
+    @SerialName("latest_edition_date") val latestEditionDate: String? = null,
+)
+
+@Serializable
+data class OnboardingStatus(
+    @SerialName("brief_configured") val briefConfigured: Boolean = false,
+    @SerialName("agent_connected") val agentConnected: Boolean = false,
+    @SerialName("first_validation_passed") val firstValidationPassed: Boolean = false,
+    @SerialName("first_edition_published") val firstEditionPublished: Boolean = false,
+    val delivery: DeliveryStatus = DeliveryStatus(),
+)
+
+@Serializable
+data class SectionAudio(
+    val glance: Boolean = true,
+    @SerialName("deep_dive") val deepDive: String = "optional",
+)
+
+@Serializable
+data class SectionSource(
+    val kind: String = "web_news",
+    val entities: List<String>? = null,
+    val query: String? = null,
+    val urls: List<String>? = null,
+)
+
+@Serializable
+data class BriefSection(
+    val id: String,
+    val title: String,
+    val template: String = "status",
+    @SerialName("max_cards") val maxCards: Int = 2,
+    @SerialName("quiet_behavior") val quietBehavior: String = "show_status",
+    val audio: SectionAudio = SectionAudio(),
+    val source: SectionSource = SectionSource(),
+    val instructions: String = "",
+)
+
+@Serializable
+data class BriefDelivery(
+    val time: String = "07:00",
+    val timezone: String = "America/Los_Angeles",
+    val days: List<String> = listOf("mon", "tue", "wed", "thu", "fri"),
+)
+
+@Serializable
+data class GlossaryEntry(
+    val term: String,
+    val gloss: String,
+)
+
+@Serializable
+data class Brief(
+    val title: String = "Morning Brief",
+    val language: String = "en",
+    val units: String = "imperial",
+    @SerialName("max_total_cards") val maxTotalCards: Int = 12,
+    @SerialName("tldr_enabled") val tldrEnabled: Boolean = true,
+    val delivery: BriefDelivery = BriefDelivery(),
+    val sections: List<BriefSection> = emptyList(),
+    val glossary: List<GlossaryEntry> = emptyList(),
+)
+
+@Serializable
+data class BriefResponse(
+    val brief: Brief,
+    @SerialName("brief_version") val briefVersion: Int = 1,
+)
+
+data class BriefIssue(val path: String, val message: String)

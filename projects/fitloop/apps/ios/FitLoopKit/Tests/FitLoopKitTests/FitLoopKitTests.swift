@@ -106,4 +106,16 @@ final class FitLoopKitTests: XCTestCase {
     func testErrorMessagesComeFromTheWorker() {
         XCTAssertEqual(BackendError.http(422, #"{"error":"no meal lunch on 2026-10-26"}"#).errorDescription, "no meal lunch on 2026-10-26")
     }
+
+    func testUnitFormat() {
+        XCTAssertEqual(UnitFormat.label(for: "weight", units: "metric"), "Weight (kg)")
+        XCTAssertEqual(UnitFormat.label(for: "weight", units: "imperial"), "Weight (lb)")
+        XCTAssertEqual(UnitFormat.label(for: "waist", units: "imperial"), "Waist (in)")
+        XCTAssertEqual(UnitFormat.toDisplay(75, metric: "weight", units: "imperial"), 165.3)
+        XCTAssertEqual(UnitFormat.fromDisplay(165.3, metric: "weight", units: "imperial"), 74.98)
+        XCTAssertEqual(UnitFormat.toDisplay(81.28, metric: "waist", units: "imperial"), 32.0)
+        XCTAssertEqual(UnitFormat.fromDisplay(32.0, metric: "waist", units: "imperial"), 81.28)
+        XCTAssertEqual(UnitFormat.water(2.5, units: "metric"), "2.5 L water")
+        XCTAssertEqual(UnitFormat.water(2.5, units: "imperial"), "85 fl oz water")
+    }
 }

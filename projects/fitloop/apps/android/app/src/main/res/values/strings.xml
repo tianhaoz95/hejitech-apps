@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">FitLoop</string>
+    <string name="widget_today_description">Today\'s workouts, meals and what\'s up next in FitLoop.</string>
 </resources>

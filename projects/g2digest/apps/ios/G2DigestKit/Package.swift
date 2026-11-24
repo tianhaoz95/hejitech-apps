@@ -4,7 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "G2DigestKit",
-    platforms: [.iOS(.v17), .macOS(.v14)],
+    platforms: [.iOS(.v17), .watchOS(.v10), .macOS(.v14)],
     products: [
         .library(name: "G2DigestKit", targets: ["G2DigestKit"]),
     ],

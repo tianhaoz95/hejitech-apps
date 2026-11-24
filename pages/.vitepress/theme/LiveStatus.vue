@@ -287,7 +287,7 @@ const isQuota = (i: Issue) => i.labels.some((l) => l.name === "quota");
           <div class="heji-live-days" :aria-label="`Daily Worker requests, last ${quota.last.length} days`" role="img">
             <span v-for="d in quota.last" :key="d.day" :title="`${d.day}: ${n(d.v)} requests`" :style="{ height: `${Math.max(2, (d.v / quota.peak) * 100)}%` }" />
           </div>
-          <div class="heji-live-foot"><span>{{ quota.last.length }} days ago</span><span>busiest: {{ n(quota.peak) }} ({{ pct(quota.peak / quota.limit) }} of the limit)</span><span>today</span></div>
+          <div class="heji-live-foot"><span>{{ quota.last.length }} day{{ quota.last.length === 1 ? "" : "s" }} ago</span><span>busiest: {{ n(quota.peak) }} ({{ pct(quota.peak / quota.limit) }} of the limit)</span><span>today</span></div>
         </div>
         <div v-if="quota.scripts.length" class="heji-status-table">
           <table>

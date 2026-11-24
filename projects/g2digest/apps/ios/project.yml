@@ -35,6 +35,8 @@ targets:
     dependencies:
       - package: G2DigestKit
       - target: Widgets
+      - target: WatchApp
+        embed: true
     settings:
       base:
         PRODUCT_NAME: G2Digest
@@ -57,6 +59,13 @@ targets:
         UILaunchScreen: {}
         UIBackgroundModes: [audio]
         NSSupportsLiveActivities: true
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations:
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneClassName: CPTemplateApplicationScene
+                UISceneConfigurationName: CarPlay
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate
         CFBundleURLTypes:
           - CFBundleURLName: com.hejitech.g2digest
             CFBundleURLSchemes: [g2digest]
@@ -88,3 +97,35 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
         NSSupportsLiveActivities: true
+
+  WatchApp:
+    type: application
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: Watch
+    dependencies:
+      - package: G2DigestKit
+    settings:
+      base:
+        PRODUCT_NAME: G2DigestWatch
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG).watchkitapp
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.hejitech.$(PRODUCT_SLUG)
+        INFOPLIST_KEY_CFBundleDisplayName: $(APP_DISPLAY_NAME)
+        TARGETED_DEVICE_FAMILY: "4"
+    info:
+      path: Watch/Info.plist
+      properties:
+        CFBundleDisplayName: $(APP_DISPLAY_NAME)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        WKCompanionAppBundleIdentifier: com.hejitech.$(PRODUCT_SLUG)
+        WKApplication: true
+        ITSAppUsesNonExemptEncryption: false
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations:
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneClassName: CPTemplateApplicationScene
+                UISceneConfigurationName: CarPlay
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate

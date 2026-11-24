@@ -3,6 +3,7 @@ import FitLoopKit
 import Observation
 import SwiftUI
 import UserNotifications
+import WidgetKit
 
 /// The app's state: sign-in, today (from the Worker, which merges the plan and check-ins), the plan,
 /// settings, reminders, the open workout (with the Watch's heart rate) and Apple Health sync.
@@ -182,6 +183,8 @@ final class AppModel {
         plan = nil
         settings = .defaults
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        TodaySnapshotStore.save(nil)
+        WidgetCenter.shared.reloadTimelines(ofKind: "FitLoopTodayWidget")
         phase = .signedOut
     }
 
@@ -305,18 +308,33 @@ final class AppModel {
         liveActivity.start(title: title, started: workoutStarted ?? Date(), state: state)
     }
 
-    /// Today's completion for the watch face (only today's; browsing another day changes nothing).
+    /// Today's completion for the watch face and Home Screen widget (only today's; browsing another day changes nothing).
     func sendProgressToWatch() {
         guard let t = today, t.state.date == DayProgress.localDate() else { return }
         let s = t.state
-        let next = s.workouts.first { $0.status == "todo" || $0.status == "in_progress" }?.workout.title
+        let nextWorkout = s.workouts.first { $0.status == "todo" || $0.status == "in_progress" }
+        let next = nextWorkout?.workout.title
             ?? s.meals.first { $0.status == "todo" }?.meal.name
+        let workoutsDone = s.workouts.filter { $0.status == "done" }.count
+        let mealsDone = s.meals.filter { $0.status == "done" }.count
         watch.send(progress: DayProgress(
             date: s.date, completion: s.completion,
-            workoutsDone: s.workouts.filter { $0.status == "done" }.count, workoutsTotal: s.workouts.count,
-            mealsDone: s.meals.filter { $0.status == "done" }.count, mealsTotal: s.meals.count,
+            workoutsDone: workoutsDone, workoutsTotal: s.workouts.count,
+            mealsDone: mealsDone, mealsTotal: s.meals.count,
             next: next
         ))
+        TodaySnapshotStore.save(TodaySnapshot(
+            date: s.date,
+            dayTitle: s.day.title,
+            completion: s.completion,
+            workoutsDone: workoutsDone,
+            workoutsTotal: s.workouts.count,
+            mealsDone: mealsDone,
+            mealsTotal: s.meals.count,
+            nextTitle: next,
+            nextWorkoutRef: nextWorkout?.ref
+        ))
+        WidgetCenter.shared.reloadTimelines(ofKind: "FitLoopTodayWidget")
     }
 
     func endWorkout(finished: Bool = false) async {

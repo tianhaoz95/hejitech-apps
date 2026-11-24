@@ -18,7 +18,7 @@ struct PlanView: View {
                     } header: { Text("Version \(cur.version) · from \(p.startsOn)") }
                     Section("Goals") { ForEach(p.goals) { g in Text(g.text) } }
                     if !p.constraints.isEmpty { Section("Planned around") { ForEach(p.constraints, id: \.self) { Text($0) } } }
-                    if let t = p.targets { Section("Daily targets") { Text(t.summary) } }
+                    if let t = p.targets { Section("Daily targets") { Text(t.summary(units: model.settings.units)) } }
                     Section("The week") {
                         ForEach(Plan.weekdays, id: \.self) { d in
                             if let day = p.week[d] {
@@ -65,8 +65,7 @@ struct ProgressScreen: View {
     @State private var pick: PhotosPickerItem?
     @State private var error: String?
 
-    private let labels = ["weight": "Weight (kg)", "waist": "Waist (cm)", "body_fat": "Body fat (%)", "energy": "Energy (1-5)", "mood": "Mood (1-5)", "soreness": "Soreness (1-5)", "sleep_hours": "Sleep (h)",
-                          "resting_hr": "Resting HR", "hrv": "HRV (ms)", "steps": "Steps", "active_energy": "Active energy (kcal)"]
+    private var units: String { model.settings.units }
 
     var body: some View {
         NavigationStack {
@@ -93,13 +92,13 @@ struct ProgressScreen: View {
                     if latest.isEmpty { Text("Nothing yet.").foregroundStyle(.secondary) }
                     ForEach(latest.keys.sorted(), id: \.self) { k in
                         if let last = latest[k]?.last {
-                            LabeledContent(labels[k] ?? k, value: last.value.formatted(.number.precision(.fractionLength(0...1))))
+                            LabeledContent(UnitFormat.label(for: k, units: units), value: UnitFormat.format(last.value, metric: k, units: units))
                         }
                     }
                     if model.settings.vitals.manual {
                         HStack {
                             Picker("Metric", selection: $metric) {
-                                ForEach(["weight", "waist", "body_fat", "energy", "mood", "soreness", "sleep_hours"], id: \.self) { Text(labels[$0] ?? $0).tag($0) }
+                                ForEach(["weight", "waist", "body_fat", "energy", "mood", "soreness", "sleep_hours"], id: \.self) { Text(UnitFormat.label(for: $0, units: units)).tag($0) }
                             }
                             .labelsHidden()
                             .fixedSize()  // the metric's name in full, not "Wei…t (kg)"
@@ -147,8 +146,9 @@ struct ProgressScreen: View {
 
     private func addVital() async {
         guard let v = Double(value) else { return }
+        let stored = UnitFormat.fromDisplay(v, metric: metric, units: units)
         do {
-            try await model.backend.sendVitals([Vital(date: Day.string(), metric: metric, value: v, source: "manual")])
+            try await model.backend.sendVitals([Vital(date: Day.string(), metric: metric, value: stored, source: "manual")])
             value = ""
             await load()
         } catch { self.error = error.localizedDescription }

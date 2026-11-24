@@ -205,6 +205,9 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         openWorkout = null
         settings = Settings()
         ReminderScheduler.schedule(getApplication(), emptyList())
+        WorkoutNotification.cancel(getApplication())
+        WorkoutNotification.cancelRestDone(getApplication())
+        TodayWidgetStore.save(getApplication(), null)
         phase = Phase.SIGNED_OUT
     }
 
@@ -231,6 +234,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
                 plan = p.await()
             }
             error = null
+            TodayWidgetStore.save(getApplication(), today)
             scheduleReminders()
         } catch (e: BackendException) {
             if (e is BackendException.NotSignedIn || e.isUnauthorized) phase = Phase.SIGNED_OUT else error = "Couldn't refresh: ${e.message}"
@@ -257,6 +261,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         try {
             backend.checkin(listOf(c))
             today = backend.today(date)
+            TodayWidgetStore.save(getApplication(), today)
         } catch (e: Exception) {
             error = e.message
         }
@@ -287,22 +292,26 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { wear.openOnWatch() }
     }
 
-    /** Where the open workout is, for the watch. */
+    /** Where the open workout is, for the watch and the ongoing workout notification. */
     fun updateWatch(w: WatchWorkout) {
         if (w == watchWorkout) return
         watchWorkout = w
         viewModelScope.launch { wear.send(w) }
+        if (w.open) WorkoutNotification.show(getApplication(), w, heartRate) else WorkoutNotification.cancel(getApplication())
     }
 
-    /** The player closed: the watch stops, and the glasses' live heart rate clears. */
+    /** The player closed: the watch stops, the ongoing notification clears, and live heart rate clears. */
     fun endWorkout() {
         updateWatch(WatchWorkout())
+        WorkoutNotification.cancel(getApplication())
+        WorkoutNotification.cancelRestDone(getApplication())
         if (heartRate != null && settings.vitals.liveHr) viewModelScope.launch { runCatching { backend.live(null, null) } }
         heartRate = null
     }
 
     private fun watchHeartRate(bpm: Int) {
         heartRate = bpm
+        if (watchWorkout.open) WorkoutNotification.show(getApplication(), watchWorkout, bpm)
         // Relayed to the Worker for the glasses, at most every 4 s (as the iPhone app does).
         val now = System.currentTimeMillis()
         if (!settings.vitals.liveHr || now - lastLivePost < 4_000 || !watchWorkout.open) return

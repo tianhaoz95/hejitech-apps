@@ -39,6 +39,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -55,12 +57,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.hejitech.fitloop.AppModel
+import com.hejitech.fitloop.WorkoutActionBridge
+import com.hejitech.fitloop.WorkoutNotification
 import com.hejitech.fitloop.core.CheckinData
 import com.hejitech.fitloop.core.WatchWorkout
 import com.hejitech.fitloop.core.ExerciseAnimation
@@ -80,6 +85,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun WorkoutPlayer(model: AppModel, initial: WorkoutState, modifier: Modifier = Modifier, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     // The latest state of this workout (check-ins refresh model.today).
     val state = model.today?.state?.workouts?.firstOrNull { it.ref == initial.ref } ?: initial
     val start = remember { initial.next }
@@ -92,10 +98,28 @@ fun WorkoutPlayer(model: AppModel, initial: WorkoutState, modifier: Modifier = M
     var menu by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf<NoteTarget?>(null) }
+    var swapDialog by remember { mutableStateOf(false) }
+    var swapText by remember { mutableStateOf("") }
     val current = state.exercises[ex.coerceIn(0, state.exercises.size - 1)]
     val e = current.exercise
 
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(250) } }
+    LaunchedEffect(restUntil) {
+        val until = restUntil ?: return@LaunchedEffect
+        val wait = until - System.currentTimeMillis()
+        if (wait > 0) delay(wait)
+        if (restUntil == until) {
+            WorkoutNotification.cancelRestDone(context)
+            WorkoutNotification.playTimerDoneAlert(context)
+        }
+    }
+    LaunchedEffect(workStarted) {
+        val started = workStarted ?: return@LaunchedEffect
+        val duration = e.durationSec ?: return@LaunchedEffect
+        val wait = started + duration * 1000L - System.currentTimeMillis()
+        if (wait > 0) delay(wait)
+        if (workStarted == started) WorkoutNotification.playTimerDoneAlert(context)
+    }
     BackHandler(onBack = onClose)
 
     fun move(d: Int) {
@@ -104,9 +128,11 @@ fun WorkoutPlayer(model: AppModel, initial: WorkoutState, modifier: Modifier = M
         set = minOf(c.setsDone + 1, c.exercise.sets)
         restUntil = null
         workStarted = null
+        WorkoutNotification.cancelRestDone(context)
     }
 
     suspend fun finish(status: String) {
+        WorkoutNotification.cancelRestDone(context)
         model.finishWorkout(state, status, opened)
         onClose()
     }
@@ -116,6 +142,7 @@ fun WorkoutPlayer(model: AppModel, initial: WorkoutState, modifier: Modifier = M
         val data = CheckinData(reps = c.exercise.repsCount, load = c.exercise.load, durationSec = workStarted?.let { ((System.currentTimeMillis() - it) / 1000).toInt() }, avgHr = model.heartRate)
         val setNumber = set
         workStarted = null
+        WorkoutNotification.cancelRestDone(context)
         val last = setNumber >= c.exercise.sets
         scope.launch {
             model.checkin(NewCheckin(model.date, "${c.ref}/$setNumber", "set", "done", data))
@@ -124,14 +151,42 @@ fun WorkoutPlayer(model: AppModel, initial: WorkoutState, modifier: Modifier = M
                 val fresh = model.today?.state?.workouts?.firstOrNull { it.ref == initial.ref }
                 if (fresh?.next == null) { finish("done"); return@launch }
             }
-            if (model.settings.glasses.autoRestTimer && c.exercise.restSec > 0) restUntil = System.currentTimeMillis() + c.exercise.restSec * 1000L
             if (last) model.today?.state?.workouts?.firstOrNull { it.ref == initial.ref }?.next?.let { (i, s) -> ex = i; set = s } else set = setNumber + 1
+            if (model.settings.glasses.autoRestTimer && c.exercise.restSec > 0) {
+                val until = System.currentTimeMillis() + c.exercise.restSec * 1000L
+                restUntil = until
+                val nextEx = state.exercises[ex.coerceIn(0, state.exercises.size - 1)].exercise
+                WorkoutNotification.scheduleRestDone(context, until, nextEx.name, "Set $set/${nextEx.sets}")
+            } else {
+                restUntil = null
+            }
         }
     }
 
     fun skipExercise() = scope.launch {
+        restUntil = null
+        workStarted = null
+        WorkoutNotification.cancelRestDone(context)
         model.checkin(NewCheckin(model.date, current.ref, "exercise", "skipped"))
         model.today?.state?.workouts?.firstOrNull { it.ref == initial.ref }?.next?.let { (i, s) -> ex = i; set = s }
+    }
+
+    fun openSwap(prefill: String) {
+        swapText = prefill
+        swapDialog = true
+    }
+
+    fun swapExercise(replacement: String) {
+        val trimmed = replacement.trim()
+        if (trimmed.isEmpty()) return
+        swapDialog = false
+        restUntil = null
+        workStarted = null
+        WorkoutNotification.cancelRestDone(context)
+        scope.launch {
+            model.checkin(NewCheckin(model.date, current.ref, "exercise", "swapped", CheckinData(swappedFor = trimmed)))
+            model.today?.state?.workouts?.firstOrNull { it.ref == initial.ref }?.next?.let { (i, s) -> ex = i; set = s }
+        }
     }
 
     val mainLabel = when {
@@ -142,16 +197,26 @@ fun WorkoutPlayer(model: AppModel, initial: WorkoutState, modifier: Modifier = M
     fun mainAction() {
         when {
             current.settled -> move(1)
-            e.durationSec != null && workStarted == null -> { workStarted = System.currentTimeMillis(); restUntil = null }
+            e.durationSec != null && workStarted == null -> {
+                workStarted = System.currentTimeMillis()
+                restUntil = null
+                WorkoutNotification.cancelRestDone(context)
+            }
             else -> setDone()
         }
     }
 
-    // The watch follows along: it opens with the workout, gets every change, and its Set done is ours.
+    // The watch and ongoing notification follow along: their Set done is ours.
     LaunchedEffect(Unit) { model.beginWorkout() }
     DisposableEffect(Unit) {
-        model.watchSetDone = { mainAction() }
-        onDispose { model.watchSetDone = null; model.endWorkout() }
+        val action: () -> Unit = { mainAction() }
+        model.watchSetDone = action
+        WorkoutActionBridge.onSetDone = action
+        onDispose {
+            model.watchSetDone = null
+            WorkoutActionBridge.onSetDone = null
+            model.endWorkout()
+        }
     }
     LaunchedEffect(ex, set, restUntil, state.setsDone, current.settled) {
         model.updateWatch(WatchWorkout(
