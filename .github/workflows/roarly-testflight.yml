@@ -48,17 +48,6 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      # The bundled Qwen3-0.6B-4bit (~335 MB) is git-ignored; release_testflight.sh refuses to
-      # archive without it.
-      - name: Cache bundled on-device model
-        uses: actions/cache@v4
-        with:
-          path: projects/roarly/apps/ios/App/Resources/Models/Qwen3-0.6B-4bit
-          key: roarly-qwen3-0.6b-4bit-mlx-community-v1
-
-      - name: Fetch bundled on-device model
-        run: projects/roarly/scripts/fetch_model.sh
-
       - uses: ./.github/actions/apple-signing
         with:
           p12-base64: ${{ secrets.SIGNING_P12_BASE64 }}

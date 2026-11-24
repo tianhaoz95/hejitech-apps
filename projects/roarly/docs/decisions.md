@@ -12,17 +12,18 @@
 4. **Phone detects, watch is the remote/speaker (owner).** While the phone app runs it listens and
    decides; sounds play on the phone or, if chosen, the watch. The watch-alone keyword detector was
    discussed but not built yet.
-5. **Purely local (owner).** No account, backend or database (`BACKEND=none`). Everything ships in
-   the app: sounds (~4 MB) and the Qwen3-0.6B-4bit model (~335 MB, fetched by
-   `scripts/fetch_model.sh`, git-ignored, like Voxbrief).
+5. **Purely local (owner).** No account, backend or database (`BACKEND=none`). Sounds and the
+   three ~1.3 MB story-sense classifiers (`en`, `es`, `zh`) ship in the app; the experimental
+   Qwen3-0.6B-4bit model (~335 MB) is downloaded on demand in Settings via `MLXLMCommon` instead of
+   bloating every install (`scripts/fetch_model.sh` still fetches it locally for `evals/`).
 6. **Models (measured, `evals/director_cases.json`).** Apple's on-device model where available
    (18/22, ~0.25 s, misses only on the quiet side). Everywhere else the **story-sense classifier**:
-   a Create ML text classifier (BERT embeddings, 1.3 MB, ~10 ms on an iPhone 13) trained on 2,560
-   story sentences that Apple's model wrote for 32 things × 10 situations, each situation giving the
-   label (`ml/generate.swift`, `ml/train.swift`); the sound's words are masked as THING so one model
-   covers every sound. 20/22 on the cases, 96.9% on animals held out of training, 8/10 on the iPhone
-   self-test. The bundled Qwen3-0.6B (owner's choice to ship it) answered at chance (11/22; on the
-   phone it said yes to everything), so it is an opt-in "experimental" switch.
+   Create ML text classifiers (BERT embeddings, 1.3 MB each, ~10 ms on an iPhone 13) trained on
+   sentences that Apple's model wrote across 10 situations (`ml/generate.swift`, `ml/train.swift`),
+   with the sound's words masked (`THING` / `COSA` / `东西`) so one model covers every sound:
+   English 20/22 on `director_cases` and 96.9% held-out; Spanish 96.1% held-out (345/359);
+   Mandarin 90.5% held-out (323/357). The optional Qwen3-0.6B answered at chance (11/22), so it is
+   an on-demand "experimental" download in Settings (ready if fine-tuned later).
 7. **Speech.** `SpeechAnalyzer` + `SpeechTranscriber` (falls back to `DictationTranscriber`), with
    the catalog's words as contextual strings. iOS 26+. Verified on an iPhone 13 (iOS 27.2).
 8. **Pricing (owner).** Free download; Roarly Pro = yearly subscription with a 1-week free trial, or

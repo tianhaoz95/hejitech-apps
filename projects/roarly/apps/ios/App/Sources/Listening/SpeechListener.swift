@@ -129,6 +129,14 @@ final class SpeechListener {
         if phase != .idle { phase = .idle }
     }
 
+    /// Updates the speech model's contextual hints while listening (e.g. after editing custom words).
+    func updateVocabulary(_ vocabulary: [String]) {
+        guard let analyzer else { return }
+        let context = AnalysisContext()
+        context.contextualStrings[.general] = Array(vocabulary.prefix(300))
+        Task { try? await analyzer.setContext(context) }
+    }
+
     /// `-listenFile <name>`: a recording in the app's Documents folder instead of the microphone.
     static var testAudioFile: URL? {
         #if DEBUG

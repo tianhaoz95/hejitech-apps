@@ -267,17 +267,92 @@ public final class StoryEngine {
 
     // MARK: - Internals
 
+    /// Ambient beds in `.places` that layer naturally on top of another place (e.g. forest + night,
+    /// forest + campfire) instead of replacing the scene.
+    private static let overlayPlaceIDs: Set<String> = ["night", "fire"]
+
+    private func isExclusivePlace(_ cue: Cue) -> Bool {
+        cue.kind == .ambient && cue.category == .places && !Self.overlayPlaceIDs.contains(cue.id)
+    }
+
     private func fire(_ cue: Cue, at now: Date, minGap: TimeInterval? = nil) -> [StoryAction] {
         switch cue.kind {
         case .ambient:
             guard !activeAmbients.contains(cue.id) else { return [] }
+            var actions: [StoryAction] = []
+            if isExclusivePlace(cue) {
+                for oldID in activeAmbients.sorted() where cues[oldID].map(isExclusivePlace) == true {
+                    activeAmbients.remove(oldID)
+                    actions.append(.stopAmbient(cueID: oldID))
+                }
+            }
             activeAmbients.insert(cue.id)
-            return [.startAmbient(cueID: cue.id, volume: volume(for: cue))]
+            actions.append(.startAmbient(cueID: cue.id, volume: volume(for: cue)))
+            return actions
         case .oneShot:
             if let last = lastPlayed[cue.id], now.timeIntervalSince(last) < (minGap ?? settings.cooldown) { return [] }
             lastPlayed[cue.id] = now
             return [.play(cueID: cue.id, volume: volume(for: cue))]
         }
+    }
+
+    /// Builds a prioritized list of contextual words for on-device speech recognition, capped to
+    /// `limit` (SpeechAnalyzer's budget) without alphabetically cutting off core sounds or user
+    /// custom words. Priority: custom words → recent cues → free starter cues → remaining cues'
+    /// sound words → remaining cues' primary triggers → remaining triggers.
+    public static func prioritizedVocabulary(
+        allowedCueIDs: Set<String>,
+        customTriggers: [String: [String]] = [:],
+        recentCueIDs: [String] = [],
+        language: StoryLanguage = .english,
+        limit: Int = 300
+    ) -> [String] {
+        guard limit > 0 else { return [] }
+        let lexicon = language.lexicon
+        let allowedCues = SoundCatalog.all.filter { allowedCueIDs.contains($0.id) }
+        let byID = Dictionary(uniqueKeysWithValues: allowedCues.map { ($0.id, $0) })
+
+        var result: [String] = []
+        var seen: Set<String> = []
+        func add(_ words: [String]) {
+            for raw in words {
+                if result.count >= limit { return }
+                let w = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !w.isEmpty else { continue }
+                let key = w.lowercased()
+                if seen.insert(key).inserted { result.append(w) }
+            }
+        }
+
+        // 1. User's custom words (names of pets, toys, characters) always come first.
+        for cue in allowedCues {
+            if let custom = customTriggers[cue.id] { add(custom) }
+        }
+        // 2. Recently used cues (newest first).
+        for id in recentCueIDs.reversed() {
+            guard let cue = byID[id] else { continue }
+            let w = lexicon.words(for: cue)
+            add(w.soundWords)
+            add(w.triggers)
+        }
+        // 3. Free starter cues (core story sounds).
+        for cue in allowedCues where cue.isFree {
+            let w = lexicon.words(for: cue)
+            add(w.soundWords)
+            add(w.triggers)
+        }
+        // 4. Sound words (onomatopoeia are hardest for speech models to guess without hints).
+        for cue in allowedCues where !cue.isFree {
+            add(lexicon.words(for: cue).soundWords)
+        }
+        // 5. Primary trigger for each remaining cue, then secondary triggers.
+        for cue in allowedCues where !cue.isFree {
+            if let first = lexicon.words(for: cue).triggers.first { add([first]) }
+        }
+        for cue in allowedCues where !cue.isFree {
+            add(Array(lexicon.words(for: cue).triggers.dropFirst()))
+        }
+        return result
     }
 
     private func isPlayingOrCooling(_ cue: Cue, at now: Date) -> Bool {

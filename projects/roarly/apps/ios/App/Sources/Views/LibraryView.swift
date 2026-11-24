@@ -1,22 +1,67 @@
 import RoarlyKit
 import SwiftUI
 
-/// Every sound, by shelf. Tap to hear it; the pencil adds your own words for it ("Mister
-/// Whiskers" for the cat). Locked ones open the storybook pass.
+/// Every sound, by shelf. Tap to hear it; hold to add your own words ("Mister Whiskers" for the
+/// cat) or mute a sound during stories. Locked ones open the storybook pass.
 struct LibraryView: View {
+    enum Filter: String, CaseIterable, Identifiable {
+        case all, loops, custom, muted
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .all: return "All"
+            case .loops: return "Loops"
+            case .custom: return "Custom words"
+            case .muted: return "Muted"
+            }
+        }
+    }
+
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @State private var editing: Cue?
+    @State private var searchText = ""
+    @State private var filter: Filter = .all
 
     private let columns = [GridItem(.adaptive(minimum: 96), spacing: 12)]
+
+    private var query: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func matches(_ cue: Cue) -> Bool {
+        switch filter {
+        case .all: break
+        case .loops: if cue.kind != .ambient { return false }
+        case .custom: if (model.customWords[cue.id] ?? []).isEmpty { return false }
+        case .muted: if !model.isMuted(cue) { return false }
+        }
+        guard !query.isEmpty else { return true }
+        if cue.name.lowercased().contains(query) || cue.id.lowercased().contains(query) || cue.emoji.contains(query) {
+            return true
+        }
+        let words = model.language.lexicon.words(for: cue)
+        if words.triggers.contains(where: { $0.lowercased().contains(query) }) { return true }
+        if words.soundWords.contains(where: { $0.lowercased().contains(query) }) { return true }
+        if (model.customWords[cue.id] ?? []).contains(where: { $0.lowercased().contains(query) }) { return true }
+        return false
+    }
+
+    private var filteredByCategory: [(Cue.Category, [Cue])] {
+        Cue.Category.allCases.compactMap { cat in
+            let cues = SoundCatalog.all.filter { $0.category == cat && matches($0) }
+            return cues.isEmpty ? nil : (cat, cues)
+        }
+    }
 
     var body: some View {
         NavigationStack {
             ZStack {
                 NightSky()
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 26) {
-                        if !model.isPro {
+                    VStack(alignment: .leading, spacing: 22) {
+                        filterBar
+                        if !model.isPro && query.isEmpty && filter == .all {
                             Button { model.openPaywall(.browse) } label: {
                                 StoryCard {
                                     HStack(spacing: 12) {
@@ -30,9 +75,20 @@ struct LibraryView: View {
                             }
                             .buttonStyle(.plain)
                         }
-                        ForEach(Cue.Category.allCases, id: \.self) { category in
-                            let cues = SoundCatalog.all.filter { $0.category == category }
-                            if !cues.isEmpty {
+                        if filteredByCategory.isEmpty {
+                            StoryCard {
+                                VStack(spacing: 8) {
+                                    Text("No sounds match")
+                                        .font(Theme.label(16)).foregroundStyle(Theme.moon)
+                                    Text(emptyHint)
+                                        .font(Theme.body(14)).foregroundStyle(Theme.ink)
+                                        .multilineTextAlignment(.center)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                            }
+                        } else {
+                            ForEach(filteredByCategory, id: \.0) { category, cues in
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text(category.title).font(Theme.title(20)).foregroundStyle(Theme.moon)
                                     LazyVGrid(columns: columns, spacing: 12) {
@@ -41,7 +97,7 @@ struct LibraryView: View {
                                 }
                             }
                         }
-                        Text("Tap a sound to hear it. Hold one to add your own words for it.")
+                        Text("Tap a sound to hear it. Hold one to add your own words or mute it during stories.")
                             .font(Theme.body(14)).foregroundStyle(Theme.ink)
                     }
                     .padding(20)
@@ -49,20 +105,69 @@ struct LibraryView: View {
             }
             .navigationTitle("Sounds")
             .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search \(SoundCatalog.all.count) sounds or words")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .sheet(item: $editing) { cue in CustomWordsView(cue: cue) }
         }
     }
 
+    private var emptyHint: String {
+        switch filter {
+        case .custom: return "Hold any sound to add your own trigger words, like a pet or toy's name."
+        case .muted: return "Hold any sound to mute it so it won't trigger during stories."
+        default: return "Try searching by animal, place, or the sound word it makes."
+        }
+    }
+
+    private var filterBar: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                ForEach(Filter.allCases) { f in
+                    let on = filter == f
+                    let badge: String? = {
+                        if f == .muted, !model.disabledCueIDs.isEmpty { return "\(model.disabledCueIDs.count)" }
+                        if f == .custom, !model.customWords.isEmpty { return "\(model.customWords.count)" }
+                        return nil
+                    }()
+                    Button {
+                        withAnimation(.snappy) { filter = f }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Text(f.title)
+                            if let badge {
+                                Text(badge)
+                                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background((on ? Theme.skyDeep : Theme.lantern).opacity(0.2), in: Capsule())
+                            }
+                        }
+                        .font(Theme.label(14))
+                        .padding(.vertical, 7)
+                        .padding(.horizontal, 13)
+                        .foregroundStyle(on ? Theme.skyDeep : Theme.ink)
+                        .background(on ? Theme.lantern : Theme.card, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("filter-\(f.rawValue)")
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
+    }
+
     private func tile(_ cue: Cue) -> some View {
         let open = model.isUnlocked(cue)
+        let muted = model.isMuted(cue)
         return Button {
             if open { AudioHub.shared.preview(cue, volume: 0.8) } else { model.openPaywall(.sound(cue.id)) }
         } label: {
             VStack(spacing: 4) {
-                Text(cue.emoji).font(.system(size: 34)).opacity(open ? 1 : 0.45)
-                Text(cue.name).font(Theme.label(13)).foregroundStyle(open ? Theme.moon : Theme.ink.opacity(0.6)).lineLimit(1)
-                if cue.kind == .ambient {
+                Text(cue.emoji).font(.system(size: 34)).opacity(open && !muted ? 1 : 0.4)
+                Text(cue.name).font(Theme.label(13)).foregroundStyle(open && !muted ? Theme.moon : Theme.ink.opacity(0.55)).lineLimit(1)
+                if muted {
+                    Text("muted").font(.system(size: 10, weight: .semibold, design: .rounded)).foregroundStyle(Theme.ember.opacity(0.85))
+                } else if cue.kind == .ambient {
                     Text("loops").font(.system(size: 10, weight: .semibold, design: .rounded)).foregroundStyle(Theme.lantern.opacity(0.8))
                 }
             }
@@ -71,6 +176,8 @@ struct LibraryView: View {
             .overlay(alignment: .topTrailing) {
                 if !open {
                     Image(systemName: "lock.fill").font(.caption2).foregroundStyle(Theme.ink).padding(8)
+                } else if muted {
+                    Image(systemName: "speaker.slash.fill").font(.caption2).foregroundStyle(Theme.ember).padding(8)
                 } else if !(model.customWords[cue.id] ?? []).isEmpty {
                     Image(systemName: "text.badge.plus").font(.caption2).foregroundStyle(Theme.lantern).padding(8)
                 }
@@ -82,6 +189,9 @@ struct LibraryView: View {
                 Button("Play", systemImage: "play.fill") { AudioHub.shared.preview(cue, volume: 0.8) }
                 Button("Your words for it…", systemImage: "pencil") {
                     if model.isPro { editing = cue } else { model.openPaywall(.customWords) }
+                }
+                Button(muted ? "Unmute in stories" : "Mute in stories", systemImage: muted ? "speaker.wave.2.fill" : "speaker.slash.fill") {
+                    model.toggleMuted(cue)
                 }
             }
         }
@@ -113,6 +223,14 @@ struct CustomWordsView: View {
                             .onSubmit(add)
                         Button("Add", action: add).disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
+                }
+                Section {
+                    Toggle("Mute in stories", isOn: Binding(
+                        get: { model.isMuted(cue) },
+                        set: { _ in model.toggleMuted(cue) }
+                    ))
+                } footer: {
+                    Text("Muted sounds stay in your library to preview, but won't trigger automatically while listening.")
                 }
             }
             .navigationTitle(cue.name)

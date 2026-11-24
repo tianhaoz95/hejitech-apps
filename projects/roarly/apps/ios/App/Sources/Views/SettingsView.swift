@@ -35,8 +35,8 @@ struct SettingsView: View {
 
                 Section {
                     Toggle("Smart listening", isOn: $model.smartListening)
-                    if model.smartListening && SmallModelDirector.builtInAvailable {
-                        Toggle("Use the built-in language model instead (experimental)", isOn: $model.preferBuiltIn)
+                    if model.smartListening && SmallModelDirector.builtInSupported {
+                        OnDemandModelRow(director: model.director, preferBuiltIn: $model.preferBuiltIn, language: model.language)
                     }
                 } header: {
                     Text("Understanding the story")
@@ -49,11 +49,18 @@ struct SettingsView: View {
                         ForEach(SoundOutput.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
                     .disabled(!watch.isWatchAppInstalled || !model.isPro)
+                    Picker("Bedtime sleep timer", selection: $model.bedtimeSleepMinutes) {
+                        Text("Off").tag(0)
+                        Text("5 minutes").tag(5)
+                        Text("10 minutes").tag(10)
+                        Text("15 minutes").tag(15)
+                        Text("30 minutes").tag(30)
+                    }
                     Toggle("Show my words", isOn: $model.showWords)
                 } header: {
                     Text("While you tell the story")
                 } footer: {
-                    Text(watchFooter)
+                    Text(watchFooter + " In Bedtime mode, Roarly gently fades out and stops listening after quiet time.")
                 }
 
                 Section("Roarly Pro") {
@@ -123,6 +130,42 @@ struct SettingsView: View {
         if !watch.isWatchAppInstalled { return "Install Roarly on your Apple Watch from the Watch app to use it as a remote and speaker." }
         if !model.isPro { return "The Apple Watch remote is part of Roarly Pro." }
         return "Open Roarly on your watch to see suggestions there. The watch speaker is quiet: perfect for cuddles."
+    }
+}
+
+private struct OnDemandModelRow: View {
+    @ObservedObject var director: SmallModelDirector
+    @Binding var preferBuiltIn: Bool
+    let language: StoryLanguage
+
+    var body: some View {
+        if director.builtInInstalled {
+            Toggle("Use local Qwen3-0.6B model (experimental)", isOn: $preferBuiltIn)
+            Button("Remove downloaded model (~335 MB)", role: .destructive) {
+                preferBuiltIn = false
+                director.removeBuiltInModel()
+            }
+        } else if let progress = director.builtInDownloadProgress {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Downloading Qwen3-0.6B… \(Int(progress * 100))%")
+                    Spacer()
+                    Button("Cancel", role: .cancel) { director.cancelBuiltInDownload() }
+                        .font(.footnote)
+                }
+                ProgressView(value: progress)
+                    .tint(Theme.lantern)
+            }
+        } else {
+            Button("Download experimental Qwen3-0.6B (~335 MB)") {
+                director.downloadBuiltInModel()
+            }
+            if let error = director.builtInError {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.ember)
+            }
+        }
     }
 }
 

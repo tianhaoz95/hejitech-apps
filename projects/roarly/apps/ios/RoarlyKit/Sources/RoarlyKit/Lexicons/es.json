@@ -12,7 +12,9 @@
     "es-ES"
   ],
   "hint": "Cuenta tu cuento en español: Roarly escucha palabras como «león», «empezó a llover» o «guau». Tell your story in Spanish.",
-  "storySenseClassifier": false,
+  "storySenseClassifier": true,
+  "maskToken": "COSA",
+  "embeddingLanguage": "es",
   "holdNamesAtEndOfPartial": false,
   "plurals": [
     [

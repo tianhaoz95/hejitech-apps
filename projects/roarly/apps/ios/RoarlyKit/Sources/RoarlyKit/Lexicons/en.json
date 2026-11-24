@@ -14,6 +14,8 @@
   ],
   "hint": "Tell your story in English.",
   "storySenseClassifier": true,
+  "maskToken": "THING",
+  "embeddingLanguage": "en",
   "holdNamesAtEndOfPartial": false,
   "plurals": [
     [

@@ -62,8 +62,12 @@ public struct Lexicon: Sendable {
     public let hint: String
     /// The story-sense classifier was trained on this language.
     public let storySenseClassifier: Bool
+    /// Placeholder substituted for the sound's words when feeding the story-sense classifier.
+    public let maskToken: String
+    /// BCP-47 tag for `NLContextualEmbedding` (e.g. `"en"`, `"es"`, `"zh-Hans"`).
+    public let embeddingLanguage: String
     /// Partial text can stop mid-word: a name at its very end waits for the next token.
-    let holdNamesAtEndOfPartial: Bool
+    public let holdNamesAtEndOfPartial: Bool
     /// (singular ending, plural ending): "y" → "ies".
     public let plurals: [(String, String)]
     /// A negation right after one of these is alarm, not negation ("oh no, a tiger!").
@@ -133,6 +137,8 @@ public struct Lexicon: Sendable {
         let name, englishName, hint: String
         let languageCodes, speechLocales: [String]
         let storySenseClassifier, holdNamesAtEndOfPartial: Bool
+        let maskToken: String?
+        let embeddingLanguage: String?
         let plurals: [[String]]
         let interjections, negationSuffixes: [String]
         let reach: Reach
@@ -151,6 +157,8 @@ public struct Lexicon: Sendable {
         languageCodes = f.languageCodes
         speechLocales = f.speechLocales
         storySenseClassifier = f.storySenseClassifier
+        maskToken = f.maskToken ?? "THING"
+        embeddingLanguage = f.embeddingLanguage ?? f.languageCodes.first ?? f.id
         holdNamesAtEndOfPartial = f.holdNamesAtEndOfPartial
         plurals = f.plurals.compactMap { $0.count == 2 ? ($0[0], $0[1]) : nil }
         interjections = Set(f.interjections.flatMap(TextNormalizer.words))

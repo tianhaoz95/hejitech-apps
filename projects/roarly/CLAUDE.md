@@ -9,14 +9,17 @@ Decisions and their reasons: `docs/decisions.md`. Root `CLAUDE.md` has the monor
 
 ```
 apps/ios/project.yml        XcodeGen (Roarly.xcodeproj is git-ignored): Roarly (iOS 26), RoarlyWatch
-                            (watchOS 26, embedded), RoarlyUITests
+                            (watchOS 26, embedded), RoarlyLiveActivity (ActivityKit widget extension),
+                            RoarlyUITests
 apps/ios/RoarlyKit/         Swift package, no UI: SoundCatalog, TextNormalizer, CueMatcher,
                             ContextJudge, StoryEngine, DirectorPrompt, WatchLink (+ tests, story eval)
 apps/ios/App/Sources/       AppModel (ties it together), Audio/AudioHub, Listening/SpeechListener,
-                            Director/SmallModelDirector, Store/ProStore, Watch/PhoneWatchBridge,
-                            Views/*, Debug/DebugFlags
+                            Director/SmallModelDirector, LiveActivity/StoryLiveActivityController,
+                            Store/ProStore, Watch/PhoneWatchBridge, Views/*, Debug/DebugFlags
 apps/ios/App/Resources/     Sounds/*.m4a + CREDITS.txt (built by tools/build_sounds.py),
-                            Models/Qwen3-0.6B-4bit (git-ignored: scripts/fetch_model.sh)
+                            ML/RoarlyDirector*.mlmodel (en, es, zh; ~1.3 MB each)
+                            (Qwen3-0.6B-4bit is downloaded on demand via HubApi, not bundled)
+apps/ios/LiveActivity/      Lock Screen & Dynamic Island Live Activity extension (+ LiveActivityShared/)
 apps/ios/Watch/Sources/     WatchModel (remote + speaker), WatchViews
 tools/                      build_sounds.py, classify_sound.swift (Apple's sound classifier as a
                             judge), make_icon.swift

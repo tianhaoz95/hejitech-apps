@@ -1,5 +1,7 @@
+import Combine
 import Foundation
 import FoundationModels
+import Hub
 import MLX
 import MLXLLM
 import MLXLMCommon
@@ -7,58 +9,161 @@ import NaturalLanguage
 import RoarlyKit
 
 /// Settles the mentions the context rules aren't sure about ("the lion was quiet… the lion")
-/// with a small on-device language model: Apple's where the iPhone has Apple Intelligence,
-/// otherwise the bundled Qwen3 0.6B (MLX). One yes/no question, a few tokens, a hard time limit;
-/// when the model is slow or missing the suggestion simply stays up for the parent to tap.
+/// with a small on-device model: Apple's where the iPhone has Apple Intelligence, otherwise the
+/// language's Create ML story-sense classifier (~1–2 MB, milliseconds), or the optional on-demand
+/// Qwen3 0.6B (MLX, ~335 MB) if the user downloads and enables it. One yes/no question, a hard
+/// time limit; when the model is slow or missing the suggestion stays up for the parent to tap.
 @MainActor
-final class SmallModelDirector {
+final class SmallModelDirector: ObservableObject {
     enum Engine: String {
         case apple = "Apple Intelligence"
         /// Create ML text classifier trained on sentences written and labeled by Apple's model
-        /// (ml/). 1.3 MB, milliseconds, every iPhone.
+        /// (ml/). ~1–2 MB, milliseconds, every iPhone.
         case classifier = "Story sense"
-        case builtIn = "Built-in language model"
+        case builtIn = "On-demand language model"
         case none = "Off"
     }
 
     static let modelFolder = "Qwen3-0.6B-4bit"
+    static let modelID = "mlx-community/Qwen3-0.6B-4bit"
     static let timeLimit: Duration = .milliseconds(2500)
 
-    private(set) var engine: Engine = .none
+    @Published private(set) var engine: Engine = .none
+    @Published private(set) var builtInInstalled: Bool = false
+    @Published private(set) var builtInDownloadProgress: Double?
+    @Published private(set) var builtInError: String?
+
     private(set) var lastLatency: Duration?
+    private var language: StoryLanguage = .english
+    private var classifiers: [StoryLanguage: NLModel] = [:]
     private var container: ModelContainer?
     private var loading: Task<ModelContainer, Error>?
+    private var downloadTask: Task<Void, Never>?
     private var busy = false
 
     static var appleAvailable: Bool { SystemLanguageModel.default.isAvailable }
 
-    static var builtInAvailable: Bool {
+    /// MLX's Metal allocator aborts in the iOS Simulator, so the on-demand MLX model is device-only.
+    static var builtInSupported: Bool {
         #if targetEnvironment(simulator)
-        return false // MLX's Metal allocator can't run in the Simulator (it aborts the process).
+        return false
         #else
-        return Bundle.main.url(forResource: modelFolder, withExtension: nil) != nil
+        return true
         #endif
     }
 
-    /// Apple's model when the iPhone has it, else the story-sense classifier. The bundled 0.6B
-    /// language model only when asked for: on evals/director_cases.json it answered at chance
-    /// (11/22), Apple's model 18/22, the classifier 20/22 (and 96.9% on animals it never saw).
-    /// The classifier was trained on one language (its lexicon says `storySenseClassifier`); other
-    /// stories use Apple's model or leave unsure moments to the parent's tap.
+    static var builtInAvailable: Bool {
+        builtInSupported && localModelDirectory != nil
+    }
+
+    private static var modelsRoot: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        return base.appendingPathComponent("RoarlyModels", isDirectory: true)
+    }
+
+    private static var hub: HubApi {
+        HubApi(downloadBase: modelsRoot)
+    }
+
+    private static var downloadedModelDirectory: URL {
+        ModelConfiguration(id: modelID).modelDirectory(hub: hub)
+    }
+
+    private static var bundledModelDirectory: URL? {
+        Bundle.main.url(forResource: modelFolder, withExtension: nil)
+    }
+
+    static var localModelDirectory: URL? {
+        if let bundled = bundledModelDirectory,
+           FileManager.default.fileExists(atPath: bundled.appendingPathComponent("model.safetensors").path) {
+            return bundled
+        }
+        let dl = downloadedModelDirectory
+        if FileManager.default.fileExists(atPath: dl.appendingPathComponent("model.safetensors").path),
+           FileManager.default.fileExists(atPath: dl.appendingPathComponent("tokenizer.json").path) {
+            return dl
+        }
+        return nil
+    }
+
+    init() {
+        builtInInstalled = Self.localModelDirectory != nil
+    }
+
+    /// Apple's model when the iPhone has it, else the language's story-sense classifier. The
+    /// on-demand Qwen3 0.6B language model only when downloaded and explicitly opted in.
     func choose(useBuiltIn: Bool = false, language: StoryLanguage = .english) {
+        self.language = language
+        builtInInstalled = Self.localModelDirectory != nil
         if useBuiltIn && Self.builtInAvailable { engine = .builtIn }
         else if Self.appleAvailable { engine = .apple }
-        else if classifier != nil && language.lexicon.storySenseClassifier { engine = .classifier }
+        else if language.lexicon.storySenseClassifier && classifier(for: language) != nil { engine = .classifier }
         else { engine = .none }
     }
 
-    private lazy var classifier: NLModel? = {
-        guard let url = Bundle.main.url(forResource: "RoarlyDirector", withExtension: "mlmodelc") else { return nil }
-        return try? NLModel(contentsOf: url)
-    }()
+    private func classifier(for language: StoryLanguage) -> NLModel? {
+        if let cached = classifiers[language] { return cached }
+        let url = Bundle.main.url(forResource: "RoarlyDirector_\(language.rawValue)", withExtension: "mlmodelc")
+            ?? (language == .english ? Bundle.main.url(forResource: "RoarlyDirector", withExtension: "mlmodelc") : nil)
+        guard let url, let model = try? NLModel(contentsOf: url) else { return nil }
+        classifiers[language] = model
+        return model
+    }
 
     /// Words the parent added for each sound (masked like the sound's own words).
     var customWords: [String: [String]] = [:]
+
+    // MARK: - On-demand Qwen3-0.6B download
+
+    func downloadBuiltInModel() {
+        guard Self.builtInSupported, downloadTask == nil else { return }
+        builtInError = nil
+        builtInDownloadProgress = 0
+        downloadTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer {
+                self.builtInDownloadProgress = nil
+                self.downloadTask = nil
+            }
+            do {
+                try FileManager.default.createDirectory(at: Self.modelsRoot, withIntermediateDirectories: true)
+                _ = try await MLXLMCommon.downloadModel(
+                    hub: Self.hub,
+                    configuration: ModelConfiguration(id: Self.modelID)
+                ) { progress in
+                    Task { @MainActor [weak self] in
+                        self?.builtInDownloadProgress = progress.fractionCompleted
+                    }
+                }
+                self.builtInInstalled = Self.localModelDirectory != nil
+                log("on-demand model downloaded: \(Self.modelID)")
+            } catch is CancellationError {
+                log("on-demand model download cancelled")
+            } catch {
+                log("on-demand model download failed: \(error)")
+                self.builtInError = "Couldn't download the model: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func cancelBuiltInDownload() {
+        downloadTask?.cancel()
+        downloadTask = nil
+        builtInDownloadProgress = nil
+    }
+
+    func removeBuiltInModel() {
+        cancelBuiltInDownload()
+        unload()
+        try? FileManager.default.removeItem(at: Self.downloadedModelDirectory)
+        builtInInstalled = Self.localModelDirectory != nil
+        builtInError = nil
+        if engine == .builtIn && !builtInInstalled {
+            choose(useBuiltIn: false, language: language)
+        }
+        log("on-demand model removed")
+    }
 
     /// Loads the model before the story starts so the first question isn't slow.
     func warmUp() {
@@ -68,9 +173,10 @@ final class SmallModelDirector {
         case .builtIn:
             Task { _ = try? await loadContainer() }
         case .classifier:
-            // The classifier's BERT embeddings are an OS asset; fetch it once if missing.
-            if let e = NLContextualEmbedding(language: .english), !e.hasAvailableAssets {
-                e.requestAssets { result, error in log("embedding assets: \(result.rawValue) \(error?.localizedDescription ?? "")") }
+            // The classifier's BERT embeddings are an OS asset; fetch once if missing.
+            let nlLang = NLLanguage(rawValue: language.lexicon.embeddingLanguage)
+            if let e = NLContextualEmbedding(language: nlLang), !e.hasAvailableAssets {
+                e.requestAssets { result, error in log("embedding assets (\(nlLang.rawValue)): \(result.rawValue) \(error?.localizedDescription ?? "")") }
             }
         case .none:
             break
@@ -79,12 +185,12 @@ final class SmallModelDirector {
 
     /// P(play) from the classifier, or nil.
     func classifierScore(_ review: StoryEngine.Review) -> Double? {
-        guard let classifier else { return nil }
-        let text = DirectorPrompt.masked(review, customWords: customWords[review.cueID] ?? [])
-        return classifier.predictedLabelHypotheses(for: text, maximumCount: 2)["play"]
+        guard let model = classifier(for: language) else { return nil }
+        let text = DirectorPrompt.masked(review, language: language, customWords: customWords[review.cueID] ?? [])
+        return model.predictedLabelHypotheses(for: text, maximumCount: 2)["play"]
     }
 
-    /// Unloads the bundled model (memory) when the story ends.
+    /// Unloads the on-demand model (memory) when the story ends.
     func unload() {
         container = nil
         loading = nil
@@ -100,7 +206,7 @@ final class SmallModelDirector {
             let started = ContinuousClock.now
             let p = classifierScore(review)
             lastLatency = ContinuousClock.now - started
-            log("director (story sense, \(Self.milliseconds(lastLatency)) ms) \(review.cueID) P(play)=\(p.map { String(format: "%.2f", $0) } ?? "–")")
+            log("director (story sense/\(language.rawValue), \(Self.milliseconds(lastLatency)) ms) \(review.cueID) P(play)=\(p.map { String(format: "%.2f", $0) } ?? "–")")
             guard let p else { return nil }
             // Between the two the parent decides: the card stays up.
             return p >= 0.6 ? true : (p <= 0.4 ? false : nil)
@@ -168,8 +274,8 @@ final class SmallModelDirector {
     private func loadContainer() async throws -> ModelContainer {
         if let container { return container }
         if let loading { return try await loading.value }
-        guard Self.builtInAvailable, let dir = Bundle.main.url(forResource: Self.modelFolder, withExtension: nil) else {
-            throw NSError(domain: "Roarly", code: 3, userInfo: [NSLocalizedDescriptionKey: "The built-in model isn't available."])
+        guard Self.builtInSupported, let dir = Self.localModelDirectory else {
+            throw NSError(domain: "Roarly", code: 3, userInfo: [NSLocalizedDescriptionKey: "The on-demand model isn't downloaded yet."])
         }
         let task = Task<ModelContainer, Error> {
             MLX.GPU.set(cacheLimit: 64 * 1024 * 1024)
@@ -180,7 +286,7 @@ final class SmallModelDirector {
             let c = try await task.value
             container = c
             loading = nil
-            log("built-in model loaded")
+            log("on-demand model loaded")
             return c
         } catch {
             loading = nil

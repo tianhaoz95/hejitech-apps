@@ -58,13 +58,6 @@ for set in "$IOS_DIR/App/Resources/Assets.xcassets/AppIcon.appiconset" "$IOS_DIR
   fi
 done
 
-# The bundled small model is git-ignored; never ship without it.
-"$REPO_ROOT/scripts/fetch_model.sh"
-if [[ ! -f "$IOS_DIR/App/Resources/Models/Qwen3-0.6B-4bit/model.safetensors" ]]; then
-  echo "error: the bundled model is missing (scripts/fetch_model.sh)." >&2
-  exit 1
-fi
-
 echo "-> Regenerating Xcode project via xcodegen..."
 (cd "$IOS_DIR" && xcodegen generate)
 

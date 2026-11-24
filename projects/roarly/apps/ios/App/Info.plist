@@ -37,6 +37,8 @@
 	<string>Roarly listens while you tell a story so it can add the lion's roar or the rain at the right moment. Nothing you say leaves your iPhone.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Roarly turns your story into words on your iPhone to know which sound fits. Nothing you say leaves your iPhone.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

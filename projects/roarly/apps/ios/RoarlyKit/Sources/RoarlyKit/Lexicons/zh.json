@@ -12,7 +12,9 @@
     "zh-HK"
   ],
   "hint": "用普通话讲故事：Roarly 会听“狮子”“下雨了”“汪汪”这样的词。Tell your story in Mandarin; Traditional and Simplified both work.",
-  "storySenseClassifier": false,
+  "storySenseClassifier": true,
+  "maskToken": "东西",
+  "embeddingLanguage": "zh-Hans",
   "holdNamesAtEndOfPartial": true,
   "plurals": [],
   "interjections": [

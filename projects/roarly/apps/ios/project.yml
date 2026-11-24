@@ -38,15 +38,13 @@ targets:
     platform: iOS
     sources:
       - path: App/Sources
+      - path: LiveActivityShared
       - path: App/Resources
         excludes:
           - "Models/**"
           - "Sounds/**"
       # Folder references: copied as folders, looked up by name at run time.
       - path: App/Resources/Sounds
-        type: folder
-        buildPhase: resources
-      - path: App/Resources/Models/Qwen3-0.6B-4bit
         type: folder
         buildPhase: resources
     dependencies:
@@ -56,6 +54,8 @@ targets:
       - package: MLXSwiftExamples
         product: MLXLMCommon
       - target: RoarlyWatch
+        embed: true
+      - target: RoarlyLiveActivity
         embed: true
     settings:
       base:
@@ -73,6 +73,7 @@ targets:
         UILaunchScreen:
           UIColorName: LaunchBackground
         ITSAppUsesNonExemptEncryption: false
+        NSSupportsLiveActivities: true
         NSMicrophoneUsageDescription: "Roarly listens while you tell a story so it can add the lion's roar or the rain at the right moment. Nothing you say leaves your iPhone."
         NSSpeechRecognitionUsageDescription: "Roarly turns your story into words on your iPhone to know which sound fits. Nothing you say leaves your iPhone."
         # Keeps listening (and the rain playing) with the screen off.
@@ -117,6 +118,31 @@ targets:
         # Keeps a loop (the rain) going on the watch speaker with the wrist down.
         UIBackgroundModes:
           - audio
+
+  RoarlyLiveActivity:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: LiveActivity
+      - path: LiveActivityShared
+    settings:
+      base:
+        PRODUCT_NAME: RoarlyLiveActivity
+        PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG).liveactivity
+        TARGETED_DEVICE_FAMILY: "1"
+    info:
+      path: LiveActivity/Info.plist
+      properties:
+        CFBundleDisplayName: "Roarly Story"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        ITSAppUsesNonExemptEncryption: false
+    frameworks:
+      - framework: WidgetKit.framework
+      - framework: ActivityKit.framework
+      - framework: AppIntents.framework
 
   RoarlyUITests:
     type: bundle.ui-testing

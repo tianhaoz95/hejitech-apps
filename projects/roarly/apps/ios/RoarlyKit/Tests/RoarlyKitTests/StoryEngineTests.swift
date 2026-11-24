@@ -209,6 +209,47 @@ final class StoryEngineTests: XCTestCase {
         let lion = SoundCatalog.cue("lion")!
         XCTAssertLessThan(StoryEngine(settings: .init(mode: .bedtime)).volume(for: lion), StoryEngine(settings: .init(mode: .play)).volume(for: lion))
     }
+
+    func testPlaceAmbientsCrossfadeWhileKeepingOverlays() {
+        let e = StoryEngine(settings: .init(mode: .play, automation: .auto))
+        let t = Date()
+        _ = e.ingest("Suddenly they arrived in the forest!", isFinal: true, at: t)
+        _ = e.ingest("Then it started to rain.", isFinal: true, at: t + 2)
+        _ = e.tap(cueID: "fire", at: t + 4)
+        XCTAssertEqual(e.activeAmbients, ["forest", "rain", "fire"])
+
+        let move = e.ingest("Suddenly they arrived at the castle!", isFinal: true, at: t + 8)
+        XCTAssertTrue(move.contains(.stopAmbient(cueID: "forest")))
+        XCTAssertTrue(played(move).contains("castle"))
+        XCTAssertEqual(e.activeAmbients, ["castle", "rain", "fire"])
+    }
+
+    func testPrioritizedVocabularyKeepsCustomAndCoreWords() {
+        let allIDs = Set(SoundCatalog.all.map(\.id))
+        let vocab = StoryEngine.prioritizedVocabulary(
+            allowedCueIDs: allIDs,
+            customTriggers: ["cat": ["Zelda Whiskers"]],
+            recentCueIDs: ["wolf"],
+            language: .english,
+            limit: 300
+        )
+        XCTAssertEqual(vocab.count, 300)
+        XCTAssertEqual(vocab.first, "Zelda Whiskers")
+        let lower = Set(vocab.map { $0.lowercased() })
+        XCTAssertTrue(lower.contains("wolf"))
+        XCTAssertTrue(lower.contains("lion"))
+        XCTAssertTrue(lower.contains("tiger"))
+        XCTAssertTrue(lower.contains("rain"))
+
+        let freeOnly = StoryEngine.prioritizedVocabulary(
+            allowedCueIDs: Set(SoundCatalog.freeCues.map(\.id)),
+            customTriggers: ["wolf": ["Should Not Appear"]],
+            language: .english,
+            limit: 300
+        )
+        XCTAssertFalse(freeOnly.contains("Should Not Appear"))
+        XCTAssertFalse(freeOnly.map { $0.lowercased() }.contains("wolf"))
+    }
 }
 
 final class DirectorTests: XCTestCase {
@@ -223,6 +264,10 @@ final class DirectorTests: XCTestCase {
         XCTAssertEqual(DirectorPrompt.masked(r), "The THING ran to the THING house.")
         let l = StoryEngine.Review(id: UUID(), cueID: "lion", utterance: "The king of the jungle yawned.", story: [], score: 0.5)
         XCTAssertEqual(DirectorPrompt.masked(l), "The THING yawned.")
+        let es = StoryEngine.Review(id: UUID(), cueID: "lion", utterance: "El león se fue corriendo.", story: [], score: 0.5)
+        XCTAssertEqual(DirectorPrompt.masked(es, language: .es), "El COSA se fue corriendo.")
+        let zh = StoryEngine.Review(id: UUID(), cueID: "lion", utterance: "狮子睡着了。", story: [], score: 0.5)
+        XCTAssertEqual(DirectorPrompt.masked(zh, language: .zh), "东西睡着了。")
     }
 
     func testQuestionNamesTheSound() {

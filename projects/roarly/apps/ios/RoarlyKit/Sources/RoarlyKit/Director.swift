@@ -25,18 +25,40 @@ public enum DirectorPrompt {
     }
 
     /// The utterance as the on-device classifier (ml/train.swift) sees it: the sound's own words
-    /// replaced by THING, so one model covers every sound ("THING is running away").
-    public static func masked(_ review: StoryEngine.Review, customWords: [String] = []) -> String {
+    /// replaced by the language's mask token (`THING`, `COSA`, `东西`), so one model covers every sound.
+    public static func masked(_ review: StoryEngine.Review, language: StoryLanguage = .english, customWords: [String] = []) -> String {
         guard let cue = SoundCatalog.cue(review.cueID) else { return review.utterance }
-        let phrases = (StoryLanguage.english.lexicon.words(for: cue).triggers + customWords).sorted { $0.count > $1.count }
+        let lex = language.lexicon
+        let token = lex.maskToken
+        let phrases = (lex.words(for: cue).triggers + customWords)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .sorted { $0.count > $1.count }
+
+        if lex.holdNamesAtEndOfPartial {
+            var text = review.utterance.applyingTransform(.init("Traditional-Simplified"), reverse: false) ?? review.utterance
+            for p in phrases {
+                text = text.replacingOccurrences(of: p, with: token)
+            }
+            return text
+        }
+
         var text = review.utterance
         for p in phrases {
-            let word: String
-            if p.hasSuffix("y") { word = NSRegularExpression.escapedPattern(for: String(p.dropLast())) + "(y|ies)" }
-            else if p.hasSuffix("f") { word = NSRegularExpression.escapedPattern(for: String(p.dropLast())) + "(f|ves)" }
-            else { word = NSRegularExpression.escapedPattern(for: p) + "(s|es)?" }
-            let pattern = "\\b" + word + "\\b"
-            text = text.replacingOccurrences(of: pattern, with: "THING", options: [.regularExpression, .caseInsensitive])
+            var forms: [String] = [p]
+            for (singular, plural) in lex.plurals {
+                if singular.isEmpty {
+                    forms.append(p + plural)
+                } else if p.lowercased().hasSuffix(singular) {
+                    forms.append(String(p.dropLast(singular.count)) + plural)
+                }
+            }
+            let folded = forms.map { $0.folding(options: .diacriticInsensitive, locale: .current) }
+            let allForms = Array(Set(forms + folded)).sorted { $0.count > $1.count }
+            for form in allForms {
+                let pattern = "\\b" + NSRegularExpression.escapedPattern(for: form) + "\\b"
+                text = text.replacingOccurrences(of: pattern, with: token, options: [.regularExpression, .caseInsensitive])
+            }
         }
         return text
     }

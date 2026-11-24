@@ -16,7 +16,13 @@ enum SoundOutput: String, CaseIterable, Codable {
 @MainActor
 final class AppModel: ObservableObject {
     // Settings (UserDefaults).
-    @AppStorage("mode") var mode: StoryMode = .bedtime { didSet { syncEngineSettings() } }
+    @AppStorage("mode") var mode: StoryMode = .bedtime {
+        didSet {
+            syncEngineSettings()
+            if mode == .bedtime { lastActivityAt = Date() }
+            updateLiveActivity()
+        }
+    }
     @AppStorage("automation") var automation: Automation = .balanced { didSet { syncEngineSettings() } }
     /// The language stories are told in; defaults to the phone's when Roarly knows it.
     @AppStorage("storyLanguage") var language: StoryLanguage = StoryLanguage.matching(languageCode: Locale.current.language.languageCode?.identifier) {
@@ -32,8 +38,10 @@ final class AppModel: ObservableObject {
     @AppStorage("showWords") var showWords = true
     @AppStorage("smartListening") var smartListening = true { didSet { director.choose(useBuiltIn: preferBuiltIn, language: language); if smartListening, isListening { director.warmUp() } } }
     @AppStorage("useBuiltInModel") var preferBuiltIn = false { didSet { director.choose(useBuiltIn: preferBuiltIn, language: language) } }
+    @AppStorage("bedtimeSleepMinutes") var bedtimeSleepMinutes = 10
     @AppStorage("onboarded") var onboarded = false
     @AppStorage("customWords") private var customWordsData = Data()
+    @AppStorage("disabledCueIDs") private var disabledCueIDsData = Data()
 
     // Story state.
     @Published private(set) var isListening = false
@@ -79,6 +87,7 @@ final class AppModel: ObservableObject {
     let engine = StoryEngine()
     let listener = SpeechListener()
     let director = SmallModelDirector()
+    let liveActivity = StoryLiveActivityController()
     let hub = AudioHub.shared
     let store = ProStore.shared
     let watch = PhoneWatchBridge.shared
@@ -86,6 +95,8 @@ final class AppModel: ObservableObject {
     private var ticker: Task<Void, Never>?
     private var reviewing: Set<UUID> = []
     private var restarts: [Date] = []
+    private var lastActivityAt = Date()
+    private var sleepFading = false
     private var cancellables = Set<AnyCancellable>()
 
     init() {
@@ -111,6 +122,8 @@ final class AppModel: ObservableObject {
         watch.onToggleListening = { [weak self] in Task { await self?.toggle() } }
         watch.currentState = { [weak self] in self?.watchState ?? WatchLink.State() }
         watch.activate()
+        StoryIntentBridge.stopStory = { [weak self] in await self?.stop() }
+        StoryIntentBridge.silenceAmbients = { [weak self] in self?.silenceAmbients() }
         syncEngineSettings()
         store.$isPro.receive(on: RunLoop.main).sink { [weak self] _ in
             Task { @MainActor in
@@ -134,24 +147,45 @@ final class AppModel: ObservableObject {
         }
     }
 
+    var disabledCueIDs: Set<String> {
+        get { Set((try? JSONDecoder().decode([String].self, from: disabledCueIDsData)) ?? []) }
+        set {
+            disabledCueIDsData = (try? JSONEncoder().encode(Array(newValue).sorted())) ?? Data()
+            syncEngineSettings()
+            objectWillChange.send()
+        }
+    }
+
+    func isMuted(_ cue: Cue) -> Bool { disabledCueIDs.contains(cue.id) }
+
+    func toggleMuted(_ cue: Cue) {
+        var set = disabledCueIDs
+        if set.contains(cue.id) { set.remove(cue.id) } else { set.insert(cue.id) }
+        disabledCueIDs = set
+        if set.contains(cue.id) && ambients.contains(cue.id) { stopAmbient(cue.id) }
+    }
+
     func isUnlocked(_ cue: Cue) -> Bool { cue.isFree || isPro }
+
+    private var allowedCueIDs: Set<String> {
+        Set(SoundCatalog.all.filter { isUnlocked($0) && !disabledCueIDs.contains($0.id) }.map(\.id))
+    }
 
     private func syncEngineSettings() {
         director.customWords = isPro ? customWords : [:]
-        let allowed = SoundCatalog.all.filter { isUnlocked($0) }.map(\.id)
-        engine.update(settings: .init(mode: mode, automation: automation, allowedCueIDs: Set(allowed), customTriggers: isPro ? customWords : [:], language: language))
+        engine.update(settings: .init(mode: mode, automation: automation, allowedCueIDs: allowedCueIDs, customTriggers: isPro ? customWords : [:], language: language))
+        if isListening { listener.updateVocabulary(vocabulary) }
     }
 
-    /// Words the speech model should expect.
+    /// Prioritized words the speech model should expect (custom words, recent, and core cues first).
     private var vocabulary: [String] {
-        var words: [String] = []
-        let lexicon = language.lexicon
-        for cue in SoundCatalog.all {
-            let w = lexicon.words(for: cue)
-            words += w.triggers + w.soundWords
-            words += customWords[cue.id] ?? []
-        }
-        return Array(Set(words)).sorted()
+        StoryEngine.prioritizedVocabulary(
+            allowedCueIDs: allowedCueIDs,
+            customTriggers: isPro ? customWords : [:],
+            recentCueIDs: recent,
+            language: language,
+            limit: 300
+        )
     }
 
     // MARK: - Listening
@@ -176,10 +210,13 @@ final class AppModel: ObservableObject {
         do {
             try await listener.start(hub: hub, vocabulary: vocabulary, language: language)
             isListening = true
+            sleepFading = false
+            lastActivityAt = Date()
             status = "Listening"
             UIApplication.shared.isIdleTimerDisabled = true
             startTicker()
             pushWatchState()
+            liveActivity.start(started: Date(), state: liveActivityState)
             log("listening (\(language.englishName), smart: \(smartListening ? director.engine.rawValue : "off"), mode \(mode.rawValue), \(automation.rawValue))")
         } catch {
             log("start failed: \(error)")
@@ -193,13 +230,17 @@ final class AppModel: ObservableObject {
     /// The demo story: the story screen as if listening, sounds through the engine, no mic.
     func beginDemo() {
         isListening = true
+        sleepFading = false
+        lastActivityAt = Date()
         status = "Listening"
         startTicker()
+        liveActivity.start(started: Date(), state: liveActivityState)
     }
 
     func stop(keepSounds: Bool = false) async {
         ticker?.cancel()
         ticker = nil
+        sleepFading = false
         await listener.stop()
         if !keepSounds { hub.stopAll() }
         hub.stopListening()
@@ -211,7 +252,13 @@ final class AppModel: ObservableObject {
         UIApplication.shared.isIdleTimerDisabled = false
         if output == .watch { watch.send(.stopAll) }
         director.unload()
+        liveActivity.end()
         pushWatchState()
+    }
+
+    func silenceAmbients() {
+        guard !ambients.isEmpty else { return }
+        for id in ambients { handle(engine.stopAmbient(id)) }
     }
 
     private func listenerPhase(_ phase: SpeechListener.Phase) {
@@ -230,8 +277,26 @@ final class AppModel: ObservableObject {
                 try? await Task.sleep(for: .milliseconds(250))
                 guard let self else { return }
                 self.level = self.hub.inputLevel
-                if Int(Date().timeIntervalSince1970 * 4) % 4 == 0 { self.handle(self.engine.tick()) }
+                if Int(Date().timeIntervalSince1970 * 4) % 4 == 0 {
+                    self.handle(self.engine.tick())
+                    self.checkBedtimeSleepTimer()
+                }
             }
+        }
+    }
+
+    private func checkBedtimeSleepTimer() {
+        guard isListening, !sleepFading, mode == .bedtime, bedtimeSleepMinutes > 0 else { return }
+        let idle = Date().timeIntervalSince(lastActivityAt)
+        guard idle >= Double(bedtimeSleepMinutes * 60) else { return }
+        sleepFading = true
+        log("bedtime sleep timer: fading out after \(bedtimeSleepMinutes)m quiet")
+        hub.fadeAll(over: 4)
+        if output == .watch { watch.send(.stopAll) }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(4))
+            guard let self, self.isListening, self.sleepFading else { return }
+            await self.stop(keepSounds: false)
         }
     }
 
@@ -241,6 +306,8 @@ final class AppModel: ObservableObject {
     func heard(_ text: String, isFinal: Bool) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        lastActivityAt = Date()
+        sleepFading = false
         let actions = engine.ingest(trimmed, isFinal: isFinal)
         if isFinal {
             finishedLines = Array((finishedLines + [trimmed]).suffix(12))
@@ -268,6 +335,8 @@ final class AppModel: ObservableObject {
             bump(cueID)
             return
         }
+        lastActivityAt = Date()
+        sleepFading = false
         handle(engine.tap(cueID: cueID))
     }
 
@@ -327,6 +396,7 @@ final class AppModel: ObservableObject {
         }
         suggestions = engine.suggestions
         ambients = engine.activeAmbients.sorted()
+        updateLiveActivity()
         pushWatchState()
     }
 
@@ -335,6 +405,29 @@ final class AppModel: ObservableObject {
         recent.removeAll { $0 == id }
         recent.insert(id, at: 0)
         recent = Array(recent.prefix(8))
+        updateLiveActivity()
+    }
+
+    // MARK: - Live Activity
+
+    private var liveActivityState: StoryActivityAttributes.ContentState {
+        let ambientLabels = ambients.compactMap { id -> String? in
+            guard let cue = SoundCatalog.cue(id) else { return nil }
+            return "\(cue.emoji) \(cue.name)"
+        }
+        let lastCue = lastPlayed.flatMap { SoundCatalog.cue($0.id) }
+        return StoryActivityAttributes.ContentState(
+            modeTitle: mode.title,
+            isBedtime: mode == .bedtime,
+            ambients: ambientLabels,
+            lastEmoji: lastCue?.emoji,
+            lastName: lastCue?.name
+        )
+    }
+
+    private func updateLiveActivity() {
+        guard isListening else { return }
+        liveActivity.update(liveActivityState)
     }
 
     // MARK: - Watch
