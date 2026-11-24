@@ -31,6 +31,19 @@ building approved cards in their own worktrees, reviews, verbs and health), then
 No CLI is needed for any of it. Never edit a `.hq/` folder without the owner's approval: it's HQ's
 policy.
 
+## Live status
+
+https://tianhaoz95.github.io/hejitech-apps/live shows whether every product is up, checked every 5
+minutes by `live-status.yml` (`scripts/status/probe.mjs`) from GitHub Actions, outside Cloudflare
+(a G2 Digest bug once used up the account's 100k/day Worker requests and took every Worker down).
+`scripts/status/targets.json` is the one list of production URLs (the CI page at `/status` reads it
+too): add every new live Worker or site there, with its Worker script name. The probe writes no
+commits (a push to any branch can start Workers Builds): history is JSON in the locked issue
+labeled `status-data`, outages are `incident` issues that close on recovery, and `quota` issues
+open at 70% of the daily request limit. Its Cloudflare token ("hejitech-apps live status
+(analytics read)", Account Analytics Read only) is in `~/Credentials/cloudflare-analytics.env` and
+the repo secrets `CLOUDFLARE_ANALYTICS_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`.
+
 ## Testing on devices
 
 Always prefer the connected physical device over a simulator/emulator when testing mobile apps
