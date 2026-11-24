@@ -127,7 +127,7 @@ struct ArtifactView: View {
         .fullScreenCover(isPresented: $fullScreen) {
             if let u = store.previewURL { FullScreenPreview(url: u, title: store.detail?.artifact.title ?? "") }
         }
-        .confirmationDialog("Delete this artifact?", isPresented: $confirmDelete, titleVisibility: .visible) {
+        .alert("Delete this artifact?", isPresented: $confirmDelete) {
             Button("Delete", role: .destructive) {
                 Task {
                     do {
@@ -137,6 +137,7 @@ struct ArtifactView: View {
                     } catch { model.flash(error.localizedDescription) }
                 }
             }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("Every version, suggestion and comment goes with it, for everyone it's shared with. This can't be undone.")
         }

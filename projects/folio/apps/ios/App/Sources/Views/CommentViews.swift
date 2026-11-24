@@ -352,7 +352,7 @@ struct VersionView: View {
                 }
             }
         }
-        .confirmationDialog("Restore v\(number)?", isPresented: $confirmRestore, titleVisibility: .visible) {
+        .alert("Restore v\(number)?", isPresented: $confirmRestore) {
             Button("Restore as a new version") {
                 Task {
                     do {
@@ -363,6 +363,7 @@ struct VersionView: View {
                     } catch { model.flash(error.localizedDescription) }
                 }
             }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("Nothing is lost: the current version stays in the history.")
         }

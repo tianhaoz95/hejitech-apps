@@ -116,13 +116,14 @@ struct SettingsView: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .sheet(isPresented: $showWhatsNew) { WhatsNewView() }
             .task { await model.refreshPro() }
-            .confirmationDialog("Sign out of Folio?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+            .alert("Sign out of Folio?", isPresented: $confirmSignOut) {
                 Button("Sign out", role: .destructive) {
                     Task {
                         await model.signOut()
                         dismiss()
                     }
                 }
+                Button("Cancel", role: .cancel) {}
             }
             .alert("Delete your Folio data?", isPresented: $confirmDelete) {
                 Button("Delete", role: .destructive) {

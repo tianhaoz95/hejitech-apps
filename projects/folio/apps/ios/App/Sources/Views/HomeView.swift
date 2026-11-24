@@ -49,10 +49,11 @@ struct HomeView: View {
             .animation(.snappy, value: spacing)
             .paperBackground()
             .animation(.default, value: model.artifacts)
-            .confirmationDialog(removalTitle, isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } }), titleVisibility: .visible, presenting: pendingRemoval) { a in
+            .alert(removalTitle, isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } }), presenting: pendingRemoval) { a in
                 Button(a.role == .owner ? "Delete" : "Leave", role: .destructive) {
                     Task { await model.removeFromList(a) }
                 }
+                Button("Cancel", role: .cancel) {}
             } message: { a in
                 Text(a.role == .owner
                     ? "Every version, suggestion and comment goes with it, for everyone it's shared with. This can't be undone."
