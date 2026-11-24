@@ -136,8 +136,95 @@ public struct LogHoursIntent: AppIntent {
     }
 }
 
+public struct PropertyEntity: AppEntity {
+    public static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Rental Property")
+    public static var defaultQuery = PropertyEntityQuery()
+
+    public var id: String
+    public var name: String
+
+    public var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(title: "\(name)")
+    }
+
+    public init(id: String, name: String) {
+        self.id = id
+        self.name = name
+    }
+}
+
+public struct PropertyEntityQuery: EntityStringQuery {
+    public init() {}
+
+    public func entities(for identifiers: [String]) async throws -> [PropertyEntity] {
+        let all = try await suggestedEntities()
+        let wanted = Set(identifiers)
+        return all.filter { wanted.contains($0.id) }
+    }
+
+    public func entities(matching string: String) async throws -> [PropertyEntity] {
+        let all = try await suggestedEntities()
+        let q = string.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return all }
+        return all.filter { $0.name.lowercased().contains(q) }
+    }
+
+    public func suggestedEntities() async throws -> [PropertyEntity] {
+        let props: [Property] = (try? await ContempoBackend.client.from("properties").select().order("name", ascending: true).execute().value) ?? []
+        return props.map { PropertyEntity(id: $0.id ?? $0.name, name: $0.name) }
+    }
+}
+
+public struct CheckHoursProgressIntent: AppIntent {
+    public static var title: LocalizedStringResource = "Check Hours Progress"
+    public static var description = IntentDescription("Checks your confirmed participation hours this year against your configured IRS tax test.")
+    public static var openAppWhenRun: Bool = false
+
+    public init() {}
+
+    public func perform() async throws -> some IntentResult & ProvidesDialog {
+        let year = Calendar.current.component(.year, from: Date())
+        let start = "\(year)-01-01T00:00:00Z"
+        let rows: [Entry] = (try? await ContempoBackend.client
+            .from("entries")
+            .select()
+            .gte("activity_date", value: start)
+            .execute()
+            .value) ?? []
+
+        let confirmedMinutes = rows
+            .filter { $0.status == EntryStatus.confirmed.firestoreValue && ($0.roleName == nil || $0.roleName?.isEmpty == true) }
+            .reduce(0) { $0 + $1.durationMinutes }
+        let pendingCount = rows.filter { $0.status == EntryStatus.pendingReview.firestoreValue && !$0.inProgress }.count
+        let hours = Double(confirmedMinutes) / 60.0
+        let targetRaw = UserDefaults.standard.string(forKey: "contempo_statutory_tax_test")
+        let targetHours: Double = switch targetRaw {
+        case "str_500": 500
+        case "reps_750": 750
+        default: 100
+        }
+        let remaining = max(0, targetHours - hours)
+        let hStr = String(format: "%.1f", hours)
+        let rStr = String(format: "%.1f", remaining)
+        var msg = "You have \(hStr) confirmed hours in \(year) toward your \(Int(targetHours))-hour target (\(rStr) hours remaining)."
+        if pendingCount > 0 {
+            msg += " You also have \(pendingCount) unconfirmed draft\(pendingCount == 1 ? "" : "s")."
+        }
+        return .result(dialog: IntentDialog(stringLiteral: msg))
+    }
+}
+
 public struct ContempoShortcutsProvider: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
+        AppShortcut(
+            intent: CheckHoursProgressIntent(),
+            phrases: [
+                "Check hours in \(.applicationName)",
+                "How many hours do I have in \(.applicationName)"
+            ],
+            shortTitle: "Check Hours",
+            systemImageName: "chart.bar.fill"
+        )
         AppShortcut(
             intent: StartWorkTimerIntent(),
             phrases: [

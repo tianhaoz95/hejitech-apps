@@ -216,6 +216,50 @@ create table contempo.stripe_customers (
   created_at timestamptz not null default now()
 );
 
+-- Personal access tokens (`cta_…`, only SHA-256 hashes stored) for MCP clients that don't use OAuth.
+create table contempo.access_tokens (
+  id uuid primary key default gen_random_uuid(),
+  token_hash text not null unique,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null check (char_length(name) between 1 and 100),
+  created_at timestamptz not null default now(),
+  last_used_at timestamptz
+);
+create index access_tokens_user on contempo.access_tokens(user_id);
+
+create or replace function contempo.resolve_access_token(p_token_hash text)
+returns table (token_id uuid, user_id uuid)
+language sql security definer set search_path = contempo, extensions as $$
+  update contempo.access_tokens set last_used_at = now()
+  where token_hash = p_token_hash
+  returning id, contempo.access_tokens.user_id
+$$;
+revoke all on function contempo.resolve_access_token(text) from public, anon, authenticated;
+grant execute on function contempo.resolve_access_token(text) to service_role;
+
+-- Push notification devices (APNs for iPhone, FCM for Android) for contemporaneity nudges.
+create table contempo.push_devices (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  apns_token text unique,
+  fcm_token text unique,
+  environment text not null default 'production' check (environment in ('production', 'sandbox')),
+  label text not null default 'iPhone',
+  created_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  constraint push_devices_one_token check ((apns_token is null) <> (fcm_token is null))
+);
+create index push_devices_user on contempo.push_devices(user_id);
+
+-- Deduplication log for scheduled contemporaneity nudges (pruned by cron).
+create table contempo.sent_notifications (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  key text not null,
+  sent_at timestamptz not null default now(),
+  primary key (user_id, key)
+);
+create index sent_notifications_sent_at on contempo.sent_notifications(sent_at);
+
 -- ------------------------------------------------------------------------------ privileges + RLS
 
 alter table contempo.admins enable row level security;
@@ -230,12 +274,15 @@ alter table contempo.text_captures enable row level security;
 alter table contempo.token_usage enable row level security;
 alter table contempo.subscriptions enable row level security;
 alter table contempo.stripe_customers enable row level security;
+alter table contempo.access_tokens enable row level security;
+alter table contempo.push_devices enable row level security;
+alter table contempo.sent_notifications enable row level security;
 
 grant select on contempo.admins to authenticated;
 grant select, insert, update, delete on contempo.properties, contempo.roles, contempo.categories,
   contempo.entries, contempo.attachments, contempo.audio_captures, contempo.text_captures to authenticated;
 grant select, insert on contempo.corrections to authenticated;
-grant select on contempo.token_usage, contempo.subscriptions to authenticated;
+grant select on contempo.token_usage, contempo.subscriptions, contempo.access_tokens, contempo.push_devices to authenticated;
 grant all on all tables in schema contempo to service_role;
 
 create policy "own admin row" on contempo.admins for select using (user_id = auth.uid());
@@ -253,6 +300,8 @@ create policy "add own corrections" on contempo.corrections for insert with chec
 
 create policy "read own token usage" on contempo.token_usage for select using (user_id = auth.uid());
 create policy "read own subscription" on contempo.subscriptions for select using (user_id = auth.uid());
+create policy "own access tokens" on contempo.access_tokens for select using (user_id = auth.uid());
+create policy "own push devices" on contempo.push_devices for select using (user_id = auth.uid());
 
 -- Live lists on the phone and the web (Firestore snapshot listeners before).
 alter publication supabase_realtime add table contempo.entries, contempo.properties, contempo.roles,

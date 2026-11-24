@@ -398,6 +398,15 @@ fun SettingsScreen(
         HorizontalDivider()
         Spacer(Modifier.height(24.dp))
 
+        var showWhatsNew by remember { mutableStateOf(false) }
+        TextButton(onClick = { showWhatsNew = true }) {
+            Text("What's New")
+        }
+        if (showWhatsNew) {
+            WhatsNewDialog(onDismiss = { showWhatsNew = false })
+        }
+
+        Spacer(Modifier.height(8.dp))
         Text(stringResource(R.string.settings_legal_section), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
         Row {

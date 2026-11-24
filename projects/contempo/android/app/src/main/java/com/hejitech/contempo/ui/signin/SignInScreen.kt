@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -74,6 +75,17 @@ fun SignInScreen(viewModel: SignInViewModel = viewModel()) {
                 Spacer(Modifier.width(12.dp))
             }
             Text(stringResource(R.string.signin_google_button))
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = viewModel::signInWithApple,
+            enabled = !uiState.isSigningIn,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.small,
+        ) {
+            Text("Sign in with Apple")
         }
 
         uiState.errorMessage?.let { error ->

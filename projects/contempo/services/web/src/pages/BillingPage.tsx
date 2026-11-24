@@ -62,9 +62,16 @@ export function BillingPage() {
             {subscription.cancelAtPeriodEnd && " (cancels at period end)"}
           </>
         )}
-        . Subscriptions are only available here on the web — the Android and iOS apps never sell
-        anything in-app.
+        . Contempo Pro unlocks across iPhone, Android, Web, and MCP whenever you sign in with the
+        same account (App Store, Google Play, Stripe, or an email invite).
       </p>
+      <div className="chart-card" style={{ marginTop: "1rem" }}>
+        <h3 style={{ marginBottom: "0.25rem" }}>Connect AI Assistants (MCP)</h3>
+        <p style={{ fontSize: "0.85rem", color: "var(--ink-soft)", marginBottom: "0.4rem" }}>
+          Add Contempo to Claude, ChatGPT, or any MCP client using OAuth 2.1 at:
+        </p>
+        <code style={{ fontSize: "0.85rem" }}>{window.location.origin}/mcp</code>
+      </div>
       {error && (
         <p style={{ color: "var(--danger, #b3261e)", fontSize: "0.85rem" }}>{error}</p>
       )}

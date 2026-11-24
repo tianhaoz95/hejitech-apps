@@ -149,5 +149,13 @@ if [[ "$DESTINATION" == "export" ]]; then
   ls -la "$EXPORT_PATH"
   echo "✅ Exported build $BUILD_NUMBER (not uploaded)."
 else
-  echo "✅ Build $BUILD_NUMBER uploaded to App Store Connect. It appears in TestFlight once Apple finishes processing."
+  echo "✅ Build $BUILD_NUMBER uploaded to App Store Connect. Verifying processing verdict..."
+  if [[ -x "$(dirname "$0")/asc_build_status.swift" ]] || [[ -f "$(dirname "$0")/asc_build_status.swift" ]]; then
+    swift "$(dirname "$0")/asc_build_status.swift" \
+      --bundle-id com.hejitech.contempoapp \
+      --build "$BUILD_NUMBER" \
+      --key-path "$ASC_KEY_PATH" \
+      --key-id "$ASC_KEY_ID" \
+      --issuer-id "$ASC_ISSUER_ID" || echo "⚠️ Could not confirm ASC build verdict; check App Store Connect manually."
+  fi
 fi

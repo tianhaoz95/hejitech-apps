@@ -18,6 +18,8 @@ enum ServiceLocator {
     static let mileageTracker = MileageTracker()
     static let authManager = AuthManager()
     static let subscriptionStore = SubscriptionStore()
+    static let proStore = ProStore()
+    static let speechEngineStore = SpeechEngineStore()
     static let modelDownloader = ModelDownloader()
     // LiteRtLlm (Gemma 4 E2B via LiteRT-LM) is the active OnDeviceLlm.
     // Swapping runtimes means changing only this line.

@@ -5,6 +5,7 @@ import { BillingPage } from "./pages/BillingPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { EntriesPage } from "./pages/EntriesPage";
 import { LegalPage } from "./pages/LegalPage";
+import { OAuthConsentPage } from "./pages/OAuthConsentPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SignInPage } from "./pages/SignInPage";
 
@@ -31,6 +32,7 @@ export function App() {
           <Route path="/entries" element={<EntriesPage />} />
           <Route path="/billing" element={<BillingPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/oauth/consent" element={<OAuthConsentPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       )}

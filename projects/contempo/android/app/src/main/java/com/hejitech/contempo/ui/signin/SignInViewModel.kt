@@ -29,4 +29,15 @@ class SignInViewModel : ViewModel() {
             )
         }
     }
+
+    fun signInWithApple() {
+        _uiState.value = SignInUiState(isSigningIn = true)
+        viewModelScope.launch {
+            val result = authManager.signInWithApple()
+            _uiState.value = result.fold(
+                onSuccess = { SignInUiState(isSigningIn = false) },
+                onFailure = { SignInUiState(isSigningIn = false, errorMessage = it.message ?: "Sign in with Apple failed") },
+            )
+        }
+    }
 }

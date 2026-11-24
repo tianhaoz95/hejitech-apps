@@ -132,6 +132,11 @@ final class WhisperTranscriber {
     /// from a background `Task`, not directly from a UI action.
     func transcribe(samples: [Float], language: CaptureLanguage) async -> String {
         guard !samples.isEmpty else { return "" }
+        if #available(iOS 26.0, *), ServiceLocator.speechEngineStore.engine == .appleSpeech {
+            if let text = try? await AppleSpeechTranscriber.transcribe(samples: samples, language: language), !text.isEmpty {
+                return text
+            }
+        }
         let transcript = try? await withTimeout(seconds: Self.transcribeTimeoutSeconds) { [self] in
             await preparationTask?.value
             guard let recognizer = await recognizer(for: language) else { return "" }

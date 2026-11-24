@@ -102,6 +102,21 @@ public enum ContempoBackend {
         }
         return json
     }
+
+    /// GET from the Contempo Worker's API as the signed-in user.
+    public static func getApi(_ path: String) async throws -> [String: Any] {
+        let session = try await client.auth.session
+        var request = URLRequest(url: workerURL.appendingPathComponent("api/\(path)"))
+        request.httpMethod = "GET"
+        request.timeoutInterval = 30
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw ContempoBackendError.api((json["error"] as? String) ?? "Request failed")
+        }
+        return json
+    }
 }
 
 public enum ContempoBackendError: LocalizedError, Sendable {

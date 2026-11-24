@@ -76,8 +76,12 @@ android {
         applicationId = "com.hejitech.contempoappwear"
         minSdk = 30 // Wear OS 3+
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.1.0-mvp"
+        versionCode = (project.findProperty("APP_VERSION_CODE") as? String)?.toIntOrNull()
+            ?: System.getenv("APP_VERSION_CODE")?.toIntOrNull()
+            ?: 6
+        versionName = (project.findProperty("APP_VERSION_NAME") as? String)
+            ?: System.getenv("APP_VERSION_NAME")
+            ?: "3.4.0"
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabaseKey\"")
         buildConfigField("boolean", "USE_FIREBASE_EMULATOR", "false")

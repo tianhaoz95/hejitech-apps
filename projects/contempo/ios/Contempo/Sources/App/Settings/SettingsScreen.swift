@@ -8,6 +8,7 @@ struct SettingsScreen: View {
     @State private var showDeleteConfirm = false
     @State private var showDeleteModelConfirm = false
     @State private var showWalkthrough = false
+    @State private var showWhatsNew = false
     @State private var showAddRole = false
     @State private var newRoleName = ""
     @State private var renamingRole: ParticipantRole?
@@ -29,6 +30,8 @@ struct SettingsScreen: View {
                     }
                 }
             }
+
+            ProSettingsSection(proStore: ServiceLocator.proStore)
 
             Section {
                 Text("Everything is understood on your phone — nothing is sent to a server. A small model comes with the app; download the larger one for better answers and to read photos.")
@@ -82,6 +85,20 @@ struct SettingsScreen: View {
                 Text("Which Whisper checkpoint transcribes your voice captures.")
                     .font(ContempoFont.labelSmall())
                     .foregroundStyle(palette.inkFaint)
+
+                if SpeechEngine.appleSpeechSupported {
+                    Picker("Speech Engine", selection: Binding(
+                        get: { ServiceLocator.speechEngineStore.engine },
+                        set: { ServiceLocator.speechEngineStore.set($0) }
+                    )) {
+                        ForEach(SpeechEngine.allCases) { eng in
+                            Text(eng.displayName).tag(eng)
+                        }
+                    }
+                    Text("Apple Speech runs natively on iOS 26+ with zero model download and automatically falls back to Whisper if unavailable.")
+                        .font(ContempoFont.labelSmall())
+                        .foregroundStyle(palette.inkFaint)
+                }
 
                 ForEach(CaptureMode.allCases, id: \.self) { mode in
                     Button {
@@ -279,6 +296,11 @@ struct SettingsScreen: View {
 
             Section("Help") {
                 Button {
+                    showWhatsNew = true
+                } label: {
+                    Label("What's New", systemImage: "sparkles")
+                }
+                Button {
                     showWalkthrough = true
                 } label: {
                     Label("Feature Walkthrough", systemImage: "questionmark.circle")
@@ -309,6 +331,9 @@ struct SettingsScreen: View {
         }
         .sheet(isPresented: $showWalkthrough) {
             HelpWalkthroughSheet()
+        }
+        .sheet(isPresented: $showWhatsNew) {
+            WhatsNewView()
         }
         .sheet(isPresented: $showQuickCaptureExplanation) {
             QuickCaptureExplanationSheet()

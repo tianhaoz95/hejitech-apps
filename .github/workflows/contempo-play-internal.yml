@@ -1,0 +1,113 @@
+name: Contempo → Google Play (internal testing)
+
+# Publishing a GitHub Release tagged contempo-v<version> (scripts/cut_release.sh contempo) builds
+# the Android phone app (com.hejitech.contempoapp) and Wear OS app (com.hejitech.contempoappwear)
+# at that version and uploads both to Google Play's internal testing tracks.
+#
+# Secrets:
+#   CONTEMPO_ANDROID_KEYSTORE_BASE64 / _PASSWORD / CONTEMPO_ANDROID_KEY_ALIAS
+#   CONTEMPO_WEAR_KEYSTORE_BASE64 / _PASSWORD / CONTEMPO_WEAR_KEY_ALIAS
+#   PLAY_SERVICE_ACCOUNT_JSON
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+concurrency:
+  group: contempo-play-internal
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Build & upload Android + Wear OS
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'contempo-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: Google Play
+    defaults:
+      run:
+        working-directory: projects/contempo/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version matches the release tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          V="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9.]+)"?.*/\1/p' ../ios/project.yml | head -1)"
+          echo "MARKETING_VERSION $V"
+          if [ -n "$TAG" ] && [ "contempo-v$V" != "$TAG" ]; then
+            echo "::error::ios/project.yml says $V but the release is $TAG (cut releases with scripts/cut_release.sh contempo)"; exit 1
+          fi
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Fetch bundled on-device models
+        working-directory: projects/contempo
+        run: ./scripts/fetch-models.sh
+
+      - name: Restore upload keystores
+        env:
+          PHONE_KS: ${{ secrets.CONTEMPO_ANDROID_KEYSTORE_BASE64 }}
+          PHONE_PW: ${{ secrets.CONTEMPO_ANDROID_KEYSTORE_PASSWORD }}
+          PHONE_ALIAS: ${{ secrets.CONTEMPO_ANDROID_KEY_ALIAS }}
+          WEAR_KS: ${{ secrets.CONTEMPO_WEAR_KEYSTORE_BASE64 }}
+          WEAR_PW: ${{ secrets.CONTEMPO_WEAR_KEYSTORE_PASSWORD }}
+          WEAR_ALIAS: ${{ secrets.CONTEMPO_WEAR_KEY_ALIAS }}
+        run: |
+          echo "$PHONE_KS" | base64 -d > upload-keystore.jks
+          cat > keystore.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=$PHONE_PW
+          keyAlias=$PHONE_ALIAS
+          keyPassword=$PHONE_PW
+          EOF
+          echo "$WEAR_KS" | base64 -d > wear-upload-keystore.jks
+          cat > wear-keystore.properties <<EOF
+          storeFile=wear-upload-keystore.jks
+          storePassword=$WEAR_PW
+          keyAlias=$WEAR_ALIAS
+          keyPassword=$WEAR_PW
+          EOF
+
+      - name: Test and build signed bundles
+        run: |
+          VC=$(( ($(date -u +%s) - 1577836800) / 60 ))
+          echo "VERSION_CODE=$VC" >> "$GITHUB_ENV"
+          ./gradlew :core:test :app:bundleRelease :wear:bundleRelease \
+            -PAPP_VERSION_NAME="$VERSION" \
+            -PAPP_VERSION_CODE="$VC" \
+            --no-daemon
+
+      - name: Upload phone bundle to internal track
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.hejitech.contempoapp
+          releaseFiles: projects/contempo/android/app/build/outputs/bundle/release/app-release.aab
+          releaseName: ${{ env.VERSION }} (${{ env.VERSION_CODE }})
+          track: internal
+          status: completed
+
+      - name: Upload Wear OS bundle to internal track
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.hejitech.contempoappwear
+          releaseFiles: projects/contempo/android/wear/build/outputs/bundle/release/wear-release.aab
+          releaseName: ${{ env.VERSION }} wear (${{ env.VERSION_CODE }})
+          track: internal
+          status: completed
+
+      - name: Clean up signing material
+        if: always()
+        run: rm -f upload-keystore.jks keystore.properties wear-upload-keystore.jks wear-keystore.properties
