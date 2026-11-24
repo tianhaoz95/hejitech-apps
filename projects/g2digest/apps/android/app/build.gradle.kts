@@ -13,14 +13,27 @@ android {
         applicationId = "com.hejitech.g2digest"
         minSdk = 26
         targetSdk = 35
-        versionCode = 60
-        versionName = "0.6.0"
+        versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 60
+        versionName = (project.findProperty("versionName") as? String) ?: "0.6.0"
+    }
+
+    signingConfigs {
+        val ksPath = System.getenv("G2DIGEST_ANDROID_KEYSTORE")
+        if (!ksPath.isNullOrBlank()) {
+            create("release") {
+                storeFile = file(ksPath)
+                storePassword = System.getenv("G2DIGEST_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("G2DIGEST_ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("G2DIGEST_ANDROID_KEYSTORE_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

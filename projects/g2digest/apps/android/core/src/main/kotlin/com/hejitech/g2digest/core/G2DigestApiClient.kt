@@ -134,6 +134,15 @@ class G2DigestApiClient(
     suspend fun addBookmark(item: BookmarkItem) { send("/api/bookmarks", "POST", json.encodeToString(item)) }
     suspend fun removeBookmark(date: String, slug: String) { send("/api/bookmarks/$date/$slug", "DELETE") }
     suspend fun fetchBuildRuns(): List<BuildRunItem> = json.decodeFromString(send("/api/build-runs"))
+    suspend fun fetchOnboardingStatus(): OnboardingStatus = json.decodeFromString(send("/api/onboarding"))
+    suspend fun fetchBrief(): BriefResponse = json.decodeFromString(send("/api/brief"))
+    suspend fun saveBrief(brief: Brief, expectedVersion: Int): BriefResponse {
+        val payload = buildJsonObject {
+            put("brief", json.encodeToJsonElement(Brief.serializer(), brief))
+            put("expected_version", expectedVersion)
+        }.toString()
+        return json.decodeFromString(send("/api/brief", "PUT", payload))
+    }
     suspend fun searchEditions(query: String): List<SearchHitItem> {
         val q = URLEncoder.encode(query, "UTF-8")
         return json.decodeFromString(send("/api/editions/search?q=$q"))
@@ -157,6 +166,9 @@ class G2DigestApiClient(
     suspend fun registerFcmToken(token: String) {
         val payload = buildJsonObject { put("token", token) }.toString()
         send("/api/push/fcm", "POST", payload)
+    }
+    suspend fun unregisterFcmToken(token: String) {
+        send("/api/push/fcm/${URLEncoder.encode(token, "UTF-8")}", "DELETE")
     }
     suspend fun deleteAllData() { send("/api/account", "DELETE") }
 }

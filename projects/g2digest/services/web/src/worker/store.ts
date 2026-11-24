@@ -298,3 +298,70 @@ export async function proGrant(db: Db, email: string | undefined, now = Date.now
   if (!data || (data.until && Date.parse(data.until) <= now)) return null;
   return { until: data.until ?? null };
 }
+
+export interface DeliveryStatus {
+  missed: boolean;
+  expected_date: string;
+  delivery_time: string;
+  timezone: string;
+  latest_edition_date: string | null;
+}
+
+const WEEKDAY_MAP: Record<string, string> = {
+  Sun: "sun", Mon: "mon", Tue: "tue", Wed: "wed", Thu: "thu", Fri: "fri", Sat: "sat",
+};
+
+/**
+ * Checks whether today's scheduled edition is overdue (at least `graceMinutes` past the brief's
+ * `delivery.time` in `delivery.timezone` on a scheduled weekday, with no published edition for that
+ * local calendar date).
+ */
+export function checkDeliveryStatus(
+  brief: Brief,
+  latestPublishedDate: string | null,
+  now = new Date(),
+  graceMinutes = 30,
+): DeliveryStatus {
+  const tz = brief.delivery.timezone || "UTC";
+  const deliveryTime = brief.delivery.time || "07:00";
+  let localDate = now.toISOString().slice(0, 10);
+  let weekday = "mon";
+  let localMinutes = 0;
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(now);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    const y = get("year"), m = get("month"), d = get("day");
+    if (y && m && d) localDate = `${y}-${m}-${d}`;
+    weekday = WEEKDAY_MAP[get("weekday")] ?? "mon";
+    const h = Number(get("hour")) % 24;
+    const min = Number(get("minute"));
+    localMinutes = h * 60 + min;
+  } catch {
+    // Invalid timezone falls back to UTC
+    localMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+    weekday = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][now.getUTCDay()];
+  }
+
+  const [dh = 7, dm = 0] = deliveryTime.split(":").map(Number);
+  const targetMinutes = dh * 60 + dm;
+  const scheduledToday = brief.delivery.days.includes(weekday as Brief["delivery"]["days"][number]);
+  const pastGrace = localMinutes >= targetMinutes + graceMinutes;
+  const missed = scheduledToday && pastGrace && latestPublishedDate !== localDate;
+
+  return {
+    missed,
+    expected_date: localDate,
+    delivery_time: deliveryTime,
+    timezone: tz,
+    latest_edition_date: latestPublishedDate,
+  };
+}

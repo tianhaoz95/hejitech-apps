@@ -50,4 +50,45 @@ class ModelsTest {
         assertTrue(url.contains("provider=google"))
         assertTrue(url.contains("code_challenge_method=S256"))
     }
+
+    @Test
+    fun briefValidatorCatchesCommonIssuesAndAcceptsValidBrief() {
+        val valid = Brief(
+            title = "Morning Brief",
+            maxTotalCards = 12,
+            delivery = BriefDelivery(time = "07:00", timezone = "America/Los_Angeles", days = listOf("mon", "wed", "fri")),
+            sections = listOf(
+                BriefSection(
+                    id = "local-weather",
+                    title = "Weather",
+                    template = "status",
+                    maxCards = 2,
+                    instructions = "Summarize morning weather and transit.",
+                ),
+            ),
+        )
+        assertEquals(emptyList<BriefIssue>(), BriefValidator.checkBrief(valid))
+
+        val invalid = valid.copy(
+            title = "",
+            delivery = BriefDelivery(time = "25:99", days = emptyList()),
+            sections = listOf(
+                BriefSection(
+                    id = "Bad ID",
+                    title = "A Very Long Section Title Over 18",
+                    template = "metric",
+                    audio = SectionAudio(glance = true, deepDive = "required"),
+                    instructions = "",
+                ),
+            ),
+        )
+        val issues = BriefValidator.checkBrief(invalid)
+        assertTrue(issues.any { it.path == "title" })
+        assertTrue(issues.any { it.path == "delivery.time" })
+        assertTrue(issues.any { it.path == "delivery.days" })
+        assertTrue(issues.any { it.path == "sections[0].id" })
+        assertTrue(issues.any { it.path == "sections[0].title" })
+        assertTrue(issues.any { it.path == "sections[0].audio.deep_dive" })
+        assertTrue(issues.any { it.path == "sections[0].instructions" })
+    }
 }

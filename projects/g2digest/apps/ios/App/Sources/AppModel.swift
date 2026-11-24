@@ -54,6 +54,7 @@ public final class AppModel: ObservableObject {
     @Published public var assistants: [ConnectedAssistant] = []
     @Published public var bookmarks: [BookmarkItem] = []
     @Published public var buildRuns: [BuildRunItem] = []
+    @Published public var onboardingStatus: OnboardingStatus?
     @Published public var searchHits: [SearchHitItem] = []
     @Published public var lastShareURL: String?
     /// New-edition notifications on this iPhone (asks iOS the first time it's turned on).
@@ -109,6 +110,7 @@ public final class AppModel: ObservableObject {
             if let idx = bundle.cards.firstIndex(where: { $0.slug == card.slug }) {
                 self.currentCardIndex = idx
             }
+            WatchSync.shared.pushEdition(bundle, isPlaying: AudioPlayerService.shared.isPlaying, playingTitle: card.title)
             if !TourBuilder.isTour(bundle) {
                 Task {
                     try? await self.api.sendSignal(
@@ -118,6 +120,17 @@ public final class AppModel: ObservableObject {
                         signal: mode == .deepDive ? "deep_dive_played" : "glance_played"
                     )
                 }
+            }
+        }
+        WatchSync.shared.onCommand = { [weak self] cmd in
+            guard let self else { return }
+            switch cmd {
+            case "playGlances": self.playAll(mode: .glance)
+            case "playDeepDives": self.playAll(mode: .deepDive)
+            case "togglePlayPause": AudioPlayerService.shared.togglePlayPause()
+            case "nextCard": AudioPlayerService.shared.nextTrack()
+            case "prevCard": AudioPlayerService.shared.previousTrack()
+            default: break
             }
         }
         // The built-in tour until the first refresh brings an edition.
@@ -322,8 +335,10 @@ public final class AppModel: ObservableObject {
             async let t = api.fetchTokens()
             async let g = api.fetchGrants()
             async let r = api.fetchBuildRuns()
+            async let o = api.fetchOnboardingStatus()
             (tokens, assistants) = try await (t, g)
             buildRuns = (try? await r) ?? []
+            onboardingStatus = try? await o
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -557,6 +572,7 @@ public final class AppModel: ObservableObject {
         AudioPlayerService.shared.updateSignedAudioMap(signedAudioMap)
         if currentCardIndex >= res.bundle.cards.count { currentCardIndex = 0 }
         let audio = signedAudioMap
+        WatchSync.shared.pushEdition(res.bundle, isPlaying: AudioPlayerService.shared.isPlaying, playingTitle: AudioPlayerService.shared.currentCard?.title)
         Task { await OfflineStore.shared.save(bundle: res.bundle, audioURLs: audio) }
     }
 }

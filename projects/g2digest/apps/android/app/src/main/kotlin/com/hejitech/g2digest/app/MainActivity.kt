@@ -22,15 +22,27 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Newspaper
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Warning
+import com.hejitech.g2digest.core.BriefValidator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -141,21 +153,29 @@ fun G2DigestRoot(vm: G2DigestViewModel) {
                         Modifier
                             .fillMaxWidth()
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(Icons.Default.Headphones, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Text(
                             ui.playingTitle ?: "",
-                            modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
+                            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                             maxLines = 1,
                             fontWeight = FontWeight.SemiBold,
                         )
+                        TextButton(onClick = vm::cyclePlaybackRate) { Text("${ui.playbackRate}×", fontSize = 12.sp) }
+                        IconButton(onClick = vm::togglePlayPause) {
+                            Icon(if (ui.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Play or pause")
+                        }
+                        IconButton(onClick = vm::nextAudio) { Icon(Icons.Default.SkipNext, "Next card") }
                         IconButton(onClick = vm::stopAudio) { Icon(Icons.Default.Stop, "Stop audio") }
                     }
                 }
                 NavigationBar {
                     NavigationBarItem(selected = ui.tab == AppTab.READ, onClick = { vm.selectTab(AppTab.READ) }, icon = { Icon(Icons.Default.Newspaper, null) }, label = { Text("Read") })
+                    if (ui.signedIn) {
+                        NavigationBarItem(selected = ui.tab == AppTab.BRIEF, onClick = { vm.selectTab(AppTab.BRIEF) }, icon = { Icon(Icons.Default.EditNote, null) }, label = { Text("Brief") })
+                    }
                     NavigationBarItem(selected = ui.tab == AppTab.ARCHIVE, onClick = { vm.selectTab(AppTab.ARCHIVE) }, icon = { Icon(Icons.Default.History, null) }, label = { Text("Archive") })
                     NavigationBarItem(selected = ui.tab == AppTab.AGENTS, onClick = { vm.selectTab(AppTab.AGENTS) }, icon = { Icon(Icons.Default.Build, null) }, label = { Text("Agents") })
                     NavigationBarItem(selected = ui.tab == AppTab.SETTINGS, onClick = { vm.selectTab(AppTab.SETTINGS) }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text("Settings") })
@@ -176,8 +196,9 @@ fun G2DigestRoot(vm: G2DigestViewModel) {
 
             when (ui.tab) {
                 AppTab.READ -> ReadTab(ui, vm)
+                AppTab.BRIEF -> BriefTab(ui, vm)
                 AppTab.ARCHIVE -> ArchiveTab(ui, vm)
-                AppTab.AGENTS -> AgentsTab(ui)
+                AppTab.AGENTS -> AgentsTab(ui, vm)
                 AppTab.SETTINGS -> SettingsTab(ui, vm)
             }
         }
@@ -329,13 +350,208 @@ private fun ArchiveTab(ui: UiState, vm: G2DigestViewModel) {
 }
 
 @Composable
-private fun AgentsTab(ui: UiState) {
+private fun BriefTab(ui: UiState, vm: G2DigestViewModel) {
+    val brief = ui.brief
+    if (brief == null) {
+        Text("Sign in and tap refresh to load your brief.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        return
+    }
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Your Brief (v${ui.briefVersion})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Button(
+                    onClick = vm::saveBrief,
+                    enabled = ui.briefDirty && ui.briefIssues.isEmpty() && !ui.loading,
+                ) { Text("Save Brief") }
+            }
+        }
+        if (ui.briefIssues.isNotEmpty()) {
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Fix before saving:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                        ui.briefIssues.forEach { issue ->
+                            Text("• ${issue.message}", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Edition & Delivery", fontWeight = FontWeight.Bold)
+                    OutlinedTextField(
+                        value = brief.title,
+                        onValueChange = { v -> vm.updateBrief { it.copy(title = v) } },
+                        label = { Text("Edition title") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = brief.delivery.time,
+                            onValueChange = { v -> vm.updateBrief { it.copy(delivery = it.delivery.copy(time = v)) } },
+                            label = { Text("Time (HH:MM)") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = brief.maxTotalCards.toString(),
+                            onValueChange = { v -> v.toIntOrNull()?.let { n -> vm.updateBrief { it.copy(maxTotalCards = n) } } },
+                            label = { Text("Max cards") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    OutlinedTextField(
+                        value = brief.delivery.timezone,
+                        onValueChange = { v -> vm.updateBrief { it.copy(delivery = it.delivery.copy(timezone = v)) } },
+                        label = { Text("Timezone (IANA)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+                        BriefValidator.WEEKDAYS.forEach { day ->
+                            val active = day in brief.delivery.days
+                            FilterChip(
+                                selected = active,
+                                onClick = {
+                                    vm.updateBrief { b ->
+                                        val next = if (active) b.delivery.days - day else b.delivery.days + day
+                                        b.copy(delivery = b.delivery.copy(days = BriefValidator.WEEKDAYS.filter { it in next }))
+                                    }
+                                },
+                                label = { Text(day.take(2).uppercase(), fontSize = 11.sp, maxLines = 1, softWrap = false) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Sections (${brief.sections.size})", fontWeight = FontWeight.Bold)
+                OutlinedButton(onClick = vm::addBriefSection) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Text(" Add Section")
+                }
+            }
+        }
+        items(brief.sections.size) { idx ->
+            val sec = brief.sections[idx]
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("${idx + 1}. ${sec.title.ifBlank { "Untitled" }}", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { vm.moveBriefSection(idx, -1) }, enabled = idx > 0) { Icon(Icons.Default.ArrowUpward, "Move up") }
+                        IconButton(onClick = { vm.moveBriefSection(idx, 1) }, enabled = idx + 1 < brief.sections.size) { Icon(Icons.Default.ArrowDownward, "Move down") }
+                        IconButton(onClick = { vm.removeBriefSection(idx) }) { Icon(Icons.Default.Delete, "Remove section") }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = sec.title,
+                            onValueChange = { v ->
+                                vm.updateBrief { b -> b.copy(sections = b.sections.mapIndexed { i, s -> if (i == idx) s.copy(title = v) else s }) }
+                            },
+                            label = { Text("Title (≤18)") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = sec.id,
+                            onValueChange = { v ->
+                                vm.updateBrief { b -> b.copy(sections = b.sections.mapIndexed { i, s -> if (i == idx) s.copy(id = v) else s }) }
+                            },
+                            label = { Text("ID") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        BriefValidator.TEMPLATES.forEach { tmpl ->
+                            FilterChip(
+                                selected = sec.template == tmpl,
+                                onClick = {
+                                    vm.updateBrief { b -> b.copy(sections = b.sections.mapIndexed { i, s -> if (i == idx) s.copy(template = tmpl) else s }) }
+                                },
+                                label = { Text(tmpl, fontSize = 11.sp, maxLines = 1, softWrap = false) },
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = sec.instructions,
+                        onValueChange = { v ->
+                            vm.updateBrief { b -> b.copy(sections = b.sections.mapIndexed { i, s -> if (i == idx) s.copy(instructions = v) else s }) }
+                        },
+                        label = { Text("Agent instructions") },
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AgentsTab(ui: UiState, vm: G2DigestViewModel) {
+    var tokenName by remember { mutableStateOf("Daily build") }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        ui.onboarding?.let { status ->
+            if (status.delivery.missed) {
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                            Column {
+                                Text("Missed delivery for ${status.delivery.expectedDate}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                                Text("Expected by ${status.delivery.deliveryTime} (${status.delivery.timezone}). Check recent build runs below.", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Setup Checklist", fontWeight = FontWeight.Bold)
+                        ChecklistRow(status.briefConfigured, "Configure your brief")
+                        ChecklistRow(status.agentConnected, "Connect a build agent")
+                        ChecklistRow(status.firstValidationPassed, "Pass first validation dry-run")
+                        ChecklistRow(status.firstEditionPublished, "Publish first edition")
+                    }
+                }
+            }
+        }
         item {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp)) {
                     Text("MCP Server", fontWeight = FontWeight.Bold)
                     Text("https://g2digest.hejitech.workers.dev/mcp", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                }
+            }
+        }
+        if (ui.signedIn) {
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Agent Tokens", fontWeight = FontWeight.Bold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedTextField(value = tokenName, onValueChange = { tokenName = it }, label = { Text("Token name") }, singleLine = true, modifier = Modifier.weight(1f))
+                            Button(onClick = { vm.createAgentToken(tokenName) }) { Text("Create") }
+                        }
+                        ui.createdAgentToken?.let { tok ->
+                            Text("New token (copy now): $tok", fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                        }
+                        ui.tokens.forEach { t ->
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Text(t.name, modifier = Modifier.weight(1f), fontSize = 13.sp)
+                                TextButton(onClick = { vm.revokeAgentToken(t.id) }) { Text("Revoke") }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -358,6 +574,18 @@ private fun AgentsTab(ui: UiState) {
 }
 
 @Composable
+private fun ChecklistRow(done: Boolean, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Icon(
+            if (done) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+            contentDescription = null,
+            tint = if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(label, fontSize = 13.sp)
+    }
+}
+
+@Composable
 private fun SettingsTab(ui: UiState, vm: G2DigestViewModel) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
@@ -366,6 +594,8 @@ private fun SettingsTab(ui: UiState, vm: G2DigestViewModel) {
                     Text("Account", fontWeight = FontWeight.Bold)
                     Text(ui.email ?: if (ui.paired) "Paired Reader" else "Signed out")
                     Text("G2 Digest Pro: ${if (ui.pro?.pro == true) "Active" else "Not active"}")
+                    Text("Offline cache: ${if (ui.isOffline) "Active (offline mode)" else "Synced (up to 5 editions)"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Push notifications (FCM): ${if (ui.fcmRegistered) "Registered" else "Ready (POST /api/push/fcm)"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

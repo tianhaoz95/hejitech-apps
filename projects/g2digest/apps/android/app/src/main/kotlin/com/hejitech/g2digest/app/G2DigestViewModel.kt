@@ -2,19 +2,27 @@ package com.hejitech.g2digest.app
 
 import android.app.Application
 import android.media.AudioAttributes
+import android.media.MediaMetadata
 import android.media.MediaPlayer
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hejitech.g2digest.core.AgentToken
 import com.hejitech.g2digest.core.AuthSession
 import com.hejitech.g2digest.core.BookmarkItem
+import com.hejitech.g2digest.core.Brief
+import com.hejitech.g2digest.core.BriefIssue
+import com.hejitech.g2digest.core.BriefSection
+import com.hejitech.g2digest.core.BriefValidator
 import com.hejitech.g2digest.core.BuildRunItem
 import com.hejitech.g2digest.core.CardInput
 import com.hejitech.g2digest.core.EditionResponse
 import com.hejitech.g2digest.core.EditionSummary
 import com.hejitech.g2digest.core.FeedLinks
 import com.hejitech.g2digest.core.G2DigestApiClient
+import com.hejitech.g2digest.core.OnboardingStatus
 import com.hejitech.g2digest.core.PairedDevice
 import com.hejitech.g2digest.core.PairingCode
 import com.hejitech.g2digest.core.ProStatus
@@ -26,7 +34,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class ReaderMode(val label: String) { CARDS("Cards"), EDITION("Edition"), HUD("Glasses") }
-enum class AppTab(val label: String) { READ("Read"), ARCHIVE("Archive"), AGENTS("Agents"), SETTINGS("Settings") }
+enum class AppTab(val label: String) { READ("Read"), BRIEF("Brief"), ARCHIVE("Archive"), AGENTS("Agents"), SETTINGS("Settings") }
 
 data class UiState(
     val signedIn: Boolean = false,
@@ -34,6 +42,7 @@ data class UiState(
     val email: String? = null,
     val pro: ProStatus? = null,
     val loading: Boolean = false,
+    val isOffline: Boolean = false,
     val error: String? = null,
     val statusBanner: String? = null,
     val tab: AppTab = AppTab.READ,
@@ -44,13 +53,21 @@ data class UiState(
     val bookmarks: List<BookmarkItem> = emptyList(),
     val searchHits: List<SearchHitItem> = emptyList(),
     val buildRuns: List<BuildRunItem> = emptyList(),
+    val onboarding: OnboardingStatus? = null,
+    val brief: Brief? = null,
+    val briefVersion: Int = 0,
+    val briefDirty: Boolean = false,
+    val briefIssues: List<BriefIssue> = emptyList(),
     val devices: List<PairedDevice> = emptyList(),
     val tokens: List<AgentToken> = emptyList(),
+    val createdAgentToken: String? = null,
     val pairingCode: PairingCode? = null,
     val feedLinks: FeedLinks? = null,
     val shareUrl: String? = null,
     val playingTitle: String? = null,
     val isPlaying: Boolean = false,
+    val playbackRate: Float = 1.0f,
+    val fcmRegistered: Boolean = false,
     val showWhatsNew: Boolean = false,
     val useLocalStack: Boolean = false,
 )
@@ -58,14 +75,27 @@ data class UiState(
 class G2DigestViewModel(app: Application) : AndroidViewModel(app) {
     companion object {
         const val CURRENT_VERSION = "0.6.0"
+        val RATES = listOf(1.0f, 1.25f, 1.5f, 1.75f)
     }
 
     private val store = SessionStore(app)
+    private val offline = OfflineCache(app)
     private var session: AuthSession? = store.loadSession()
     private var deviceToken: String? = store.loadDeviceToken()
     private var mediaPlayer: MediaPlayer? = null
-    private var audioQueue: List<Pair<CardInput, String>> = emptyList()
+    private var audioQueue: List<Triple<CardInput, String, String>> = emptyList() // (card, audioPath, signedUrl)
     private var queuePos: Int = 0
+
+    private val mediaSession = MediaSession(app, "G2DigestAudio").apply {
+        setCallback(object : MediaSession.Callback() {
+            override fun onPlay() { togglePlayPause() }
+            override fun onPause() { togglePlayPause() }
+            override fun onSkipToNext() { nextAudio() }
+            override fun onSkipToPrevious() { prevAudio() }
+            override fun onStop() { stopAudio() }
+        })
+        isActive = true
+    }
 
     private val _ui = MutableStateFlow(
         UiState(
@@ -165,6 +195,7 @@ class G2DigestViewModel(app: Application) : AndroidViewModel(app) {
 
     fun signOut() {
         stopAudio()
+        offline.clearAll()
         session = null
         deviceToken = null
         store.saveSession(null)
@@ -179,25 +210,41 @@ class G2DigestViewModel(app: Application) : AndroidViewModel(app) {
             runCatching {
                 val list = client.fetchEditions()
                 val latest = if (list.isNotEmpty()) client.fetchEdition(list.first().date) else null
+                if (latest != null) launch { offline.saveEdition(latest) }
                 val bookmarks = if (session != null) runCatching { client.fetchBookmarks() }.getOrDefault(emptyList()) else emptyList()
                 val runs = if (session != null) runCatching { client.fetchBuildRuns() }.getOrDefault(emptyList()) else emptyList()
+                val onboarding = if (session != null) runCatching { client.fetchOnboardingStatus() }.getOrNull() else null
+                val briefRes = if (session != null) runCatching { client.fetchBrief() }.getOrNull() else null
                 val devices = if (session != null) runCatching { client.fetchDevices() }.getOrDefault(emptyList()) else emptyList()
                 val tokens = if (session != null) runCatching { client.fetchTokens() }.getOrDefault(emptyList()) else emptyList()
                 val pro = if (session != null) runCatching { client.fetchProStatus() }.getOrNull() else null
                 _ui.update {
                     it.copy(
                         loading = false,
+                        isOffline = false,
                         editions = list,
                         edition = latest,
                         cardIndex = 0,
                         bookmarks = bookmarks,
                         buildRuns = runs,
+                        onboarding = onboarding,
+                        brief = briefRes?.brief ?: it.brief,
+                        briefVersion = briefRes?.briefVersion ?: it.briefVersion,
+                        briefDirty = false,
+                        briefIssues = briefRes?.brief?.let(BriefValidator::checkBrief) ?: emptyList(),
                         devices = devices,
                         tokens = tokens,
                         pro = pro,
                     )
                 }
-            }.onFailure { e -> _ui.update { it.copy(loading = false, error = e.message) } }
+            }.onFailure { e ->
+                val cached = offline.loadLatestEdition()
+                if (cached != null) {
+                    _ui.update { it.copy(loading = false, isOffline = true, edition = cached, error = null, statusBanner = "Showing offline cached edition (${cached.date})") }
+                } else {
+                    _ui.update { it.copy(loading = false, error = e.message) }
+                }
+            }
         }
     }
 
@@ -205,10 +252,123 @@ class G2DigestViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _ui.update { it.copy(loading = true, error = null) }
             runCatching { api().fetchEdition(date) }
-                .onSuccess { ed -> _ui.update { it.copy(loading = false, edition = ed, cardIndex = 0, tab = AppTab.READ) } }
+                .onSuccess { ed ->
+                    launch { offline.saveEdition(ed) }
+                    _ui.update { it.copy(loading = false, isOffline = false, edition = ed, cardIndex = 0, tab = AppTab.READ) }
+                }
+                .onFailure { e ->
+                    val cached = offline.loadEdition(date)
+                    if (cached != null) {
+                        _ui.update { it.copy(loading = false, isOffline = true, edition = cached, cardIndex = 0, tab = AppTab.READ) }
+                    } else {
+                        _ui.update { it.copy(loading = false, error = e.message) }
+                    }
+                }
+        }
+    }
+
+    // ------------------------------------------------------------ Brief editor
+
+    fun updateBrief(transform: (Brief) -> Brief) {
+        val current = _ui.value.brief ?: return
+        val next = transform(current)
+        _ui.update { it.copy(brief = next, briefDirty = true, briefIssues = BriefValidator.checkBrief(next)) }
+    }
+
+    fun addBriefSection() {
+        updateBrief { b ->
+            var n = b.sections.size + 1
+            while (b.sections.any { it.id == "section-$n" }) n++
+            b.copy(
+                sections = b.sections + BriefSection(
+                    id = "section-$n",
+                    title = "Section $n",
+                    template = "status",
+                    maxCards = 2,
+                    instructions = "Summarize notable updates for this section.",
+                ),
+            )
+        }
+    }
+
+    fun removeBriefSection(index: Int) {
+        updateBrief { b ->
+            if (index !in b.sections.indices) b else b.copy(sections = b.sections.filterIndexed { i, _ -> i != index })
+        }
+    }
+
+    fun moveBriefSection(index: Int, delta: Int) {
+        updateBrief { b ->
+            val target = index + delta
+            if (index !in b.sections.indices || target !in b.sections.indices) return@updateBrief b
+            val list = b.sections.toMutableList()
+            val item = list.removeAt(index)
+            list.add(target, item)
+            b.copy(sections = list)
+        }
+    }
+
+    fun saveBrief() {
+        val b = _ui.value.brief ?: return
+        val issues = BriefValidator.checkBrief(b)
+        if (issues.isNotEmpty()) {
+            _ui.update { it.copy(briefIssues = issues) }
+            return
+        }
+        viewModelScope.launch {
+            _ui.update { it.copy(loading = true, error = null) }
+            runCatching { api().saveBrief(b, _ui.value.briefVersion) }
+                .onSuccess { res ->
+                    _ui.update {
+                        it.copy(
+                            loading = false,
+                            brief = res.brief,
+                            briefVersion = res.briefVersion,
+                            briefDirty = false,
+                            briefIssues = emptyList(),
+                            statusBanner = "Brief saved (v${res.briefVersion})",
+                        )
+                    }
+                }
                 .onFailure { e -> _ui.update { it.copy(loading = false, error = e.message) } }
         }
     }
+
+    // ------------------------------------------------------------ Agent tokens & FCM push
+
+    fun createAgentToken(name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            runCatching { api().createToken(name.trim()) }
+                .onSuccess { tok ->
+                    val list = runCatching { api().fetchTokens() }.getOrDefault(_ui.value.tokens)
+                    _ui.update { it.copy(createdAgentToken = tok, tokens = list, statusBanner = "Agent token created (copy it now)") }
+                }
+                .onFailure { e -> _ui.update { it.copy(error = e.message) } }
+        }
+    }
+
+    fun revokeAgentToken(id: String) {
+        viewModelScope.launch {
+            runCatching { api().revokeToken(id) }
+                .onSuccess {
+                    val list = runCatching { api().fetchTokens() }.getOrDefault(emptyList())
+                    _ui.update { it.copy(tokens = list, statusBanner = "Agent token revoked") }
+                }
+                .onFailure { e -> _ui.update { it.copy(error = e.message) } }
+        }
+    }
+
+    fun registerFcmToken(token: String) {
+        if (session == null || token.length < 20) return
+        viewModelScope.launch {
+            runCatching { api().registerFcmToken(token) }
+                .onSuccess { _ui.update { it.copy(fcmRegistered = true, statusBanner = "Push notifications enabled") } }
+                .onFailure { e -> _ui.update { it.copy(error = e.message) } }
+        }
+    }
+
+    // ------------------------------------------------------------ Archive, bookmarks, sharing
 
     fun search(query: String) {
         if (query.isBlank() || session == null) {
@@ -259,12 +419,14 @@ class G2DigestViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ------------------------------------------------------------ Audio player + MediaSession
+
     fun playAll(deepDive: Boolean) {
         val ed = _ui.value.edition ?: return
         val tracks = ed.bundle.cards.mapNotNull { c ->
             val path = if (deepDive) c.deepDive?.audioPath else c.glance?.audioPath
-            val url = path?.let { ed.audio[it] }
-            if (url != null) c to url else null
+            val url = path?.let { ed.audio[it] } ?: ""
+            if (path != null && (offline.localAudioFile(path) != null || url.isNotBlank())) Triple(c, path, url) else null
         }
         if (tracks.isEmpty()) return
         audioQueue = tracks
@@ -272,10 +434,51 @@ class G2DigestViewModel(app: Application) : AndroidViewModel(app) {
         playTrackAt(0)
     }
 
+    fun togglePlayPause() {
+        val mp = mediaPlayer ?: return
+        if (mp.isPlaying) {
+            mp.pause()
+            _ui.update { it.copy(isPlaying = false) }
+            updateMediaSession(playing = false, title = _ui.value.playingTitle ?: "")
+        } else {
+            mp.start()
+            _ui.update { it.copy(isPlaying = true) }
+            updateMediaSession(playing = true, title = _ui.value.playingTitle ?: "")
+        }
+    }
+
+    fun nextAudio() {
+        if (queuePos + 1 < audioQueue.size) {
+            queuePos += 1
+            playTrackAt(queuePos)
+        }
+    }
+
+    fun prevAudio() {
+        if (queuePos > 0) {
+            queuePos -= 1
+            playTrackAt(queuePos)
+        }
+    }
+
+    fun cyclePlaybackRate() {
+        val cur = _ui.value.playbackRate
+        val next = RATES[(RATES.indexOf(cur) + 1) % RATES.size]
+        _ui.update { it.copy(playbackRate = next) }
+        runCatching {
+            mediaPlayer?.let { mp ->
+                mp.playbackParams = mp.playbackParams.setSpeed(next)
+            }
+        }
+    }
+
     private fun playTrackAt(idx: Int) {
-        val pair = audioQueue.getOrNull(idx) ?: return stopAudio()
-        val (card, url) = pair
+        val triple = audioQueue.getOrNull(idx) ?: return stopAudio()
+        val (card, audioPath, signedUrl) = triple
         stopPlayerOnly()
+        val localFile = offline.localAudioFile(audioPath)
+        val source = localFile?.absolutePath ?: signedUrl
+        val rate = _ui.value.playbackRate
         val mp = MediaPlayer().apply {
             setAudioAttributes(
                 AudioAttributes.Builder()
@@ -283,8 +486,11 @@ class G2DigestViewModel(app: Application) : AndroidViewModel(app) {
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .build(),
             )
-            setDataSource(url)
-            setOnPreparedListener { it.start() }
+            setDataSource(source)
+            setOnPreparedListener {
+                runCatching { it.playbackParams = it.playbackParams.setSpeed(rate) }
+                it.start()
+            }
             setOnCompletionListener {
                 if (queuePos + 1 < audioQueue.size) {
                     queuePos += 1
@@ -298,6 +504,26 @@ class G2DigestViewModel(app: Application) : AndroidViewModel(app) {
         mediaPlayer = mp
         val cardIdx = _ui.value.edition?.bundle?.cards?.indexOfFirst { it.slug == card.slug } ?: _ui.value.cardIndex
         _ui.update { it.copy(playingTitle = card.title, isPlaying = true, cardIndex = cardIdx.coerceAtLeast(0)) }
+        updateMediaSession(playing = true, title = card.title)
+    }
+
+    private fun updateMediaSession(playing: Boolean, title: String) {
+        mediaSession.setMetadata(
+            MediaMetadata.Builder()
+                .putString(MediaMetadata.METADATA_KEY_TITLE, title)
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, _ui.value.edition?.title ?: "G2 Digest")
+                .build(),
+        )
+        val state = if (playing) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED
+        val actions = PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or
+            PlaybackState.ACTION_PLAY_PAUSE or PlaybackState.ACTION_SKIP_TO_NEXT or
+            PlaybackState.ACTION_SKIP_TO_PREVIOUS or PlaybackState.ACTION_STOP
+        mediaSession.setPlaybackState(
+            PlaybackState.Builder()
+                .setActions(actions)
+                .setState(state, mediaPlayer?.currentPosition?.toLong() ?: 0L, _ui.value.playbackRate)
+                .build(),
+        )
     }
 
     private fun stopPlayerOnly() {
@@ -311,10 +537,14 @@ class G2DigestViewModel(app: Application) : AndroidViewModel(app) {
         audioQueue = emptyList()
         queuePos = 0
         _ui.update { it.copy(playingTitle = null, isPlaying = false) }
+        mediaSession.setPlaybackState(
+            PlaybackState.Builder().setState(PlaybackState.STATE_STOPPED, 0L, 1.0f).build(),
+        )
     }
 
     override fun onCleared() {
         stopAudio()
+        mediaSession.release()
         super.onCleared()
     }
 }

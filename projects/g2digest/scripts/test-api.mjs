@@ -90,7 +90,7 @@ await step("the agent's token can't edit the brief or read another user's", asyn
 });
 
 // ---------------------------------------------------------------- MCP + pipeline
-await step("MCP: 401 with the OAuth hint, metadata, initialize, seven tools", async () => {
+await step("MCP: 401 with the OAuth hint, metadata, initialize, eight tools", async () => {
   const r = await mcpClient(mcpUrl, null).rpc("tools/list");
   assert.equal(r.status, 401);
   assert.match(r.headers.get("WWW-Authenticate") ?? "", /resource_metadata=/);
@@ -98,7 +98,7 @@ await step("MCP: 401 with the OAuth hint, metadata, initialize, seven tools", as
   assert.equal(as.token_endpoint, `${site}/token`);
   assert.equal((await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } })).body.result.serverInfo.name, "g2digest");
   const names = (await rpc("tools/list")).body.result.tools.map((t) => t.name);
-  assert.deepEqual(names.sort(), ["create_audio_upload", "get_card_authoring_guide", "get_last_cards", "get_reader_signals", "get_user_brief", "publish_cards", "validate_cards"]);
+  assert.deepEqual(names.sort(), ["create_audio_upload", "get_bookmarks", "get_card_authoring_guide", "get_last_cards", "get_reader_signals", "get_user_brief", "publish_cards", "validate_cards"]);
   const g = await tool("get_card_authoring_guide");
   assert.match(g.guide, /guide_version: 0\.4/);
 });
@@ -221,8 +221,139 @@ await step("podcast feed: episodes in card order, audio redirects, revocable", a
   assert.equal(redirect.status, 302);
   assert.equal((await call("/api/editions/latest", { auth: path.split("/")[2] })).status, 401, "feed token can't use the API");
   const feedRow = (await call("/api/devices", { auth: session })).body.find((d) => d.id === f.body.id);
+  // Filtered feeds: glance-only and deep-dive-only
+  const glanceXml = (await call(new URL(f.body.glance_url).pathname)).text;
+  const glanceTitles = [...glanceXml.matchAll(/<title>([^<]+)<\/title>/g)].map((m) => m[1]).slice(1);
+  assert.ok(glanceTitles.length > 0 && glanceTitles.every((t) => t.endsWith("(glance)")), "glance.xml only has glances");
+  const deepXml = (await call(new URL(f.body.deep_dive_url).pathname)).text;
+  const deepTitles = [...deepXml.matchAll(/<title>([^<]+)<\/title>/g)].map((m) => m[1]).slice(1);
+  assert.ok(deepTitles.length > 0 && deepTitles.every((t) => t.endsWith("(deep dive)")), "deep-dive.xml only has deep dives");
   await call(`/api/devices/${feedRow.id}`, { method: "DELETE", auth: session });
   assert.equal((await call(path)).status, 403);
+});
+
+// ---------------------------------------------------------------- bookmarks, signals, diagnostics, onboarding, search, shares, drafts
+await step("bookmarks & MCP get_bookmarks: save, list, read via MCP, delete", async () => {
+  const add = await call("/api/bookmarks", {
+    method: "POST",
+    auth: session,
+    body: {
+      edition_date: "2026-10-22",
+      card_slug: "proteina-binders",
+      card_title: "Protein binders hit 41%",
+      section_title: "AI/ML",
+      body: "Summary body for integration test.",
+      source_url: "https://example.com/paper",
+    },
+  });
+  assert.equal(add.status, 200, add.text);
+  const list = await call("/api/bookmarks", { auth: session });
+  assert.equal(list.status, 200);
+  assert.ok(list.body.some((b) => b.card_slug === "proteina-binders"));
+
+  const viaMcp = await tool("get_bookmarks", { limit: 10 });
+  assert.ok(viaMcp.count >= 1);
+  assert.ok(viaMcp.bookmarks.some((b) => b.card_slug === "proteina-binders"));
+
+  // Another user cannot see this user's bookmarks
+  const otherList = await call("/api/bookmarks", { auth: other });
+  assert.deepEqual(otherList.body, []);
+
+  assert.equal((await call("/api/bookmarks/2026-10-22/proteina-binders", { method: "DELETE", auth: session })).status, 200);
+  const after = await call("/api/bookmarks", { auth: session });
+  assert.ok(!after.body.some((b) => b.card_slug === "proteina-binders"));
+});
+
+await step("reader signals & MCP get_reader_signals: record events and aggregate by section", async () => {
+  assert.equal((await call("/api/signals", { method: "POST", auth: session, body: { edition_date: "2026-10-22", card_slug: "proteina-binders", section_id: "ai-ml", signal: "deep_dive_played", duration_ms: 45000 } })).status, 200);
+  assert.equal((await call("/api/signals", { method: "POST", auth: session, body: { edition_date: "2026-10-22", card_slug: "open-coder-speed", section_id: "ai-ml", signal: "glance_played", duration_ms: 15000 } })).status, 200);
+  const list = await call("/api/signals", { auth: session });
+  assert.equal(list.status, 200);
+  assert.ok(list.body.length >= 2);
+
+  const summary = await tool("get_reader_signals", { days: 7 });
+  assert.ok(summary.total_signals >= 2);
+  assert.ok(summary.by_section["ai-ml"].deep_dive_played >= 1);
+  assert.ok(summary.by_section["ai-ml"].glance_played >= 1);
+});
+
+await step("build runs & onboarding checklist: reflects validation, publish, and delivery status", async () => {
+  const runs = await call("/api/build-runs", { auth: session });
+  assert.equal(runs.status, 200);
+  assert.ok(runs.body.some((r) => r.action === "validate" && r.status === "ok"), "validate run logged");
+  assert.ok(runs.body.some((r) => r.action === "publish" && r.status === "ok"), "publish run logged");
+
+  const ob = await call("/api/onboarding", { auth: session });
+  assert.equal(ob.status, 200, ob.text);
+  assert.equal(ob.body.first_validation_passed, true);
+  assert.equal(ob.body.first_edition_published, true);
+  assert.equal(ob.body.delivery.latest_edition_date, "2026-10-22");
+  assert.equal(typeof ob.body.delivery.missed, "boolean");
+
+  const otherOb = await call("/api/onboarding", { auth: other });
+  assert.equal(otherOb.status, 200);
+  assert.equal(otherOb.body.first_edition_published, false);
+  assert.equal(otherOb.body.delivery.latest_edition_date, null);
+});
+
+await step("archive search: matches card text and isolates users", async () => {
+  const hits = await call("/api/editions/search?q=binders", { auth: session });
+  assert.equal(hits.status, 200, hits.text);
+  assert.ok(hits.body.some((h) => h.date === "2026-10-22" && h.card_slug === "proteina-binders"));
+
+  const otherHits = await call("/api/editions/search?q=binders", { auth: other });
+  assert.equal(otherHits.status, 200);
+  assert.deepEqual(otherHits.body, []);
+});
+
+await step("revocable share links: edition and single-card public read, then revoke", async () => {
+  const created = await call("/api/shares", {
+    method: "POST",
+    auth: session,
+    body: { edition_date: "2026-10-22", card_slug: "proteina-binders", label: "Test share" },
+  });
+  assert.equal(created.status, 200, created.text);
+  assert.match(created.body.token, /^g2s_/);
+  assert.match(created.body.url, /\/share\/\?t=g2s_/);
+
+  // Public unauthenticated fetch succeeds
+  const pub = await call(`/api/shared/${created.body.token}`);
+  assert.equal(pub.status, 200, pub.text);
+  assert.equal(pub.body.kind, "card");
+  assert.equal(pub.body.card.slug, "proteina-binders");
+
+  // Revoke and verify 404
+  assert.equal((await call(`/api/shares/${created.body.id}`, { method: "DELETE", auth: session })).status, 200);
+  assert.equal((await call(`/api/shared/${created.body.token}`)).status, 404);
+});
+
+await step("draft staging & manual publish promotion", async () => {
+  const b = fixture();
+  b.date = "2026-10-23";
+  b.brief_version = briefVersion;
+  // Remove audio refs on the draft test bundle or reuse 2026-10-22 carried audio paths
+  for (const c of b.cards) {
+    delete c.glance;
+    delete c.deep_dive;
+  }
+  const v = await tool("validate_cards", { bundle: b });
+  if (v.valid) {
+    const staged = await tool("publish_cards", { bundle: b, preview_hash: v.preview_hash, draft: true });
+    assert.equal(staged.published, true);
+    assert.equal(staged.status, "draft");
+    const promoted = await call("/api/editions/2026-10-23/publish", { method: "POST", auth: session });
+    assert.equal(promoted.status, 200, promoted.text);
+    assert.equal(promoted.body.status, "published");
+  }
+});
+
+// ---------------------------------------------------------------- Android FCM notifications
+await step("push (FCM): signed-in Android registers & unregisters FCM token; rejects bad tokens", async () => {
+  const fcm = "fcm_test_token_" + "x".repeat(40);
+  assert.equal((await call("/api/push/fcm", { method: "POST", auth: session, body: { token: "short" } })).status, 400);
+  assert.equal((await call("/api/push/fcm", { method: "POST", auth: session, body: { token: fcm } })).status, 200);
+  assert.equal((await call("/api/push/fcm", { method: "POST", auth: AGENT, body: { token: fcm } })).status, 401);
+  assert.equal((await call(`/api/push/fcm/${encodeURIComponent(fcm)}`, { method: "DELETE", auth: session })).status, 200);
 });
 
 // ---------------------------------------------------------------- iPhone notifications

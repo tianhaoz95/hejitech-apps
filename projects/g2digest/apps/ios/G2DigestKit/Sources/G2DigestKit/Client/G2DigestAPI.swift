@@ -277,6 +277,10 @@ public actor G2DigestAPI {
         try decode([BuildRunItem].self, try await send("/api/build-runs"))
     }
 
+    public func fetchOnboardingStatus() async throws -> OnboardingStatus {
+        try decode(OnboardingStatus.self, try await send("/api/onboarding"))
+    }
+
     public func searchEditions(query: String) async throws -> [SearchHitItem] {
         let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
         return try decode([SearchHitItem].self, try await send("/api/editions/search?q=\(q)"))
