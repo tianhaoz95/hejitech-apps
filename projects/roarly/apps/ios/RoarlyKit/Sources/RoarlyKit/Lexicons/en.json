@@ -4139,6 +4139,883 @@
         "secret map",
         "riddle"
       ]
+    },
+    "chimpanzee": {
+      "words": [
+        "chimps"
+      ],
+      "sounds": [
+        "pant-hoot",
+        "ooh ooh"
+      ]
+    },
+    "orangutan": {
+      "words": [
+        "orangutans",
+        "great ape",
+        "red ape"
+      ],
+      "sounds": []
+    },
+    "bald_eagle": {
+      "words": [
+        "bald eagles"
+      ],
+      "sounds": []
+    },
+    "raven": {
+      "words": [
+        "ravens"
+      ],
+      "sounds": [
+        "croak",
+        "nevermore"
+      ]
+    },
+    "vulture": {
+      "words": [
+        "vulture",
+        "vultures"
+      ],
+      "sounds": []
+    },
+    "grizzly_roar": {
+      "words": [
+        "grizzly roar",
+        "angry bear",
+        "mama bear"
+      ],
+      "sounds": []
+    },
+    "tiger_snarl": {
+      "words": [
+        "angry tiger",
+        "prowling tiger",
+        "sabertooth",
+        "saber tooth"
+      ],
+      "sounds": []
+    },
+    "gorilla": {
+      "words": [
+        "gorillas",
+        "silverback"
+      ],
+      "sounds": [
+        "chest beat"
+      ]
+    },
+    "mammoth": {
+      "words": [
+        "mammoth",
+        "woolly mammoth",
+        "mastodon"
+      ],
+      "sounds": []
+    },
+    "elk": {
+      "words": [
+        "wapiti",
+        "caribou"
+      ],
+      "sounds": [
+        "bugle",
+        "bugled"
+      ]
+    },
+    "buffalo_herd": {
+      "words": [
+        "buffalo herd",
+        "thundering herd"
+      ],
+      "sounds": []
+    },
+    "leopard": {
+      "words": [
+        "leopards",
+        "snow leopard"
+      ],
+      "sounds": []
+    },
+    "walrus_bark": {
+      "words": [
+        "walrus bark",
+        "grumpy walrus",
+        "tusks"
+      ],
+      "sounds": []
+    },
+    "rhino_charge": {
+      "words": [
+        "rhino charge",
+        "charging rhino",
+        "angry rhino"
+      ],
+      "sounds": []
+    },
+    "beluga": {
+      "words": [
+        "beluga",
+        "beluga whale",
+        "narwhal"
+      ],
+      "sounds": []
+    },
+    "horse_whinny": {
+      "words": [
+        "horse neigh",
+        "mare"
+      ],
+      "sounds": [
+        "whinny",
+        "whinnied",
+        "neigh",
+        "neighed"
+      ]
+    },
+    "rabbit_munch": {
+      "words": [
+        "bunnies"
+      ],
+      "sounds": [
+        "nibble",
+        "nibbled",
+        "nibbling"
+      ]
+    },
+    "calf": {
+      "words": [
+        "baby cow",
+        "little calf"
+      ],
+      "sounds": []
+    },
+    "sheep_baa": {
+      "words": [
+        "little lamb",
+        "baby sheep"
+      ],
+      "sounds": []
+    },
+    "rooster_morning": {
+      "words": [
+        "morning rooster",
+        "sunrise rooster",
+        "wake up rooster"
+      ],
+      "sounds": [
+        "cock-a-doodle-doo"
+      ]
+    },
+    "horse_trot": {
+      "words": [
+        "trotting horse",
+        "horse ride",
+        "pony ride"
+      ],
+      "sounds": []
+    },
+    "duck_pond": {
+      "words": [
+        "ducklings",
+        "baby ducks"
+      ],
+      "sounds": []
+    },
+    "farm_gate": {
+      "words": [
+        "wooden gate",
+        "fence gate",
+        "pasture gate",
+        "farm gate"
+      ],
+      "sounds": []
+    },
+    "wood_axe": {
+      "words": [
+        "splitting logs",
+        "woodcutter"
+      ],
+      "sounds": []
+    },
+    "farm_pump": {
+      "words": [
+        "water pump",
+        "hand pump",
+        "well pump"
+      ],
+      "sounds": []
+    },
+    "milk_bucket": {
+      "words": [
+        "tin bucket"
+      ],
+      "sounds": []
+    },
+    "barn_creak": {
+      "words": [
+        "old barn",
+        "hayloft",
+        "silo"
+      ],
+      "sounds": []
+    },
+    "windmill": {
+      "words": [
+        "windmill",
+        "windmills",
+        "grain mill"
+      ],
+      "sounds": []
+    },
+    "black_woodpecker": {
+      "words": [
+        "drumming bird",
+        "pecking wood",
+        "tree trunk"
+      ],
+      "sounds": []
+    },
+    "dawn_chorus": {
+      "words": [
+        "morning birds",
+        "dawn chorus",
+        "birdsong",
+        "chirping morning"
+      ],
+      "sounds": []
+    },
+    "tree_frog": {
+      "words": [
+        "tree frog",
+        "green frog",
+        "tadpole"
+      ],
+      "sounds": []
+    },
+    "cricket_night": {
+      "words": [
+        "night cricket",
+        "chirping cricket"
+      ],
+      "sounds": []
+    },
+    "cicada_buzz": {
+      "words": [
+        "summer bug",
+        "june bug",
+        "stink bug"
+      ],
+      "sounds": []
+    },
+    "beetle_buzz": {
+      "words": [
+        "beetles",
+        "scarab",
+        "stag beetle"
+      ],
+      "sounds": []
+    },
+    "ant_march": {
+      "words": [
+        "anthill",
+        "marching ants",
+        "colony"
+      ],
+      "sounds": []
+    },
+    "caterpillar": {
+      "words": [
+        "caterpillars",
+        "hungry caterpillar"
+      ],
+      "sounds": []
+    },
+    "toad": {
+      "words": [
+        "bullfrog",
+        "toads",
+        "big frog"
+      ],
+      "sounds": []
+    },
+    "firefly_twinkle": {
+      "words": [
+        "firefly",
+        "lightning bug",
+        "glowworm"
+      ],
+      "sounds": []
+    },
+    "scurry": {
+      "words": [
+        "scurrying",
+        "scurried",
+        "little paws",
+        "tiny feet",
+        "skitter"
+      ],
+      "sounds": []
+    },
+    "bird_wings": {
+      "words": [
+        "fluttering wings",
+        "bird flew away",
+        "took flight"
+      ],
+      "sounds": [
+        "flutter",
+        "fluttered"
+      ]
+    },
+    "crab_scuttle": {
+      "words": [
+        "scuttling crab",
+        "pinchers",
+        "lobster"
+      ],
+      "sounds": []
+    },
+    "mouse_scurry": {
+      "words": [
+        "little mouse",
+        "field mouse",
+        "dormouse",
+        "shrew"
+      ],
+      "sounds": []
+    },
+    "hot_spring": {
+      "words": [
+        "thermal pool",
+        "steaming pool",
+        "mineral spring"
+      ],
+      "sounds": []
+    },
+    "rain_thunder": {
+      "words": [
+        "stormy night",
+        "heavy thunderstorm"
+      ],
+      "sounds": []
+    },
+    "thunder_crack": {
+      "words": [
+        "thunderclap",
+        "boom of thunder",
+        "crash of thunder"
+      ],
+      "sounds": [
+        "ka-boom"
+      ]
+    },
+    "tree_creak": {
+      "words": [
+        "creaking tree",
+        "swaying tree",
+        "tall oak",
+        "willow tree",
+        "giant tree"
+      ],
+      "sounds": []
+    },
+    "camp_crackle": {
+      "words": [
+        "crackling fire",
+        "hearth",
+        "burning logs",
+        "warm fire"
+      ],
+      "sounds": [
+        "crackle",
+        "crackled"
+      ]
+    },
+    "river_waves": {
+      "words": [
+        "gentle waves",
+        "lapping waves",
+        "lakeshore",
+        "lake shore",
+        "calm sea"
+      ],
+      "sounds": []
+    },
+    "wet_steps": {
+      "words": [
+        "puddle steps",
+        "wet shoes",
+        "squishy boots",
+        "walking in puddles"
+      ],
+      "sounds": []
+    },
+    "skipping_stones": {
+      "words": [
+        "skipping stones",
+        "skip a stone",
+        "pebble",
+        "pebbles",
+        "flat stone"
+      ],
+      "sounds": []
+    },
+    "bubbling_spring": {
+      "words": [
+        "bubbling stream",
+        "mountain spring",
+        "clear creek",
+        "fresh spring"
+      ],
+      "sounds": []
+    },
+    "rain_shower": {
+      "words": [
+        "sun shower",
+        "spring rain"
+      ],
+      "sounds": []
+    },
+    "wind_chime_angel": {
+      "words": [
+        "silver chimes",
+        "angel chimes",
+        "porch chimes",
+        "tinkling bells"
+      ],
+      "sounds": []
+    },
+    "big_splash": {
+      "words": [
+        "belly flop",
+        "cannonball splash",
+        "jumped into the pool",
+        "diving board"
+      ],
+      "sounds": [
+        "kerplunk",
+        "ker-splash"
+      ]
+    },
+    "construction_site": {
+      "words": [
+        "building site",
+        "crane yard",
+        "hard hat"
+      ],
+      "sounds": []
+    },
+    "highway": {
+      "words": [
+        "highway",
+        "freeway",
+        "motorway",
+        "expressway",
+        "busy road"
+      ],
+      "sounds": []
+    },
+    "bakery": {
+      "words": [
+        "bakehouse",
+        "bread oven",
+        "pastry shop",
+        "baker"
+      ],
+      "sounds": []
+    },
+    "fountain": {
+      "words": [
+        "fountain",
+        "park fountain",
+        "water fountain"
+      ],
+      "sounds": []
+    },
+    "watermill": {
+      "words": [
+        "watermill",
+        "water wheel",
+        "old mill",
+        "millstream"
+      ],
+      "sounds": []
+    },
+    "workshop": {
+      "words": [
+        "toy workshop",
+        "carpenter shop",
+        "santa's workshop",
+        "garage"
+      ],
+      "sounds": []
+    },
+    "power_plant": {
+      "words": [
+        "robot factory",
+        "secret lab",
+        "laboratory",
+        "science lab"
+      ],
+      "sounds": []
+    },
+    "submarine_hull": {
+      "words": [
+        "inside a submarine",
+        "yellow submarine",
+        "ocean floor"
+      ],
+      "sounds": []
+    },
+    "mysterious_cave": {
+      "words": [
+        "echoing cavern",
+        "dark cavern",
+        "hidden grotto",
+        "grotto",
+        "underground lake"
+      ],
+      "sounds": []
+    },
+    "night_meadow": {
+      "words": [
+        "starry field",
+        "under the stars",
+        "stargazing",
+        "moonlit field"
+      ],
+      "sounds": []
+    },
+    "cheering_crowd": {
+      "words": [
+        "parade",
+        "big parade",
+        "carnival crowd",
+        "street festival"
+      ],
+      "sounds": []
+    },
+    "coral_reef": {
+      "words": [
+        "coral reef",
+        "aquarium",
+        "mermaid lagoon"
+      ],
+      "sounds": []
+    },
+    "tram_doors": {
+      "words": [
+        "tram doors",
+        "train doors"
+      ],
+      "sounds": []
+    },
+    "leaf_blower": {
+      "words": [
+        "leaf blower",
+        "lawn mower",
+        "weed whacker"
+      ],
+      "sounds": []
+    },
+    "propeller_plane": {
+      "words": [
+        "propeller plane",
+        "seaplane",
+        "crop duster",
+        "little plane"
+      ],
+      "sounds": []
+    },
+    "hovercraft": {
+      "words": [
+        "hovercraft",
+        "speeder",
+        "flying car",
+        "jetpack",
+        "hoverboard"
+      ],
+      "sounds": []
+    },
+    "dynamite": {
+      "words": [
+        "tnt",
+        "fuse",
+        "bomb",
+        "time bomb"
+      ],
+      "sounds": []
+    },
+    "windup_toy": {
+      "words": [
+        "wind-up toy",
+        "windup toy",
+        "clockwork",
+        "tin soldier",
+        "toy robot"
+      ],
+      "sounds": []
+    },
+    "rotary_phone": {
+      "words": [
+        "rotary phone",
+        "old telephone",
+        "dialing a number",
+        "payphone"
+      ],
+      "sounds": []
+    },
+    "washing_machine": {
+      "words": [
+        "washing machine",
+        "laundry",
+        "spin cycle",
+        "washer",
+        "dryer"
+      ],
+      "sounds": []
+    },
+    "ship_cannon": {
+      "words": [
+        "pirate cannon",
+        "broadside",
+        "ship cannon"
+      ],
+      "sounds": []
+    },
+    "firecracker": {
+      "words": [
+        "firecrackers",
+        "sparkler",
+        "popper",
+        "party popper"
+      ],
+      "sounds": [
+        "pop pop pop"
+      ]
+    },
+    "air_brake": {
+      "words": [
+        "bus brakes",
+        "air brake",
+        "school bus stopped",
+        "brakes hissed"
+      ],
+      "sounds": []
+    },
+    "heavy_machine": {
+      "words": [
+        "steamroller",
+        "forklift"
+      ],
+      "sounds": []
+    },
+    "accordion": {
+      "words": [
+        "accordion",
+        "concertina",
+        "squeezebox"
+      ],
+      "sounds": []
+    },
+    "flute_drum": {
+      "words": [
+        "flute",
+        "fife",
+        "piccolo",
+        "marching band",
+        "pied piper"
+      ],
+      "sounds": []
+    },
+    "jug_band": {
+      "words": [
+        "jug band",
+        "tuba",
+        "foghorn tuba",
+        "brass horn"
+      ],
+      "sounds": [
+        "oompah"
+      ]
+    },
+    "blown_bottle": {
+      "words": [
+        "bottle whistle",
+        "empty bottle",
+        "soda bottle",
+        "glass jug"
+      ],
+      "sounds": []
+    },
+    "stove_click": {
+      "words": [
+        "gas stove",
+        "stove",
+        "burner",
+        "oven knob",
+        "turn on the stove"
+      ],
+      "sounds": []
+    },
+    "light_switch": {
+      "words": [
+        "light switch",
+        "turned on the light",
+        "turned off the light",
+        "lamp switch",
+        "flashlight"
+      ],
+      "sounds": [
+        "click"
+      ]
+    },
+    "window_break": {
+      "words": [
+        "broken window",
+        "shattered glass",
+        "window smashed",
+        "mirror broke"
+      ],
+      "sounds": [
+        "shatter",
+        "shattered"
+      ]
+    },
+    "wooden_stairs": {
+      "words": [
+        "wooden stairs",
+        "upstairs",
+        "downstairs",
+        "staircase",
+        "climbing the stairs",
+        "attic stairs"
+      ],
+      "sounds": []
+    },
+    "pocket_watch": {
+      "words": [
+        "pocket watch",
+        "wristwatch",
+        "stopwatch",
+        "winding the clock"
+      ],
+      "sounds": []
+    },
+    "drawer_open": {
+      "words": [
+        "drawer",
+        "opened the drawer",
+        "dresser",
+        "cupboard",
+        "cabinet"
+      ],
+      "sounds": []
+    },
+    "padlock": {
+      "words": [
+        "treasure lock",
+        "jail cell",
+        "secret lock",
+        "locked box"
+      ],
+      "sounds": []
+    },
+    "mystery_sting": {
+      "words": [
+        "plot twist",
+        "dun dun dun",
+        "clue"
+      ],
+      "sounds": [
+        "dun dun dun"
+      ]
+    },
+    "fairy_bells": {
+      "words": [
+        "fairy bells",
+        "tinkerbell"
+      ],
+      "sounds": []
+    },
+    "slime_splat": {
+      "words": [
+        "gooey slime",
+        "slime monster",
+        "booger",
+        "pie in the face"
+      ],
+      "sounds": [
+        "splat",
+        "squelch"
+      ]
+    },
+    "potion_gulp": {
+      "words": [
+        "love potion",
+        "shrinking potion",
+        "drank the potion"
+      ],
+      "sounds": []
+    },
+    "dragon_roar": {
+      "words": [
+        "dragon roar",
+        "fire dragon",
+        "ice dragon",
+        "sea serpent",
+        "hydra"
+      ],
+      "sounds": []
+    },
+    "magic_book": {
+      "words": [
+        "magic book",
+        "grimoire",
+        "ancient scroll"
+      ],
+      "sounds": []
+    },
+    "treasure_chest": {
+      "words": [
+        "pirate treasure",
+        "gold chest",
+        "buried treasure"
+      ],
+      "sounds": []
+    },
+    "retro_jump": {
+      "words": [
+        "leveled up"
+      ],
+      "sounds": []
+    },
+    "alien_chatter": {
+      "words": [
+        "aliens",
+        "extraterrestrial",
+        "space creature"
+      ],
+      "sounds": []
+    },
+    "shield_bash": {
+      "words": [
+        "knight shield",
+        "joust",
+        "lance"
+      ],
+      "sounds": []
+    },
+    "magic_crystal": {
+      "words": [
+        "glowing crystal",
+        "crystal ball",
+        "magic stone",
+        "magic amulet",
+        "enchanted ring"
+      ],
+      "sounds": []
     }
   },
   "negations": [

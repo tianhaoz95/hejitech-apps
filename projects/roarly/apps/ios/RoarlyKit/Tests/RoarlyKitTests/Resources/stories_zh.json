@@ -58,6 +58,8 @@
     {"lines": ["突然火山爆发了！"], "play": ["volcano"]},
     {"lines": ["独角兽跳了出来！"], "play": ["unicorn"]},
     {"lines": ["一只小白兔突然跳进了花园！"], "play": ["gerbil", "park_birds"]},
-    {"lines": ["突然一个大火球飞了过来！"], "play": ["fireball"]}
+    {"lines": ["突然一个大火球飞了过来！"], "play": ["fireball"]},
+    {"lines": ["突然一只猛犸象出现在风车旁！"], "play": ["mammoth", "windmill"]},
+    {"lines": ["突然他在面包店门口拉起了手风琴！"], "play": ["accordion", "bakery"]}
   ]
 }

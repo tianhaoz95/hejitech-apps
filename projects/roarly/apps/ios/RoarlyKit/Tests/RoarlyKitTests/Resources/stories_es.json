@@ -54,6 +54,8 @@
     {"lines": ["El caballero levantó su escudo."], "suggest": ["shield"]},
     {"lines": ["El unicornio llegó al prado."], "play": ["unicorn", "meadow"]},
     {"lines": ["De repente apareció un conejito en el jardín."], "play": ["gerbil", "park_birds"]},
-    {"lines": ["De pronto cayó una bola de fuego."], "play": ["fireball"]}
+    {"lines": ["De pronto cayó una bola de fuego."], "play": ["fireball"]},
+    {"lines": ["De repente apareció un mamut junto al molino de viento."], "play": ["mammoth", "windmill"]},
+    {"lines": ["De pronto sonó el acordeón cerca de la fuente del parque."], "play": ["accordion", "fountain"]}
   ]
 }

@@ -91,6 +91,9 @@
     {"lines": ["Suddenly a big fireball flew across the sky!"], "play": ["fireball"]},
     {"lines": ["Suddenly a little bunny hopped into the garden."], "play": ["gerbil", "park_birds"]},
     {"lines": ["Suddenly the lights went out in the old ruin."], "play": ["power_down", "abandoned_house"]},
-    {"lines": ["Three two one, blast off!"], "suggest": ["launch_countdown"], "play": ["rocket"]}
+    {"lines": ["Three two one, blast off!"], "suggest": ["launch_countdown"], "play": ["rocket"]},
+    {"lines": ["Suddenly a woolly mammoth stomped past the windmill!"], "play": ["mammoth", "windmill"]},
+    {"lines": ["Suddenly he played the accordion by the park fountain."], "play": ["accordion", "fountain"]},
+    {"lines": ["Suddenly a big hovercraft zoomed down the highway!"], "play": ["hovercraft", "highway"]}
   ]
 }

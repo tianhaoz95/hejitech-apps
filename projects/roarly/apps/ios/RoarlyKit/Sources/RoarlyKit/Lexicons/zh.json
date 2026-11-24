@@ -3670,6 +3670,782 @@
         "放大镜",
         "谜语"
       ]
+    },
+    "chimpanzee": {
+      "words": [
+        "大猩猩宝宝"
+      ],
+      "sounds": [
+        "呜呜叫"
+      ]
+    },
+    "orangutan": {
+      "words": [
+        "婆罗洲猩猩",
+        "人猿",
+        "大红猩猩"
+      ],
+      "sounds": []
+    },
+    "bald_eagle": {
+      "words": [
+        "白头海雕"
+      ],
+      "sounds": []
+    },
+    "raven": {
+      "words": [
+        "渡鸦",
+        "黑鸦"
+      ],
+      "sounds": [
+        "嘎嘎叫"
+      ]
+    },
+    "vulture": {
+      "words": [
+        "秃鹫"
+      ],
+      "sounds": []
+    },
+    "grizzly_roar": {
+      "words": [
+        "大灰熊吼",
+        "熊妈妈",
+        "发怒的熊"
+      ],
+      "sounds": []
+    },
+    "tiger_snarl": {
+      "words": [
+        "剑齿虎",
+        "凶猛的老虎",
+        "老虎低吼"
+      ],
+      "sounds": []
+    },
+    "gorilla": {
+      "words": [
+        "银背大猩猩"
+      ],
+      "sounds": [
+        "捶胸"
+      ]
+    },
+    "mammoth": {
+      "words": [
+        "猛犸象",
+        "长毛象"
+      ],
+      "sounds": []
+    },
+    "elk": {
+      "words": [
+        "加拿大马鹿",
+        "大角鹿",
+        "马鹿"
+      ],
+      "sounds": []
+    },
+    "buffalo_herd": {
+      "words": [
+        "兽群奔腾",
+        "野牛群",
+        "踩踏"
+      ],
+      "sounds": []
+    },
+    "leopard": {
+      "words": [
+        "雪豹"
+      ],
+      "sounds": []
+    },
+    "walrus_bark": {
+      "words": [
+        "海象叫"
+      ],
+      "sounds": []
+    },
+    "rhino_charge": {
+      "words": [
+        "犀牛冲锋",
+        "犀牛奔跑"
+      ],
+      "sounds": []
+    },
+    "beluga": {
+      "words": [
+        "白鲸",
+        "独角鲸"
+      ],
+      "sounds": []
+    },
+    "horse_whinny": {
+      "words": [
+        "马嘶鸣"
+      ],
+      "sounds": [
+        "嘶鸣",
+        "咴儿"
+      ]
+    },
+    "rabbit_munch": {
+      "words": [
+        "白兔",
+        "啃胡萝卜"
+      ],
+      "sounds": [
+        "咯吱啃"
+      ]
+    },
+    "calf": {
+      "words": [
+        "牛犊"
+      ],
+      "sounds": []
+    },
+    "sheep_baa": {
+      "words": [
+        "小羊羔",
+        "小绵羊"
+      ],
+      "sounds": []
+    },
+    "rooster_morning": {
+      "words": [
+        "报晓公鸡",
+        "公鸡打鸣",
+        "大公鸡叫"
+      ],
+      "sounds": [
+        "喔喔喔"
+      ]
+    },
+    "horse_trot": {
+      "words": [
+        "骑马",
+        "小跑的马"
+      ],
+      "sounds": []
+    },
+    "duck_pond": {
+      "words": [
+        "鸭塘"
+      ],
+      "sounds": []
+    },
+    "farm_gate": {
+      "words": [
+        "木栅栏门",
+        "农场大门",
+        "木门"
+      ],
+      "sounds": []
+    },
+    "wood_axe": {
+      "words": [
+        "砍木头"
+      ],
+      "sounds": []
+    },
+    "farm_pump": {
+      "words": [
+        "水泵",
+        "压水井",
+        "打水"
+      ],
+      "sounds": []
+    },
+    "milk_bucket": {
+      "words": [
+        "铁桶",
+        "提水桶"
+      ],
+      "sounds": []
+    },
+    "barn_creak": {
+      "words": [
+        "老谷仓",
+        "干草棚",
+        "木屋顶"
+      ],
+      "sounds": []
+    },
+    "windmill": {
+      "words": [
+        "风车",
+        "大风车",
+        "风车磨坊"
+      ],
+      "sounds": []
+    },
+    "black_woodpecker": {
+      "words": [
+        "黑啄木鸟",
+        "笃笃啄木"
+      ],
+      "sounds": [
+        "笃笃笃"
+      ]
+    },
+    "dawn_chorus": {
+      "words": [
+        "晨鸟",
+        "百鸟朝凤",
+        "鸟语花香",
+        "清晨鸟叫"
+      ],
+      "sounds": []
+    },
+    "tree_frog": {
+      "words": [
+        "树蛙",
+        "雨蛙"
+      ],
+      "sounds": []
+    },
+    "cricket_night": {
+      "words": [
+        "夜蟋蟀",
+        "蛐蛐儿"
+      ],
+      "sounds": []
+    },
+    "cicada_buzz": {
+      "words": [
+        "夏日虫鸣"
+      ],
+      "sounds": []
+    },
+    "beetle_buzz": {
+      "words": [
+        "独角仙",
+        "金龟子"
+      ],
+      "sounds": []
+    },
+    "ant_march": {
+      "words": [
+        "蚂蚁搬家",
+        "蚁群"
+      ],
+      "sounds": []
+    },
+    "caterpillar": {
+      "words": [
+        "青虫",
+        "尺蠖"
+      ],
+      "sounds": []
+    },
+    "toad": {
+      "words": [
+        "牛蛙"
+      ],
+      "sounds": []
+    },
+    "firefly_twinkle": {
+      "words": [
+        "荧光虫"
+      ],
+      "sounds": []
+    },
+    "scurry": {
+      "words": [
+        "小爪子跑",
+        "窸窸窣窣",
+        "蹿来蹿去"
+      ],
+      "sounds": []
+    },
+    "bird_wings": {
+      "words": [
+        "扑棱翅膀",
+        "展翅高飞"
+      ],
+      "sounds": [
+        "扑棱棱"
+      ]
+    },
+    "crab_scuttle": {
+      "words": [
+        "寄居蟹",
+        "大龙虾",
+        "螃蟹爬"
+      ],
+      "sounds": []
+    },
+    "mouse_scurry": {
+      "words": [
+        "小田鼠",
+        "鼠宝宝"
+      ],
+      "sounds": []
+    },
+    "hot_spring": {
+      "words": [
+        "温泉",
+        "热泉",
+        "冒热气的泉水"
+      ],
+      "sounds": []
+    },
+    "rain_thunder": {
+      "words": [
+        "雷雨夜",
+        "暴风骤雨",
+        "倾盆雷雨"
+      ],
+      "sounds": []
+    },
+    "thunder_crack": {
+      "words": [
+        "霹雳",
+        "炸雷",
+        "响雷"
+      ],
+      "sounds": []
+    },
+    "tree_creak": {
+      "words": [
+        "大树嘎吱响",
+        "老橡树",
+        "树干摇晃"
+      ],
+      "sounds": []
+    },
+    "camp_crackle": {
+      "words": [
+        "劈啪作响的火",
+        "篝火晚会",
+        "壁炉火光",
+        "烧木头"
+      ],
+      "sounds": [
+        "劈啪"
+      ]
+    },
+    "river_waves": {
+      "words": [
+        "湖波荡漾",
+        "轻柔海浪",
+        "湖边微浪"
+      ],
+      "sounds": []
+    },
+    "wet_steps": {
+      "words": [
+        "雨鞋踩水",
+        "湿漉漉的脚步"
+      ],
+      "sounds": []
+    },
+    "skipping_stones": {
+      "words": [
+        "打水漂",
+        "小石子落水",
+        "鹅卵石"
+      ],
+      "sounds": []
+    },
+    "bubbling_spring": {
+      "words": [
+        "山泉",
+        "清泉",
+        "泉水叮咚"
+      ],
+      "sounds": []
+    },
+    "rain_shower": {
+      "words": [
+        "春雨",
+        "细雨绵绵",
+        "蒙蒙细雨"
+      ],
+      "sounds": []
+    },
+    "wind_chime_angel": {
+      "words": [
+        "银风铃",
+        "天使风铃",
+        "清脆风铃"
+      ],
+      "sounds": []
+    },
+    "big_splash": {
+      "words": [
+        "大水花",
+        "扑通跳水",
+        "跳进泳池"
+      ],
+      "sounds": []
+    },
+    "construction_site": {
+      "words": [
+        "建筑工地",
+        "施工现场"
+      ],
+      "sounds": []
+    },
+    "highway": {
+      "words": [
+        "高速公路",
+        "大马路"
+      ],
+      "sounds": []
+    },
+    "bakery": {
+      "words": [
+        "面包店",
+        "烘焙坊",
+        "蛋糕店",
+        "烤面包"
+      ],
+      "sounds": []
+    },
+    "fountain": {
+      "words": [
+        "公园喷泉",
+        "许愿池"
+      ],
+      "sounds": []
+    },
+    "watermill": {
+      "words": [
+        "水磨坊",
+        "水车",
+        "大水轮"
+      ],
+      "sounds": []
+    },
+    "workshop": {
+      "words": [
+        "玩具作坊",
+        "木工坊",
+        "修理间"
+      ],
+      "sounds": []
+    },
+    "power_plant": {
+      "words": [
+        "机器人工厂",
+        "秘密实验室",
+        "发电厂"
+      ],
+      "sounds": []
+    },
+    "submarine_hull": {
+      "words": [
+        "潜水艇里",
+        "深海海底",
+        "黄色潜水艇"
+      ],
+      "sounds": []
+    },
+    "mysterious_cave": {
+      "words": [
+        "神秘洞穴",
+        "回音山洞",
+        "地下溶洞"
+      ],
+      "sounds": []
+    },
+    "night_meadow": {
+      "words": [
+        "星空草地",
+        "满天繁星",
+        "月光田野",
+        "看星星"
+      ],
+      "sounds": []
+    },
+    "cheering_crowd": {
+      "words": [
+        "大游行",
+        "节日游行",
+        "狂欢节",
+        "欢呼人群"
+      ],
+      "sounds": []
+    },
+    "coral_reef": {
+      "words": [
+        "珊瑚礁",
+        "水族馆",
+        "海底世界",
+        "美人鱼礁湖"
+      ],
+      "sounds": []
+    },
+    "tram_doors": {
+      "words": [
+        "电车门"
+      ],
+      "sounds": []
+    },
+    "leaf_blower": {
+      "words": [
+        "吹叶机",
+        "除草机"
+      ],
+      "sounds": []
+    },
+    "propeller_plane": {
+      "words": [
+        "螺旋桨飞机",
+        "双翼飞机"
+      ],
+      "sounds": []
+    },
+    "hovercraft": {
+      "words": [
+        "气垫船",
+        "飞行汽车",
+        "喷气背包",
+        "悬浮滑板"
+      ],
+      "sounds": []
+    },
+    "dynamite": {
+      "words": [
+        "导火索",
+        "定时炸弹"
+      ],
+      "sounds": []
+    },
+    "windup_toy": {
+      "words": [
+        "发条玩具",
+        "上发条",
+        "铁皮玩具"
+      ],
+      "sounds": []
+    },
+    "rotary_phone": {
+      "words": [
+        "转盘电话",
+        "老式电话",
+        "拨号电话"
+      ],
+      "sounds": []
+    },
+    "washing_machine": {
+      "words": [
+        "洗衣机",
+        "洗衣服",
+        "甩干机"
+      ],
+      "sounds": []
+    },
+    "ship_cannon": {
+      "words": [
+        "海盗大炮",
+        "船炮"
+      ],
+      "sounds": []
+    },
+    "firecracker": {
+      "words": [
+        "爆竹",
+        "礼花筒"
+      ],
+      "sounds": [
+        "噼里啪啦"
+      ]
+    },
+    "air_brake": {
+      "words": [
+        "公交车刹车",
+        "气刹",
+        "校车停下"
+      ],
+      "sounds": []
+    },
+    "heavy_machine": {
+      "words": [
+        "压路机",
+        "大吊车"
+      ],
+      "sounds": []
+    },
+    "accordion": {
+      "words": [
+        "手风琴",
+        "拉手风琴"
+      ],
+      "sounds": []
+    },
+    "flute_drum": {
+      "words": [
+        "长笛",
+        "吹笛子",
+        "笛声",
+        "吹奏乐队"
+      ],
+      "sounds": []
+    },
+    "jug_band": {
+      "words": [
+        "大号",
+        "陶罐号角",
+        "低音号"
+      ],
+      "sounds": []
+    },
+    "blown_bottle": {
+      "words": [
+        "吹瓶口",
+        "空玻璃瓶"
+      ],
+      "sounds": []
+    },
+    "stove_click": {
+      "words": [
+        "燃气灶",
+        "煤气灶",
+        "打火做饭"
+      ],
+      "sounds": []
+    },
+    "light_switch": {
+      "words": [
+        "电灯开关",
+        "开灯",
+        "关灯",
+        "手电筒开关"
+      ],
+      "sounds": [
+        "啪嗒"
+      ]
+    },
+    "window_break": {
+      "words": [
+        "打碎玻璃",
+        "窗户碎了",
+        "镜子碎了"
+      ],
+      "sounds": [
+        "哗啦碎了"
+      ]
+    },
+    "wooden_stairs": {
+      "words": [
+        "上楼梯",
+        "下楼梯",
+        "阁楼楼梯"
+      ],
+      "sounds": []
+    },
+    "pocket_watch": {
+      "words": [
+        "怀表",
+        "秒表",
+        "给钟上发条"
+      ],
+      "sounds": []
+    },
+    "drawer_open": {
+      "words": [
+        "抽屉",
+        "拉开抽屉",
+        "橱柜"
+      ],
+      "sounds": []
+    },
+    "padlock": {
+      "words": [
+        "密码锁",
+        "打开锁头"
+      ],
+      "sounds": []
+    },
+    "mystery_sting": {
+      "words": [
+        "神秘事件",
+        "惊天反转",
+        "线索"
+      ],
+      "sounds": [
+        "噔噔噔"
+      ]
+    },
+    "fairy_bells": {
+      "words": [
+        "仙女铃铛",
+        "仙尘"
+      ],
+      "sounds": []
+    },
+    "slime_splat": {
+      "words": [
+        "粘液怪",
+        "烂泥巴",
+        "啪叽一团"
+      ],
+      "sounds": [
+        "啪叽"
+      ]
+    },
+    "potion_gulp": {
+      "words": [
+        "神奇药剂",
+        "变小药水",
+        "喝下药水"
+      ],
+      "sounds": []
+    },
+    "dragon_roar": {
+      "words": [
+        "巨龙咆哮",
+        "喷火龙",
+        "冰龙"
+      ],
+      "sounds": []
+    },
+    "magic_book": {
+      "words": [
+        "咒语书",
+        "古老卷轴"
+      ],
+      "sounds": []
+    },
+    "treasure_chest": {
+      "words": [
+        "海盗宝箱",
+        "金银财宝",
+        "打开宝箱"
+      ],
+      "sounds": []
+    },
+    "retro_jump": {
+      "words": [
+        "升级了",
+        "街机游戏"
+      ],
+      "sounds": []
+    },
+    "alien_chatter": {
+      "words": [
+        "火星人",
+        "太空怪物"
+      ],
+      "sounds": []
+    },
+    "shield_bash": {
+      "words": [
+        "骑士盾牌",
+        "盔甲骑士"
+      ],
+      "sounds": []
+    },
+    "magic_crystal": {
+      "words": [
+        "水晶球",
+        "魔法宝石",
+        "护身符"
+      ],
+      "sounds": []
     }
   },
   "negations": [
@@ -3822,7 +4598,6 @@
     "风景",
     "风筝",
     "威风",
-    "风车",
     "风格",
     "兜风",
     "风扇",

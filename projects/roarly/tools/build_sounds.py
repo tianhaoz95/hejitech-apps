@@ -752,6 +752,236 @@ SOUNDS.update({
     'robot_talk': ('oga/female-and-male-alienrobot-vocal-sfx/malealienrobotvocalsfxpack.wav', 0.0, 2.2, '', 'shot', ('Alien/robot vocal SFX', 'OpenGameArt contributor', 'CC0 1.0', 'https://opengameart.org/content/female-and-male-alienrobot-vocal-sfx')),
     'mystery_chime': ('@synth', 0, 2.2, 'aevalsrc=0.25*(gt(t\\,0.00)*exp(-t*2.5)*sin(2*PI*392.00*t)+gt(t\\,0.35)*exp(-(t-0.35)*2.5)*sin(2*PI*466.16*t)+gt(t\\,0.70)*exp(-(t-0.70)*2.5)*sin(2*PI*554.37*t)+gt(t\\,1.05)*exp(-(t-1.05)*1.8)*sin(2*PI*523.25*t)):s=44100:d=2.2,aecho=0.8:0.75:130:0.45', 'shot', None),
 })
+
+# 2026-11-23 batch 3 additions: 100 new sounds across all 8 categories (541 cues total).
+SFX2 = ("100 CC0 SFX #2", "geekygnome (OpenGameArt)", C0, OGA + "100-cc0-sfx-2")
+WATER40 = ("40 CC0 water / splash / slime SFX", "rockseller (OpenGameArt)", C0, OGA + "40-cc0-water-splash-slime-sfx")
+SOUNDS.update({
+    # Wild animals (15)
+    "chimpanzee": ("commons/Pant-hoot call made by a male chimpanzee.ogg", 6.5, 3.2, "", "shot", ("Pant-hoot call made by a male chimpanzee", "Wikimedia Commons contributor", BY4, WM + "Pant-hoot_call_made_by_a_male_chimpanzee.ogg")),
+    "orangutan": ("commons/Speech-Like-Rhythm-in-a-Voiced-and-Voiceless-Orangutan-Call-pone.0116136.s001.oga", 0.0, 3.0, "", "shot", ("Orangutan call (PLOS ONE)", "Lameira et al. (Wikimedia Commons)", BY4, WM + "Speech-Like-Rhythm-in-a-Voiced-and-Voiceless-Orangutan-Call-pone.0116136.s001.oga")),
+    "bald_eagle": ("commons/Yellowstone sound library - Bald Eagle - 003.mp3", 0.5, 3.0, "", "shot", ("Bald Eagle", YSL, PD, WM + "Yellowstone_sound_library_-_Bald_Eagle_-_003.mp3")),
+    "raven": ("commons/Yellowstone sound library - Common Raven - 001.mp3", 6.0, 3.0, "", "shot", ("Common Raven", YSL, PD, WM + "Yellowstone_sound_library_-_Common_Raven_-_001.mp3")),
+    "vulture": ("oga/vulture-imitation/vulture-1_0.ogg", 0.0, 1.2, "", "shot", ("Vulture imitation", "megaboots (OpenGameArt)", C0, OGA + "vulture-imitation")),
+    "grizzly_roar": ("commons/Yellowstone sound library - Grizzly Bears Roar - 001.mp3", 2.0, 3.2, "", "shot", ("Grizzly Bears Roar", YSL, PD, WM + "Yellowstone_sound_library_-_Grizzly_Bears_Roar_-_001.mp3")),
+    "tiger_snarl": ("oga/80-cc0-creture-sfx-2/unz/attack_02.ogg", 0.0, 1.8, "", "shot", ("80 CC0 creature SFX #2", "rubberduck (OpenGameArt)", C0, OGA + "80-cc0-creture-sfx-2")),
+    "gorilla": ("oga/80-cc0-creture-sfx-2/unz/grunt_06.ogg", 0.0, 1.8, "asetrate=44100*0.82,aresample=44100", "shot", ("80 CC0 creature SFX #2", "rubberduck (OpenGameArt)", C0, OGA + "80-cc0-creture-sfx-2")),
+    "mammoth": ("commons/Elephant voice - trumpeting.ogg", 0.0, 2.0, "asetrate=44100*0.72,aresample=44100,aecho=0.8:0.7:60:0.25", "shot", ("Elephant voice, trumpeting", "தகவலுழவன் (Wikimedia Commons)", C0, WM + "Elephant_voice_-_trumpeting.ogg")),
+    "elk": ("commons/Moose sound effect.wav", 24.0, 3.2, "asetrate=44100*1.12,aresample=44100", "shot", ("Moose sound effect", "Zagzav12 (Wikimedia Commons)", C0, WM + "Moose_sound_effect.wav")),
+    "buffalo_herd": ("@mix", 0, 3.4, [
+        ("commons/Six Horses Galloping By.ogg", 8.0, 3.4, 0, "lowpass=f=900,volume=0.85", False),
+        ("commons/Buffalo and bison sound effect.wav", 22.0, 2.6, 500, "volume=0.75", False),
+    ], "shot", [
+        ("Six Horses Galloping By", "Freesound Community (via Wikimedia Commons)", C0, WM + "Six_Horses_Galloping_By.ogg"),
+        ("Buffalo and bison sound effect", "Zagzav12 (Wikimedia Commons)", C0, WM + "Buffalo_and_bison_sound_effect.wav"),
+    ]),
+    "leopard": ("commons/Acoustic-Structure-and-Contextual-Use-of-Calls-by-Captive-Male-and-Female-Cheetahs-(Acinonyx-pone.0158546.s001.oga", 12.0, 2.8, "asetrate=44100*0.86,aresample=44100", "shot", ("Cheetah calls (PLOS ONE)", "Smirnova et al. (Wikimedia Commons)", BY4, WM + "Acoustic-Structure-and-Contextual-Use-of-Calls-by-Captive-Male-and-Female-Cheetahs-(Acinonyx-pone.0158546.s001.oga")),
+    "walrus_bark": ("commons/Walrus sound effect.wav", 48.0, 3.0, "", "shot", ("Walrus sound effect", "Zagzav12 (Wikimedia Commons)", C0, WM + "Walrus_sound_effect.wav")),
+    "rhino_charge": ("@mix", 0, 3.2, [
+        ("commons/Rhinoceros sound effect.wav", 18.0, 3.0, 0, "", False),
+        ("oga/mech-stomp-step-sound/stomp.flac", 0.0, 0.7, 300, "asetrate=44100*0.75,aresample=44100,volume=0.7", False),
+        ("oga/mech-stomp-step-sound/stomp.flac", 0.0, 0.7, 900, "asetrate=44100*0.72,aresample=44100,volume=0.7", False),
+    ], "shot", [
+        ("Rhinoceros sound effect", "Zagzav12 (Wikimedia Commons)", C0, WM + "Rhinoceros_sound_effect.wav"),
+        ("Mech stomp step sound", "OpenGameArt contributor", C0, OGA + "mech-stomp-step-sound"),
+    ]),
+    "beluga": ("commons/Killer whale.ogg", 1.5, 3.2, "asetrate=44100*1.35,aresample=44100", "shot", ("Killer whale", "Wikimedia Commons contributor", PD, WM + "Killer_whale.ogg")),
+
+    # Farm friends (13)
+    "horse_whinny": ("oga/baby-animals-sounds-pack/unz/Whinny.ogg", 0.0, 1.8, "", "shot", ("Baby animals sounds pack", "OpenGameArt contributor", C0, OGA + "baby-animals-sounds-pack")),
+    "rabbit_munch": ("oga/rabbit-eating/RabbitEating.wav", 0.5, 2.6, "", "shot", ("Rabbit eating", "kurt (OpenGameArt)", C0, OGA + "rabbit-eating")),
+    "calf": ("oga/baby-animals-sounds-pack/unz/Mwa.ogg", 0.0, 1.6, "", "shot", ("Baby animals sounds pack", "OpenGameArt contributor", C0, OGA + "baby-animals-sounds-pack")),
+    "sheep_baa": ("oga/baby-animals-sounds-pack/unz/Bleat.ogg", 0.0, 1.2, "asetrate=44100*1.25,aresample=44100", "shot", ("Baby animals sounds pack", "OpenGameArt contributor", C0, OGA + "baby-animals-sounds-pack")),
+    "rooster_morning": ("commons/Medium rooster crowing.ogg", 8.0, 3.4, "", "shot", ("Medium rooster crowing", "alys (Wikimedia Commons)", PD, WM + "Medium_rooster_crowing.ogg")),
+    "horse_trot": ("commons/Six Horses Galloping By.ogg", 2.0, 3.0, "", "shot", ("Six Horses Galloping By", "Freesound Community (via Wikimedia Commons)", C0, WM + "Six_Horses_Galloping_By.ogg")),
+    "duck_pond": ("commons/Ducks landing in water.ogg", 4.0, 2.8, "", "shot", ("Ducks landing in water", "Wikimedia Commons contributor", PD, WM + "Ducks_landing_in_water.ogg")),
+    "farm_gate": ("oga/100-cc0-sfx-2/unz/sfx100v2_door_01.ogg", 0.0, 1.4, "", "shot", SFX2),
+    "wood_axe": ("@mix", 0, 2.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_wood_hit_01.ogg", 0.0, 0.7, 0, "", False),
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_wood_hit_02.ogg", 0.0, 0.7, 620, "", False),
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_wood_hit_03.ogg", 0.0, 0.7, 1240, "", False),
+    ], "shot", SFX2),
+    "farm_pump": ("@mix", 0, 2.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_metal_02.ogg", 0.0, 0.8, 0, "", False),
+        ("oga/40-cc0-water-splash-slime-sfx/unz/splash_02.ogg", 0.0, 1.2, 500, "", False),
+    ], "shot", [SFX2, WATER40]),
+    "milk_bucket": ("@mix", 0, 1.8, [
+        ("oga/100-cc0-metal-and-wood-sfx/unz/metal_hit_01.ogg", 0.0, 0.6, 0, "volume=0.7", False),
+        ("oga/40-cc0-water-splash-slime-sfx/unz/splash_01.ogg", 0.0, 1.2, 350, "", False),
+    ], "shot", [("100 CC0 metal & wood SFX", "rubberduck (OpenGameArt)", C0, OGA + "100-cc0-metal-and-wood-sfx"), WATER40]),
+    "barn_creak": ("oga/tree-creaking/tree_creak_0.ogg", 0.0, 3.0, "asetrate=44100*0.85,aresample=44100", "shot", ("Tree creaking", "OpenGameArt contributor", C0, OGA + "tree-creaking")),
+    "windmill": ("@mix", 0, 18.0, [
+        ("@breeze", 0, 22.0, 0, "volume=0.8", False),
+        ("oga/tree-creaking/tree_creak_0.ogg", 0.0, 4.0, 2500, "asetrate=44100*0.8,aresample=44100,volume=0.35", False),
+        ("oga/tree-creaking/tree_creak_0.ogg", 1.0, 4.0, 11500, "asetrate=44100*0.78,aresample=44100,volume=0.3", False),
+    ], "bed", ("Tree creaking", "OpenGameArt contributor", C0, OGA + "tree-creaking")),
+
+    # Little critters (14)
+    "black_woodpecker": ("commons/Spillkråka trummar - Dendrocopos martius..ogg", 2.0, 2.8, "", "shot", ("Black woodpecker drumming", "Wikimedia Commons contributor", BY3, WM + "Spillkråka_trummar_-_Dendrocopos_martius..ogg")),
+    "dawn_chorus": ("oga/ambient-bird-sounds/birds-isaiah658_0.ogg", 1.0, 22.0, "", "bed", ("Ambient bird sounds", "FacadeGaikan (OpenGameArt)", C0, OGA + "ambient-bird-sounds")),
+    "tree_frog": ("commons/Night Chorus of Frogs and Toads in Niger Delta.ogg", 6.0, 2.2, "asetrate=44100*1.25,aresample=44100", "shot", ("Night Chorus of Frogs and Toads", "Wikimedia Commons contributor", BY4, WM + "Night_Chorus_of_Frogs_and_Toads_in_Niger_Delta.ogg")),
+    "cricket_night": ("commons/Grasshoppers.ogg", 1.0, 2.2, "", "shot", ("Grasshoppers", "Wikimedia Commons contributor", PD, WM + "Grasshoppers.ogg")),
+    "cicada_buzz": ("oga/80-cc0-creture-sfx-2/unz/bug_06.ogg", 0.0, 1.4, "", "shot", ("80 CC0 creature SFX #2", "rubberduck (OpenGameArt)", C0, OGA + "80-cc0-creture-sfx-2")),
+    "beetle_buzz": ("oga/80-cc0-creture-sfx-2/unz/bug_08.ogg", 0.0, 1.4, "", "shot", ("80 CC0 creature SFX #2", "rubberduck (OpenGameArt)", C0, OGA + "80-cc0-creture-sfx-2")),
+    "ant_march": ("@mix", 0, 1.8, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_wood_01.ogg", 0.0, 0.25, i * 160, "asetrate=44100*1.7,aresample=44100,volume=0.7", False)
+        for i in range(9)
+    ], "shot", SFX2),
+    "caterpillar": ("oga/rabbit-eating/RabbitEating.wav", 3.0, 2.2, "asetrate=44100*1.35,aresample=44100", "shot", ("Rabbit eating", "kurt (OpenGameArt)", C0, OGA + "rabbit-eating")),
+    "toad": ("commons/Night Chorus of Frogs and Toads in Niger Delta.ogg", 18.0, 2.4, "asetrate=44100*0.72,aresample=44100", "shot", ("Night Chorus of Frogs and Toads", "Wikimedia Commons contributor", BY4, WM + "Night_Chorus_of_Frogs_and_Toads_in_Niger_Delta.ogg")),
+    "firefly_twinkle": ("oga/bell-arpeggio-24/24.wav", 0.0, 2.4, "highpass=f=1000,volume=0.8", "shot", ("Bell arpeggio 24", "OpenGameArt contributor", C0, OGA + "bell-arpeggio-24")),
+    "scurry": ("@mix", 0, 1.6, [
+        ("oga/footsteps-leather-cloth-armor/unz/footsteps/step_cloth1.ogg", 0.0, 0.3, 0, "asetrate=44100*1.6,aresample=44100", False),
+        ("oga/footsteps-leather-cloth-armor/unz/footsteps/step_cloth2.ogg", 0.0, 0.3, 180, "asetrate=44100*1.6,aresample=44100", False),
+        ("oga/footsteps-leather-cloth-armor/unz/footsteps/step_cloth3.ogg", 0.0, 0.3, 360, "asetrate=44100*1.6,aresample=44100", False),
+        ("oga/footsteps-leather-cloth-armor/unz/footsteps/step_cloth4.ogg", 0.0, 0.3, 540, "asetrate=44100*1.6,aresample=44100", False),
+        ("oga/footsteps-leather-cloth-armor/unz/footsteps/step_cloth1.ogg", 0.0, 0.3, 760, "asetrate=44100*1.65,aresample=44100", False),
+        ("oga/footsteps-leather-cloth-armor/unz/footsteps/step_cloth2.ogg", 0.0, 0.3, 940, "asetrate=44100*1.65,aresample=44100", False),
+    ], "shot", ("Footsteps (leather, cloth, armor)", "bart (OpenGameArt)", C0, OGA + "footsteps-leather-cloth-armor")),
+    "bird_wings": ("@mix", 0, 1.6, [
+        ("oga/swishes-sound-pack/unz/swishes/swish-8.wav", 0.0, 0.4, 0, "asetrate=44100*1.3,aresample=44100", False),
+        ("oga/swishes-sound-pack/unz/swishes/swish-9.wav", 0.0, 0.4, 240, "asetrate=44100*1.35,aresample=44100", False),
+        ("oga/swishes-sound-pack/unz/swishes/swish-11.wav", 0.0, 0.4, 480, "asetrate=44100*1.3,aresample=44100", False),
+        ("oga/swishes-sound-pack/unz/swishes/swish-12.wav", 0.0, 0.4, 720, "asetrate=44100*1.4,aresample=44100", False),
+    ], "shot", ("Swishes sound pack", "qubodup (OpenGameArt)", C0, OGA + "swishes-sound-pack")),
+    "crab_scuttle": ("@mix", 0, 1.6, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_stones_01.ogg", 0.0, 0.7, 0, "asetrate=44100*1.35,aresample=44100", False),
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_stones_02.ogg", 0.0, 0.7, 520, "asetrate=44100*1.4,aresample=44100", False),
+    ], "shot", SFX2),
+    "mouse_scurry": ("oga/80-cc0-creture-sfx-2/unz/bug_10.ogg", 0.0, 1.2, "asetrate=44100*1.4,aresample=44100", "shot", ("80 CC0 creature SFX #2", "rubberduck (OpenGameArt)", C0, OGA + "80-cc0-creture-sfx-2")),
+
+    # Weather & nature (12)
+    "hot_spring": ("commons/Yellowstone sound library - Beryl Spring - 001.mp3", 10.0, 22.0, "", "bed", ("Beryl Spring", YSL, PD, WM + "Yellowstone_sound_library_-_Beryl_Spring_-_001.mp3")),
+    "rain_thunder": ("oga/rain-long-thunder/rain-thunder.ogg", 2.0, 24.0, "", "bed", ("Rain long thunder", "OpenGameArt contributor", C0, OGA + "rain-long-thunder")),
+    "thunder_crack": ("oga/100-cc0-sfx-2/unz/sfx100v2_thunder_01.ogg", 0.0, 3.0, "", "shot", SFX2),
+    "tree_creak": ("oga/tree-creaking/tree_creak.flac", 0.0, 3.2, "", "shot", ("Tree creaking", "OpenGameArt contributor", C0, OGA + "tree-creaking")),
+    "camp_crackle": ("@mix", 0, 18.0, [
+        ("oga/fire-crackling/fire-1_0.ogg", 0.0, 22.0, 0, "", True),
+    ], "bed", ("Fire crackling", "Stoner Games (OpenGameArt)", C0, OGA + "fire-crackling")),
+    "river_waves": ("oga/sea-and-river-wave-sounds/VistulaShort_0.mp3", 10.0, 22.0, "", "bed", ("Sea and river wave sounds", "Snabisch (OpenGameArt)", C0, OGA + "sea-and-river-wave-sounds")),
+    "wet_steps": ("@mix", 0, 2.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_footstep_wet_01.ogg", 0.0, 0.7, 0, "", False),
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_footstep_wet_02.ogg", 0.0, 0.7, 500, "", False),
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_footstep_wet_03.ogg", 0.0, 0.7, 1000, "", False),
+    ], "shot", SFX2),
+    "skipping_stones": ("@mix", 0, 2.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_stones_01.ogg", 0.0, 0.4, 0, "", False),
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_stones_02.ogg", 0.0, 0.4, 420, "", False),
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_stones_03.ogg", 0.0, 0.4, 800, "", False),
+        ("oga/40-cc0-water-splash-slime-sfx/unz/splash_03.ogg", 0.0, 0.9, 1080, "", False),
+    ], "shot", [SFX2, WATER40]),
+    "bubbling_spring": ("@mix", 0, 18.0, [
+        ("oga/40-cc0-water-splash-slime-sfx/unz/loop_water_01.ogg", 0.0, 22.0, 0, "", True),
+    ], "bed", WATER40),
+    "rain_shower": ("@mix", 0, 18.0, [
+        ("oga/40-cc0-water-splash-slime-sfx/unz/loop_rain.ogg", 0.0, 22.0, 0, "", True),
+    ], "bed", WATER40),
+    "wind_chime_angel": ("commons/WWS Angelchimes.ogg", 5.0, 3.2, "", "shot", ("Angel chimes", WWS + " / Museum of Municipal Engineering", BY4, WM + "WWS_Angelchimes.ogg")),
+    "big_splash": ("oga/40-cc0-water-splash-slime-sfx/unz/splash_04.ogg", 0.0, 1.4, "", "shot", WATER40),
+
+    # Places (12 ambient beds)
+    "construction_site": ("@mix", 0, 18.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_loop_construction_site.ogg", 0.0, 22.0, 0, "", True),
+    ], "bed", SFX2),
+    "highway": ("@mix", 0, 18.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_loop_highway.ogg", 0.0, 22.0, 0, "", True),
+    ], "bed", SFX2),
+    "bakery": ("@mix", 0, 18.0, [
+        ("commons/WWS Bakeryputtingbreadintothebreadoven4.ogg", 1.5, 22.0, 0, "volume=0.8", True),
+        ("oga/fire-crackling/fire-1_0.ogg", 0.0, 22.0, 0, "lowpass=f=1200,volume=0.45", True),
+    ], "bed", [
+        ("Bakery putting bread into oven", WWS + " / Museum of Municipal Engineering", BY4, WM + "WWS_Bakeryputtingbreadintothebreadoven4.ogg"),
+        ("Fire crackling", "Stoner Games (OpenGameArt)", C0, OGA + "fire-crackling"),
+    ]),
+    "fountain": ("@mix", 0, 18.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_loop_water_01.ogg", 0.0, 22.0, 0, "", True),
+    ], "bed", SFX2),
+    "watermill": ("@mix", 0, 18.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_loop_water_02.ogg", 0.0, 22.0, 0, "", True),
+    ], "bed", SFX2),
+    "workshop": ("@mix", 0, 18.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_loop_machine_01.ogg", 0.0, 22.0, 0, "", True),
+    ], "bed", SFX2),
+    "power_plant": ("@mix", 0, 18.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_loop_machine_02.ogg", 0.0, 22.0, 0, "", True),
+    ], "bed", SFX2),
+    "submarine_hull": ("@mix", 0, 18.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_loop_ambient_01.ogg", 0.0, 22.0, 0, "", True),
+    ], "bed", SFX2),
+    "mysterious_cave": ("@mix", 0, 18.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_loop_ambient_02.ogg", 0.0, 22.0, 0, "", True),
+    ], "bed", SFX2),
+    "night_meadow": ("@mix", 0, 18.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_loop_ambient_03.ogg", 0.0, 22.0, 0, "", True),
+    ], "bed", SFX2),
+    "cheering_crowd": ("oga/free-crowd-cheering-sounds/unz/Gregor Quendel - Free Crowd Cheering Sounds - MP3/Gregor Quendel - Crowd Cheering Sounds - 08 - Rhythmic cheering.mp3", 1.0, 18.0, "", "bed", ("Free crowd cheering sounds", "Gregor Quendel (OpenGameArt)", BY4, OGA + "free-crowd-cheering-sounds")),
+    "coral_reef": ("@mix", 0, 18.0, [
+        ("oga/40-cc0-water-splash-slime-sfx/unz/loop_bubbles_1.ogg", 0.0, 22.0, 0, "", True),
+    ], "bed", WATER40),
+
+    # Things that go (12)
+    "tram_doors": ("commons/WWS 102Ntramdoors.ogg", 17.0, 3.0, "", "shot", ("102N tram doors", WWS + " / Museum of Municipal Engineering", BY4, WM + "WWS_102Ntramdoors.ogg")),
+    "leaf_blower": ("commons/WWS Backpackleafblower.ogg", 12.5, 3.0, "", "shot", ("Backpack leaf blower", WWS + " / Museum of Municipal Engineering", BY4, WM + "WWS_Backpackleafblower.ogg")),
+    "propeller_plane": ("@mix", 0, 2.8, [
+        ("oga/propeller-cartoon-loop/propeller_cartoon_loop_0.ogg", 0.0, 2.8, 0, "", True),
+    ], "shot", ("Propeller cartoon loop", "OpenGameArt contributor", C0, OGA + "propeller-cartoon-loop")),
+    "hovercraft": ("oga/sci-fi-vehicle-sound/sci-fi 1_2.wav", 0.0, 1.6, "", "shot", ("Sci-fi vehicle sound", "qubodup (OpenGameArt)", C0, OGA + "sci-fi-vehicle-sound")),
+    "dynamite": ("oga/dynamite-sound-effect/Dynamite with sensor.wav", 0.0, 3.6, "", "shot", ("Dynamite sound effect", "Snabisch (OpenGameArt)", C0, OGA + "dynamite-sound-effect")),
+    "windup_toy": ("oga/clock-wind-sounds/multiwind2.wav", 0.0, 1.0, "", "shot", ("Clock wind sounds", "OpenGameArt contributor", C0, OGA + "clock-wind-sounds")),
+    "rotary_phone": ("commons/WWS 8220NikolaTesla8221telephone8211dialing.ogg", 1.5, 3.0, "", "shot", ("Nikola Tesla telephone dialing", WWS + " / Technical Museum of Slovenia", BY4, WM + "WWS_8220NikolaTesla8221telephone8211dialing.ogg")),
+    "washing_machine": ("commons/Washing machine last spin.ogg", 6.0, 3.2, "", "shot", ("Washing machine last spin", "Wikimedia Commons contributor", PD, WM + "Washing_machine_last_spin.ogg")),
+    "ship_cannon": ("oga/25-cc0-bang-firework-sfx/unz/cannon_01.ogg", 0.0, 2.0, "", "shot", ("25 CC0 bang / firework SFX", "rubberduck (OpenGameArt)", C0, OGA + "25-cc0-bang-firework-sfx")),
+    "firecracker": ("@mix", 0, 1.8, [
+        ("oga/25-cc0-bang-firework-sfx/unz/fw_01.ogg", 0.0, 0.7, 0, "", False),
+        ("oga/25-cc0-bang-firework-sfx/unz/fw_02.ogg", 0.0, 0.7, 360, "", False),
+        ("oga/25-cc0-bang-firework-sfx/unz/fw_03.ogg", 0.0, 0.7, 740, "", False),
+    ], "shot", ("25 CC0 bang / firework SFX", "rubberduck (OpenGameArt)", C0, OGA + "25-cc0-bang-firework-sfx")),
+    "air_brake": ("oga/100-cc0-sfx-2/unz/sfx100v2_air_01.ogg", 0.0, 1.6, "", "shot", SFX2),
+    "heavy_machine": ("@mix", 0, 2.8, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_loop_machine_03.ogg", 0.0, 2.8, 0, "lowpass=f=800", True),
+    ], "shot", SFX2),
+
+    # Around the house (11)
+    "accordion": ("oga/accordion-sound/accordion_squeeze.mp3", 10.5, 2.6, "", "shot", ("Accordion sound", "OpenGameArt contributor", C0, OGA + "accordion-sound")),
+    "flute_drum": ("oga/flute-drums-music-tag/flute_drum_music_tag.mp3", 0.0, 3.2, "", "shot", ("Flute & drums music tag", "OpenGameArt contributor", C0, OGA + "flute-drums-music-tag")),
+    "jug_band": ("oga/jug-instrument/jug-1_0.ogg", 0.0, 1.7, "", "shot", ("Jug instrument", "OpenGameArt contributor", C0, OGA + "jug-instrument")),
+    "blown_bottle": ("commons/Sounds of blown bottle.ogg", 1.0, 2.6, "", "shot", ("Sounds of blown bottle", "Wikimedia Commons contributor", PD, WM + "Sounds_of_blown_bottle.ogg")),
+    "stove_click": ("oga/stove-switch/turn_stove_on_01_0.ogg", 0.0, 0.6, "", "shot", ("Stove switch", "OpenGameArt contributor", C0, OGA + "stove-switch")),
+    "light_switch": ("oga/100-cc0-sfx-2/unz/sfx100v2_switch_01.ogg", 0.0, 0.6, "", "shot", SFX2),
+    "window_break": ("oga/100-cc0-sfx-2/unz/sfx100v2_glass_01.ogg", 0.0, 1.4, "", "shot", SFX2),
+    "wooden_stairs": ("@mix", 0, 2.0, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_footstep_wood_01.ogg", 0.0, 0.5, 0, "", False),
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_footstep_wood_02.ogg", 0.0, 0.5, 420, "", False),
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_footstep_wood_03.ogg", 0.0, 0.5, 840, "", False),
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_footstep_wood_04.ogg", 0.0, 0.5, 1260, "", False),
+    ], "shot", SFX2),
+    "pocket_watch": ("@mix", 0, 1.6, [
+        ("oga/clock-wind-sounds/singlewind1.wav", 0.0, 0.6, 0, "", False),
+        ("oga/clock-wind-sounds/singlewind2.wav", 0.0, 0.6, 480, "", False),
+        ("oga/clock-wind-sounds/singlewind3.wav", 0.0, 0.6, 960, "", False),
+    ], "shot", ("Clock wind sounds", "OpenGameArt contributor", C0, OGA + "clock-wind-sounds")),
+    "drawer_open": ("oga/100-cc0-sfx-2/unz/sfx100v2_door_02.ogg", 0.0, 1.2, "", "shot", SFX2),
+    "padlock": ("oga/100-cc0-sfx-2/unz/sfx100v2_lock_open_01.ogg", 0.0, 1.0, "", "shot", SFX2),
+
+    # Magic & silly (11)
+    "mystery_sting": ("oga/mystery-sting/mystery_sting.ogg", 0.0, 3.2, "", "shot", ("Mystery sting", "OpenGameArt contributor", C0, OGA + "mystery-sting")),
+    "fairy_bells": ("oga/bell-arpeggio-24/24.wav", 0.0, 2.5, "", "shot", ("Bell arpeggio 24", "OpenGameArt contributor", C0, OGA + "bell-arpeggio-24")),
+    "slime_splat": ("oga/40-cc0-water-splash-slime-sfx/unz/slime_05.ogg", 0.0, 1.0, "", "shot", WATER40),
+    "potion_gulp": ("@mix", 0, 1.4, [
+        ("oga/40-cc0-water-splash-slime-sfx/unz/bubble_01.ogg", 0.0, 0.7, 0, "", False),
+        ("oga/40-cc0-water-splash-slime-sfx/unz/bubble_02.ogg", 0.0, 0.7, 450, "", False),
+    ], "shot", WATER40),
+    "dragon_roar": ("oga/80-cc0-rpg-sfx/unz/creature_roar_01.ogg", 0.0, 2.2, "", "shot", ("80 CC0 RPG SFX", "NoirPhantom89 (OpenGameArt)", C0, OGA + "80-cc0-rpg-sfx")),
+    "magic_book": ("oga/80-cc0-rpg-sfx/unz/book_02.ogg", 0.0, 1.2, "", "shot", ("80 CC0 RPG SFX", "NoirPhantom89 (OpenGameArt)", C0, OGA + "80-cc0-rpg-sfx")),
+    "treasure_chest": ("@mix", 0, 1.8, [
+        ("oga/100-cc0-sfx-2/unz/sfx100v2_door_03.ogg", 0.0, 1.0, 0, "", False),
+        ("oga/80-cc0-rpg-sfx/unz/item_coins_02.ogg", 0.0, 1.0, 520, "", False),
+    ], "shot", [SFX2, ("80 CC0 RPG SFX", "NoirPhantom89 (OpenGameArt)", C0, OGA + "80-cc0-rpg-sfx")]),
+    "retro_jump": ("oga/50-cc0-retro-synth-sfx/unz/power_up_02.ogg", 0.0, 1.0, "", "shot", ("50 CC0 retro synth SFX", "Snabisch (OpenGameArt)", C0, OGA + "50-cc0-retro-synth-sfx")),
+    "alien_chatter": ("oga/80-cc0-creture-sfx-2/unz/alien_07.ogg", 0.0, 1.6, "", "shot", ("80 CC0 creature SFX #2", "rubberduck (OpenGameArt)", C0, OGA + "80-cc0-creture-sfx-2")),
+    "shield_bash": ("oga/100-cc0-metal-and-wood-sfx/unz/metal_hit_03.ogg", 0.0, 1.2, "", "shot", ("100 CC0 metal & wood SFX", "rubberduck (OpenGameArt)", C0, OGA + "100-cc0-metal-and-wood-sfx")),
+    "magic_crystal": ("oga/80-cc0-rpg-sfx/unz/item_gem_02.ogg", 0.0, 1.4, "", "shot", ("80 CC0 RPG SFX", "NoirPhantom89 (OpenGameArt)", C0, OGA + "80-cc0-rpg-sfx")),
+})
 # Building blocks for "@mix" parts.
 PARTS = {
     # A rocket's rising whistle.
