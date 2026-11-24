@@ -29,11 +29,11 @@ public struct ReleaseNotes: Identifiable, Sendable {
 public struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    public static let currentVersion = "0.7.0"
+    public static let currentVersion = "0.7.1"
     public static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     public static let releases: [ReleaseNotes] = [
-        ReleaseNotes(version: "0.7.0", date: "November 2026", items: [
+        ReleaseNotes(version: "0.7.1", date: "November 2026", items: [
             WhatsNewItem(icon: "applewatch", title: "G2 Digest on your watch", description: "Today's TL;DR, alerts and cards on your wrist, with controls for the briefing playing on your iPhone."),
             WhatsNewItem(icon: "exclamationmark.triangle", title: "Know when a delivery is missed", description: "Agents now warns you when today's edition didn't arrive on time and walks you through a setup checklist for your build agent."),        ]),
         ReleaseNotes(version: "0.6.0", date: "November 2026", items: [

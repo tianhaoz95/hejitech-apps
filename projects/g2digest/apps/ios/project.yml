@@ -112,6 +112,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.hejitech.$(PRODUCT_SLUG).watchkitapp
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.hejitech.$(PRODUCT_SLUG)
         INFOPLIST_KEY_CFBundleDisplayName: $(APP_DISPLAY_NAME)
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "4"
     info:
       path: Watch/Info.plist
@@ -120,12 +121,6 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         WKCompanionAppBundleIdentifier: com.hejitech.$(PRODUCT_SLUG)
+        CFBundleIconName: AppIcon
         WKApplication: true
         ITSAppUsesNonExemptEncryption: false
-        UIApplicationSceneManifest:
-          UIApplicationSupportsMultipleScenes: true
-          UISceneConfigurations:
-            CPTemplateApplicationSceneSessionRoleApplication:
-              - UISceneClassName: CPTemplateApplicationScene
-                UISceneConfigurationName: CarPlay
-                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate
