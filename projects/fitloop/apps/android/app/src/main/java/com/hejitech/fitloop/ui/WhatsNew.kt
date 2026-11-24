@@ -29,10 +29,16 @@ data class Release(val version: String, val month: String, val notes: List<NoteI
  * app's WhatsNewView.swift (release.env's release_check refuses a version either one leaves out).
  */
 object WhatsNew {
-    const val CURRENT_VERSION = "1.3.0"
+    const val CURRENT_VERSION = "1.4.0"
     private const val SEEN = "whats_new_seen"
 
     val releases = listOf(
+        Release(version = "1.4.0", month = "November 2026", notes = listOf(
+            NoteItem("Today on your Home Screen", "Add the FitLoop widget to see today's workout and meals at a glance, and what's up next."),
+            NoteItem("Your workout in the notification shade", "While a workout is open, the exercise, your set and the rest timer stay in an ongoing notification. Tap Set done there without opening FitLoop, and get a sound and vibration when rest is over."),
+            NoteItem("Pounds or kilograms", "Pick metric or imperial in Settings and your weight, waist and daily targets show in the units you use, here and on the web."),
+            NoteItem("Swap an exercise", "When your plan offers an alternative, switch to it from the workout without changing the rest of the day."),
+        )),
         Release(version = "1.3.0", month = "November 2026", notes = listOf(
             NoteItem("Health Connect", "Turn on Settings › Daily Health Connect summary and FitLoop reads your weight, resting heart rate, HRV, sleep, steps and active energy once a day, like the iPhone app does with Health. Only what you allow, and your agent sees it only if you share vitals."),
             NoteItem("Workouts saved to Health Connect", "Finish a workout and FitLoop saves it to Health Connect as what it was: strength, cardio, mobility or intervals, with its title and time."),

@@ -20,10 +20,16 @@ struct ReleaseNotes: Identifiable {
 struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
-    static let currentVersion = "1.3.0"
+    static let currentVersion = "1.4.0"
     static let lastSeenVersionKey = "last_seen_whats_new_version"
 
     static let releases: [ReleaseNotes] = [
+        ReleaseNotes(version: "1.4.0", date: "November 2026", items: [
+            WhatsNewItem(icon: "square.grid.2x2", title: "Today on your Home Screen", description: "Add the FitLoop widget to see today's workout and meals at a glance, and what's up next."),
+            WhatsNewItem(icon: "scalemass", title: "Pounds or kilograms", description: "Pick metric or imperial in Settings and your weight, waist and daily targets show in the units you use, here and on the web."),
+            WhatsNewItem(icon: "arrow.triangle.swap", title: "Swap an exercise", description: "When your plan offers an alternative, switch to it from the workout without changing the rest of the day."),
+            WhatsNewItem(icon: "timer", title: "Rest timer alerts", description: "When a rest ends while FitLoop is in the background, a notification tells you it's time for the next set."),
+        ]),
         ReleaseNotes(version: "1.3.0", date: "November 2026", items: [
             WhatsNewItem(icon: "lock.iphone", title: "Your workout on the Lock Screen", description: "While a workout is open, the exercise, your set, the rest timer and your heart rate stay on the Lock Screen and in the Dynamic Island. Tap Set done there without opening FitLoop."),
             WhatsNewItem(icon: "waveform", title: "Siri and Shortcuts", description: "Say \"Start my FitLoop workout\", \"Log a meal in FitLoop\", \"Tell my FitLoop coach\" or \"What's left today in FitLoop\". They're in Shortcuts and Spotlight too, and you can put one on the Action button."),
