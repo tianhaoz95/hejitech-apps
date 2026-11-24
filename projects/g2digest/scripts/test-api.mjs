@@ -297,11 +297,11 @@ await step("build runs & onboarding checklist: reflects validation, publish, and
 });
 
 await step("archive search: matches card text and isolates users", async () => {
-  const hits = await call("/api/editions/search?q=binders", { auth: session });
+  const hits = await call("/api/editions/search?q=binder", { auth: session });
   assert.equal(hits.status, 200, hits.text);
   assert.ok(hits.body.some((h) => h.date === "2026-10-22" && h.card_slug === "proteina-binders"));
 
-  const otherHits = await call("/api/editions/search?q=binders", { auth: other });
+  const otherHits = await call("/api/editions/search?q=binder", { auth: other });
   assert.equal(otherHits.status, 200);
   assert.deepEqual(otherHits.body, []);
 });
