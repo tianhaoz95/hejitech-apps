@@ -11,6 +11,7 @@ const path = require('path');
 const os = require('os');
 const http = require('http');
 const https = require('https');
+const { pipeline, Transform } = require('stream');
 const { exec, spawn } = require('child_process');
 
 const MEOWTRIX_DATA_DIR = process.env.MEOWTRIX_DATA_DIR || path.join(os.homedir(), '.meowtrix');
@@ -190,7 +191,16 @@ function generateDiff(oldStr, newStr, filename) {
 
 // ── Agent Session Persistence ────────────────────────────────────────────────
 
+const AGENT_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
+
+function isValidAgentId(agentId) {
+  return typeof agentId === 'string' && AGENT_ID_RE.test(agentId);
+}
+
 function getSessionPath(agentId) {
+  if (!isValidAgentId(agentId)) {
+    throw new Error('Invalid agentId');
+  }
   return path.join(AGENT_SESSIONS_DIR, `${agentId}.json`);
 }
 
@@ -220,11 +230,18 @@ function loadAgentSession(agentId) {
 }
 
 function saveAgentSession(session) {
+  if (!session || !isValidAgentId(session.id)) {
+    throw new Error('Invalid agentId');
+  }
+  const target = getSessionPath(session.id);
+  const dir = path.dirname(target);
+  const tmp = `${target}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`;
   try {
-    const dir = path.dirname(getSessionPath(session.id));
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(getSessionPath(session.id), JSON.stringify(session, null, 2), 'utf8');
+    fs.writeFileSync(tmp, JSON.stringify(session, null, 2), 'utf8');
+    fs.renameSync(tmp, target);
   } catch (err) {
+    try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch {}
     console.error('Failed to save agent session:', err);
   }
 }
@@ -334,6 +351,10 @@ async function executeTool(toolName, args, workingDir) {
 
 function callOllamaChat(model, messages, onToken, customUrl) {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (val) => { if (!settled) { settled = true; resolve(val); } };
+    const fail = (err) => { if (!settled) { settled = true; reject(err); } };
+
     const settings = getMeowtrixSettings();
     let urlStr = customUrl || settings.aiOllamaUrl || process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
     if (!urlStr.startsWith('http://') && !urlStr.startsWith('https://')) {
@@ -352,10 +373,12 @@ function callOllamaChat(model, messages, onToken, customUrl) {
         },
         timeout: 180000
       }, res => {
+        res.on('error', fail);
+        res.on('aborted', () => fail(new Error('Ollama response aborted')));
         if (res.statusCode !== 200) {
           let errBody = '';
           res.on('data', c => errBody += c);
-          res.on('end', () => reject(new Error(`Ollama returned HTTP ${res.statusCode}: ${errBody}`)));
+          res.on('end', () => fail(new Error(`Ollama returned HTTP ${res.statusCode}: ${errBody}`)));
           return;
         }
         let fullText = '';
@@ -375,66 +398,87 @@ function callOllamaChat(model, messages, onToken, customUrl) {
             } catch (_) {}
           }
         });
-        res.on('end', () => resolve(fullText));
+        res.on('end', () => finish(fullText));
       });
-      req.on('error', reject);
-      req.on('timeout', () => { req.destroy(); reject(new Error('Ollama request timed out')); });
+      req.on('error', fail);
+      req.on('timeout', () => {
+        const err = new Error('Ollama request timed out');
+        req.destroy(err);
+        fail(err);
+      });
       req.write(postData);
       req.end();
     } catch (err) {
-      reject(err);
+      fail(err);
     }
   });
 }
 
 function callOpenAiChat({ apiKey, baseUrl, model, messages, onToken }) {
   return new Promise((resolve, reject) => {
-    const urlStr = (baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '') + '/chat/completions';
-    const parsed = new URL(urlStr);
-    const transport = parsed.protocol === 'https:' ? https : http;
-    const postData = JSON.stringify({
-      model: model || 'gpt-4o',
-      messages,
-      stream: true
-    });
+    let settled = false;
+    const finish = (val) => { if (!settled) { settled = true; resolve(val); } };
+    const fail = (err) => { if (!settled) { settled = true; reject(err); } };
 
-    const req = transport.request(parsed, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    }, res => {
-      if (res.statusCode !== 200) {
-        return reject(new Error(`API returned HTTP ${res.statusCode}`));
-      }
-      let fullText = '';
-      let buffer = '';
-      res.on('data', chunk => {
-        buffer += chunk.toString('utf8');
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data:')) continue;
-          const payload = trimmed.slice(5).trim();
-          if (payload === '[DONE]') continue;
-          try {
-            const parsedJson = JSON.parse(payload);
-            const delta = parsedJson.choices?.[0]?.delta?.content || '';
-            if (delta) {
-              fullText += delta;
-              if (onToken) onToken(delta, fullText);
-            }
-          } catch (_) {}
-        }
+    try {
+      const urlStr = (baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '') + '/chat/completions';
+      const parsed = new URL(urlStr);
+      const transport = parsed.protocol === 'https:' ? https : http;
+      const postData = JSON.stringify({
+        model: model || 'gpt-4o',
+        messages,
+        stream: true
       });
-      res.on('end', () => resolve(fullText));
-    });
-    req.on('error', reject);
-    req.write(postData);
-    req.end();
+
+      const req = transport.request(parsed, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Length': Buffer.byteLength(postData)
+        },
+        timeout: 180000
+      }, res => {
+        res.on('error', fail);
+        res.on('aborted', () => fail(new Error('OpenAI response aborted')));
+        if (res.statusCode !== 200) {
+          res.resume();
+          return fail(new Error(`API returned HTTP ${res.statusCode}`));
+        }
+        let fullText = '';
+        let buffer = '';
+        res.on('data', chunk => {
+          buffer += chunk.toString('utf8');
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) continue;
+            const payload = trimmed.slice(5).trim();
+            if (payload === '[DONE]') continue;
+            try {
+              const parsedJson = JSON.parse(payload);
+              const delta = parsedJson.choices?.[0]?.delta?.content || '';
+              if (delta) {
+                fullText += delta;
+                if (onToken) onToken(delta, fullText);
+              }
+            } catch (_) {}
+          }
+        });
+        res.on('end', () => finish(fullText));
+      });
+      req.on('error', fail);
+      req.on('timeout', () => {
+        const err = new Error('OpenAI request timed out');
+        req.destroy(err);
+        fail(err);
+      });
+      req.write(postData);
+      req.end();
+    } catch (err) {
+      fail(err);
+    }
   });
 }
 
@@ -494,6 +538,10 @@ async function callMistralRsChat({ model, messages, onToken }) {
 
   if (daemon.available) {
     return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (val) => { if (!settled) { settled = true; resolve(val); } };
+      const fail = (err) => { if (!settled) { settled = true; reject(err); } };
+
       const payload = JSON.stringify({
         model: (model && model !== 'auto' && model !== 'default') ? model : undefined,
         messages: messages,
@@ -513,10 +561,12 @@ async function callMistralRsChat({ model, messages, onToken }) {
       };
 
       const req = http.request(options, res => {
+        res.on('error', fail);
+        res.on('aborted', () => fail(new Error('Mistral.rs response aborted')));
         if (res.statusCode !== 200) {
           let errBody = '';
           res.on('data', c => errBody += c);
-          res.on('end', () => reject(new Error(`Mistral.rs HTTP ${res.statusCode}: ${errBody}`)));
+          res.on('end', () => fail(new Error(`Mistral.rs HTTP ${res.statusCode}: ${errBody}`)));
           return;
         }
 
@@ -558,14 +608,15 @@ async function callMistralRsChat({ model, messages, onToken }) {
               }
             } catch (_) {}
           }
-          resolve(fullText);
+          finish(fullText);
         });
       });
 
-      req.on('error', reject);
+      req.on('error', fail);
       req.on('timeout', () => {
-        req.destroy();
-        reject(new Error('Mistral.rs request timed out'));
+        const err = new Error('Mistral.rs request timed out');
+        req.destroy(err);
+        fail(err);
       });
       req.write(payload);
       req.end();
@@ -576,6 +627,7 @@ async function callMistralRsChat({ model, messages, onToken }) {
   const cliBin = findMeowtrixCli();
   if (cliBin) {
     return new Promise((resolve, reject) => {
+      let settled = false;
       let fullText = '';
       const promptText = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
       const args = ['infer', '--stream', '--prompt', promptText];
@@ -584,6 +636,28 @@ async function callMistralRsChat({ model, messages, onToken }) {
       }
 
       const proc = spawn(cliBin, args);
+      const timer = setTimeout(() => {
+        try { proc.kill('SIGTERM'); } catch {}
+        setTimeout(() => { try { proc.kill('SIGKILL'); } catch {} }, 5000).unref?.();
+        fail(new Error('CLI inference timed out'));
+      }, 180000);
+      timer.unref?.();
+
+      const finish = (val) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(val);
+        }
+      };
+      const fail = (err) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          reject(err);
+        }
+      };
+
       proc.stdout.on('data', data => {
         const str = data.toString('utf8');
         fullText += str;
@@ -594,12 +668,12 @@ async function callMistralRsChat({ model, messages, onToken }) {
       });
       proc.on('close', code => {
         if (code === 0 || fullText.length > 0) {
-          resolve(fullText);
+          finish(fullText);
         } else {
-          reject(new Error(`CLI inference exited with code ${code}`));
+          fail(new Error(`CLI inference exited with code ${code}`));
         }
       });
-      proc.on('error', reject);
+      proc.on('error', fail);
     });
   }
 
@@ -756,7 +830,14 @@ Analyze the user task and deliver a concise, actionable, and formatted response 
 
 // ── Agent Execution Engine (Deep Agents Loop) ────────────────────────────────
 
-async function runAgentLoop({ prompt, agentId, workingDir, mode, model, engine, apiKey, baseUrl, onEvent }) {
+async function runAgentLoop({ prompt, agentId, workingDir, mode, model, engine, apiKey, baseUrl, onEvent, signal }) {
+  if (!isValidAgentId(agentId)) {
+    throw new Error('Invalid agentId');
+  }
+
+  const prior = activeAgents.get(agentId);
+  if (prior) prior.cancel();
+
   const session = loadAgentSession(agentId);
   session.workingDir = workingDir || session.workingDir;
   session.mode = mode || session.mode || 'autonomous';
@@ -771,19 +852,33 @@ async function runAgentLoop({ prompt, agentId, workingDir, mode, model, engine, 
   let isCancelled = false;
   let pendingApprovalResolve = null;
 
-  activeAgents.set(agentId, {
+  const handle = {
     cancel: () => {
+      if (isCancelled) return;
       isCancelled = true;
-      if (pendingApprovalResolve) pendingApprovalResolve(false);
+      if (pendingApprovalResolve) {
+        const resolveApproval = pendingApprovalResolve;
+        pendingApprovalResolve = null;
+        resolveApproval(false);
+      }
       onEvent('status', { status: 'idle' });
     },
     approve: (approved) => {
       if (pendingApprovalResolve) {
-        pendingApprovalResolve(approved);
+        const resolveApproval = pendingApprovalResolve;
         pendingApprovalResolve = null;
+        resolveApproval(approved);
       }
     }
-  });
+  };
+
+  activeAgents.set(agentId, handle);
+
+  const onAbort = () => handle.cancel();
+  if (signal) {
+    if (signal.aborted) handle.cancel();
+    else signal.addEventListener('abort', onAbort, { once: true });
+  }
 
   try {
     // 1. Initial Planning Phase
@@ -958,13 +1053,18 @@ async function runAgentLoop({ prompt, agentId, workingDir, mode, model, engine, 
     onEvent('status', { status: 'error' });
     onEvent('error', { message: err.message });
   } finally {
-    activeAgents.delete(agentId);
+    if (signal) signal.removeEventListener('abort', onAbort);
+    if (activeAgents.get(agentId) === handle) {
+      activeAgents.delete(agentId);
+    }
   }
 }
 
 // ── Model Downloader ─────────────────────────────────────────────────────────
 
-function downloadModel(modelId, onProgress) {
+const MAX_DOWNLOAD_REDIRECTS = 5;
+
+function downloadModel(modelId, onProgress, { signal } = {}) {
   const modelInfo = RECOMMENDED_MODELS.find(m => m.id === modelId) || RECOMMENDED_MODELS[0];
   const targetPath = path.join(MODELS_DIR, modelInfo.filename);
 
@@ -979,55 +1079,128 @@ function downloadModel(modelId, onProgress) {
     }
   } catch {}
 
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(targetPath + '.tmp');
+  if (activeDownloads.has(modelInfo.filename)) {
+    const err = new Error(`Download already in progress for ${modelInfo.filename}`);
+    err.statusCode = 409;
+    return Promise.reject(err);
+  }
 
-    function fetchUrl(url) {
-      https.get(url, { headers: { 'User-Agent': 'Meowtrix-AI-Client/1.0' } }, res => {
+  return new Promise((resolve, reject) => {
+    const tmpPath = `${targetPath}.${process.pid}.${Date.now()}.tmp`;
+    const entry = { progress: 0, req: null };
+    activeDownloads.set(modelInfo.filename, entry);
+
+    let settled = false;
+    let file = null;
+
+    const cleanup = () => {
+      if (activeDownloads.get(modelInfo.filename) === entry) {
+        activeDownloads.delete(modelInfo.filename);
+      }
+      if (signal) signal.removeEventListener('abort', onAbort);
+    };
+
+    const removeTmp = () => {
+      try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch {}
+    };
+
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      if (entry.req) {
+        try { entry.req.destroy(); } catch {}
+      }
+      if (file) {
+        try { file.destroy(); } catch {}
+      }
+      removeTmp();
+      cleanup();
+      reject(err);
+    };
+
+    const onAbort = () => fail(new Error('Download aborted'));
+    if (signal) {
+      if (signal.aborted) return fail(new Error('Download aborted'));
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
+
+    function fetchUrl(currentUrl, redirects = 0) {
+      let parsed;
+      try {
+        parsed = new URL(currentUrl);
+      } catch (err) {
+        return fail(err);
+      }
+      const transport = parsed.protocol === 'https:' ? https : parsed.protocol === 'http:' ? http : null;
+      if (!transport) {
+        return fail(new Error(`Unsupported protocol: ${parsed.protocol}`));
+      }
+
+      const req = transport.get(parsed, { headers: { 'User-Agent': 'Meowtrix-AI-Client/1.0' } }, res => {
+        if (settled) {
+          res.resume();
+          return;
+        }
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          return fetchUrl(res.headers.location);
+          res.resume();
+          if (redirects >= MAX_DOWNLOAD_REDIRECTS) {
+            return fail(new Error(`Too many redirects (max ${MAX_DOWNLOAD_REDIRECTS})`));
+          }
+          let nextUrl;
+          try {
+            nextUrl = new URL(res.headers.location, currentUrl).href;
+          } catch (err) {
+            return fail(err);
+          }
+          return fetchUrl(nextUrl, redirects + 1);
         }
         if (res.statusCode !== 200) {
-          file.close();
-          fs.unlinkSync(targetPath + '.tmp');
-          return reject(new Error(`Download failed with HTTP ${res.statusCode}`));
+          res.resume();
+          return fail(new Error(`Download failed with HTTP ${res.statusCode}`));
         }
 
-        const totalBytes = parseInt(res.headers['content-length'] || modelInfo.sizeBytes, 10);
+        const totalBytes = parseInt(res.headers['content-length'] || modelInfo.sizeBytes, 10) || modelInfo.sizeBytes;
         let downloadedBytes = 0;
 
-        res.on('data', chunk => {
-          downloadedBytes += chunk.length;
-          file.write(chunk);
-          if (onProgress) {
-            onProgress({
-              modelId,
-              downloadedBytes,
-              totalBytes,
-              percent: Math.min(100, Math.round((downloadedBytes / totalBytes) * 100))
-            });
+        file = fs.createWriteStream(tmpPath);
+        file.on('error', err => fail(err));
+
+        const progressMeter = new Transform({
+          transform(chunk, _enc, cb) {
+            downloadedBytes += chunk.length;
+            const percent = Math.min(100, Math.round((downloadedBytes / totalBytes) * 100));
+            entry.progress = percent;
+            if (onProgress) {
+              onProgress({
+                modelId,
+                downloadedBytes,
+                totalBytes,
+                percent
+              });
+            }
+            cb(null, chunk);
           }
         });
 
-        res.on('end', () => {
-          file.end();
-          fs.renameSync(targetPath + '.tmp', targetPath);
-          resolve({ completed: true, path: targetPath });
+        pipeline(res, progressMeter, file, err => {
+          if (err) return fail(err);
+          if (settled) return;
+          try {
+            fs.renameSync(tmpPath, targetPath);
+            settled = true;
+            cleanup();
+            resolve({ completed: true, path: targetPath, filename: modelInfo.filename });
+          } catch (renameErr) {
+            fail(renameErr);
+          }
         });
-
-        res.on('error', err => {
-          file.close();
-          try { fs.unlinkSync(targetPath + '.tmp'); } catch {}
-          reject(err);
-        });
-      }).on('error', err => {
-        file.close();
-        try { fs.unlinkSync(targetPath + '.tmp'); } catch {}
-        reject(err);
       });
+
+      entry.req = req;
+      req.on('error', err => fail(err));
     }
 
-    fetchUrl(modelInfo.url);
+    fetchUrl(modelInfo.url, 0);
   });
 }
 
@@ -1104,9 +1277,15 @@ function mountAiRoutes(app) {
       return res.json(result);
     }
     if (provider === 'cloud') {
+      let replied = false;
+      const respond = (payload) => {
+        if (replied || res.headersSent) return;
+        replied = true;
+        res.json(payload);
+      };
       try {
         const key = apiKey || process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
-        if (!key) return res.json({ available: false, error: 'No API key provided' });
+        if (!key) return respond({ available: false, error: 'No API key provided' });
         const targetUrl = (baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '') + '/models';
         const parsed = new URL(targetUrl);
         const transport = parsed.protocol === 'https:' ? https : http;
@@ -1116,18 +1295,20 @@ function mountAiRoutes(app) {
         }, r => {
           let body = '';
           r.on('data', d => body += d);
+          r.on('error', err => respond({ available: false, error: err.message }));
+          r.on('aborted', () => respond({ available: false, error: 'Response aborted' }));
           r.on('end', () => {
             if (r.statusCode >= 200 && r.statusCode < 300) {
-              res.json({ available: true, status: 'connected' });
+              respond({ available: true, status: 'connected' });
             } else {
-              res.json({ available: false, error: `HTTP ${r.statusCode}: ${body.slice(0, 100)}` });
+              respond({ available: false, error: `HTTP ${r.statusCode}: ${body.slice(0, 100)}` });
             }
           });
         });
-        reqTest.on('error', err => res.json({ available: false, error: err.message }));
-        reqTest.on('timeout', () => { reqTest.destroy(); res.json({ available: false, error: 'Request timed out' }); });
+        reqTest.on('error', err => respond({ available: false, error: err.message }));
+        reqTest.on('timeout', () => { reqTest.destroy(); respond({ available: false, error: 'Request timed out' }); });
       } catch (err) {
-        res.json({ available: false, error: err.message });
+        respond({ available: false, error: err.message });
       }
       return;
     }
@@ -1137,25 +1318,41 @@ function mountAiRoutes(app) {
   // 3. Download Model (SSE Progress)
   app.post('/api/ai/download', (req, res) => {
     const { modelId } = req.body || {};
+    const modelInfo = RECOMMENDED_MODELS.find(m => m.id === modelId) || RECOMMENDED_MODELS[0];
+    if (activeDownloads.has(modelInfo.filename)) {
+      return res.status(409).json({ error: `Download already in progress for ${modelInfo.filename}` });
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+
+    const ac = new AbortController();
+    req.on('close', () => {
+      if (!res.writableEnded) ac.abort();
+    });
+
+    const writeEvent = (payload) => {
+      if (!res.writableEnded) res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    };
 
     downloadModel(modelId, progress => {
-      res.write(`data: ${JSON.stringify(progress)}\n\n`);
-    })
+      writeEvent(progress);
+    }, { signal: ac.signal })
       .then(result => {
-        res.write(`data: ${JSON.stringify({ completed: true, ...result })}\n\n`);
-        res.end();
+        writeEvent({ completed: true, ...result });
+        if (!res.writableEnded) res.end();
       })
       .catch(err => {
-        res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
-        res.end();
+        writeEvent({ error: err.message });
+        if (!res.writableEnded) res.end();
       });
   });
 
   // 4. Agent Session State
   app.get('/api/ai/agent/session/:id', (req, res) => {
+    if (!isValidAgentId(req.params.id)) return res.status(400).json({ error: 'Invalid agentId' });
     const session = loadAgentSession(req.params.id);
     session.isRunning = activeAgents.has(req.params.id);
     res.json(session);
@@ -1163,6 +1360,7 @@ function mountAiRoutes(app) {
 
   // 4b. Reset Agent Session
   app.post('/api/ai/agent/session/:id/reset', (req, res) => {
+    if (!isValidAgentId(req.params.id)) return res.status(400).json({ error: 'Invalid agentId' });
     const session = loadAgentSession(req.params.id);
     session.history = [];
     session.plan = [];
@@ -1174,6 +1372,7 @@ function mountAiRoutes(app) {
 
   // 4c. Update Agent Session State
   app.post('/api/ai/agent/session/:id/update', (req, res) => {
+    if (!isValidAgentId(req.params.id)) return res.status(400).json({ error: 'Invalid agentId' });
     const session = loadAgentSession(req.params.id);
     const { workingDir, mode } = req.body || {};
     if (workingDir) session.workingDir = workingDir;
@@ -1188,11 +1387,19 @@ function mountAiRoutes(app) {
     if (!prompt || !agentId) {
       return res.status(400).json({ error: 'Missing prompt or agentId' });
     }
+    if (!isValidAgentId(agentId)) {
+      return res.status(400).json({ error: 'Invalid agentId' });
+    }
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders?.();
+
+    const ac = new AbortController();
+    req.on('close', () => {
+      if (!res.writableEnded) ac.abort();
+    });
 
     runAgentLoop({
       prompt,
@@ -1201,17 +1408,21 @@ function mountAiRoutes(app) {
       mode: mode || 'autonomous',
       model,
       engine,
+      signal: ac.signal,
       onEvent: (event, data) => {
-        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        if (!res.writableEnded) {
+          res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        }
       }
     }).finally(() => {
-      res.end();
+      if (!res.writableEnded) res.end();
     });
   });
 
   // 6. Approve / Reject Supervised Tool Action
   app.post('/api/ai/agent/approve', (req, res) => {
     const { agentId, approved } = req.body || {};
+    if (!isValidAgentId(agentId)) return res.status(400).json({ error: 'Invalid agentId' });
     const agent = activeAgents.get(agentId);
     if (!agent) return res.status(404).json({ error: 'Agent task not active or already finished' });
     agent.approve(!!approved);
@@ -1221,6 +1432,7 @@ function mountAiRoutes(app) {
   // 7. Cancel Agent Task
   app.post('/api/ai/agent/cancel', (req, res) => {
     const { agentId } = req.body || {};
+    if (!isValidAgentId(agentId)) return res.status(400).json({ error: 'Invalid agentId' });
     const agent = activeAgents.get(agentId);
     if (agent) agent.cancel();
     res.json({ ok: true });

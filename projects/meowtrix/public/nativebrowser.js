@@ -101,6 +101,7 @@ function initNativeBrowserTab(tab, viewEl, label, initialUrl) {
   let created = false;
   let creating = null;
   let disposed = false;
+  let destroyed = false;
   tab.currentUrl = initialUrl || null;
 
   const setLabel = (title) => {
@@ -116,7 +117,7 @@ function initNativeBrowserTab(tab, viewEl, label, initialUrl) {
   };
 
   const ensureView = () => {
-    if (created || disposed) return Promise.resolve();
+    if (created || disposed || destroyed) return Promise.resolve();
     if (creating) return creating;
     const r = host.getBoundingClientRect();
     creating = nbInvoke('nb_open', {
@@ -126,7 +127,17 @@ function initNativeBrowserTab(tab, viewEl, label, initialUrl) {
       vw: window.innerWidth, vh: window.innerHeight,
       visible: false,
     }).then((current) => {
+      if (destroyed) {
+        nbInvoke('nb_close', { id: tab.id }).catch(() => {});
+        return;
+      }
+      if (disposed) {
+        nbInvoke('nb_set_visible', { id: tab.id, visible: false }).catch(() => {});
+        return;
+      }
       created = true;
+      host.classList.remove('covered');
+      cover.textContent = '';
       tab.nbLast = null; // force a placement push
       // Re-attached to a live view (layout rebuild): adopt what it shows.
       if (current && current !== 'about:blank' && current !== tab.currentUrl) {
@@ -136,6 +147,7 @@ function initNativeBrowserTab(tab, viewEl, label, initialUrl) {
       }
       if (tab.zoomLevel && tab.zoomLevel !== 1) nbInvoke('nb_zoom', { id: tab.id, level: tab.zoomLevel }).catch(() => {});
     }).catch((e) => {
+      if (disposed || destroyed) return;
       cover.textContent = 'Couldn’t open a native browser view: ' + (e?.message || e);
       host.classList.add('covered');
     }).finally(() => { creating = null; });
@@ -169,7 +181,10 @@ function initNativeBrowserTab(tab, viewEl, label, initialUrl) {
   });
   backBtn.addEventListener('click', () => nbInvoke('nb_action', { id: tab.id, action: 'back' }).catch(() => {}));
   fwdBtn.addEventListener('click', () => nbInvoke('nb_action', { id: tab.id, action: 'forward' }).catch(() => {}));
-  reloadBtn.addEventListener('click', () => nbInvoke('nb_action', { id: tab.id, action: tab.nbLoading ? 'stop' : 'reload' }).catch(() => {}));
+  reloadBtn.addEventListener('click', () => {
+    if (!created) { ensureView(); return; }
+    nbInvoke('nb_action', { id: tab.id, action: tab.nbLoading ? 'stop' : 'reload' }).catch(() => {});
+  });
   hostBtn.addEventListener('click', () => {
     const p = paneOfTab(tab.tabEl);
     if (p) { addTab(p, 'hostbrowser', undefined, undefined, tab.currentUrl || undefined); saveSessionState(); }
@@ -217,6 +232,28 @@ function initNativeBrowserTab(tab, viewEl, label, initialUrl) {
         if (typeof showToast === 'function') showToast(ev.success ? 'Download finished (saved to ~/Downloads)' : 'Download failed');
         break;
       case 'key': handleNativeKey(tab, ev.key, urlInput); break;
+      case 'closed':
+      case 'crashed': {
+        created = false;
+        tab.nbLast = null;
+        tab.nbLoading = false;
+        loadingBar.classList.remove('active');
+        reloadBtn.textContent = '↺';
+        cover.innerHTML = '';
+        const msgEl = document.createElement('span');
+        msgEl.textContent = ev.kind === 'crashed' ? 'The browser view stopped. ' : 'The browser view was closed. ';
+        const reopenBtn = document.createElement('button');
+        reopenBtn.className = 'hostbrowser-action';
+        reopenBtn.textContent = 'Reopen';
+        reopenBtn.addEventListener('click', () => {
+          host.classList.remove('covered');
+          cover.textContent = '';
+          ensureView();
+        });
+        cover.append(msgEl, reopenBtn);
+        host.classList.add('covered');
+        break;
+      }
     }
   };
 
@@ -228,6 +265,7 @@ function initNativeBrowserTab(tab, viewEl, label, initialUrl) {
   };
   // Tab closed: close the native view.
   tab.destroyNativeBrowser = () => {
+    destroyed = true;
     tab.disposeNativeBrowser();
     nbInvoke('nb_close', { id: tab.id }).catch(() => {});
   };

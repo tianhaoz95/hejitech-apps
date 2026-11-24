@@ -8,6 +8,11 @@ const pendingRestoreFit = new Set(); // ptyIds whose next pty:data is the replay
 // Shared inbound-message dispatch — used by both the real WebSocket and the
 // serverless demo backend (demo.js), which speaks the identical message shapes.
 function handleWsMessage(msg) {
+  if (!msg || typeof msg !== 'object') return;
+  if (msg.type === 'ping') {
+    wsSend({ type: 'pong' });
+    return;
+  }
   if (msg.type === 'pty:data') {
     const term = ptyCallbacks.get(msg.id);
     if (term) {
@@ -144,7 +149,18 @@ function _onConnected() {
 function reportVisibility() {
   if (!window.DEMO_MODE) wsSend({ type: 'client:visibility', hidden: document.visibilityState === 'hidden' });
 }
-document.addEventListener('visibilitychange', reportVisibility);
+document.addEventListener('visibilitychange', () => {
+  if (!window.DEMO_MODE && document.visibilityState === 'visible' && !wsReady && (!ws || ws.readyState !== WebSocket.CONNECTING)) {
+    triggerImmediateReconnect();
+  } else {
+    reportVisibility();
+  }
+});
+window.addEventListener('online', () => {
+  if (!window.DEMO_MODE && !wsReady) {
+    triggerImmediateReconnect();
+  }
+});
 
 function connectWs() {
   if (window.DEMO_MODE) {
@@ -154,17 +170,46 @@ function connectWs() {
     return;
   }
 
+  if (ws) {
+    ws.onopen = null;
+    ws.onmessage = null;
+    ws.onclose = null;
+    ws.onerror = null;
+    try { ws.close(); } catch {}
+    ws = null;
+  }
+  wsReady = false;
+
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(`${proto}//${location.host}`);
+  const sock = new WebSocket(`${proto}//${location.host}`);
+  ws = sock;
 
-  ws.addEventListener('open', _onConnected);
+  sock.onopen = () => {
+    if (sock !== ws) return;
+    _onConnected();
+  };
 
-  ws.addEventListener('message', (e) => handleWsMessage(JSON.parse(e.data)));
+  sock.onmessage = (e) => {
+    if (sock !== ws) return;
+    let msg;
+    try {
+      msg = JSON.parse(e.data);
+    } catch (err) {
+      console.warn('[ws] ignoring invalid JSON message:', err);
+      return;
+    }
+    handleWsMessage(msg);
+  };
 
-  ws.addEventListener('close', () => {
+  sock.onclose = () => {
+    if (sock !== ws) return;
     wsReady = false;
     scheduleReconnect();
-  });
+  };
+
+  sock.onerror = () => {
+    if (sock !== ws) return;
+  };
 }
 
 connectWs();
@@ -172,8 +217,12 @@ connectWs();
 function wsSend(obj) {
   if (window.DEMO_MODE) {
     demoBackend.send(obj);
-  } else if (wsReady) {
-    ws.send(JSON.stringify(obj));
+  } else if (wsReady && ws && ws.readyState === WebSocket.OPEN) {
+    try {
+      ws.send(JSON.stringify(obj));
+    } catch (err) {
+      console.warn('[ws] send failed:', err);
+    }
   }
 }
 

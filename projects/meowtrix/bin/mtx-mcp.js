@@ -121,7 +121,22 @@ async function api(method, endpoint, params) {
   }
   try {
     const res = await fetch(url, init);
-    return await res.json();
+    const raw = await res.text();
+    let data = null;
+    try { data = raw ? JSON.parse(raw) : null; } catch {}
+    if (data && typeof data === 'object') {
+      if (!res.ok && data.ok === undefined) return { ok: false, error: `http_${res.status}`, ...data };
+      return data;
+    }
+    if (!res.ok) {
+      const snippet = raw.trim().slice(0, 200);
+      return {
+        ok: false,
+        error: `http_${res.status}`,
+        message: snippet ? `HTTP ${res.status}: ${snippet}` : `HTTP ${res.status}${res.statusText ? ' ' + res.statusText : ''}`,
+      };
+    }
+    return { ok: false, error: 'invalid_json', message: `Invalid JSON response from Meowtrix (HTTP ${res.status})` };
   } catch (e) {
     return { ok: false, error: 'unreachable', message: `Cannot reach Meowtrix at ${BASE} (${e.message}). Is this agent running inside a Meowtrix terminal?` };
   }
@@ -219,13 +234,28 @@ async function handle(msg) {
   }
 }
 
+process.stdout.on('error', (e) => { if (e && e.code === 'EPIPE') process.exit(0); });
+
+let pending = 0;
+let closed = false;
+const maybeExit = () => { if (closed && pending === 0) process.exit(0); };
+
 const rl = readline.createInterface({ input: process.stdin });
 rl.on('line', (line) => {
   if (!line.trim()) return;
   let msg;
   try { msg = JSON.parse(line); } catch { return send({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }); }
-  handle(msg).catch((e) => {
-    if (msg.id !== undefined) send({ jsonrpc: '2.0', id: msg.id, error: { code: -32603, message: e.message } });
-  });
+  pending++;
+  handle(msg)
+    .catch((e) => {
+      if (msg.id !== undefined) send({ jsonrpc: '2.0', id: msg.id, error: { code: -32603, message: e.message } });
+    })
+    .finally(() => {
+      pending--;
+      maybeExit();
+    });
 });
-rl.on('close', () => process.exit(0));
+rl.on('close', () => {
+  closed = true;
+  maybeExit();
+});

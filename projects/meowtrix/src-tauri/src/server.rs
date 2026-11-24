@@ -1,12 +1,52 @@
+use std::collections::VecDeque;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
-use std::sync::Mutex;
-use std::time::Duration;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 
 pub const DEFAULT_PORT: u16 = 9123;
+
+const MAX_RESTARTS_IN_WINDOW: usize = 5;
+const RESTART_WINDOW: Duration = Duration::from_secs(300);
+const MAX_BACKOFF: Duration = Duration::from_secs(16);
+const STOP_GRACE_PERIOD: Duration = Duration::from_millis(2500);
+
+#[cfg(unix)]
+mod unix_proc {
+    use std::os::unix::process::CommandExt;
+    use std::process::Command;
+
+    const SIGTERM: i32 = 15;
+    const SIGKILL: i32 = 9;
+
+    extern "C" {
+        fn kill(pid: i32, sig: i32) -> i32;
+    }
+
+    pub fn configure_process_group(cmd: &mut Command) {
+        cmd.process_group(0);
+    }
+
+    pub fn send_sigterm_group(pid: u32) {
+        if pid > 0 && pid <= i32::MAX as u32 {
+            unsafe {
+                let _ = kill(-(pid as i32), SIGTERM);
+            }
+        }
+    }
+
+    pub fn send_sigkill_group(pid: u32) {
+        if pid > 0 && pid <= i32::MAX as u32 {
+            unsafe {
+                let _ = kill(-(pid as i32), SIGKILL);
+            }
+        }
+    }
+}
 
 /// The server port to connect to / launch on. `MEOWTRIX_PORT` overrides it so a
 /// development build can run beside an installed Meowtrix without sharing its
@@ -26,8 +66,76 @@ pub enum AppMode {
     Lite,
 }
 
-pub struct ServerManager {
+#[derive(Debug, Clone)]
+struct SpawnSpec {
+    node_bin: PathBuf,
+    script: PathBuf,
+    work_dir: PathBuf,
+    port: u16,
+    ai_port: u16,
+    data_dir: Option<PathBuf>,
+    label: &'static str,
+}
+
+struct ManagedChild {
     child: Option<Child>,
+    spec: Option<SpawnSpec>,
+}
+
+struct RunningGuard(Arc<AtomicBool>);
+
+impl Drop for RunningGuard {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::SeqCst);
+    }
+}
+
+struct RestartTracker {
+    timestamps: VecDeque<Instant>,
+    max_restarts: usize,
+    window: Duration,
+}
+
+impl RestartTracker {
+    fn new(max_restarts: usize, window: Duration) -> Self {
+        Self {
+            timestamps: VecDeque::new(),
+            max_restarts,
+            window,
+        }
+    }
+
+    fn prune(&mut self, now: Instant) {
+        while let Some(&front) = self.timestamps.front() {
+            if now.saturating_duration_since(front) > self.window {
+                self.timestamps.pop_front();
+            } else {
+                break;
+            }
+        }
+    }
+
+    /// Records a restart attempt if within budget, returning the backoff delay
+    /// to wait before respawning. Returns `None` once the budget is exhausted.
+    fn next_backoff(&mut self, now: Instant) -> Option<Duration> {
+        self.prune(now);
+        if self.timestamps.len() >= self.max_restarts {
+            return None;
+        }
+        let attempt = self.timestamps.len() as u32;
+        self.timestamps.push_back(now);
+        let secs = 1u64
+            .checked_shl(attempt)
+            .unwrap_or(MAX_BACKOFF.as_secs())
+            .min(MAX_BACKOFF.as_secs());
+        Some(Duration::from_secs(secs))
+    }
+}
+
+pub struct ServerManager {
+    managed: Arc<Mutex<ManagedChild>>,
+    stopping: Arc<AtomicBool>,
+    supervisor_running: Arc<AtomicBool>,
     pub port: u16,
     pub mode: Option<AppMode>,
 }
@@ -35,7 +143,12 @@ pub struct ServerManager {
 impl ServerManager {
     pub fn new() -> Self {
         Self {
-            child: None,
+            managed: Arc::new(Mutex::new(ManagedChild {
+                child: None,
+                spec: None,
+            })),
+            stopping: Arc::new(AtomicBool::new(false)),
+            supervisor_running: Arc::new(AtomicBool::new(false)),
             port: default_port(),
             mode: None,
         }
@@ -55,12 +168,176 @@ impl ServerManager {
         check_server_ready(self.port)
     }
 
+    fn wait_for_startup_ready(&self, label: &str) -> Result<(), String> {
+        for _ in 0..100 {
+            {
+                let mut guard = self.managed.lock().unwrap_or_else(|e| e.into_inner());
+                if let Some(ref mut child) = guard.child {
+                    if let Ok(Some(status)) = child.try_wait() {
+                        return Err(format!(
+                            "{label} process exited unexpectedly with {status}"
+                        ));
+                    }
+                }
+            }
+            std::thread::sleep(Duration::from_millis(100));
+            if self.is_ready() {
+                return Ok(());
+            }
+        }
+
+        Err(format!(
+            "{label} failed to become ready on http://127.0.0.1:{} within 10s",
+            self.port
+        ))
+    }
+
+    fn start_supervisor(&self) {
+        if self
+            .supervisor_running
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
+        {
+            return;
+        }
+
+        let managed = Arc::clone(&self.managed);
+        let stopping = Arc::clone(&self.stopping);
+        let running = Arc::clone(&self.supervisor_running);
+
+        std::thread::spawn(move || {
+            let _guard = RunningGuard(running);
+            let mut tracker = RestartTracker::new(MAX_RESTARTS_IN_WINDOW, RESTART_WINDOW);
+
+            loop {
+                if stopping.load(Ordering::SeqCst) {
+                    break;
+                }
+
+                let restart_spec = {
+                    let mut guard = managed.lock().unwrap_or_else(|e| e.into_inner());
+                    if stopping.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    match guard.child.as_mut() {
+                        Some(child) => match child.try_wait() {
+                            Ok(Some(status)) => {
+                                guard.child = None;
+                                let spec = guard.spec.clone();
+                                if let Some(ref s) = spec {
+                                    log::error!(
+                                        "[{}] Managed Node server exited unexpectedly with {status}",
+                                        s.label
+                                    );
+                                }
+                                spec
+                            }
+                            Ok(None) => None,
+                            Err(e) => {
+                                log::warn!("Failed to poll managed Node server status: {e}");
+                                None
+                            }
+                        },
+                        None => {
+                            if guard.spec.is_some() {
+                                guard.spec.clone()
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                };
+
+                let Some(spec) = restart_spec else {
+                    std::thread::sleep(Duration::from_millis(500));
+                    continue;
+                };
+
+                if stopping.load(Ordering::SeqCst) {
+                    break;
+                }
+
+                let Some(backoff) = tracker.next_backoff(Instant::now()) else {
+                    log::error!(
+                        "[{}] Managed Node server exceeded max restarts ({MAX_RESTARTS_IN_WINDOW} within {}s); giving up",
+                        spec.label,
+                        RESTART_WINDOW.as_secs()
+                    );
+                    break;
+                };
+
+                log::warn!(
+                    "[{}] Restarting Node server on port {} in {}s...",
+                    spec.label,
+                    spec.port,
+                    backoff.as_secs()
+                );
+
+                if sleep_interruptible(backoff, &stopping) {
+                    break;
+                }
+
+                let mut new_child = match spawn_server(&spec) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        log::error!("[{}] Failed to respawn Node server: {e}", spec.label);
+                        continue;
+                    }
+                };
+
+                let mut ready = false;
+                for _ in 0..100 {
+                    if stopping.load(Ordering::SeqCst) {
+                        terminate_child(new_child);
+                        return;
+                    }
+                    if let Ok(Some(status)) = new_child.try_wait() {
+                        log::error!(
+                            "[{}] Respawned Node server exited during startup with {status}",
+                            spec.label
+                        );
+                        break;
+                    }
+                    std::thread::sleep(Duration::from_millis(100));
+                    if check_server_ready(spec.port) {
+                        ready = true;
+                        break;
+                    }
+                }
+
+                if !ready {
+                    log::error!(
+                        "[{}] Respawned Node server failed to become ready on http://127.0.0.1:{}",
+                        spec.label,
+                        spec.port
+                    );
+                    terminate_child(new_child);
+                    continue;
+                }
+
+                let mut guard = managed.lock().unwrap_or_else(|e| e.into_inner());
+                if stopping.load(Ordering::SeqCst) {
+                    drop(guard);
+                    terminate_child(new_child);
+                    break;
+                }
+                guard.child = Some(new_child);
+                log::info!(
+                    "[{}] Managed Node server recovered on http://127.0.0.1:{}",
+                    spec.label,
+                    spec.port
+                );
+            }
+        });
+    }
+
     /// Ensures the Meowtrix server is running.
     /// - In Standalone mode: Always launches its own embedded server on an isolated dynamic port,
     ///   with instance-scoped data storage so multiple instances or existing servers never conflict.
     /// - In Lite mode: Connects to an existing server on port 9123, or launches a local server if
     ///   development files are present.
     pub fn ensure_started(&mut self, app: &AppHandle, ai_port: u16) -> Result<u16, String> {
+        self.stopping.store(false, Ordering::SeqCst);
         let is_standalone = matches!(self.detect_mode(app), AppMode::Standalone { .. });
 
         if is_standalone {
@@ -75,7 +352,7 @@ impl ServerManager {
             let chosen_port = if TcpListener::bind(format!("127.0.0.1:{}", default_port())).is_ok() {
                 default_port()
             } else {
-                get_free_port()
+                get_free_port()?
             };
             self.port = chosen_port;
 
@@ -115,41 +392,38 @@ impl ServerManager {
                 ai_port
             );
 
-            let child = Command::new(&node_bin)
-                .arg(server_dir.join("server.js"))
-                .env("PORT", self.port.to_string())
-                .env("HOST", "127.0.0.1")
-                .env("MEOWTRIX_DATA_DIR", &data_dir)
-                .env("MISTRALRS_PORT", ai_port.to_string())
-                .current_dir(&server_dir)
-                .spawn()
-                .map_err(|e| format!("Failed to spawn embedded Node server: {e}"))?;
+            let spec = SpawnSpec {
+                node_bin,
+                script: server_dir.join("server.js"),
+                work_dir: server_dir,
+                port: self.port,
+                ai_port,
+                data_dir: Some(data_dir),
+                label: "Standalone",
+            };
 
-            self.child = Some(child);
-
-            // Poll for server readiness
-            for _ in 0..100 {
-                if let Some(ref mut child) = self.child {
-                    if let Ok(Some(status)) = child.try_wait() {
-                        return Err(format!(
-                            "Embedded server process exited unexpectedly with {status}"
-                        ));
-                    }
-                }
-                std::thread::sleep(Duration::from_millis(100));
-                if self.is_ready() {
-                    log::info!(
-                        "[Standalone] Embedded server ready on http://127.0.0.1:{}",
-                        self.port
-                    );
-                    return Ok(self.port);
-                }
+            let child = spawn_server(&spec)?;
+            {
+                let mut guard = self.managed.lock().unwrap_or_else(|e| e.into_inner());
+                guard.child = Some(child);
             }
 
-            return Err(format!(
-                "Embedded server failed to become ready on http://127.0.0.1:{} within 10s",
+            if let Err(err) = self.wait_for_startup_ready("Embedded server") {
+                self.stop();
+                return Err(err);
+            }
+
+            {
+                let mut guard = self.managed.lock().unwrap_or_else(|e| e.into_inner());
+                guard.spec = Some(spec);
+            }
+            self.start_supervisor();
+
+            log::info!(
+                "[Standalone] Embedded server ready on http://127.0.0.1:{}",
                 self.port
-            ));
+            );
+            return Ok(self.port);
         }
 
         // Lite mode: Reuse existing server if running on 9123
@@ -173,32 +447,36 @@ impl ServerManager {
                 ai_port
             );
 
-            let child = Command::new(&node_bin)
-                .arg(&server_script)
-                .env("PORT", default_port().to_string())
-                .env("HOST", "127.0.0.1")
-                .env("MISTRALRS_PORT", ai_port.to_string())
-                .current_dir(&work_dir)
-                .spawn()
-                .map_err(|e| format!("Failed to spawn Node server: {e}"))?;
-
-            self.child = Some(child);
             self.port = default_port();
+            let spec = SpawnSpec {
+                node_bin,
+                script: server_script,
+                work_dir,
+                port: self.port,
+                ai_port,
+                data_dir: None,
+                label: "Lite",
+            };
 
-            for _ in 0..100 {
-                if let Some(ref mut child) = self.child {
-                    if let Ok(Some(status)) = child.try_wait() {
-                        return Err(format!(
-                            "Host server process exited unexpectedly with {status}"
-                        ));
-                    }
-                }
-                std::thread::sleep(Duration::from_millis(100));
-                if self.is_ready() {
-                    log::info!("[Lite] Host server ready on http://127.0.0.1:{}", self.port);
-                    return Ok(self.port);
-                }
+            let child = spawn_server(&spec)?;
+            {
+                let mut guard = self.managed.lock().unwrap_or_else(|e| e.into_inner());
+                guard.child = Some(child);
             }
+
+            if let Err(err) = self.wait_for_startup_ready("Host server") {
+                self.stop();
+                return Err(err);
+            }
+
+            {
+                let mut guard = self.managed.lock().unwrap_or_else(|e| e.into_inner());
+                guard.spec = Some(spec);
+            }
+            self.start_supervisor();
+
+            log::info!("[Lite] Host server ready on http://127.0.0.1:{}", self.port);
+            return Ok(self.port);
         }
 
         Err(format!(
@@ -209,10 +487,15 @@ impl ServerManager {
 
     /// Gracefully stops the child Node process if managed by this instance.
     pub fn stop(&mut self) {
-        if let Some(mut child) = self.child.take() {
+        self.stopping.store(true, Ordering::SeqCst);
+        let child = {
+            let mut guard = self.managed.lock().unwrap_or_else(|e| e.into_inner());
+            guard.spec = None;
+            guard.child.take()
+        };
+        if let Some(child) = child {
             log::info!("Stopping Meowtrix Node server process...");
-            let _ = child.kill();
-            let _ = child.wait();
+            terminate_child(child);
         }
     }
 }
@@ -225,12 +508,76 @@ impl Drop for ServerManager {
 
 pub type ServerState = Mutex<ServerManager>;
 
+fn spawn_server(spec: &SpawnSpec) -> Result<Child, String> {
+    let mut cmd = Command::new(&spec.node_bin);
+    cmd.arg(&spec.script)
+        .env("PORT", spec.port.to_string())
+        .env("HOST", "127.0.0.1")
+        .env("MISTRALRS_PORT", spec.ai_port.to_string())
+        .current_dir(&spec.work_dir);
+
+    if let Some(ref data_dir) = spec.data_dir {
+        cmd.env("MEOWTRIX_DATA_DIR", data_dir);
+    }
+
+    #[cfg(unix)]
+    unix_proc::configure_process_group(&mut cmd);
+
+    cmd.spawn()
+        .map_err(|e| format!("Failed to spawn {} Node server: {e}", spec.label))
+}
+
+fn terminate_child(mut child: Child) {
+    #[cfg(unix)]
+    {
+        let pid = child.id();
+        unix_proc::send_sigterm_group(pid);
+        let deadline = Instant::now() + STOP_GRACE_PERIOD;
+        loop {
+            match child.try_wait() {
+                Ok(Some(_)) => return,
+                Ok(None) => {
+                    if Instant::now() >= deadline {
+                        break;
+                    }
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+                Err(_) => break,
+            }
+        }
+        log::warn!(
+            "Meowtrix Node server (pid {pid}) did not exit after SIGTERM; sending SIGKILL"
+        );
+        unix_proc::send_sigkill_group(pid);
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+}
+
+/// Sleeps for `duration` in short intervals, returning `true` early if `stopping` is set.
+fn sleep_interruptible(duration: Duration, stopping: &AtomicBool) -> bool {
+    let deadline = Instant::now() + duration;
+    while Instant::now() < deadline {
+        if stopping.load(Ordering::SeqCst) {
+            return true;
+        }
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        std::thread::sleep(remaining.min(Duration::from_millis(100)));
+    }
+    stopping.load(Ordering::SeqCst)
+}
+
 /// Allocates an ephemeral free port from the OS kernel.
-fn get_free_port() -> u16 {
+fn get_free_port() -> Result<u16, String> {
     TcpListener::bind("127.0.0.1:0")
         .and_then(|l| l.local_addr())
         .map(|addr| addr.port())
-        .unwrap_or(9124)
+        .map_err(|e| format!("Failed to allocate an ephemeral port: {e}"))
 }
 
 /// Checks if bundled standalone payload (node binary + server.js) exists inside app resources.
@@ -371,4 +718,44 @@ fn find_server_script(app: &AppHandle) -> Result<PathBuf, String> {
     }
 
     Err("Could not locate server.js. Ensure Meowtrix is installed correctly.".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_free_port_returns_ephemeral_port() {
+        let port = get_free_port().expect("should allocate ephemeral port");
+        assert!(port > 0);
+    }
+
+    #[test]
+    fn restart_tracker_bounds_restarts_and_backs_off() {
+        let mut tracker = RestartTracker::new(5, Duration::from_secs(60));
+        let t0 = Instant::now();
+        assert_eq!(tracker.next_backoff(t0), Some(Duration::from_secs(1)));
+        assert_eq!(tracker.next_backoff(t0), Some(Duration::from_secs(2)));
+        assert_eq!(tracker.next_backoff(t0), Some(Duration::from_secs(4)));
+        assert_eq!(tracker.next_backoff(t0), Some(Duration::from_secs(8)));
+        assert_eq!(tracker.next_backoff(t0), Some(Duration::from_secs(16)));
+        assert_eq!(tracker.next_backoff(t0), None);
+
+        // Once the window expires, budget resets
+        let t_later = t0 + Duration::from_secs(61);
+        assert_eq!(tracker.next_backoff(t_later), Some(Duration::from_secs(1)));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn terminate_child_stops_process_group_gracefully() {
+        let mut cmd = Command::new("/bin/sleep");
+        cmd.arg("30");
+        unix_proc::configure_process_group(&mut cmd);
+        let child = cmd.spawn().expect("spawn sleep");
+        let start = Instant::now();
+        terminate_child(child);
+        // sleep exits immediately on SIGTERM, well before the 2.5s grace period
+        assert!(start.elapsed() < Duration::from_secs(2));
+    }
 }

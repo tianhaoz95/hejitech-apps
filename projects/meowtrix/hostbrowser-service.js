@@ -168,12 +168,15 @@ class HostBrowserService {
     this.getSettings = getSettings || (() => ({}));
     this.broadcast = broadcast || (() => {});
     this.pages = new Map(); // tabId -> entry
+    this.creating = new Map(); // tabId -> Promise<entry>
     this.context = null;
     this.launching = null;
+    this.closing = null;
     this.idleTimer = null;
     this.ownPages = new WeakSet(); // pages we created (vs. popups the site opened)
     this.installing = null;
     this.wss = new WebSocketServer({ noServer: true, perMessageDeflate: false, maxPayload: 80 * 1024 * 1024 });
+    this.wss.on('error', (err) => { console.error('🌐 Host browser WS server error:', shortError(err)); });
     this.wss.on('connection', (ws, req, tabId) => this._onSocket(ws, tabId));
   }
 
@@ -210,6 +213,7 @@ class HostBrowserService {
         '--password-store=basic',
       ];
       if (major) args.push(`--user-agent=${userAgentFor(major)}`);
+      if (this.closing) await this.closing.catch(() => {});
       fs.mkdirSync(this.profileDir, { recursive: true });
       const context = await loadPlaywright().chromium.launchPersistentContext(this.profileDir, {
         executablePath: exe,
@@ -248,7 +252,10 @@ class HostBrowserService {
       if (!this.pages.size && this.context) {
         const ctx = this.context;
         this.context = null;
-        ctx.close().catch(() => {});
+        const closing = ctx.close().catch(() => {}).finally(() => {
+          if (this.closing === closing) this.closing = null;
+        });
+        this.closing = closing;
         console.log('🌐 Host browser idle — closed');
       }
     }, IDLE_SHUTDOWN_MS);
@@ -259,7 +266,15 @@ class HostBrowserService {
     clearTimeout(this.idleTimer);
     const ctx = this.context;
     this.context = null;
-    if (ctx) await ctx.close().catch(() => {});
+    if (ctx) {
+      const closing = ctx.close().catch(() => {}).finally(() => {
+        if (this.closing === closing) this.closing = null;
+      });
+      this.closing = closing;
+      await closing;
+    } else if (this.closing) {
+      await this.closing.catch(() => {});
+    }
   }
 
   // Download Chrome for Testing via Playwright's installer (the "Install"
@@ -294,7 +309,14 @@ class HostBrowserService {
       page = await context.newPage();
       this.ownPages.add(page);
     }
-    const cdp = await context.newCDPSession(page);
+    let cdp;
+    try {
+      cdp = await context.newCDPSession(page);
+    } catch (err) {
+      await page.close().catch(() => {});
+      if (this.pages.size === 0) this._armIdleShutdown();
+      throw err;
+    }
     const entry = {
       id: tabId,
       page,
@@ -480,8 +502,7 @@ class HostBrowserService {
     const buf = Buffer.from(frame.data, 'base64');
     entry.lastFrame = buf;
     const ws = entry.viewer;
-    if (ws && ws.readyState === ws.OPEN) {
-      ws.send(buf, { binary: true });
+    if (this._safeSend(ws, buf, { binary: true })) {
       entry.inflight++;
     }
     if (entry.inflight < MAX_INFLIGHT || !ws) {
@@ -508,15 +529,28 @@ class HostBrowserService {
     this.wss.handleUpgrade(req, socket, head, (ws) => this.wss.emit('connection', ws, req, m[1]));
   }
 
+  _safeSend(ws, data, opts) {
+    if (!ws || ws.readyState !== ws.OPEN) return false;
+    try {
+      if (opts) ws.send(data, opts, () => {});
+      else ws.send(data, () => {});
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   _send(entry, msg) {
     const ws = entry && entry.viewer;
-    if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
+    this._safeSend(ws, JSON.stringify(msg));
   }
 
   _onSocket(ws, tabId) {
     let entry = null;
     let ready = null; // resolves once init has attached us
-    const sendRaw = (msg) => { if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg)); };
+    const sendRaw = (msg) => { this._safeSend(ws, JSON.stringify(msg)); };
+
+    ws.on('error', () => {});
 
     ws.on('message', async (raw, isBinary) => {
       if (isBinary) return;
@@ -553,21 +587,46 @@ class HostBrowserService {
   async _attach(ws, tabId, msg) {
     let entry = this.pages.get(tabId);
     const url = normalizeUrl(msg.url) || null;
-    if (!entry) entry = await this._createEntry(tabId, url);
+    if (!entry) {
+      let p = this.creating.get(tabId);
+      if (!p) {
+        p = this._createEntry(tabId, url).finally(() => {
+          if (this.creating.get(tabId) === p) this.creating.delete(tabId);
+        });
+        this.creating.set(tabId, p);
+      }
+      entry = await p;
+    }
+    if (ws.readyState !== ws.OPEN) return null;
     // Newest socket wins; tell the previous viewer it was replaced.
     if (entry.viewer && entry.viewer !== ws) {
       const old = entry.viewer;
-      try { old.send(JSON.stringify({ t: 'replaced' })); } catch {}
+      this._safeSend(old, JSON.stringify({ t: 'replaced' }));
       this._releaseKeys(entry);
     }
     entry.viewer = ws;
     this._readClientView(entry, msg);
     await this._applyMetrics(entry);
+    if (ws.readyState !== ws.OPEN) {
+      if (entry.viewer === ws) { entry.viewer = null; this._releaseKeys(entry); }
+      return null;
+    }
+    if (entry.viewer !== ws) return null;
     if (msg.visible !== false) await this._startScreencast(entry);
+    if (ws.readyState !== ws.OPEN) {
+      if (entry.viewer === ws) { entry.viewer = null; this._releaseKeys(entry); this._stopScreencast(entry); }
+      return null;
+    }
+    if (entry.viewer !== ws) return null;
     // Paint something right away (the screencast only emits on change).
-    if (entry.lastFrame && ws.readyState === ws.OPEN) { ws.send(entry.lastFrame, { binary: true }); entry.inflight++; }
+    if (entry.lastFrame && this._safeSend(ws, entry.lastFrame, { binary: true })) { entry.inflight++; }
     this._send(entry, { t: 'cursor', cursor: entry.cursor });
     await this._pushState(entry);
+    if (ws.readyState !== ws.OPEN) {
+      if (entry.viewer === ws) { entry.viewer = null; this._releaseKeys(entry); this._stopScreencast(entry); }
+      return null;
+    }
+    if (entry.viewer !== ws) return null;
     if (entry.dialog) {
       const d = entry.dialog;
       this._send(entry, { t: 'dialog', kind: d.type(), message: d.message(), defaultValue: d.defaultValue() });

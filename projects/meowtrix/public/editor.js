@@ -1180,7 +1180,7 @@ function initEditorTab(tab, viewEl, dir) {
       } else {
         toast(`Deleted ${name}`);
         if (open.has(itemPath)) {
-          closeFile(itemPath);
+          closeFile(itemPath, { force: true });
         }
         refreshFiles();
       }
@@ -1381,7 +1381,12 @@ function initEditorTab(tab, viewEl, dir) {
       return data;
     } catch { toast('Git action failed'); return false; }
   }
+  let activeBranchCloseMenu = null;
   async function refreshGit() {
+    if (activeBranchCloseMenu) {
+      document.removeEventListener('click', activeBranchCloseMenu);
+      activeBranchCloseMenu = null;
+    }
     gitEl.innerHTML = '<div class="editor-git-empty">Loading…</div>';
     let s, logData;
     try {
@@ -1677,18 +1682,17 @@ function initEditorTab(tab, viewEl, dir) {
       }
     });
 
+    if (activeBranchCloseMenu) {
+      document.removeEventListener('click', activeBranchCloseMenu);
+      activeBranchCloseMenu = null;
+    }
     const closeMenu = (e) => {
       if (!bnameTrigger.contains(e.target) && !dropdownMenu.contains(e.target)) {
         dropdownMenu.hidden = true;
       }
     };
+    activeBranchCloseMenu = closeMenu;
     document.addEventListener('click', closeMenu);
-    
-    const oldDispose = tab.disposeEditor;
-    tab.disposeEditor = () => {
-      document.removeEventListener('click', closeMenu);
-      if (typeof oldDispose === 'function') oldDispose();
-    };
 
     branchBar.append(bicon, bnameTrigger, dropdownMenu);
     if (s.ahead || s.behind) {
@@ -2070,11 +2074,19 @@ function initEditorTab(tab, viewEl, dir) {
     }
   }
 
-  function closeFile(p) {
+  async function closeFile(p, opts = {}) {
     const st = open.get(p);
     if (!st) return;
-    st.tabEl.remove();
-    if (st.model) st.model.dispose();
+    if (!opts.force && st.dirty) {
+      const ok = typeof window.showConfirm === 'function'
+        ? await window.showConfirm('Unsaved Changes', `Discard unsaved changes to ${basename(p)}?`, 'Discard', 'Cancel')
+        : window.confirm(`Discard unsaved changes to ${basename(p)}?`);
+      if (!ok) return;
+    }
+    const cur = open.get(p);
+    if (!cur) return;
+    cur.tabEl.remove();
+    if (cur.model) cur.model.dispose();
     open.delete(p);
     if (activePath === p) {
       const next = [...open.keys()].pop() || null;
@@ -2153,9 +2165,16 @@ function initEditorTab(tab, viewEl, dir) {
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => saveActive());
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP, () => openQuickOpen());
     }
-    // Resolve the language explicitly to support extension-less files and trigger lazy loading
+    // Resolve the language explicitly to support extension-less files and trigger lazy loading.
+    // Scope the model URI by tab.id so opening the same file in two separate editor tabs
+    // never collides in Monaco's global model registry.
     const lang = langFromPath(monaco, filePath);
-    const model = monaco.editor.createModel(data.content, lang, monaco.Uri.file(filePath));
+    const tabScope = String(tab.id || 'tab').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const normPath = filePath.startsWith('/') ? filePath : '/' + filePath;
+    const modelUri = monaco.Uri.from({ scheme: 'file', authority: tabScope, path: normPath });
+    const existingModel = monaco.editor.getModel(modelUri);
+    if (existingModel) existingModel.dispose();
+    const model = monaco.editor.createModel(data.content, lang, modelUri);
     model.onDidChangeContent(() => markDirty(filePath, true));
 
     const tabEl = document.createElement('div');
@@ -2707,7 +2726,17 @@ function initEditorTab(tab, viewEl, dir) {
     tab.zoom(tab.zoomLevel);
   }
 
+  tab.hasUnsavedChanges = () => Array.from(open.values()).some(st => st.dirty);
+
   tab.disposeEditor = () => {
+    if (changeTimeout) {
+      clearTimeout(changeTimeout);
+      changeTimeout = null;
+    }
+    if (activeBranchCloseMenu) {
+      document.removeEventListener('click', activeBranchCloseMenu);
+      activeBranchCloseMenu = null;
+    }
     document.removeEventListener('click', onDocumentClick);
     document.removeEventListener('contextmenu', onDocumentContextMenu);
     document.removeEventListener('scroll', onDocumentScroll, { capture: true });
@@ -2716,7 +2745,7 @@ function initEditorTab(tab, viewEl, dir) {
     editor?.dispose();
     diffEditor?.dispose();
     if (diffModels) { diffModels.original.dispose(); diffModels.modified.dispose(); }
-    open.forEach(st => st.model.dispose());
+    open.forEach(st => st.model?.dispose());
     if (dir) {
       wsSend({ type: 'fs:unwatch', path: dir });
     }

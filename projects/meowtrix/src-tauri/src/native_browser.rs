@@ -124,7 +124,7 @@ fn get(app: &tauri::AppHandle, id: &str) -> Result<WebviewWindow, String> {
 /// derived from the *main* window's scale (on macOS logical == points), since a
 /// hidden child window can report a different scale factor than its monitor's.
 fn place(app: &tauri::AppHandle, win: &WebviewWindow, id: &str) {
-    let Some(p) = rects().lock().unwrap().get(id).copied() else { return };
+    let Some(p) = rects().lock().unwrap_or_else(|e| e.into_inner()).get(id).copied() else { return };
     let Some(main) = app.get_webview_window("main") else { return };
     let (Ok(scale), Ok(origin), Ok(size)) = (main.scale_factor(), main.inner_position(), main.inner_size()) else { return };
     let origin = origin.to_logical::<f64>(scale);
@@ -143,6 +143,25 @@ pub fn reposition_all(app: &tauri::AppHandle) {
             if win.is_visible().unwrap_or(false) {
                 place(app, &win, id);
             }
+        }
+    }
+}
+
+/// Hide every `nb-*` child window (e.g. when the main window is hidden to the tray).
+pub fn hide_all_native_browsers(app: &tauri::AppHandle) {
+    for (label, win) in app.webview_windows() {
+        if label.starts_with(LABEL_PREFIX) {
+            let _ = win.hide();
+        }
+    }
+}
+
+/// Close every `nb-*` child window and clear stored placements (e.g. on app exit).
+pub fn close_all_native_browsers(app: &tauri::AppHandle) {
+    rects().lock().unwrap_or_else(|e| e.into_inner()).clear();
+    for (label, win) in app.webview_windows() {
+        if label.starts_with(LABEL_PREFIX) {
+            let _ = win.close();
         }
     }
 }
@@ -243,7 +262,7 @@ pub async fn nb_open(
     visible: bool,
 ) -> Result<String, String> {
     let label = label_for(&id).ok_or("bad tab id")?;
-    rects().lock().unwrap().insert(id.clone(), Placement { x, y, w: width, h: height, vw, vh });
+    rects().lock().unwrap_or_else(|e| e.into_inner()).insert(id.clone(), Placement { x, y, w: width, h: height, vw, vh });
     if let Some(existing) = app.get_webview_window(&label) {
         place(&app, &existing, &id);
         if visible { show_passive(&app, &existing) } else { let _ = existing.hide(); }
@@ -319,6 +338,16 @@ pub async fn nb_open(
         })
         .build()
         .map_err(|e| e.to_string())?;
+
+    let app_destroyed = app.clone();
+    let id_destroyed = id.clone();
+    win.on_window_event(move |event| {
+        if let tauri::WindowEvent::Destroyed = event {
+            rects().lock().unwrap_or_else(|e| e.into_inner()).remove(&id_destroyed);
+            emit(&app_destroyed, &id_destroyed, "closed", serde_json::json!({}));
+        }
+    });
+
     place(&app, &win, &id);
     if visible {
         show_passive(&app, &win);
@@ -349,7 +378,7 @@ fn urlencoding_decode(s: &str) -> String {
 #[allow(clippy::too_many_arguments)]
 pub async fn nb_set_bounds(app: tauri::AppHandle, id: String, x: f64, y: f64, width: f64, height: f64, vw: f64, vh: f64) -> Result<(), String> {
     let win = get(&app, &id)?;
-    rects().lock().unwrap().insert(id.clone(), Placement { x, y, w: width, h: height, vw, vh });
+    rects().lock().unwrap_or_else(|e| e.into_inner()).insert(id.clone(), Placement { x, y, w: width, h: height, vw, vh });
     place(&app, &win, &id);
     Ok(())
 }
@@ -406,7 +435,7 @@ pub async fn nb_zoom(app: tauri::AppHandle, id: String, level: f64) -> Result<()
 
 #[tauri::command]
 pub async fn nb_close(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    rects().lock().unwrap().remove(&id);
+    rects().lock().unwrap_or_else(|e| e.into_inner()).remove(&id);
     match get(&app, &id) {
         Ok(wv) => wv.close().map_err(|e| e.to_string()),
         Err(_) => Ok(()),

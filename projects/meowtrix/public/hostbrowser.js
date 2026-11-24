@@ -20,6 +20,7 @@ function hbIsTouchDevice() {
 function initHostBrowserTab(tab, viewEl, label, initialUrl) {
   viewEl.classList.add('browser-view', 'hostbrowser-view');
   hostBrowserTabs.add(tab);
+  startHostBrowserVisibilityLoop();
 
   // ── Chrome (toolbar) ──
   const bar = document.createElement('div');
@@ -118,6 +119,7 @@ function initHostBrowserTab(tab, viewEl, label, initialUrl) {
   let ws = null;
   let disposed = false;
   let retryTimer = null;
+  let retryBackoff = 1000;
   let gotFrame = false;
   let fatal = false;
   tab.currentUrl = initialUrl || null;
@@ -133,6 +135,7 @@ function initHostBrowserTab(tab, viewEl, label, initialUrl) {
   const connect = () => {
     if (disposed) return;
     clearTimeout(retryTimer);
+    retryTimer = null;
     fatal = false;
     if (ws) { try { ws.onclose = null; ws.close(); } catch {} }
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -141,6 +144,8 @@ function initHostBrowserTab(tab, viewEl, label, initialUrl) {
     ws = sock;
     if (!gotFrame) showOverlay('<div class="hostbrowser-msg"><div class="hostbrowser-spinner"></div>Starting host browser…</div>');
     sock.onopen = () => {
+      if (ws !== sock || disposed) return;
+      retryBackoff = 1000;
       const { width, height } = viewSize();
       const homepage = (typeof getSettings === 'function' ? (getSettings().browserHomepage || '') : '').trim();
       send({
@@ -156,6 +161,7 @@ function initHostBrowserTab(tab, viewEl, label, initialUrl) {
       });
     };
     sock.onmessage = (e) => {
+      if (ws !== sock || disposed) return;
       if (typeof e.data !== 'string') { onFrame(e.data); return; }
       let msg;
       try { msg = JSON.parse(e.data); } catch { return; }
@@ -164,7 +170,9 @@ function initHostBrowserTab(tab, viewEl, label, initialUrl) {
     sock.onclose = () => {
       if (ws !== sock || disposed || fatal) return;
       ws = null;
-      retryTimer = setTimeout(connect, 1000);
+      const delay = retryBackoff;
+      retryBackoff = Math.min(retryBackoff * 2, 10000);
+      retryTimer = setTimeout(connect, delay);
     };
   };
 
@@ -482,13 +490,17 @@ function initHostBrowserTab(tab, viewEl, label, initialUrl) {
     send({ t: 'resize', zoom: level, ...viewSize(), dpr: window.devicePixelRatio || 1 });
   };
 
-  tab.reconnectHostBrowser = () => { gotFrame = false; connect(); };
+  tab.reconnectHostBrowser = () => { gotFrame = false; retryBackoff = 1000; connect(); };
 
   // View teardown (workspace rebuild / handoff) — the host page stays alive.
   tab.disposeHostBrowser = () => {
     disposed = true;
     hostBrowserTabs.delete(tab);
+    if (hostBrowserTabs.size === 0) stopHostBrowserVisibilityLoop();
     clearTimeout(retryTimer);
+    retryTimer = null;
+    clearTimeout(resizeTimer);
+    resizeTimer = null;
     ro.disconnect();
     if (ws) { try { ws.onclose = null; ws.close(); } catch {} ws = null; }
   };
@@ -527,11 +539,20 @@ function reconnectAllHostBrowsers() {
 
 // Workspace switches and tab activation change what's visible without a
 // ResizeObserver callback; pause streams for hidden tabs to save host CPU.
+let hbVisibilityInterval = null;
+function startHostBrowserVisibilityLoop() {
+  if (hbVisibilityInterval) return;
+  hbVisibilityInterval = setInterval(syncHostBrowserVisibility, 1000);
+}
+function stopHostBrowserVisibilityLoop() {
+  if (!hbVisibilityInterval) return;
+  clearInterval(hbVisibilityInterval);
+  hbVisibilityInterval = null;
+}
 function syncHostBrowserVisibility() {
   hostBrowserTabs.forEach(t => t.hbSyncVisibility && t.hbSyncVisibility());
 }
 document.addEventListener('visibilitychange', syncHostBrowserVisibility);
-setInterval(syncHostBrowserVisibility, 1000);
 
 // The server opened a popup / target=_blank page: give it a tab next to its opener.
 function onHostBrowserPopup(msg) {

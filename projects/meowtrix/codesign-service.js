@@ -34,6 +34,8 @@ const SPEC_FILE = 'spec.html';
 const REVIEW_FILE = 'review.json';
 const INSPECTOR_PATH = path.join(__dirname, 'public', 'codesign-inspector.js');
 const WAIT_MAX_SECONDS = 120;
+const PROJECT_EVICT_INTERVAL_MS = 5 * 60 * 1000;
+const PROJECT_IDLE_TTL_MS = 20 * 60 * 1000;
 
 // Directive list shared by the response header and the tab's iframe attribute.
 // Deliberately no allow-same-origin: that would hand the page the Meowtrix origin.
@@ -146,22 +148,41 @@ function mountCodesignRoutes(app, { broadcast }) {
   router.use(express.urlencoded({ extended: false })); // the sh-based `mtx` posts forms
 
   // Per-dir in-memory state: blocked `mtx review` callers and the file watcher.
-  const projects = new Map(); // dir -> { waiters: Set<fn>, watching: bool }
+  const projects = new Map(); // dir -> { waiters: Set<fn>, watching: bool, lastAccess: number }
 
   function project(dir) {
     let p = projects.get(dir);
-    if (!p) { p = { waiters: new Set(), watching: false }; projects.set(dir, p); }
+    if (!p) { p = { waiters: new Set(), watching: false, lastAccess: Date.now() }; projects.set(dir, p); }
+    else { p.lastAccess = Date.now(); }
     if (!p.watching) {
       p.watching = true;
       // watchFile (stat polling) rather than fs.watch: it works before the
       // file/dir exists and survives editors that replace the file on save.
       fs.watchFile(specPath(dir), { interval: 600 }, () => {
-        const r = syncRevision(dir);
-        if (r.changed || !r.exists) notify(dir);
+        try {
+          const r = syncRevision(dir);
+          if (r.changed || !r.exists) notify(dir);
+        } catch (err) {
+          console.error('[codesign] watchFile syncRevision failed:', dir, err.message);
+        }
       });
     }
     return p;
   }
+
+  const evictTimer = setInterval(() => {
+    const now = Date.now();
+    for (const [dir, p] of projects.entries()) {
+      if (p.waiters.size === 0 && now - p.lastAccess > PROJECT_IDLE_TTL_MS) {
+        if (p.watching) {
+          try { fs.unwatchFile(specPath(dir)); } catch {}
+          p.watching = false;
+        }
+        projects.delete(dir);
+      }
+    }
+  }, PROJECT_EVICT_INTERVAL_MS);
+  evictTimer.unref?.();
 
   function notify(dir) {
     broadcast({ type: 'codesign:update', dir });
@@ -169,7 +190,12 @@ function mountCodesignRoutes(app, { broadcast }) {
 
   function statePayload(dir) {
     const { review, exists } = syncRevision(dir);
-    const p = project(dir);
+    let p = projects.get(dir);
+    if (p) {
+      p.lastAccess = Date.now();
+    } else if (exists) {
+      p = project(dir);
+    }
     let mtime = null;
     try { mtime = fs.statSync(specPath(dir)).mtimeMs; } catch {}
     return {
@@ -183,7 +209,7 @@ function mountCodesignRoutes(app, { broadcast }) {
       decision: review.decision,
       comments: review.comments,
       history: review.history.slice(-20),
-      agentWaiting: p.waiters.size > 0,
+      agentWaiting: p ? p.waiters.size > 0 : false,
       mtime,
     };
   }
@@ -377,13 +403,26 @@ function mountCodesignRoutes(app, { broadcast }) {
     };
     const waiter = () => {
       if (finished) return;
-      if (tryDeliver()) done();
+      try {
+        if (tryDeliver()) done();
+      } catch (err) {
+        done();
+        console.error('[codesign] wait deliver syncRevision failed:', dir, err.message);
+        if (!res.headersSent) res.status(500).json({ error: err.message });
+      }
     };
     const timer = setTimeout(() => {
       if (finished) return;
       done();
-      const { review } = syncRevision(dir);
-      reply('timeout', { text: `No decision yet on revision ${review.revision} (status: ${review.status}).\n`, revision: review.revision });
+      try {
+        const { review } = syncRevision(dir);
+        if (!res.headersSent) {
+          reply('timeout', { text: `No decision yet on revision ${review.revision} (status: ${review.status}).\n`, revision: review.revision });
+        }
+      } catch (err) {
+        console.error('[codesign] wait timeout syncRevision failed:', dir, err.message);
+        if (!res.headersSent) res.status(500).json({ error: err.message });
+      }
     }, timeout * 1000);
     req.on('close', done);
     p.waiters.add(waiter);

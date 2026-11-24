@@ -66,21 +66,34 @@ function mountMtxRoutes(app, { getActiveClient, ptys, getPtyCwd }) {
 
   const pending = new Map(); // reqId -> { ws, resolve, timer }
 
+  function failPending(reqId, error, message) {
+    const p = pending.get(reqId);
+    if (!p) return;
+    clearTimeout(p.timer);
+    pending.delete(reqId);
+    p.resolve({ ok: false, error, message });
+  }
+
   // Ask the active session to run `method`. Resolves to the client's result, or
   // to { ok:false, error } when nobody is active / the client doesn't answer.
   function rpc(method, params) {
     const ws = getActiveClient();
-    if (!ws) {
+    if (!ws || ws.readyState !== 1) {
       return Promise.resolve({ ok: false, error: 'no-active-session', message: 'No active Meowtrix session is connected — show the user the link instead.' });
     }
     const reqId = uuidv4();
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
-        pending.delete(reqId);
-        resolve({ ok: false, error: 'timeout', message: 'The Meowtrix session did not respond.' });
+        failPending(reqId, 'timeout', 'The Meowtrix session did not respond.');
       }, RPC_TIMEOUT_MS);
       pending.set(reqId, { ws, resolve, timer });
-      ws.send(JSON.stringify({ type: 'mtx:rpc', reqId, method, params }));
+      try {
+        ws.send(JSON.stringify({ type: 'mtx:rpc', reqId, method, params }), (err) => {
+          if (err) failPending(reqId, 'send-failed', 'Failed to send request to the Meowtrix session.');
+        });
+      } catch {
+        failPending(reqId, 'send-failed', 'Failed to send request to the Meowtrix session.');
+      }
     });
   }
 
@@ -94,10 +107,21 @@ function mountMtxRoutes(app, { getActiveClient, ptys, getPtyCwd }) {
     p.resolve(msg.result && typeof msg.result === 'object' ? msg.result : { ok: false, error: 'bad-result' });
   }
 
+  // Fail any in-flight RPCs belonging to a disconnected socket immediately
+  // instead of making callers wait for the full 8s timeout.
+  function handleWsClose(ws) {
+    for (const [reqId, p] of pending) {
+      if (p.ws === ws) {
+        failPending(reqId, 'session-disconnected', 'The Meowtrix session disconnected before responding.');
+      }
+    }
+  }
+
   function send(res, result) {
     const status = result.ok ? 200
-      : result.error === 'no-active-session' ? 409
+      : (result.error === 'no-active-session' || result.error === 'session-disconnected') ? 409
       : result.error === 'timeout' ? 504
+      : result.error === 'send-failed' ? 502
       : 400;
     res.status(status).json(result);
   }
@@ -217,7 +241,7 @@ function mountMtxRoutes(app, { getActiveClient, ptys, getPtyCwd }) {
   });
 
   app.use('/api/mtx', router);
-  return { handleRpcResult };
+  return { handleRpcResult, handleWsClose };
 }
 
 module.exports = { mountMtxRoutes, normalizeUrl, editorRootFor, stripAnsi };

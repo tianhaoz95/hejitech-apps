@@ -310,34 +310,57 @@ function restoreWorkspaceState(state, container) {
 }
 
 let workspaceReady = false;
+let sessionLoadFailed = false;
 
 // Save workspace state to server (debounced). Only the active session may write
 // — an inactive tab holds a stale layout and must never clobber the server with
 // it (otherwise e.g. its unload beacon would resurrect panes the active tab
 // already closed).
 let _saveTimer = null;
-function _postSessionState() {
-  _saveTimer = null;
+let _saveInFlight = false;
+let _saveQueued = false;
+
+function _buildSessionState() {
   for (let i = 0; i < 4; i++) {
     const container = document.querySelector(`.workspace-view[data-index="${i}"]`);
     if (container && container.children.length > 0) {
       currentWorkspaces[i].layout = captureWorkspaceState(i);
     }
   }
-  const state = {
+  return {
     activeWorkspaceIndex,
     workspaces: currentWorkspaces.map(ws => ({
       name: ws.name,
       layout: ws.layout
     }))
   };
+}
+
+function _postSessionState() {
+  _saveTimer = null;
+  if (!workspaceReady || !isActiveSession || sessionLoadFailed) return;
+  if (_saveInFlight) {
+    _saveQueued = true;
+    return;
+  }
+  _saveInFlight = true;
+  const state = _buildSessionState();
   fetch('/api/session', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(state),
+    keepalive: true,
+  }).catch((err) => {
+    console.warn('[session] failed to save session state:', err);
+  }).finally(() => {
+    _saveInFlight = false;
+    if (_saveQueued) {
+      _saveQueued = false;
+      _postSessionState();
+    }
   });
 }
 function saveSessionState() {
-  if (!workspaceReady || !isActiveSession) return;
+  if (!workspaceReady || !isActiveSession || sessionLoadFailed) return;
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(_postSessionState, 300);
 }
@@ -370,8 +393,46 @@ async function bootstrapSession() {
     // Desktop app: learn whether browser tabs can use native webviews before
     // any tab is built (see nativebrowser.js).
     if (typeof nativeBrowserProbe !== 'undefined') await nativeBrowserProbe;
-    const saved = await fetch('/api/session').then(r => r.json());
-    if (saved) {
+
+    let saved = null;
+    let loadedOk = false;
+    const retryDelays = [250, 600, 1200];
+    for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
+      try {
+        const res = await fetch('/api/session');
+        if (res.status === 404) {
+          saved = null;
+          loadedOk = true;
+          break;
+        }
+        if (!res.ok) {
+          if (attempt < retryDelays.length) {
+            await new Promise(r => setTimeout(r, retryDelays[attempt]));
+            continue;
+          }
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const text = await res.text();
+        saved = text ? JSON.parse(text) : null;
+        if (saved && typeof saved === 'object' && !Array.isArray(saved) && Object.keys(saved).length === 0) {
+          saved = null;
+        }
+        loadedOk = true;
+        break;
+      } catch (err) {
+        if (attempt < retryDelays.length) {
+          await new Promise(r => setTimeout(r, retryDelays[attempt]));
+        } else {
+          console.warn('[session] failed to load /api/session after retries:', err);
+        }
+      }
+    }
+
+    if (!loadedOk) {
+      sessionLoadFailed = true;
+      initWorkspace();
+    } else if (saved) {
+      sessionLoadFailed = false;
       ({ workspaces: currentWorkspaces, activeWorkspaceIndex } = normalizeSavedSession(saved));
 
       // Update workspace active/inactive class states
@@ -395,9 +456,12 @@ async function bootstrapSession() {
         initWorkspace();
       }
     } else {
+      sessionLoadFailed = false;
       initWorkspace();
     }
-  } catch {
+  } catch (err) {
+    console.warn('[session] bootstrap error:', err);
+    sessionLoadFailed = true;
     initWorkspace();
   }
   workspaceReady = true;
@@ -717,10 +781,17 @@ function setTheme(id) {
 
 // Close the active pane (after closing all its tabs). Shared by the toolbar's
 // Close button and the command palette. No-op if it's the only pane left.
-function closeActivePane() {
+async function closeActivePane() {
   if (!activePane || getAllPanes().length <= 1) return;
   const pane = activePane;
-  [...pane.tabs].forEach(t => closeTab(pane, t.id));
+  const hasUnsaved = pane.tabs.some(t => t.hasUnsavedChanges && t.hasUnsavedChanges());
+  if (hasUnsaved) {
+    const ok = typeof window.showConfirm === 'function'
+      ? await window.showConfirm('Unsaved Changes', 'This pane has unsaved changes. Close anyway?', 'Discard & Close', 'Cancel')
+      : window.confirm('This pane has unsaved changes. Close anyway?');
+    if (!ok) return;
+  }
+  [...pane.tabs].forEach(t => closeTab(pane, t.id, { force: true }));
   collapseEmptyPane(pane);
   saveSessionState();
 }
@@ -1305,23 +1376,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initSession();
 
-  window.addEventListener('beforeunload', () => {
+  window.addEventListener('beforeunload', (e) => {
+    // Warn before leaving if any open editor tab has unsaved changes.
+    const hasUnsaved = typeof getAllPanesAllWorkspaces === 'function' &&
+      getAllPanesAllWorkspaces().some(p => p.tabs.some(t => t.hasUnsavedChanges && t.hasUnsavedChanges()));
+    if (hasUnsaved) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
     // Only the active session persists on unload — an inactive tab's state is
     // stale and would overwrite the real layout.
-    if (workspaceReady && isActiveSession) {
-      for (let i = 0; i < 4; i++) {
-        const container = document.querySelector(`.workspace-view[data-index="${i}"]`);
-        if (container && container.children.length > 0) {
-          currentWorkspaces[i].layout = captureWorkspaceState(i);
-        }
-      }
-      const state = {
-        activeWorkspaceIndex,
-        workspaces: currentWorkspaces.map(ws => ({
-          name: ws.name,
-          layout: ws.layout
-        }))
-      };
+    if (workspaceReady && isActiveSession && !sessionLoadFailed) {
+      const state = _buildSessionState();
       navigator.sendBeacon('/api/session', new Blob([JSON.stringify(state)], { type: 'application/json' }));
     }
     // The server notices our WS closing and hands the active session off.

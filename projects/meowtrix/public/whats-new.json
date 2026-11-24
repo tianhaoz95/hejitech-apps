@@ -2,6 +2,19 @@
   "_doc": "Release notes for the in-app \"What's new\" sheet (public/whats-new.js). Newest first, keyed by package.json version. `highlights` are the features (the main stage); each may carry a `visual` (timeline | glyph) and a `try` action (settings:<section id> | tab:<type> | split | palette | copy:<text>). `fixes` is a list of one-line strings (bug fixes and small improvements, inline `code` allowed) shown on a secondary page behind a footer button. A fixes-only release omits `highlights` (and may omit `title`/`summary`); upgrading to only fixes-only releases shows a toast instead of opening the sheet.",
   "releases": [
     {
+      "version": "1.36.1",
+      "date": "2026-11-23",
+      "fixes": [
+        "Embedded browser pages with broken redirects, stalled upstreams, or dropped WebSockets can no longer crash the server or leak sockets.",
+        "Closing an editor tab that previewed a PDF, image, or video no longer leaves a stuck tab behind, and opening the same file in two editor tabs now works cleanly.",
+        "Closing a file, tab, pane, or window with unsaved code-editor edits now asks before discarding your changes, and interrupted file saves no longer truncate files on disk.",
+        "Terminals stay responsive after refreshes, network blips, or laptop sleep/wake with WebSocket heartbeats, safer reconnect handling, and backpressure on heavy output.",
+        "Settings, saved workspaces, and proxy cookies now write atomically and flush cleanly on shutdown; a brief startup hiccup can no longer overwrite your saved layout.",
+        "Host browser tabs, CoDesign reviews, AI provider checks/downloads, and `mtx` / `mtx mcp` commands now recover cleanly from disconnects, timeouts, and concurrent requests.",
+        "The desktop app automatically restarts its embedded server if it crashes, cleans up native browser child windows on hide/close, and avoids orphaned processes on exit."
+      ]
+    },
+    {
       "version": "1.36.0",
       "date": "2026-11-23",
       "title": "Faster jumps, readable terminals, optional token auth",

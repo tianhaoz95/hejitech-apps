@@ -16,6 +16,72 @@ const { execFile, spawn } = require('child_process');
 const MEOWTRIX_DATA_DIR = process.env.MEOWTRIX_DATA_DIR || path.join(os.homedir(), '.meowtrix');
 const AUTH_FILE = process.env.MEOWTRIX_AUTH_FILE || path.join(MEOWTRIX_DATA_DIR, 'auth.json');
 
+// Write a file atomically via a unique sibling temp file + rename so crashes or
+// disk-full errors mid-write never leave truncated JSON/config files on disk.
+function writeFileAtomicSync(filePath, content, options = {}) {
+  const dir = path.dirname(filePath);
+  fs.mkdirSync(dir, { recursive: true });
+  const tmpPath = path.join(dir, `.${path.basename(filePath)}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`);
+  try {
+    fs.writeFileSync(tmpPath, content, options);
+    if (options.mode !== undefined) {
+      try { fs.chmodSync(tmpPath, options.mode); } catch {}
+    }
+    fs.renameSync(tmpPath, filePath);
+  } catch (err) {
+    try { fs.unlinkSync(tmpPath); } catch {}
+    throw err;
+  }
+}
+
+// Stream an HTTP request body to a sibling temp file and atomically rename into
+// place only when the stream finishes AND the request completed cleanly (not aborted).
+function streamRequestToFileAtomic(req, res, destPath) {
+  const dir = path.dirname(destPath);
+  fs.mkdirSync(dir, { recursive: true });
+  const tmpPath = path.join(dir, `.${path.basename(destPath)}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`);
+  const out = fs.createWriteStream(tmpPath);
+  let aborted = false;
+  let finished = false;
+  const cleanupTmp = () => { try { fs.unlinkSync(tmpPath); } catch {} };
+  const abort = () => {
+    if (aborted || finished) return;
+    aborted = true;
+    out.destroy();
+    cleanupTmp();
+  };
+
+  req.on('aborted', abort);
+  req.on('error', abort);
+  req.on('close', () => { if (!req.complete) abort(); });
+
+  out.on('error', (err) => {
+    if (aborted) return;
+    aborted = true;
+    cleanupTmp();
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+  });
+
+  out.on('finish', () => {
+    if (aborted || !req.complete) {
+      cleanupTmp();
+      if (!res.headersSent) res.status(499).json({ error: 'Upload aborted' });
+      return;
+    }
+    finished = true;
+    fs.rename(tmpPath, destPath, (err) => {
+      if (err) {
+        cleanupTmp();
+        if (!res.headersSent) res.status(500).json({ error: err.message });
+        return;
+      }
+      if (!res.headersSent) res.json({ ok: true, path: destPath });
+    });
+  });
+
+  req.pipe(out);
+}
+
 // Optional access-token auth: opt-in via `--token <secret>`, `MEOWTRIX_TOKEN`,
 // `--auth`, or `MEOWTRIX_AUTH=1` (which persists a random token in ~/.meowtrix/auth.json
 // with 0600 permissions). Disabled by default for local loopback runs.
@@ -36,9 +102,7 @@ function resolveAuthToken() {
   } catch {}
   const generated = crypto.randomBytes(24).toString('hex');
   try {
-    fs.mkdirSync(path.dirname(AUTH_FILE), { recursive: true });
-    fs.writeFileSync(AUTH_FILE, JSON.stringify({ token: generated, createdAt: new Date().toISOString() }, null, 2), { mode: 0o600 });
-    fs.chmodSync(AUTH_FILE, 0o600);
+    writeFileAtomicSync(AUTH_FILE, JSON.stringify({ token: generated, createdAt: new Date().toISOString() }, null, 2), { mode: 0o600 });
   } catch (e) {
     console.warn('⚠️  Could not persist auth token to', AUTH_FILE, e.message);
   }
@@ -444,8 +508,7 @@ function getSetting(key) {
 }
 
 function writeSettings(data) {
-  fs.mkdirSync(path.dirname(SETTINGS_FILE), { recursive: true });
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2));
+  writeFileAtomicSync(SETTINGS_FILE, JSON.stringify(data, null, 2));
   settingsCache = loadSettingsFromDisk();
   onSettingsWritten();
 }
@@ -542,9 +605,15 @@ app.get('/api/session', (req, res) => {
   catch { res.json(null); }
 });
 app.post('/api/session', (req, res) => {
-  fs.mkdirSync(path.dirname(SESSION_FILE), { recursive: true });
-  fs.writeFileSync(SESSION_FILE, JSON.stringify(req.body));
-  res.json({ ok: true });
+  if (req.body === undefined) {
+    return res.status(400).json({ ok: false, error: 'Invalid session payload' });
+  }
+  try {
+    writeFileAtomicSync(SESSION_FILE, JSON.stringify(req.body));
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // ── File transfer: upload (client → host) and download (host → client) ───────
@@ -571,11 +640,7 @@ app.post('/api/upload', (req, res) => {
   }
   fs.mkdirSync(uploadDir, { recursive: true });
   const dest = path.join(uploadDir, name);
-  const out = fs.createWriteStream(dest);
-  out.on('error', err => { if (!res.headersSent) res.status(500).json({ error: err.message }); });
-  out.on('finish', () => res.json({ ok: true, path: dest }));
-  req.on('error', () => out.destroy());
-  req.pipe(out);
+  streamRequestToFileAtomic(req, res, dest);
 });
 
 // Download: stream the requested host file to the browser as an attachment or inline.
@@ -725,11 +790,7 @@ app.put('/api/fs/write', (req, res) => {
   const p = req.query.path;
   if (!p) return res.status(400).json({ error: 'Missing path' });
   const resolved = path.resolve(p);
-  const out = fs.createWriteStream(resolved);
-  out.on('error', err => { if (!res.headersSent) res.status(500).json({ error: err.message }); });
-  out.on('finish', () => res.json({ ok: true, path: resolved }));
-  req.on('error', () => out.destroy());
-  req.pipe(out);
+  streamRequestToFileAtomic(req, res, resolved);
 });
 
 // Create a file or directory.
@@ -1303,10 +1364,21 @@ function proxyWsUpgrade(req, socket, head) {
     ? tls.connect({ host: target.hostname, port, servername: net.isIP(target.hostname) ? undefined : target.hostname })
     : net.connect({ host: target.hostname, port });
 
-  const fail = () => { socket.destroy(); upstream.destroy(); };
+  let closed = false;
+  const fail = () => {
+    if (closed) return;
+    closed = true;
+    try { socket.destroy(); } catch {}
+    try { upstream.destroy(); } catch {}
+  };
+  upstream.setTimeout(15000, fail);
   upstream.on('error', fail);
   socket.on('error', fail);
+  upstream.once('close', fail);
+  socket.once('close', fail);
   upstream.once(secure ? 'secureConnect' : 'connect', () => {
+    upstream.setTimeout(0);
+    if (closed || socket.destroyed) { fail(); return; }
     const lines = [
       `GET ${target.pathname}${target.search} HTTP/1.1`,
       `Host: ${target.host}`,
@@ -1390,9 +1462,16 @@ function proxyHandler(req, res) {
     port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
     path: parsed.pathname + parsed.search,
     headers: outgoingHeaders,
+    timeout: 30000,
   };
 
+  const PROXY_HTML_MAX_BYTES = 16 * 1024 * 1024;
   const proxyReq = lib.request(opts, (proxyRes) => {
+    proxyRes.on('error', (err) => {
+      if (!res.headersSent) res.status(502).send(`Proxy error: ${err.message}`);
+      else if (!res.writableEnded) res.destroy();
+    });
+
     // Store cookies *before* following a redirect: a sign-in POST typically
     // answers 302 + Set-Cookie, and dropping those is why logins didn't stick.
     if (proxyRes.headers['set-cookie']) {
@@ -1400,7 +1479,14 @@ function proxyHandler(req, res) {
     }
 
     if ([301, 302, 303, 307, 308].includes(proxyRes.statusCode) && proxyRes.headers.location) {
-      const next = new URL(proxyRes.headers.location, target).href;
+      let next;
+      try {
+        next = new URL(proxyRes.headers.location, target).href;
+      } catch {
+        proxyRes.resume();
+        if (!res.headersSent) return res.status(502).send('Proxy error: invalid redirect Location');
+        return;
+      }
       let loc;
       try {
         const nextUrl = new URL(next);
@@ -1428,9 +1514,23 @@ function proxyHandler(req, res) {
     const ct = (proxyRes.headers['content-type'] || '').toLowerCase();
     if (ct.includes('text/html')) {
       let body = '';
+      let byteLen = 0;
+      let tooLarge = false;
       proxyRes.setEncoding('utf8');
-      proxyRes.on('data', d => { body += d; });
+      proxyRes.on('data', d => {
+        if (tooLarge) return;
+        byteLen += Buffer.byteLength(d, 'utf8');
+        if (byteLen > PROXY_HTML_MAX_BYTES) {
+          tooLarge = true;
+          proxyRes.destroy();
+          if (!res.headersSent) res.status(502).send('Proxy error: HTML response too large');
+          else if (!res.writableEnded) res.destroy();
+          return;
+        }
+        body += d;
+      });
       proxyRes.on('end', () => {
+        if (tooLarge || res.writableEnded) return;
         const base = `${parsed.protocol}//${parsed.host}`;
         body = body.replace(/(href|src|action)=(["'])(\/[^"']*|https?:\/\/[^"']+)\2/gi, (_, attr, q, url) => {
           const abs = url.startsWith('/') ? base + url : url;
@@ -1767,7 +1867,13 @@ function proxyHandler(req, res) {
     }
   });
 
-  proxyReq.on('error', err => res.status(502).send(`Proxy error: ${err.message}`));
+  proxyReq.on('timeout', () => proxyReq.destroy(new Error('Upstream request timed out')));
+  proxyReq.on('error', err => {
+    if (!res.headersSent) res.status(502).send(`Proxy error: ${err.message}`);
+    else if (!res.writableEnded) res.destroy();
+  });
+  req.on('error', () => proxyReq.destroy());
+  res.on('close', () => { if (!res.writableEnded) proxyReq.destroy(); });
 
   req.pipe(proxyReq);
 }
@@ -1872,7 +1978,9 @@ function armSchedule(ptyId, fireAt) {
   const timer = setTimeout(() => {
     schedules.delete(ptyId);
     const entry = ptys.get(ptyId);
-    if (entry) entry.proc.write('\r');
+    if (entry) {
+      try { entry.proc.write('\r'); } catch {}
+    }
     const fired = JSON.stringify({ type: 'schedule:fired', ptyId });
     for (const c of sessionClients) if (c.readyState === c.OPEN) c.send(fired);
     broadcastSchedules();
@@ -2054,13 +2162,36 @@ app.post('/api/terminal/paste-image', (req, res) => {
 });
 
 
+const PTY_WS_HIGH_WATER = 512 * 1024;
+const PTY_WS_LOW_WATER = 128 * 1024;
+
 function attachPtyToWs(id, ptyEntry, ws) {
   let pending = '';      // queued while bursting
   let windowBytes = 0;   // bytes seen in the current window
   let bursting = false;
   let timer = null;      // the current window; null → idle
+  let paused = false;
+  let drainTimer = null;
+  const resumeIfDrained = () => {
+    drainTimer = null;
+    if (!paused) return;
+    if (ws.readyState !== ws.OPEN || ws.bufferedAmount <= PTY_WS_LOW_WATER) {
+      paused = false;
+      try { ptyEntry.proc.resume?.(); } catch {}
+    } else {
+      drainTimer = setTimeout(resumeIfDrained, 25);
+    }
+  };
   const send = (data) => {
-    if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'pty:data', id, data }));
+    if (ws.readyState !== ws.OPEN) return;
+    try {
+      ws.send(JSON.stringify({ type: 'pty:data', id, data }));
+    } catch { return; }
+    if (!paused && ws.bufferedAmount >= PTY_WS_HIGH_WATER && typeof ptyEntry.proc.pause === 'function') {
+      paused = true;
+      try { ptyEntry.proc.pause(); } catch {}
+      if (!drainTimer) drainTimer = setTimeout(resumeIfDrained, 25);
+    }
   };
   const flushPending = () => {
     if (!pending) return;
@@ -2100,6 +2231,11 @@ function attachPtyToWs(id, ptyEntry, ws) {
     // Dropped, not flushed: anything pending is already in the replay buffer,
     // which a reattach sends in full.
     if (timer) clearTimeout(timer);
+    if (drainTimer) clearTimeout(drainTimer);
+    if (paused) {
+      paused = false;
+      try { ptyEntry.proc.resume?.(); } catch {}
+    }
     pending = '';
     ptyEntry.dataListeners.delete(listener);
     ptyEntry.flushers.delete(flush);
@@ -2107,7 +2243,25 @@ function attachPtyToWs(id, ptyEntry, ws) {
   };
 }
 
+// Periodic WebSocket heartbeat to detect half-open/stale TCP connections
+// (e.g., laptop sleep/wake, Wi-Fi handoff, NAT timeout).
+const WS_HEARTBEAT_INTERVAL_MS = 20000;
+const wsHeartbeatTimer = setInterval(() => {
+  for (const client of wss.clients) {
+    if (client.isAlive === false) {
+      try { client.terminate(); } catch {}
+      continue;
+    }
+    client.isAlive = false;
+    try { client.ping(); } catch {}
+  }
+}, WS_HEARTBEAT_INTERVAL_MS);
+wsHeartbeatTimer.unref?.();
+
 wss.on('connection', (ws) => {
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
+  ws.on('error', () => {});
   // Map of ptyId -> cleanup fn for this WS connection
   const attached = new Map();
   sessionClients.add(ws);
@@ -2129,6 +2283,13 @@ wss.on('connection', (ws) => {
     try { msg = JSON.parse(raw); } catch { return; }
 
     switch (msg.type) {
+      case 'ping': {
+        ws.isAlive = true;
+        if (ws.readyState === ws.OPEN) {
+          try { ws.send(JSON.stringify({ type: 'pong', ts: msg.ts })); } catch {}
+        }
+        break;
+      }
       case 'session:claim': {
         // This client becomes the active session; tell everyone the new state.
         ws.tabId = msg.tabId;
@@ -2220,14 +2381,33 @@ wss.on('connection', (ws) => {
           // A resize that arrived while the cwd lookup ran wins over the create's size.
           const size = spawningPtys.get(id) || {};
           spawningPtys.delete(id);
-          const cols = size.cols || msg.cols || 80, rows = size.rows || msg.rows || 24;
-          const proc = pty.spawn(spawnFile, spawnArgs, {
-            name: 'xterm-256color',
-            cols,
-            rows,
-            cwd: initialCwd || process.env.MEOWTRIX_WORKSPACE || process.env.HOME || process.cwd(),
-            env: ptyEnv,
-          });
+          const clampDim = (v, fallback) => {
+            const n = Math.floor(Number(v));
+            return Number.isFinite(n) && n >= 1 ? Math.min(n, 1000) : fallback;
+          };
+          const cols = clampDim(size.cols || msg.cols, 80);
+          const rows = clampDim(size.rows || msg.rows, 24);
+          let spawnCwd = initialCwd || process.env.MEOWTRIX_WORKSPACE || process.env.HOME || process.cwd();
+          try {
+            if (!fs.existsSync(spawnCwd)) spawnCwd = process.env.HOME || process.cwd();
+          } catch { spawnCwd = process.env.HOME || process.cwd(); }
+          let proc;
+          try {
+            proc = pty.spawn(spawnFile, spawnArgs, {
+              name: 'xterm-256color',
+              cols,
+              rows,
+              cwd: spawnCwd,
+              env: ptyEnv,
+            });
+          } catch (err) {
+            console.error(`[PTY] Failed to spawn ${spawnFile}:`, err.message);
+            if (ws.readyState === ws.OPEN) {
+              try { ws.send(JSON.stringify({ type: 'pty:error', id, error: err.message })); } catch {}
+              try { ws.send(JSON.stringify({ type: 'pty:exit', id })); } catch {}
+            }
+            return;
+          }
           const entry = { proc, dataListeners: new Set(), flushers: new Set(), buffer: '', cols, rows, sshHost: msg.sshHost || null };
           ptys.set(id, entry);
           // Persistently buffer output (independent of any connected WS) so it can
@@ -2245,10 +2425,19 @@ wss.on('connection', (ws) => {
             ptys.delete(id);
             if (clearSchedule(id)) broadcastSchedules(); // drop a schedule for a dead PTY
             for (const flush of entry.flushers) flush(); // last output before the exit notice
-            if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'pty:exit', id }));
+            const targetWs = (entry.owner && entry.owner.readyState === entry.owner.OPEN)
+              ? entry.owner
+              : (ws.readyState === ws.OPEN ? ws : null);
+            if (targetWs) {
+              try { targetWs.send(JSON.stringify({ type: 'pty:exit', id })); } catch {}
+            }
+            entry.dataListeners.clear();
+            entry.flushers.clear();
           });
           attached.set(id, attachPtyToWs(id, entry, ws));
-          ws.send(JSON.stringify({ type: 'pty:created', id }));
+          if (ws.readyState === ws.OPEN) {
+            try { ws.send(JSON.stringify({ type: 'pty:created', id })); } catch {}
+          }
         };
 
         // A split inherits the cwd of the pane it came from. Looking that up
@@ -2259,12 +2448,21 @@ wss.on('connection', (ws) => {
         if (spawningPtys.has(id)) break;
         spawningPtys.set(id, {});
         getPtyCwd(parentPid).then((cwd) => {
-          if (!ptys.has(id) && ws.readyState === ws.OPEN) spawnPty(cwd);
+          if (spawningPtys.has(id) && !ptys.has(id) && ws.readyState === ws.OPEN) spawnPty(cwd);
+          else spawningPtys.delete(id);
+        }).catch(() => {
+          if (spawningPtys.has(id) && !ptys.has(id) && ws.readyState === ws.OPEN) spawnPty(null);
           else spawningPtys.delete(id);
         });
         break;
       }
-      case 'pty:input': { const e = ptys.get(msg.id); if (e) e.proc.write(msg.data); break; }
+      case 'pty:input': {
+        const e = ptys.get(msg.id);
+        if (e && typeof msg.data === 'string') {
+          try { e.proc.write(msg.data); } catch {}
+        }
+        break;
+      }
       case 'schedule:create': {
         // Arm a delayed Enter for a live PTY; echoes back via schedule:state.
         if (msg.ptyId && ptys.has(msg.ptyId) && typeof msg.fireAt === 'number') {
@@ -2290,16 +2488,24 @@ wss.on('connection', (ws) => {
           if (ws.tabId && activeTabId) break;
           if (e.owner && e.owner !== ws) break;
         }
-        if (e && msg.cols > 0 && msg.rows > 0) {
-          if (e.cols === msg.cols && e.rows === msg.rows) break;
-          e.cols = msg.cols; e.rows = msg.rows; e.proc.resize(msg.cols, msg.rows);
+        const cols = Math.floor(Number(msg.cols));
+        const rows = Math.floor(Number(msg.rows));
+        if (e && Number.isFinite(cols) && Number.isFinite(rows) && cols >= 1 && rows >= 1) {
+          const safeCols = Math.min(cols, 1000);
+          const safeRows = Math.min(rows, 1000);
+          if (e.cols === safeCols && e.rows === safeRows) break;
+          e.cols = safeCols; e.rows = safeRows;
+          try { e.proc.resize(safeCols, safeRows); } catch {}
         }
-        else if (spawningPtys.has(msg.id)) spawningPtys.set(msg.id, { cols: msg.cols, rows: msg.rows });
+        else if (spawningPtys.has(msg.id) && Number.isFinite(cols) && Number.isFinite(rows) && cols >= 1 && rows >= 1) {
+          spawningPtys.set(msg.id, { cols: Math.min(cols, 1000), rows: Math.min(rows, 1000) });
+        }
         break;
       }
       case 'pty:destroy': {
+        spawningPtys.delete(msg.id);
         const e = ptys.get(msg.id);
-        if (e) { e.proc.kill(); ptys.delete(msg.id); }
+        if (e) { try { e.proc.kill(); } catch {} ptys.delete(msg.id); }
         if (attached.has(msg.id)) { attached.get(msg.id)(); attached.delete(msg.id); }
         if (clearSchedule(msg.id)) broadcastSchedules();
         break;
@@ -2357,6 +2563,8 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
+    // Fail any in-flight mtx RPCs targeting this socket immediately.
+    mtxBridge.handleWsClose?.(ws);
     // Detach data listeners but keep PTY processes alive
     attached.forEach(cleanup => cleanup());
     attached.clear();
@@ -2402,7 +2610,9 @@ const IS_SUPERVISED = process.env.MEOWTRIX_SUPERVISED === '1';
 const UPDATE_CHECK_INTERVAL = 60 * 60 * 1000; // hourly background check
 let lastUpdateInfo = null; // cached result of the most recent check
 
-function appCurl(url, args = []) {
+let updateInProgress = false;
+
+function appCurl(url, args = [], { timeoutMs = 60000 } = {}) {
   const settings = readSettings();
   const env = { ...process.env };
   if (settings.httpProxy) {
@@ -2413,19 +2623,24 @@ function appCurl(url, args = []) {
     env.HTTPS_PROXY = settings.httpsProxy;
     env.https_proxy = settings.httpsProxy;
   }
+  const maxSecs = Math.max(10, Math.ceil(timeoutMs / 1000));
   return new Promise((resolve) => {
-    execFile('curl', ['-fsSL', '-H', 'User-Agent: Meowtrix-Updater', ...args, url], { maxBuffer: 4 * 1024 * 1024, env },
+    execFile(
+      'curl',
+      ['-fsSL', '--connect-timeout', '10', '--max-time', String(maxSecs), '-H', 'User-Agent: Meowtrix-Updater', ...args, url],
+      { maxBuffer: 4 * 1024 * 1024, timeout: timeoutMs + 5000, env },
       (err, stdout, stderr) => resolve({
         ok: !err,
         stdout: (stdout || '').toString().trim(),
         stderr: (stderr || (err && err.message) || '').toString().trim(),
-      }));
+      })
+    );
   });
 }
 
 function appGit(args, opts = {}) {
   const settings = readSettings();
-  const env = { ...process.env, ...opts.env };
+  const env = { ...process.env, GIT_TERMINAL_PROMPT: '0', ...opts.env };
   if (settings.httpProxy) {
     env.HTTP_PROXY = settings.httpProxy;
     env.http_proxy = settings.httpProxy;
@@ -2435,7 +2650,7 @@ function appGit(args, opts = {}) {
     env.https_proxy = settings.httpsProxy;
   }
   return new Promise((resolve) => {
-    execFile('git', ['-C', APP_ROOT, ...args], { maxBuffer: 4 * 1024 * 1024, ...opts, env },
+    execFile('git', ['-C', APP_ROOT, ...args], { maxBuffer: 4 * 1024 * 1024, timeout: 60000, ...opts, env },
       (err, stdout, stderr) => resolve({
         ok: !err,
         stdout: (stdout || '').toString().trim(),
@@ -2582,6 +2797,18 @@ function broadcastUpdate() {
 // Pull the pending update, reinstalling deps only when package.json/the lockfile
 // changed, then (if supervised) signal the caller to exit so the new code loads.
 async function applyUpdate() {
+  if (updateInProgress) {
+    return { ok: false, error: 'update-in-progress', output: 'An update is already in progress.' };
+  }
+  updateInProgress = true;
+  try {
+    return await _applyUpdateInner();
+  } finally {
+    updateInProgress = false;
+  }
+}
+
+async function _applyUpdateInner() {
   const useBinary = shouldUpdateViaBinary();
 
   if (useBinary) {
@@ -2593,17 +2820,25 @@ async function applyUpdate() {
     }
 
     const releaseUrl = `${LATEST_RELEASE_URL}/meowtrix-${osPlatform}-${osArch}.tar.gz`;
-    const tempTarball = path.join(os.tmpdir() || '/tmp', `meowtrix-update-${Date.now()}.tar.gz`);
+    const stamp = `${process.pid}-${Date.now()}`;
+    const tempTarball = path.join(os.tmpdir() || '/tmp', `meowtrix-update-${stamp}.tar.gz`);
+    const stagingDir = path.join(path.dirname(APP_ROOT), `.${path.basename(APP_ROOT)}.staging.${stamp}`);
+    const backupDir = path.join(path.dirname(APP_ROOT), `.${path.basename(APP_ROOT)}.bak.${stamp}`);
 
     console.log(`[Update] Downloading binary update from ${releaseUrl}...`);
-    const download = await appCurl(releaseUrl, ['-o', tempTarball]);
+    const download = await appCurl(releaseUrl, ['-o', tempTarball], { timeoutMs: 180000 });
     if (!download.ok) {
+      try { fs.unlinkSync(tempTarball); } catch {}
       return { ok: false, output: `Failed to download release update: ${download.stderr}` };
     }
 
-    console.log(`[Update] Extracting binary update to ${APP_ROOT}...`);
+    console.log(`[Update] Extracting binary update to staging directory ${stagingDir}...`);
+    try { fs.mkdirSync(stagingDir, { recursive: true }); } catch (e) {
+      try { fs.unlinkSync(tempTarball); } catch {}
+      return { ok: false, output: `Failed to create staging directory: ${e.message}` };
+    }
     const extract = await new Promise((resolve) => {
-      execFile('tar', ['-zxf', tempTarball, '-C', APP_ROOT, '--strip-components=1'],
+      execFile('tar', ['-zxf', tempTarball, '-C', stagingDir, '--strip-components=1'], { timeout: 120000 },
         (err, stdout, stderr) => resolve({
           ok: !err,
           stderr: (stderr || (err && err.message) || '').toString().trim()
@@ -2613,7 +2848,29 @@ async function applyUpdate() {
     try { fs.unlinkSync(tempTarball); } catch {}
 
     if (!extract.ok) {
+      try { fs.rmSync(stagingDir, { recursive: true, force: true }); } catch {}
       return { ok: false, output: `Failed to extract update: ${extract.stderr}` };
+    }
+
+    // Verify expected entrypoints before swapping over live APP_ROOT
+    if (!fs.existsSync(path.join(stagingDir, 'server.js')) || !fs.existsSync(path.join(stagingDir, 'package.json'))) {
+      try { fs.rmSync(stagingDir, { recursive: true, force: true }); } catch {}
+      return { ok: false, output: 'Update archive is missing server.js or package.json; aborting swap.' };
+    }
+
+    try {
+      fs.renameSync(APP_ROOT, backupDir);
+      try {
+        fs.renameSync(stagingDir, APP_ROOT);
+      } catch (swapErr) {
+        // Roll back to previous installation
+        try { fs.renameSync(backupDir, APP_ROOT); } catch {}
+        throw swapErr;
+      }
+      try { fs.rmSync(backupDir, { recursive: true, force: true }); } catch {}
+    } catch (swapErr) {
+      try { fs.rmSync(stagingDir, { recursive: true, force: true }); } catch {}
+      return { ok: false, output: `Failed to install staged update: ${swapErr.message}` };
     }
 
     // If we were a git repo, migrate to clean binary install by removing .git directory
@@ -2760,7 +3017,7 @@ async function applyUpdate() {
         env.HTTPS_PROXY = settings.httpsProxy;
         env.https_proxy = settings.httpsProxy;
       }
-      execFile('npm', ['install', '--omit=dev'], { cwd: APP_ROOT, maxBuffer: 32 * 1024 * 1024, env },
+      execFile('npm', ['install', '--omit=dev'], { cwd: APP_ROOT, maxBuffer: 32 * 1024 * 1024, timeout: 180000, env },
         (err, _out, stderr) => resolve({ ok: !err, stderr: (stderr || (err && err.message) || '').toString() }));
     });
     if (!npm.ok) return { ok: false, output: `${output}\nDependency install failed: ${npm.stderr}` };
@@ -2798,6 +3055,40 @@ function probeDesktopDaemon(p) {
   });
 }
 
+function daemonRequest(port, method, reqPath, timeoutMs = 5000) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const done = (fn, val) => {
+      if (settled) return;
+      settled = true;
+      fn(val);
+    };
+    const r = http.request({
+      hostname: '127.0.0.1',
+      port,
+      path: reqPath,
+      method,
+      timeout: timeoutMs,
+    }, (resStream) => {
+      let data = '';
+      resStream.on('data', c => { data += c; });
+      resStream.on('error', err => done(reject, err));
+      resStream.on('end', () => {
+        try {
+          done(resolve, JSON.parse(data));
+        } catch (err) {
+          done(reject, new Error(`Invalid JSON from desktop daemon (${resStream.statusCode}): ${err.message}`));
+        }
+      });
+    });
+    r.on('timeout', () => {
+      r.destroy(new Error(`Desktop daemon request timed out (${method} ${reqPath})`));
+    });
+    r.on('error', err => done(reject, err));
+    r.end();
+  });
+}
+
 // Inside the desktop app the app bundle is what gets updated (Tauri updater,
 // tray "Update & Restart"), so its updater is the source of truth: it compares
 // the *app's* version against the release's latest.json. The server's own check
@@ -2811,13 +3102,7 @@ async function checkForUpdateAnySource() {
   const daemon = await probeDesktopDaemon();
   if (daemon.available) {
     try {
-      const resp = await new Promise((resolve, reject) => {
-        http.get(`http://127.0.0.1:${daemon.port}/update/check`, { timeout: 15000 }, r => {
-          let data = '';
-          r.on('data', c => data += c);
-          r.on('end', () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
-        }).on('error', reject);
-      });
+      const resp = await daemonRequest(daemon.port, 'GET', '/update/check', 15000);
       lastUpdateInfo = {
         isRepo: false, supervised: true, behind: resp.updateAvailable ? 1 : 0, ahead: 0,
         version: appVersion(), local: '', remote: '', error: null,
@@ -2843,21 +3128,7 @@ app.post('/api/update/apply', async (req, res) => {
   const daemon = await probeDesktopDaemon();
   if (daemon.available) {
     try {
-      const resp = await new Promise((resolve, reject) => {
-        const r = http.request({
-          hostname: '127.0.0.1',
-          port: daemon.port,
-          path: '/update/apply',
-          method: 'POST',
-          timeout: 60000
-        }, res => {
-          let data = '';
-          res.on('data', c => data += c);
-          res.on('end', () => resolve(JSON.parse(data)));
-        });
-        r.on('error', reject);
-        r.end();
-      });
+      const resp = await daemonRequest(daemon.port, 'POST', '/update/apply', 60000);
       res.json(resp);
       return;
     } catch (e) {
@@ -2868,7 +3139,7 @@ app.post('/api/update/apply', async (req, res) => {
   const result = await applyUpdate();
   res.json(result);
   if (result.ok && IS_SUPERVISED && !result.output.includes('service')) {
-    setTimeout(() => process.exit(0), 500);
+    setTimeout(() => gracefulShutdown(0), 500);
   }
 });
 
@@ -2885,21 +3156,7 @@ app.post('/api/overlay/hide', async (req, res) => {
   const daemon = await probeDesktopDaemon();
   if (daemon.available) {
     try {
-      const resp = await new Promise((resolve, reject) => {
-        const r = http.request({
-          hostname: '127.0.0.1',
-          port: daemon.port,
-          path: '/api/overlay/hide',
-          method: 'POST',
-          timeout: 2000
-        }, resStream => {
-          let data = '';
-          resStream.on('data', c => data += c);
-          resStream.on('end', () => resolve(JSON.parse(data)));
-        });
-        r.on('error', reject);
-        r.end();
-      });
+      const resp = await daemonRequest(daemon.port, 'POST', '/api/overlay/hide', 2000);
       return res.json(resp);
     } catch {}
   }
@@ -2910,21 +3167,7 @@ app.post('/api/overlay/show', async (req, res) => {
   const daemon = await probeDesktopDaemon();
   if (daemon.available) {
     try {
-      const resp = await new Promise((resolve, reject) => {
-        const r = http.request({
-          hostname: '127.0.0.1',
-          port: daemon.port,
-          path: '/api/overlay/show',
-          method: 'POST',
-          timeout: 2000
-        }, resStream => {
-          let data = '';
-          resStream.on('data', c => data += c);
-          resStream.on('end', () => resolve(JSON.parse(data)));
-        });
-        r.on('error', reject);
-        r.end();
-      });
+      const resp = await daemonRequest(daemon.port, 'POST', '/api/overlay/show', 2000);
       return res.json(resp);
     } catch {}
   }
@@ -2935,13 +3178,7 @@ app.get('/api/overlay/status', async (req, res) => {
   const daemon = await probeDesktopDaemon();
   if (daemon.available) {
     try {
-      const resp = await new Promise((resolve, reject) => {
-        http.get(`http://127.0.0.1:${daemon.port}/api/overlay/status`, { timeout: 2000 }, resStream => {
-          let data = '';
-          resStream.on('data', c => data += c);
-          resStream.on('end', () => resolve(JSON.parse(data)));
-        }).on('error', reject);
-      });
+      const resp = await daemonRequest(daemon.port, 'GET', '/api/overlay/status', 2000);
       return res.json(resp);
     } catch {}
   }
@@ -2966,21 +3203,7 @@ app.post('/api/restart', async (req, res) => {
   const daemon = await probeDesktopDaemon();
   if (daemon.available) {
     try {
-      const resp = await new Promise((resolve, reject) => {
-        const r = http.request({
-          hostname: '127.0.0.1',
-          port: daemon.port,
-          path: '/restart',
-          method: 'POST',
-          timeout: 5000
-        }, res => {
-          let data = '';
-          res.on('data', c => data += c);
-          res.on('end', () => resolve(JSON.parse(data)));
-        });
-        r.on('error', reject);
-        r.end();
-      });
+      const resp = await daemonRequest(daemon.port, 'POST', '/restart', 5000);
       res.json(resp);
       return;
     } catch (e) {
@@ -2993,7 +3216,7 @@ app.post('/api/restart', async (req, res) => {
     return;
   }
   res.json({ ok: true, restarting: true });
-  setTimeout(() => process.exit(0), 500);
+  setTimeout(() => gracefulShutdown(0), 500);
 });
 
 // Background check: shortly after boot, then hourly. Honors the autoUpdate
@@ -3252,27 +3475,36 @@ function broadcastGpu(stats) {
   }
 }
 
+let gpuMonitorRunning = false;
+
 function startGpuMonitoring() {
-  if (gpuMonitorInterval) return;
+  if (gpuMonitorRunning) return;
+  gpuMonitorRunning = true;
   const tick = async () => {
-    if (sessionClients.size === 0) { stopGpuMonitoring(); return; }
+    gpuMonitorInterval = null;
+    if (!gpuMonitorRunning || sessionClients.size === 0) { stopGpuMonitoring(); return; }
     if (getSetting('gpuMonitor') !== true) {
       if (lastGpuStats !== null) { lastGpuStats = null; broadcastGpu(null); }
-      return;
+    } else {
+      try {
+        const stats = await pollGpuStats();
+        lastGpuStats = stats;
+        broadcastGpu(stats);
+      } catch (e) { console.error('Error polling GPU stats:', e); }
     }
-    try {
-      const stats = await pollGpuStats();
-      lastGpuStats = stats;
-      broadcastGpu(stats);
-    } catch (e) { console.error('Error polling GPU stats:', e); }
+    if (gpuMonitorRunning && sessionClients.size > 0) {
+      gpuMonitorInterval = setTimeout(tick, 2000);
+    } else {
+      gpuMonitorRunning = false;
+    }
   };
   tick();
-  gpuMonitorInterval = setInterval(tick, 2000);
 }
 
 function stopGpuMonitoring() {
+  gpuMonitorRunning = false;
   if (gpuMonitorInterval) {
-    clearInterval(gpuMonitorInterval);
+    clearTimeout(gpuMonitorInterval);
     gpuMonitorInterval = null;
   }
 }
@@ -3345,3 +3577,49 @@ server.listen(PORT, HOST, () => {
     console.log('   Protect with a token:  meowtrix --network --auth   (or --token <secret>)');
   }
 });
+
+let shuttingDown = false;
+async function gracefulShutdown(exitCode = 0) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  const forceExit = setTimeout(() => process.exit(exitCode), 5000);
+  forceExit.unref?.();
+
+  try { clearInterval(wsHeartbeatTimer); } catch {}
+  try { stopGpuMonitoring(); } catch {}
+  try { if (portMonitorTimer) { clearTimeout(portMonitorTimer); portMonitorTimer = null; } } catch {}
+  try {
+    for (const s of schedules.values()) clearTimeout(s.timer);
+    schedules.clear();
+  } catch {}
+  try { proxyCookies.flush(); } catch {}
+  try {
+    for (const client of sessionClients) {
+      if (client.fsWatchers) {
+        for (const w of client.fsWatchers.values()) { try { w.close(); } catch {} }
+        client.fsWatchers.clear();
+      }
+      try { client.close(1001, 'Server shutting down'); } catch {}
+    }
+  } catch {}
+  try {
+    for (const entry of ptys.values()) {
+      try { entry.proc.kill(); } catch {}
+    }
+    ptys.clear();
+  } catch {}
+  try { await hostBrowser.shutdown(); } catch {}
+  try { wss.close(); } catch {}
+  try {
+    await new Promise((resolve) => {
+      server.close(() => resolve());
+      server.closeIdleConnections?.();
+      server.closeAllConnections?.();
+    });
+  } catch {}
+  clearTimeout(forceExit);
+  process.exit(exitCode);
+}
+
+process.on('SIGINT', () => gracefulShutdown(0));
+process.on('SIGTERM', () => gracefulShutdown(0));

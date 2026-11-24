@@ -368,7 +368,7 @@ pub fn set_window_backdrop(window: &tauri::WebviewWindow, transparent: bool) {
 pub fn open_normal_window(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
     let saved_bounds = {
         let state = app.state::<SharedOverlayState>();
-        let mut st = state.lock().unwrap();
+        let mut st = state.lock().unwrap_or_else(|e| e.into_inner());
         st.is_overlay_active = false;
         (st.normal_size.take(), st.normal_position.take())
     };
@@ -434,7 +434,7 @@ fn summon_overlay_window_on_main(window: &tauri::WebviewWindow) {
 
     let was_overlay = {
         let state = window.app_handle().state::<SharedOverlayState>();
-        let mut st = state.lock().unwrap();
+        let mut st = state.lock().unwrap_or_else(|e| e.into_inner());
         let was = st.is_overlay_active;
         st.is_overlay_active = true;
         st.summoned_at = Some(std::time::Instant::now());
@@ -529,7 +529,7 @@ pub fn toggle_quick_overlay(app: &tauri::AppHandle) {
         let is_focused = window.is_focused().unwrap_or(false);
         let is_overlay = {
             let state = app.state::<SharedOverlayState>();
-            let act = state.lock().unwrap().is_overlay_active;
+            let act = state.lock().unwrap_or_else(|e| e.into_inner()).is_overlay_active;
             act
         };
 
@@ -546,7 +546,7 @@ pub fn toggle_quick_overlay(app: &tauri::AppHandle) {
 pub fn hide_overlay_window(window: &tauri::WebviewWindow) {
     {
         let state = window.app_handle().state::<SharedOverlayState>();
-        state.lock().unwrap().is_overlay_active = false;
+        state.lock().unwrap_or_else(|e| e.into_inner()).is_overlay_active = false;
     }
     let _ = window.set_always_on_top(false);
     let _ = window.hide();
@@ -600,6 +600,7 @@ fn start_window_drag(window: tauri::WebviewWindow) {
 
 #[tauri::command]
 fn close_window(window: tauri::WebviewWindow) {
+    native_browser::hide_all_native_browsers(window.app_handle());
     let _ = window.hide();
 }
 
@@ -666,7 +667,7 @@ pub fn run() {
     let ai_engine_clone = Arc::clone(&ai_engine);
     let overlay_state_clone = Arc::clone(&overlay_state);
 
-    let app = tauri::Builder::default()
+    let app = match tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             hide_overlay,
             show_overlay,
@@ -720,7 +721,7 @@ pub fn run() {
             // Register initial shortcut from user settings
             let conf = read_quick_overlay_config();
             {
-                let mut st = overlay_state_clone.lock().unwrap();
+                let mut st = overlay_state_clone.lock().unwrap_or_else(|e| e.into_inner());
                 st.enabled = conf.enabled;
                 st.dismiss_on_blur = conf.dismiss_on_blur;
                 st.auto_claim = conf.auto_claim;
@@ -732,7 +733,7 @@ pub fn run() {
                         log::warn!("Failed to register initial global shortcut {:?}: {e}", conf.shortcut);
                     } else {
                         log::info!("Registered global overlay shortcut: {:?}", conf.shortcut);
-                        overlay_state_clone.lock().unwrap().current_shortcut = Some(sc);
+                        overlay_state_clone.lock().unwrap_or_else(|e| e.into_inner()).current_shortcut = Some(sc);
                     }
                 }
             }
@@ -752,7 +753,7 @@ pub fn run() {
                         last_enabled = current_conf.enabled;
                         last_blur = current_conf.dismiss_on_blur;
 
-                        let mut st = overlay_state_for_watcher.lock().unwrap();
+                        let mut st = overlay_state_for_watcher.lock().unwrap_or_else(|e| e.into_inner());
                         st.enabled = current_conf.enabled;
                         st.dismiss_on_blur = current_conf.dismiss_on_blur;
                         st.auto_claim = current_conf.auto_claim;
@@ -783,10 +784,15 @@ pub fn run() {
             // Ensure the backend server is running, passing ai_port to Node
             let state = app.state::<ServerState>();
             let port = {
-                let mut manager = state.lock().unwrap();
-                manager
-                    .ensure_started(app.handle(), ai_port)
-                    .map_err(|e| Box::<dyn std::error::Error>::from(e))?
+                let mut manager = state.lock().unwrap_or_else(|e| e.into_inner());
+                match manager.ensure_started(app.handle(), ai_port) {
+                    Ok(port) => port,
+                    Err(e) => {
+                        log::error!("Failed to start Meowtrix backend server: {e}");
+                        manager.stop();
+                        return Err(Box::<dyn std::error::Error>::from(e));
+                    }
+                }
             };
 
             let target_url = format!("http://127.0.0.1:{port}");
@@ -823,12 +829,13 @@ pub fn run() {
                             }
                             tauri::WindowEvent::CloseRequested { api, .. } => {
                                 api.prevent_close();
+                                native_browser::hide_all_native_browsers(window_clone.app_handle());
                                 let _ = window_clone.hide();
                                 log::info!("Window closed: hidden to background tray.");
                             }
                             tauri::WindowEvent::Focused(false) => {
                                 let dismiss = {
-                                    let st = overlay_state_for_blur.lock().unwrap();
+                                    let st = overlay_state_for_blur.lock().unwrap_or_else(|e| e.into_inner());
                                     let settling = st
                                         .summoned_at
                                         .is_some_and(|t| t.elapsed() < OVERLAY_BLUR_GRACE);
@@ -920,10 +927,10 @@ pub fn run() {
                         }
                         "quit" => {
                             log::info!("User requested Quit from tray menu.");
+                            native_browser::close_all_native_browsers(app);
                             if let Some(state) = app.try_state::<ServerState>() {
-                                if let Ok(mut manager) = state.lock() {
-                                    manager.stop();
-                                }
+                                let mut manager = state.lock().unwrap_or_else(|e| e.into_inner());
+                                manager.stop();
                             }
                             app.exit(0);
                         }
@@ -943,10 +950,11 @@ pub fn run() {
                             let is_focused = w.is_focused().unwrap_or(false);
                             let is_overlay = {
                                 let state = app.state::<SharedOverlayState>();
-                                let act = state.lock().unwrap().is_overlay_active;
+                                let act = state.lock().unwrap_or_else(|e| e.into_inner()).is_overlay_active;
                                 act
                             };
                             if is_visible && is_focused && !is_overlay {
+                                native_browser::hide_all_native_browsers(app);
                                 let _ = w.hide();
                             } else {
                                 open_normal_window(app, &w);
@@ -958,18 +966,24 @@ pub fn run() {
 
             Ok(())
         })
-
         .build(tauri::generate_context!())
-        .expect("error while running tauri application");
+    {
+        Ok(app) => app,
+        Err(e) => {
+            log::error!("Failed to initialize Meowtrix application: {e}");
+            eprintln!("Failed to initialize Meowtrix application: {e}");
+            std::process::exit(1);
+        }
+    };
 
     app.run(|app_handle, event| {
         match event {
             RunEvent::Exit => {
                 log::info!("Tauri app exiting, stopping background server...");
+                native_browser::close_all_native_browsers(app_handle);
                 if let Some(state) = app_handle.try_state::<ServerState>() {
-                    if let Ok(mut manager) = state.lock() {
-                        manager.stop();
-                    }
+                    let mut manager = state.lock().unwrap_or_else(|e| e.into_inner());
+                    manager.stop();
                 }
             }
             #[cfg(target_os = "macos")]
@@ -1004,10 +1018,10 @@ fn app_dialog(
 }
 
 fn stop_server_and_restart(app: &tauri::AppHandle) -> ! {
+    native_browser::close_all_native_browsers(app);
     if let Some(state) = app.try_state::<ServerState>() {
-        if let Ok(mut manager) = state.lock() {
-            manager.stop();
-        }
+        let mut manager = state.lock().unwrap_or_else(|e| e.into_inner());
+        manager.stop();
     }
     app.restart()
 }

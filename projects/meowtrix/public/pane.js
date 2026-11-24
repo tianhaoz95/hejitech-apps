@@ -530,10 +530,19 @@ function activateTab(pane, id) {
   if (pane.activeTab?.onActivate) requestAnimationFrame(() => pane.activeTab.onActivate());
 }
 
-function closeTab(pane, id) {
+function closeTab(pane, id, opts = {}) {
   const idx = pane.tabs.findIndex(t => t.id === id);
   if (idx === -1) return;
   const tab = pane.tabs[idx];
+  if (!opts.force && tab.hasUnsavedChanges && tab.hasUnsavedChanges()) {
+    const confirmPromise = typeof window.showConfirm === 'function'
+      ? window.showConfirm('Unsaved Changes', 'This tab has unsaved changes. Close anyway?', 'Discard & Close', 'Cancel')
+      : Promise.resolve(window.confirm('This tab has unsaved changes. Close anyway?'));
+    confirmPromise.then((ok) => {
+      if (ok) closeTab(pane, id, { force: true });
+    });
+    return;
+  }
   if (typeof teardownSchedule === 'function') teardownSchedule(tab); // stop any pending Enter timer
   if (tab.ptyId) destroyPty(tab.ptyId);
   if (tab.webglAddon) {
@@ -1017,7 +1026,11 @@ function initTerminalTab(tab, existingPtyId) {
     }
   }
 
+  let disposed = false;
+  let initPtyRaf = 0;
   const initPty = () => {
+    initPtyRaf = 0;
+    if (disposed) return;
     if (tab.viewEl.classList.contains('active')) {
       try { fitAddon.fit(); } catch {}
     }
@@ -1027,10 +1040,11 @@ function initTerminalTab(tab, existingPtyId) {
     if (typeof refreshMobileScrollbar === 'function') refreshMobileScrollbar(tab);
   };
   // Small rAF delay ensures the terminal is sized before createPty
-  requestAnimationFrame(initPty);
+  initPtyRaf = requestAnimationFrame(initPty);
   // Web fonts load async; fitting with fallback metrics clips the bottom row,
   // so re-fit (which resizes the PTY too) once the real font is ready.
   if (document.fonts?.ready) document.fonts.ready.then(() => {
+    if (disposed) return;
     if (tab.viewEl.classList.contains('active')) {
       try { fitAddon.fit(); } catch {}
       if (typeof refreshMobileScrollbar === 'function') refreshMobileScrollbar(tab);
@@ -1234,6 +1248,7 @@ function initTerminalTab(tab, existingPtyId) {
   let resizeTimer = null;
   const sendPtySize = () => {
     resizeTimer = null;
+    if (disposed) return;
     const { cols, rows } = term;
     if (!wsReady && !window.DEMO_MODE) return; // reconnect re-syncs via pty:created
     if (tab.ptySize && tab.ptySize.cols === cols && tab.ptySize.rows === rows) return;
@@ -1241,6 +1256,7 @@ function initTerminalTab(tab, existingPtyId) {
     wsSend({ type: 'pty:resize', id: ptyId, cols, rows });
   };
   tab.syncPtySize = () => {
+    if (disposed) return;
     clearTimeout(resizeTimer);
     if (getSettings().resizeDebounce === false) { sendPtySize(); return; }
     resizeTimer = setTimeout(sendPtySize, 80);
@@ -1252,8 +1268,10 @@ function initTerminalTab(tab, existingPtyId) {
 
   let roFrame = 0, roSettle = null;
   const ro = new ResizeObserver(() => {
+    if (disposed) return;
     if (tab.viewEl.classList.contains('active')) {
       const fit = () => {
+        if (disposed) return;
         if (tab.viewEl.classList.contains('active') && tab.fitAddon) {
           try {
             tab.fitAddon.fit();
@@ -1263,8 +1281,10 @@ function initTerminalTab(tab, existingPtyId) {
       };
       if (getSettings().resizeDebounce === false) {
         fit();
-        requestAnimationFrame(fit);
-        setTimeout(fit, 150);
+        if (roFrame) cancelAnimationFrame(roFrame);
+        roFrame = requestAnimationFrame(() => { roFrame = 0; fit(); });
+        clearTimeout(roSettle);
+        roSettle = setTimeout(fit, 150);
         return;
       }
       // At most one fit per frame while the size keeps changing, plus a
@@ -1287,6 +1307,11 @@ function initTerminalTab(tab, existingPtyId) {
     }
   };
   tab.disposeTerminal = () => {
+    disposed = true;
+    if (initPtyRaf) { cancelAnimationFrame(initPtyRaf); initPtyRaf = 0; }
+    if (resizeTimer) { clearTimeout(resizeTimer); resizeTimer = null; }
+    if (roFrame) { cancelAnimationFrame(roFrame); roFrame = 0; }
+    if (roSettle) { clearTimeout(roSettle); roSettle = null; }
     ro.disconnect();
     if (tab.webglAddon) {
       try { tab.webglAddon.dispose(); } catch (_) {}
@@ -1463,6 +1488,9 @@ function initBrowserTab(tab, viewEl, label, initialUrl) {
     msgSpan.append(...formattedArgs);
     logItem.append(timeSpan, msgSpan);
     consoleLogs.appendChild(logItem);
+    while (consoleLogs.childNodes.length > 500) {
+      consoleLogs.firstChild.remove();
+    }
     
     const isAtBottom = consoleLogs.scrollHeight - consoleLogs.clientHeight - consoleLogs.scrollTop < 30;
     if (isAtBottom || consoleLogs.childNodes.length === 1) {
