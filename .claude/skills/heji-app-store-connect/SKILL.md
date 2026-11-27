@@ -105,7 +105,10 @@ at every shot before uploading: taking them found two real bugs.
   with `branding/promo-videos/scripts/app-preview-record.mjs <p>` (Headway and FitLoop; ios-uidriver),
   the edit in `branding/promo-videos/src/app-preview` (886x1920, 30 fps, headline over the screen, launch
   music), re-encoded to H.264 high + 256k stereo AAC, then `node $A upload-previews com.hejitech.<slug>
-  IPHONE_67 <mp4>`. Apple only allows footage of the app itself: no glasses or other hardware. Apple's
+  IPHONE_67 <mp4>`. Apple only allows footage of the app itself: no glasses or other hardware, and no
+  device frame or backdrop around the capture (Headway 1.10.3 was rejected under 2.3.4 on 2026-11-26 for
+  exactly the framed `src/app-preview` layout; the preview was removed). The screen capture must fill the
+  frame, with text overlays or narration only. Previews are optional; skip them unless one is worth it. Apple's
   processing can take over 10 minutes: re-check `videoDeliveryState` with GET `v1/appPreviews/<id>`.
 
 - **iPhone Duo** (required from April 2027): the app must be built with the iOS 27.1+ SDK to use the
